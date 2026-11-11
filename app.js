@@ -1292,6 +1292,27 @@ function frSide() { const ch = document.querySelector(".fchat"); if (ch && ch.pa
 function frHome() { const ch = document.querySelector(".fchat"), w = document.querySelector("#v-friends .fwrap"); if (ch && w && ch.parentElement !== w) w.appendChild(ch); }
 function frOpen() { prefs.side = true; savePrefs(); sideUI(); document.querySelector('.mode[data-mode="friends"]').click(); }
 
+/* fix 19: dropdowns. Every <select> gets a dark custom menu that springs open (Anime.js / Motion). The real select stays underneath so all existing code keeps working. */
+(() => { let open = null;
+  const label = (s) => { const o = s.options[s.selectedIndex]; return o ? o.textContent : ""; };
+  const close = () => { if (!open) return; const m = open.m; open.w.classList.remove("open"); open = null; m.style.pointerEvents = "none"; try { if (window.anime && FX.ok()) anime.animate(m, { opacity: [1, 0], scale: [1, 0.96], duration: 120, ease: "inQuad", onComplete: () => m.remove() }); else m.remove(); } catch (e) { m.remove(); } };
+  function enhance(s) { if (s.dataset.dd || s.multiple || s.closest(".nodd")) return; s.dataset.dd = "1"; const w = document.createElement("span"); w.className = "dd"; s.parentNode.insertBefore(w, s); w.appendChild(s);
+    const b = document.createElement("button"); b.type = "button"; b.className = "ddb"; b.innerHTML = `<span></span><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>`; w.appendChild(b);
+    const sync = () => { const t = label(s); if (b.firstChild.textContent !== t) b.firstChild.textContent = t; b.disabled = s.disabled; w.style.display = s.style.display === "none" || s.classList.contains("hidden") ? "none" : ""; }; sync(); s.addEventListener("change", sync); s._ddSync = sync;
+    b.onclick = (e) => { e.stopPropagation(); if (open && open.s === s) return close(); close(); const r = b.getBoundingClientRect(), m = document.createElement("div"); m.className = "ddm";
+      m.innerHTML = [...s.options].map((o, i) => `<button type="button" class="ddo ${i === s.selectedIndex ? "on" : ""}" data-i="${i}" ${o.disabled ? "disabled" : ""}>${esc(o.textContent)}</button>`).join(""); document.body.appendChild(m);
+      const mh = Math.min(m.scrollHeight, 320), below = innerHeight - r.bottom > mh + 12; m.style.minWidth = r.width + "px"; m.style.left = Math.min(r.left, innerWidth - m.offsetWidth - 8) + "px"; m.style.top = (below ? r.bottom + 4 : r.top - mh - 4) + "px"; m.style.maxHeight = "320px"; m.style.transformOrigin = below ? "top" : "bottom";
+      w.classList.add("open"); open = { s, m, w };
+      try { if (window.anime && FX.ok()) { anime.animate(m, { opacity: [0, 1], scale: [0.94, 1], translateY: [below ? -6 : 6, 0], duration: 260, ease: "outBack(1.6)" }); anime.animate(m.querySelectorAll(".ddo"), { opacity: [0, 1], translateX: [-6, 0], delay: anime.stagger(14), duration: 220, ease: "outQuad" }); } } catch (er) {}
+      const on = m.querySelector(".on"); if (on) on.scrollIntoView({ block: "nearest" });
+      m.onclick = (ev) => { const o = ev.target.closest(".ddo"); if (!o) return; const i = +o.dataset.i; close(); if (s.selectedIndex !== i) { s.selectedIndex = i; s.dispatchEvent(new Event("input", { bubbles: true })); s.dispatchEvent(new Event("change", { bubbles: true })); } sync(); }; }; }
+  const all = () => document.querySelectorAll("select:not([data-dd])").forEach(enhance);
+  new MutationObserver((ms) => { let add = false; for (const m of ms) { if (m.target.closest && m.target.closest(".ddb,.ddm")) continue; for (const n of m.addedNodes) if (n.nodeType === 1 && (n.tagName === "SELECT" || n.tagName === "OPTION" || n.querySelector?.("select,option"))) { add = true; break; } if (add) break; }
+    if (add) { all(); document.querySelectorAll("select[data-dd]").forEach((s) => s._ddSync && s._ddSync()); } }).observe(document.body, { childList: true, subtree: true });
+  setInterval(() => document.querySelectorAll("select[data-dd]").forEach((s) => s._ddSync && s._ddSync()), 400);   // code that sets .value directly
+  document.addEventListener("pointerdown", (e) => { if (open && !e.target.closest(".ddm,.ddb")) close(); }, true); addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
+  addEventListener("resize", close); document.addEventListener("scroll", (e) => { if (open && !e.target.closest?.(".ddm")) close(); }, true); all(); })();
+
 /* ---------------- motion polish (Motion.dev springs + Anime.js count-ups; both optional, app works without them) ---------------- */
 const FX = {
   ok: () => !matchMedia("(prefers-reduced-motion: reduce)").matches,

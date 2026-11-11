@@ -116,6 +116,13 @@ async def main():
         await E("$('chat-in').value='from the chart'; sendChat()"); await pg.wait_for_timeout(200); check("chat works from the chart panel", await E("$('chat').innerText.includes('from the chart')"))
         await pg.screenshot(path="/home/claude/shot/fix17.png")
         await E("view('friends')"); check("chat moves back on the Friends page", await E("document.querySelector('#v-friends .fwrap').contains($('chat'))")); await E("view('trade'); prefs.side=false; sideUI()")
+        # fix 19: animated dark dropdowns
+        await E("view('trade')"); n = await E("document.querySelectorAll('.dd .ddb').length"); check("selects get the custom dropdown", n >= 3, n)
+        await pg.click("#stepsz + .ddb") if await E("!!document.querySelector('#stepsz + .ddb')") else None
+        await pg.wait_for_timeout(350); check("dropdown menu opens", await E("!!document.querySelector('.ddm')"))
+        await pg.screenshot(path="/home/claude/shot/fix19.png")
+        await E("document.querySelectorAll('.ddm .ddo')[1].click()"); await pg.wait_for_timeout(200); check("picking an option changes the select", await E("$('stepsz').selectedIndex===1"))
+        await E("$('stepsz').selectedIndex=0; $('stepsz').dispatchEvent(new Event('change'))")
         # v0.5 TradeSea parity batch 1
         await E("view('trade')"); await pg.wait_for_timeout(300)
         await E("flatten(); market(1)"); pos0 = await E("pos.avg")
