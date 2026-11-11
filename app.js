@@ -1093,7 +1093,7 @@ let chatQ = [], chatT = 0;
 function flushChat() { chatT = 0; const box = $("chat"), f = document.createDocumentFragment(); let other = false;
   chatQ.splice(0).forEach((m) => { const k = m.cid || m.id; if (box.querySelector(`[data-mid="${k}"]`)) return; const d = document.createElement("div"); d.innerHTML = chatRow(m); d.firstChild.dataset.mid = k; f.appendChild(d.firstChild); if (!me || m.user_id !== me.user_id) other = true; });
   const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 80; box.appendChild(f); while (box.children.length > 400) box.firstChild.remove(); if (stick) box.scrollTop = 1e9;
-  if (other) { if ($("v-friends").classList.contains("hidden")) $("chatdot").classList.remove("hidden"); sfx("click"); } }
+  if (other) { const vis = !$("v-friends").classList.contains("hidden") || (prefs.side && !$("md-friends").classList.contains("hidden") && !$("v-trade").classList.contains("hidden")); if (!vis) { $("chatdot").classList.remove("hidden"); $("frdot").classList.remove("hidden"); } sfx("click"); } }
 function addChat(m) { chatQ.push(m); if (!chatT) chatT = requestAnimationFrame(flushChat); }
 async function sendChat() { const b = $("chat-in").value.trim().slice(0, 2000); if (!b) return; $("chat-in").value = "";
   const m = { cid: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()), user_id: DEMO ? "demo" : me && me.user_id, body: b, created_at: new Date().toISOString() };
@@ -1162,7 +1162,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); } }
+function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); } }
 function layMenu() { $("laymenu").innerHTML = Object.entries(LAYOUTS).map(([k, [c, r]]) => `<button class="lay ${k === prefs.layout ? "on" : ""}" data-lay="${k}"><i style="grid-template-columns:repeat(${c},1fr);grid-template-rows:repeat(${r},1fr)">${"<b></b>".repeat(c * r)}</i>${c * r} chart${c * r > 1 ? "s" : ""}${k === "2h" ? " ↕" : ""}</button>`).join(""); }
 function splash() { const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><span class="sp-logo">⟲</span><span class="sp-name">Rewind</span></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 900); setTimeout(() => s.remove(), 1400); }
 if (prefs.splash !== false) splash();
@@ -1286,6 +1286,12 @@ function calUI() { const days = {}; for (const t of jT) { const d = sessDay(t.t_
   $("jc-grid").innerHTML = html; $("jc-sum").textContent = mN ? `${first.toLocaleString("en-US", { month: "short", timeZone: "UTC" })}: ${money(mNet)} · ${mN} trades` : "No trades this month";
   $("jc-all").classList.toggle("hidden", !jDay); }
 
+/* fix 17: friends next to the chart. The group chat moves into the side panel (Friends tab) on the trade screen and back when you open the Friends page. */
+function frSide() { const ch = document.querySelector(".fchat"); if (ch && ch.parentElement !== $("sfr")) $("sfr").appendChild(ch); $("frdot").classList.add("hidden"); $("chatdot").classList.add("hidden");
+  const lp = $("livepill"); $("sfr-live").innerHTML = lp && !lp.classList.contains("hidden") ? lp.innerHTML : "Nobody else replaying right now."; setTimeout(() => ($("chat").scrollTop = 1e9), 30); }
+function frHome() { const ch = document.querySelector(".fchat"), w = document.querySelector("#v-friends .fwrap"); if (ch && w && ch.parentElement !== w) w.appendChild(ch); }
+function frOpen() { prefs.side = true; savePrefs(); sideUI(); document.querySelector('.mode[data-mode="friends"]').click(); }
+
 /* ---------------- motion polish (Motion.dev springs + Anime.js count-ups; both optional, app works without them) ---------------- */
 const FX = {
   ok: () => !matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -1324,7 +1330,7 @@ $("sym").onchange = () => {   // switch instrument right away, at the same repla
 };
 $("skipny").onclick = () => skipTo("09:30", "NY open"); $("skipasia").onclick = () => skipTo("20:00", "Asia open");
 $("clr").onclick = () => { drawings.filter((d) => d.state === "armed").forEach(disarmTool); drawings = []; sel = null; repaintAll(); }; $("magnet").onclick = toggleMagnet;
-document.querySelectorAll(".mode").forEach((b) => (b.onclick = () => { document.querySelectorAll(".mode").forEach((x) => x.classList.toggle("on", x === b)); ["scalp", "dom", "order"].forEach((m) => $("md-" + m).classList.toggle("hidden", m !== b.dataset.mode)); if (b.dataset.mode === "scalp" && !prefs.pad.show) { prefs.pad.show = true; padUI(); } refresh(); }));
+document.querySelectorAll(".mode").forEach((b) => (b.onclick = () => { document.querySelectorAll(".mode").forEach((x) => x.classList.toggle("on", x === b)); ["scalp", "dom", "order", "friends"].forEach((m) => $("md-" + m).classList.toggle("hidden", m !== b.dataset.mode)); if (b.dataset.mode === "friends") frSide(); if (b.dataset.mode === "scalp" && !prefs.pad.show) { prefs.pad.show = true; padUI(); } refresh(); }));
 document.querySelectorAll(".btab").forEach((b) => (b.onclick = () => { if (b.classList.contains("on") && !prefs.dockClosed) { prefs.dockClosed = true; savePrefs(); return dockUI(); } prefs.dockClosed = false; savePrefs(); dockUI();
   document.querySelectorAll(".btab").forEach((x) => x.classList.toggle("on", x === b)); ["acct", "pos", "ord", "hist"].forEach((k) => $("b-" + k).classList.toggle("hidden", k !== b.dataset.b)); }));
 ["tx-st", "tx-pay", "tx-exp", "tx-w2", "tx-wh"].forEach((k) => ($(k).oninput = taxCalc));
@@ -1381,6 +1387,8 @@ $("jc-grid").onclick = (e) => { const b = e.target.closest("[data-day]"); if (!b
 $("jc-prev").onclick = () => { const [y, m] = jMonth.split("-").map(Number), d = new Date(Date.UTC(y, m - 2, 1)); jMonth = d.toISOString().slice(0, 7); jDay = null; calUI(); loadJournal(); };
 $("jc-next").onclick = () => { const [y, m] = jMonth.split("-").map(Number), d = new Date(Date.UTC(y, m, 1)); jMonth = d.toISOString().slice(0, 7); jDay = null; calUI(); loadJournal(); };
 $("jc-all").onclick = () => { jDay = null; loadJournal(); };
+$("frbtn").onclick = () => { if (prefs.side && !$("md-friends").classList.contains("hidden")) { prefs.side = false; savePrefs(); sideUI(); } else frOpen(); };
+$("sfr-open").onclick = () => view("friends");
 $("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
 $("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tour").classList.contains("hidden")) tour(99); });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };

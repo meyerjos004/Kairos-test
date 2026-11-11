@@ -110,6 +110,12 @@ async def main():
         await E("setPaneTf(active,'1h')"); await pg.wait_for_timeout(500)
         check("higher TF shows only the candle up to now", await E("(()=>{const p=panes[active], c=p.candles[p.candles.length-1]; return c && Math.abs(c.close-last())<1e-6;})()"), await E("(()=>{const p=panes[active], c=p.candles[p.candles.length-1]; return [c&&c.close, last(), p.sec, need15, B[\"15s\"].bars.length];})()"))
         await E("quizStop(); setPaneTf(active,'5m')"); await pg.wait_for_timeout(300); check("leaving the quiz unlocks 15s", await E("lock15===false"))
+        # fix 17: friends chat next to the chart
+        await E("view('trade'); frOpen()"); await pg.wait_for_timeout(400)
+        check("friends chat opens in the side panel on the chart", await E("$('sfr').contains($('chat')) && !$('md-friends').classList.contains('hidden') && !$('side').classList.contains('hidden')"))
+        await E("$('chat-in').value='from the chart'; sendChat()"); await pg.wait_for_timeout(200); check("chat works from the chart panel", await E("$('chat').innerText.includes('from the chart')"))
+        await pg.screenshot(path="/home/claude/shot/fix17.png")
+        await E("view('friends')"); check("chat moves back on the Friends page", await E("document.querySelector('#v-friends .fwrap').contains($('chat'))")); await E("view('trade'); prefs.side=false; sideUI()")
         # v0.5 TradeSea parity batch 1
         await E("view('trade')"); await pg.wait_for_timeout(300)
         await E("flatten(); market(1)"); pos0 = await E("pos.avg")
