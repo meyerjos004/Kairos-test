@@ -298,10 +298,8 @@
     <div id="padpos" class="padpos">Flat</div>
   </div>
 </div>
-<div id="media" class="media hidden"><div class="mbar" id="mgrip"><span class="seg mt"><button data-m="sp" class="on">Spotify</button><button data-m="yt">YouTube</button><button data-m="lib">Library</button></span><span class="tsp"></span><label class="tiny muted" title="See-through">◐<input id="m-op" type="range" min="15" max="100" value="100"></label><button id="m-ct" class="pb" title="Click-through: clicks go to the chart underneath">⌖</button><button id="m-x" class="pb" title="Close">×</button></div>
-  <div class="mbody"><div id="m-sp" class="mp"><div class="row"><input id="sp-url" placeholder="Paste a Spotify playlist, album or track link"><button id="sp-go" class="small">Play</button></div><div id="sp-frame"></div></div>
-  <div id="m-yt" class="mp hidden"><div class="row"><input id="yt-url" placeholder="Paste a YouTube link"><button id="yt-go" class="small">Play</button></div><div id="yt-frame"></div></div>
-  <div id="m-lib" class="mp hidden"><div id="lib-list"></div><div class="row"><input id="lib-url" placeholder="Add a video link to your library"><input id="lib-name" placeholder="Name"><button id="lib-add" class="small">Add</button></div></div></div></div>
+<div id="media" class="media hidden"><div class="mbar" id="mgrip"><span class="seg mt"><button data-m="lib">Reese</button><button data-m="yt">YouTube</button><button data-m="sp">Spotify</button></span><span class="tsp"></span><button id="m-big" class="pb" title="Bigger / smaller">⤢</button><label class="tiny muted" title="See-through">◐<input id="m-op" type="range" min="15" max="100" value="100"></label><button id="m-ct" class="pb" title="Click-through: clicks go to the chart underneath">⌖</button><button id="m-x" class="pb" title="Close">×</button></div>
+  <div class="mbody"><div id="m-vid" class="mvid hidden"></div><div id="m-lib" class="mp"></div><div id="m-yt" class="mp hidden"></div><div id="m-sp" class="mp hidden"></div></div></div>
 <div id="dtb" class="dtb hidden"></div>
 <div id="chartset" class="chartset hidden"><div class="csbox glass form"><div class="ah"><b>Chart settings</b><button id="cs-x" class="pb">×</button></div>
   <h3>Symbol</h3><div class="seg" id="cs-sym"><button data-s="NQ">NQ</button><button data-s="ES">ES</button></div>
@@ -310,7 +308,7 @@
         <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label>
         <div class="row2"><label>Up candle<input id="s-up" type="color" value="#2bd4a0"></label><label>Down candle<input id="s-dn" type="color" value="#ff6b7a"></label></div>
   <h3>Sync across charts (multi-chart layouts)</h3>
-  <div class="chips"><label class="ck"><input type="checkbox" checked disabled> Symbol (always)</label><label class="ck"><input type="checkbox" id="cs-sint"> Interval</label><label class="ck"><input type="checkbox" id="cs-scross" checked> Crosshair</label><label class="ck"><input type="checkbox" id="cs-stime" checked> Time (scroll together)</label><label class="ck"><input type="checkbox" id="cs-srange" checked> Date range buttons</label></div>
+  <div class="chips"><label class="ck" title="On: every chart shows the symbol you trade. Off: charts 2+ can each show their own symbol (click the symbol name on a chart)."><input type="checkbox" id="cs-ssym"> Symbol</label><label class="ck"><input type="checkbox" id="cs-sint"> Interval</label><label class="ck"><input type="checkbox" id="cs-scross" checked> Crosshair</label><label class="ck"><input type="checkbox" id="cs-stime" checked> Time (scroll together)</label><label class="ck"><input type="checkbox" id="cs-srange" checked> Date range buttons</label></div>
   <button id="cs-save" class="primary small">Save</button></div></div>
 <div id="favbar" class="favbar hidden"><div class="fgrip" id="favgrip" title="Drag to move">⋮⋮</div><div class="fbtools"></div></div>
 <div id="qzbar" class="qzbar hidden"><div class="qzq">Taking dis? or fade it?</div><div class="qzd" id="qz-desc"></div><div class="row"><button id="qz-take" class="buy">Take it</button><button id="qz-fade" class="sell">Fade it</button></div><div class="qzr hidden" id="qz-res"></div><div class="row hidden" id="qz-next"><button id="qz-more" class="primary">Next setup</button><button id="qz-stop" class="ghost">Stop</button></div></div>

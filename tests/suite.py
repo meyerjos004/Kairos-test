@@ -129,6 +129,31 @@ async def main():
         await pg.screenshot(path="/home/claude/shot/fix19.png")
         await E("document.querySelectorAll('.ddm .ddo')[1].click()"); await pg.wait_for_timeout(200); check("picking an option changes the select", await E("$('stepsz').selectedIndex===1"))
         await E("$('stepsz').selectedIndex=0; $('stepsz').dispatchEvent(new Event('change'))")
+        # per-chart symbols: chart 2 can watch ES while chart 1 trades NQ
+        await E("view('trade'); setLayout('2')"); await pg.wait_for_timeout(700)
+        await E("setPaneSym(1,'ES')"); await pg.wait_for_timeout(700)
+        check("chart 2 switches to ES on its own", await E("paneSym(1)==='ES' && paneSym(0)==='NQ' && sym==='NQ'"))
+        check("chart 2 shows ES prices, chart 1 stays NQ", await E("panes[1].candles.length>0 && Math.abs(panes[1].candles.at(-1).close - panes[0].candles.at(-1).close) > 1000"), await E("[panes[0].candles.at(-1)?.close, panes[1].candles.at(-1)?.close]"))
+        n1 = await E("panes[1].candles.length"); await E("stepFwd()"); await E("stepFwd()"); await pg.wait_for_timeout(200)
+        check("ES chart steps with the replay", await E("panes[1].candles.at(-1).time === bucket(loc(nowT()), panes[1].sec) || panes[1].candles.length>=%d" % n1))
+        check("chart 2 label says ES", await E("panes[1].el.querySelector('.lname').textContent.startsWith('ES')"))
+        await E("setPaneSym(1,'NQ'); setLayout('1')"); await pg.wait_for_timeout(500)
+        # price scale: a manual drag stays put (no auto-fit snap-back), even after changing % / log mode
+        await E("view('trade')"); await pg.wait_for_timeout(300)
+        box = await pg.evaluate("(()=>{const r=panes[0].el.querySelector('.chart').getBoundingClientRect(); return [r.right, r.top, r.height]})()")
+        await pg.mouse.move(box[0]-25, box[1]+box[2]/2); await pg.mouse.down(); await pg.mouse.move(box[0]-25, box[1]+box[2]/2+120, steps=8); await pg.mouse.up(); await pg.wait_for_timeout(200)
+        rng = "(()=>{const s=panes[0].series; return [s.coordinateToPrice(50), s.coordinateToPrice(400)].map(v=>+v.toFixed(1)).join()})()"
+        r0 = await E(rng); await E("stepFwd(); stepFwd(); setScale('log'); setScale('log')"); await pg.wait_for_timeout(300)
+        check("dragged price scale stays squashed (steps + log toggle)", await E("panes[0].chart.priceScale('right').options().autoScale===false"), [r0, await E(rng)])
+        await E("setScale('auto')"); check("A button turns auto-fit back on", await E("panes[0].chart.priceScale('right').options().autoScale===true"))
+        # media dock: Reese library + Spotify/YouTube sign-in panels
+        await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
+        check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))
+        await E("document.querySelector('#m-lib .vc').click()"); await pg.wait_for_timeout(200); check("clicking a video plays it in the dock", await E("!!$('m-vid').querySelector('iframe') && !$('m-vid').classList.contains('hidden')"))
+        await E("prefs.media.tab='sp'; mediaUI()"); await pg.wait_for_timeout(200); check("Spotify tab waits for setup (no paste box)", await E("!$('sp-url') && $('m-sp').innerText.includes('Spotify')"))
+        await E("REWIND.spotify='x'; spUI()"); await pg.wait_for_timeout(200); check("Spotify shows Connect when set up", await E("!!$('sp-in')"))
+        await E("REWIND.google='x'; prefs.media.tab='yt'; mediaUI()"); await pg.wait_for_timeout(200); check("YouTube shows Connect when set up", await E("!!$('yt-in') && !$('yt-url')"))
+        await E("REWIND.spotify=''; REWIND.google=''; $('m-vx').click(); prefs.media.show=false; mediaUI()")
         # v0.5 TradeSea parity batch 1
         await E("view('trade')"); await pg.wait_for_timeout(300)
         await E("flatten(); market(1)"); pos0 = await E("pos.avg")

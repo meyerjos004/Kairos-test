@@ -95,6 +95,15 @@ async function notion(action, extra = {}) {
 
 /* ---------------- replay core: two bases (1m always, 15s when a pane needs it), one shared clock ---------------- */
 const B = { "1m": { bars: [], i: -1 }, "15s": { bars: [], i: -1 } };
+/* each chart can show its own symbol. Chart 1 is the symbol you trade (top bar); other charts can watch the other symbol (SMT) in lockstep */
+const X = {};
+const paneSym = (p) => { const i = typeof p === "number" ? p : p ? p.i : 0; return i === 0 || (prefs.sync && prefs.sync.sym) ? sym : (prefs.syms || [])[i] || sym; };
+const storeOf = (s) => (s === sym ? B : X[s] || B);
+async function loadOthers() { for (const k of Object.keys(X)) delete X[k]; if (!months || !months.size) return;
+  for (const s of [...new Set(panes.map(paneSym))].filter((s) => s !== sym && INST[s])) { const st = (X[s] = { "1m": { bars: [], i: -1 }, "15s": { bars: [], i: -1 } });
+    for (const tf of ["1m", "15s"]) { if (tf === "15s" && !need15) continue; st[tf].bars = (await Promise.all([...months].sort().map((m) => loadMonth(INST[s].data, tf, m)))).flat().sort((a, b) => a.t - b.t); } }
+  advOthers(); }
+function advOthers() { const out = {}; for (const s of Object.keys(X)) { out[s] = { "1m": [], "15s": [] }; for (const tf of ["1m", "15s"]) { const b = X[s][tf]; while (b.bars[b.i + 1] && b.bars[b.i + 1].t <= cursorT) { b.i++; out[s][tf].push(b.bars[b.i]); } while (b.i >= 0 && b.bars[b.i].t > cursorT) b.i--; } } return out; }
 let need15 = false, lock15 = false, cursorT = 0, sym = "NQ", inst = INST.NQ, timer = null, months = new Set(), sess = null;
 const paneSec = (i) => SEC[prefs.tfs[i] || "5m"];
 function lastBar() { const a = B["1m"].bars[B["1m"].i], b = need15 ? B["15s"].bars[B["15s"].i] : null; if (!a) return b; if (!b) return a; return b.t >= a.t ? b : a; }
@@ -109,6 +118,7 @@ async function loadReplay() {
   if (!B["1m"].bars.length) return toast("No data for that month");
   if (need15 && !B["15s"].bars.length) toast("No 15s data around that date (15s covers NY mornings). 15s and 30s panes will be empty.");
   cursorT = t0 - 1; for (const tf of ["1m", "15s"]) { const bs = B[tf].bars; let k = -1; for (let j = 0; j < bs.length && bs[j].t <= cursorT; j++) k = j; B[tf].i = k; }
+  await loadOthers();
   await acctStart();
   try { sess = await db.newSession({ name: sym + " " + fmt(loc(t0)), symbol: sym, start_ts: t0, cursor_ts: t0, tf: prefs.tfs[0], account_start: startBal, risk_pct: prefs.riskp, rules: { dll: prefs.dll, mdd: prefs.mdd, ptg: prefs.ptg }, ...(acct ? { account_id: acct.id } : {}) }); }
   catch (e) { return toast("Could not start a session: " + e.message); }
@@ -118,11 +128,13 @@ async function ensure15() {   // a pane switched to 15s/30s mid-session: load 15
   need15 = true; if (B["15s"].bars.length || !B["1m"].bars.length) return;
   toast("Loading 15s data…"); B["15s"].bars = (await Promise.all([...months].sort().map((m) => loadMonth(inst.data, "15s", m)))).flat().sort((a, b) => a.t - b.t);
   let k = -1; for (let j = 0; j < B["15s"].bars.length && B["15s"].bars[j].t <= cursorT; j++) k = j; B["15s"].i = k;
+  for (const s of Object.keys(X)) { const f = X[s]["15s"]; if (!f.bars.length) { f.bars = (await Promise.all([...months].sort().map((m) => loadMonth(INST[s].data, "15s", m)))).flat().sort((a, b) => a.t - b.t); f.i = -1; } } advOthers();
   if (!B["15s"].bars.length) toast("No 15s data around this date (15s covers NY mornings)"); else toast("");
 }
 async function ensureAhead() {
   const b = B["1m"]; if (b.bars.length - b.i > 3000) return; const nx = addM([...months].sort().pop(), 1);
   if (months.has(nx) || nx > new Date().toISOString().slice(0, 7)) return; months.add(nx);
+  for (const s of Object.keys(X)) for (const tf of ["1m", "15s"]) { if (tf === "15s" && !need15) continue; const more = await loadMonth(INST[s].data, tf, nx), xb = X[s][tf].bars, xl = xb.length ? xb[xb.length - 1].t : 0; for (const x of more) if (x.t > xl) xb.push(x); }
   for (const tf of ["1m", "15s"]) { if (tf === "15s" && !need15) continue; const more = await loadMonth(inst.data, tf, nx), lt = B[tf].bars.length ? B[tf].bars[B[tf].bars.length - 1].t : 0; for (const x of more) if (x.t > lt) B[tf].bars.push(x); }
 }
 async function stepFwd(ui = true) {
@@ -132,8 +144,10 @@ async function stepFwd(ui = true) {
   const prevT = cursorT; cursorT = Math.min(...nxt); if (reese.length && prevT) reeseCheck(loc(prevT), loc(cursorT));
   const fresh = { "1m": [], "15s": [] };
   for (const tf of ["1m", "15s"]) { const b = B[tf]; while (b.bars[b.i + 1] && b.bars[b.i + 1].t <= cursorT) { b.i++; fresh[tf].push(b.bars[b.i]); } }
+  const fx = advOthers();
   // fix 16: with 15s data on, 1m+ charts are built from the 15s bars inside the current minute, so no chart ever shows the rest of a minute that hasn't happened yet
-  if (ui) panes.forEach((p) => { const src = paneSec(p.i) < 60 ? fresh["15s"] : need15 ? [...fresh["1m"].filter((x) => !hasFine(x.t)), ...fresh["15s"]].sort((u, v) => u.t - v.t) : fresh["1m"]; for (const x of src) p.series.update(pushBar(p, x)); });
+  if (ui) panes.forEach((p) => { const ps = paneSym(p), F = ps === sym ? fresh : fx[ps] || { "1m": [], "15s": [] }, S = storeOf(ps);
+    const src = paneSec(p.i) < 60 ? F["15s"] : need15 ? [...F["1m"].filter((x) => !hasFine(x.t, S)), ...F["15s"]].sort((u, v) => u.t - v.t) : F["1m"]; for (const x of src) p.series.update(pushBar(p, x)); });
   for (const x of fresh["15s"]) engineBar(x);                                   // fills use the finest bars available
   for (const x of fresh["1m"]) if (!(need15 && hasFine(x.t))) engineBar(x);
   if (B["1m"].i % 500 === 0) await ensureAhead(); if (B["1m"].i % 60 === 0 && sess) db.saveCursor(sess.id, cursorT);
@@ -147,10 +161,10 @@ async function skipTo(hm, name) {
   for (let n = 0; n < 6000; n++) { const got = await stepFwd(false); if (got === false || got === undefined) break; if (n > 0 && got.some((x) => lhm(loc(x.t)) === hm)) break; }
   rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast("");
 }
-function hasFine(t) { const b = B["15s"].bars; let lo = 0, hi = b.length - 1; while (lo <= hi) { const m = (lo + hi) >> 1; if (b[m].t < t) lo = m + 1; else if (b[m].t >= t + 60) hi = m - 1; else return true; } return false; }
+function hasFine(t, S = B) { const b = S["15s"].bars; let lo = 0, hi = b.length - 1; while (lo <= hi) { const m = (lo + hi) >> 1; if (b[m].t < t) lo = m + 1; else if (b[m].t >= t + 60) hi = m - 1; else return true; } return false; }
 function stepBack() {
   if (pos.qty || orders.length) return toast("Close positions and cancel orders before stepping back");
-  const b = B["1m"]; if (b.i <= 0) return; b.i--; cursorT = b.bars[b.i].t; const f = B["15s"]; while (f.i >= 0 && f.bars[f.i].t > cursorT) f.i--; rebuildAll();
+  const b = B["1m"]; if (b.i <= 0) return; b.i--; cursorT = b.bars[b.i].t; const f = B["15s"]; while (f.i >= 0 && f.bars[f.i].t > cursorT) f.i--; advOthers(); rebuildAll();
 }
 function play() { if (timer) return pause(); $("play").textContent = "⏸"; const tick = async () => { await stepFwd(); if (timer) timer = setTimeout(tick, +$("speed").value); }; timer = setTimeout(tick, 0); }
 function pause() { clearTimeout(timer); timer = null; $("play").textContent = "▶"; }
@@ -180,11 +194,12 @@ function makePane(i) {
   return p;
 }
 function setActive(i) { active = i; panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
-function label(p) { const tf = prefs.tfs[p.i] || "5m"; p.el.querySelector(".lname").textContent = `${sym} · ${tf} · CME`; p.el.querySelector(".wmark").textContent = `CME ${sym} ${tf}`; }
+function label(p) { const tf = prefs.tfs[p.i] || "5m", s = paneSym(p); p.el.querySelector(".lname").textContent = `${s} · ${tf} · CME${s !== sym ? " · watch" : ""}`; p.el.querySelector(".wmark").textContent = `CME ${s} ${tf}`; }
 function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}">${n === "1D" ? "D" : n}</button>`).join(""); }
 async function setPaneTf(i, tf, noSync) { const p = panes[i]; if (!p) return; prefs.tfs[i] = tf; if (!noSync && prefs.sync && prefs.sync.int) for (const q of panes) if (q.i !== i) { prefs.tfs[q.i] = tf; label(q); rebuildPane(q); } savePrefs(); tfUI(); label(p); if (lock15 || panes.some((q) => paneSec(q.i) < 60)) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); }
-function scaleUI() { const p = panes[active]; if (!p) return; $("sc-pct").classList.toggle("on", p.mode === 2); $("sc-log").classList.toggle("on", p.mode === 1); $("sc-auto").classList.toggle("on", p.auto); }
-function setScale(k) { const p = panes[active]; if (!p) return; if (k === "auto") p.auto = !p.auto; else { const m = k === "pct" ? 2 : 1; p.mode = p.mode === m ? 0 : m; } p.chart.priceScale("right").applyOptions({ mode: p.mode, autoScale: p.auto }); scaleUI(); paint(p); }
+const livAuto = (p) => { try { return p.chart.priceScale("right").options().autoScale !== false; } catch (e) { return p.auto !== false; } };   // a manual drag on the price axis turns auto-fit off; respect it
+function scaleUI() { const p = panes[active]; if (!p) return; p.auto = livAuto(p); $("sc-pct").classList.toggle("on", p.mode === 2); $("sc-log").classList.toggle("on", p.mode === 1); $("sc-auto").classList.toggle("on", p.auto); }
+function setScale(k) { const p = panes[active]; if (!p) return; p.auto = livAuto(p); if (k === "auto") p.auto = !p.auto; else { const m = k === "pct" ? 2 : 1; p.mode = p.mode === m ? 0 : m; } p.chart.priceScale("right").applyOptions({ mode: p.mode, autoScale: p.auto }); scaleUI(); paint(p); }
 function showRange(days) { const S = prefs.sync || {}; for (const p of (S.range !== false ? panes : [panes[active]])) { if (!p || !p.candles.length) continue; const to = p.candles[p.candles.length - 1].time, from = Math.max(p.candles[0].time, to - days * 86400); p.chart.timeScale().setVisibleRange({ from, to: to + p.sec * 6 }); } }
 function saveShot() { const p = panes[active]; if (!p) return; const c = p.chart.takeScreenshot(), g = c.getContext("2d"); try { g.drawImage(p.cv, 0, 0, c.width, c.height); } catch (e) {}
   const a = document.createElement("a"); a.download = `rewind-${sym}-${prefs.tfs[active]}-${nowT() ? fmt(loc(nowT())).replace(/[: ]/g, "-") : "chart"}.png`; a.href = c.toDataURL("image/png"); a.click(); }
@@ -216,8 +231,8 @@ function buildPanes() {
   for (let i = 0; i < n; i++) { const p = makePane(i); panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
 }
 function rebuildPane(p) {
-  p.sec = paneSec(p.i); p.candles = []; const src = p.sec < 60 ? B["15s"] : B["1m"];
-  const f = B["15s"], lastM = p.sec >= 60 && need15 && src.i >= 0 && f.i >= 0 && hasFine(src.bars[src.i].t) ? src.bars[src.i].t : null;   // fix 16: current minute from 15s only
+  p.sec = paneSec(p.i); p.candles = []; const S = storeOf(paneSym(p)), src = p.sec < 60 ? S["15s"] : S["1m"];
+  const f = S["15s"], lastM = p.sec >= 60 && need15 && src.i >= 0 && f.i >= 0 && hasFine(src.bars[src.i].t, S) ? src.bars[src.i].t : null;   // fix 16: current minute from 15s only
   for (let j = 0; j <= src.i && j < src.bars.length; j++) { if (lastM != null && src.bars[j].t === lastM) break; pushBar(p, src.bars[j]); }
   if (lastM != null) { let k = f.i; while (k > 0 && f.bars[k - 1].t >= lastM) k--; for (; k <= f.i; k++) if (f.bars[k].t >= lastM) pushBar(p, f.bars[k]); }
   p.series.setData(p.candles); label(p); extMarkers(p); paint(p);
@@ -231,7 +246,7 @@ function watchScales() {
 function rebuildAll() { if (blind) panes.forEach((p) => p.chart.applyOptions({ timeScale: { tickMarkFormatter: (t) => new Date(t * 1000).toISOString().slice(11, 16) }, localization: { timeFormatter: (t) => new Date(t * 1000).toISOString().slice(11, 16) } })); panes.forEach(rebuildPane); drawOpens(); drawOrders(); refresh(); }
 function setLayout(k) {
   prefs.layout = k; savePrefs(); $("laymenu").classList.add("hidden");
-  const had = B["1m"].bars.length; buildPanes(); if (had) (need15 ? ensure15() : Promise.resolve()).then(() => { rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); });
+  const had = B["1m"].bars.length; buildPanes(); if (had) (need15 ? ensure15() : Promise.resolve()).then(loadOthers).then(() => { rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); });
 }
 
 /* ---------------- coordinates for the canvas layer ---------------- */
@@ -349,7 +364,7 @@ function sessBoxes() { const b1 = B["1m"], C = sbCfg(), key = b1.i + JSON.string
       let tH = false, tL = false; const endT = ys[ys.length - 1].t; for (let k = bars.indexOf(ys[ys.length - 1]) + 1; k > 0 && k <= i; k++) { if (bars[k].h > hi) tH = true; if (bars[k].l < lo) tL = true; if (tH && tL) break; }
       out.push({ ...s, day: d, t0: loc(ys[0].t), t1: loc(endT) + 60, open: ys[0].o, close: ys[ys.length - 1].c, hi, lo, avg: (hi + lo) / 2, live, tH, tL }); } }
   return out; }
-function paintSessBoxes(p, g, W, H) { if (!prefs.ind || !prefs.ind.sbox || p.sec >= 14400) return; const C = sbCfg(), tick = TICK || 0.25, X = (lt) => xOf(p, lt);
+function paintSessBoxes(p, g, W, H) { if (paneSym(p) !== sym || !prefs.ind || !prefs.ind.sbox || p.sec >= 14400) return; const C = sbCfg(), tick = TICK || 0.25, X = (lt) => xOf(p, lt);
   for (const s of sessBoxes()) { const x1 = X(s.t0), x2 = X(s.t1), yh = yOf(p, s.hi), yl = yOf(p, s.lo); if (x1 == null || x2 == null || yh == null || yl == null || x2 < 0 || x1 > W) continue;
     const a = Math.max(0, x1), b = Math.min(W, x2), col = s.color; g.fillStyle = col + "14"; g.fillRect(a, yh, b - a, yl - yh); if (C.border) { g.strokeStyle = col + "99"; g.lineWidth = 1; g.strokeRect(a, yh, b - a, yl - yh); }
     const ln = (price, dash, lab) => { const y = yOf(p, price); if (y == null) return; g.strokeStyle = col + "aa"; g.setLineDash(dash); g.beginPath(); g.moveTo(a, y); g.lineTo(b, y); g.stroke(); g.setLineDash([]); if (C.labels) { g.fillStyle = col; g.fillText(lab + (C.values ? " " + px2(price) : ""), a + 3, y - 3); } };
@@ -365,7 +380,7 @@ function sessDlg() { const C = sbCfg();
     const n = { sessions: C.sessions.map((s, k) => ({ name: $("sb-n" + k).value || s.name, start: $("sb-a" + k).value, end: $("sb-z" + k).value, color: $("sb-c" + k).value, on: $("sb-on" + k).checked })), lookback: Math.max(0, Math.min(10, +$("sb-lb").value || 0)) };
     for (const k of ["border", "stats", "ticks", "project", "lOpen", "lClose", "lAvg", "labels", "values"]) n[k] = $("sb-" + k).checked; prefs.sbCfg = n; prefs.ind.sbox = true; savePrefs(); repaintAll(); }); }
 function paintStudies(p, g, W, H) {
-  if (!prefs.ind || p.sec >= 86400 || !p.candles.length) return; const S = studies(), ts = p.chart.timeScale();
+  if (paneSym(p) !== sym || !prefs.ind || p.sec >= 86400 || !p.candles.length) return; const S = studies(), ts = p.chart.timeScale();
   const X = (lt) => { const x = xOf(p, lt); return x == null ? 0 : Math.max(0, x); };
   g.save(); g.font = "500 10.5px Inter, sans-serif"; paintSessBoxes(p, g, W, H);
   for (const z of S.h4) { if (p.sec >= 14400) break; const x1 = X(z.t), x2 = Math.min(W, X(z.t + 14400) || W), y1 = yOf(p, z.h), y2 = yOf(p, z.l); if (y1 == null || y2 == null || x2 <= x1) continue;
@@ -403,7 +418,7 @@ function drawShade(p, g, W, H) {
 }
 function drawOverlay(p, g, W, H) {
     try { paintStudies(p, g, W, H); } catch (e) {}
-    const all = drawings.filter((d) => d.pane === p.i || SHARED.includes(d.type));
+    const all = drawings.filter((d) => d.pane === p.i || (SHARED.includes(d.type) && paneSym(d.pane) === paneSym(p)));
     if (pend && pend.pane === p.i && pend.b) all.push({ ...pend.d, b: pend.b, preview: true });
     for (const d of all) { try { drawOne(p, g, d, W, H); } catch (e) {} }
 }
@@ -460,7 +475,7 @@ function posQty(d) { if (d.qty) return d.qty; const risk = Math.abs(d.entry - d.
 function hitDrawing(p, x, y) {
   const near = (ax, ay, bx, by) => { if (ax == null || bx == null || ay == null || by == null) return 1e9; const l2 = (bx - ax) ** 2 + (by - ay) ** 2; let t = l2 ? ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / l2 : 0; t = Math.max(0, Math.min(1, t)); return Math.hypot(x - (ax + t * (bx - ax)), y - (ay + t * (by - ay))); };
   for (const d of drawings.slice().reverse()) {
-    if (!(d.pane === p.i || SHARED.includes(d.type))) continue; const x1 = xOf(p, d.a.t), y1 = yOf(p, d.a.p), x2 = xOf(p, d.b.t), y2 = yOf(p, d.b.p);
+    if (!(d.pane === p.i || (SHARED.includes(d.type) && paneSym(d.pane) === paneSym(p)))) continue; const x1 = xOf(p, d.a.t), y1 = yOf(p, d.a.p), x2 = xOf(p, d.b.t), y2 = yOf(p, d.b.p);
     if (d.type === "long" || d.type === "short") { const ye = yOf(p, d.entry), ys = yOf(p, d.sl), yt = yOf(p, d.tp), xa = x1 ?? 0, xb = x2 ?? 9999;
       if (x >= xa - 6 && x <= xb + 8) { if (Math.abs(y - ys) < 7) return { d, h: "sl" }; if (Math.abs(y - yt) < 7) return { d, h: "tp" }; if (Math.abs(y - ye) < 7) return { d, h: Math.abs(x - xb) < 10 ? "w" : "entry" };
         if (y > Math.min(ys, yt) && y < Math.max(ys, yt)) return { d, h: "move" }; } continue; }
@@ -591,7 +606,7 @@ async function shot(id) {
     const up = await sb.storage.from("shots").upload(path, blob, { contentType: "image/png", upsert: true }); if (!up.error) await sb.from("trades").update({ shots: [path] }).eq("id", id); } catch (e) {}
 }
 /* position tool → working order (FX Replay-style auto-entry) */
-function armTool(d) {
+function armTool(d) { if (paneSym(d.pane) !== sym) return toast(`That chart is ${paneSym(d.pane)} (watch only). Trade ${sym} on chart 1.`);
   if (!canTrade()) return; const lp = last(), s = d.side, q = posQty(d);
   if ((d.sl - d.entry) * s >= 0 || (d.tp - d.entry) * s <= 0) return toast("For a long the stop goes below entry and the target above it. A short is the reverse.");
   const br = { slPx: d.sl, tpPx: d.tp }; d.qty = q;
@@ -608,7 +623,7 @@ function syncTool(d) {
 /* ---------------- price lines (orders, position, draft) on every pane ---------------- */
 function drawOrders() {
   for (const p of panes) {
-    p.lines.forEach((l) => p.series.removePriceLine(l.ref)); p.lines = [];
+    p.lines.forEach((l) => p.series.removePriceLine(l.ref)); p.lines = []; if (paneSym(p) !== sym) continue;
     const L = (price, color, title, kind, obj, style = 2) => p.lines.push({ ref: p.series.createPriceLine({ price, color, lineWidth: 2, lineStyle: style, title, axisLabelVisible: true }), kind, price, obj });
     if (pos.qty) { L(pos.avg, "#c9d2df", `${pos.qty > 0 ? "LONG" : "SHORT"} ${Math.abs(pos.qty)}  ${money(openPnl())}`, "pos", null, 0);
       if (pos.sl != null) L(pos.sl, "#ff6b7a", (pos.trail ? "TRAIL " : "SL ") + money((pos.sl - pos.avg) * pos.qty * inst.pt), "sl");
@@ -619,7 +634,7 @@ function drawOrders() {
 }
 function drawOpens() {
   for (const p of panes) {
-    p.opens.forEach((l) => p.series.removePriceLine(l)); p.opens = []; if (!prefs.opens || !nowT()) continue;
+    p.opens.forEach((l) => p.series.removePriceLine(l)); p.opens = []; if (!prefs.opens || !nowT() || paneSym(p) !== sym) continue;
     const day = sessDay(nowT()), marks = { "18:00": "Key open 18:00", "00:00": "Key open midnight", "09:30": "Key open 9:30", "10:00": "Key open 10:00" }, b1 = B["1m"];
     for (let i = b1.i; i >= 0 && i > b1.i - 1500; i--) { const b = b1.bars[i]; if (sessDay(b.t) !== day) break; const k = lhm(loc(b.t)); if (marks[k]) { p.opens.push(p.series.createPriceLine({ price: b.o, color: "rgba(140,155,180,.55)", lineWidth: 1, lineStyle: 1, axisLabelVisible: false, title: marks[k] })); delete marks[k]; } }
   }
@@ -658,7 +673,7 @@ function chartMenu(p, x, y, cx, cy) {
       { t: "Clone", f: () => { const c = JSON.parse(JSON.stringify(d)); c.id = did++; drawings.push(c); repaintAll(); } }, { t: "Delete", c: "s", k: "Del", f: () => { drawings = drawings.filter((z) => z !== d); sel = null; repaintAll(); } }], cx, cy); }
   if (pr == null || lp == null) return menu([{ h: "Chart" }, { t: "Load a replay first", f: () => {} }], cx, cy);
   const above = pr > lp, q = lotsNow(), br = autoBr(), t = tOf(p, x);
-  menu([{ h: `${sym} @ ${px2(pr)} · ${q} lot${q > 1 ? "s" : ""}` },
+  (paneSym(p) !== sym ? (a, x2, y2) => menu([{ h: `${paneSym(p)} @ ${px2(pr)} · watch only (trade ${sym} on chart 1)` }, ...a.slice(1).filter((it) => it === "-" || (it && !it.c && !/^Start the replay/.test(it.t || "")))], x2, y2) : menu)([{ h: `${sym} @ ${px2(pr)} · ${q} lot${q > 1 ? "s" : ""}` },
     { t: above ? `Sell limit @ ${px2(pr)}` : `Buy limit @ ${px2(pr)}`, c: above ? "s" : "b", f: () => place(above ? -1 : 1, "limit", pr, q, br) },
     { t: above ? `Buy stop @ ${px2(pr)}` : `Sell stop @ ${px2(pr)}`, c: above ? "b" : "s", f: () => place(above ? 1 : -1, "stop", pr, q, br) },
     { t: "Start the replay from this candle", f: () => { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); $("start").value = fmt(t + 60).replace(" ", "T"); loadReplay(); } },
@@ -931,7 +946,7 @@ function reesePop(r) {
   dlg(`<h3>Reese ${r.dir ? "traded" : r.result === "journal" ? "posted" : "planned"} this session</h3><div class="muted small">${r.day} · ${r.session} · ${r.symbol}</div>
     ${r.dir ? `<div class="shrow"><span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · <b>${r.result}</b></div>` : ""}
     <p class="small">${esc(r.summary)}</p>${(r.quotes || []).length ? `<div class="quotes">${r.quotes.slice(0, 4).map((q) => `<div>“${esc(q)}”</div>`).join("")}</div>` : ""}
-    ${reeseMedia(r, true)}${r.video_url ? `<p><a href="${esc(r.video_url)}" target="_blank" rel="noopener">Watch his recap ↗</a></p>` : ""}
+    ${reeseMedia(r, true)}${r.video_url ? `<p><button class="small" data-vid="${esc((r.video_url.match(/([A-Za-z0-9_-]{11})/) || [])[1] || "")}" data-title="Reese · ${esc(r.day)} recap" onclick="playVid('${esc(r.video_url)}', 'Reese · ${esc(r.day)} recap')">▶ Watch his recap</button></p>` : ""}
     <div class="riskcard">${verdict}${xp ? ` <b>+${xp} XP</b>` : ""}<br>Your trades this session: ${mine.length ? mine.map((t) => `${t.dir > 0 ? "long" : "short"} ${money(+t.pnl)}`).join(", ") : "none"}</div>`, () => {
     if (r.entry && panes[0]) { const t0 = sessEnd(r) - 3 * 3600; drawings.push({ id: did++, type: "hline", pane: 0, a: { t: t0, p: +r.entry }, label: "Reese entry" }); if (r.exit) drawings.push({ id: did++, type: "hline", pane: 0, a: { t: t0, p: +r.exit }, label: "Reese exit" }); repaintAll(); } });
   const ok = $("dl-ok"); if (ok) ok.textContent = r.entry ? "Show his levels" : "OK"; fillReeseShots($("dlgbox")); }
@@ -985,17 +1000,101 @@ let actSecs = 0, lastAct = Date.now();
 setInterval(() => { if (!sess || document.visibilityState !== "visible" || $("v-trade").classList.contains("hidden")) return; if (timer || Date.now() - lastAct < 90000) { actSecs++; sess.active_secs = (sess.active_secs || 0) + 1; if (actSecs % 60 === 0 && !DEMO) sb.from("sessions").update({ active_secs: sess.active_secs }).eq("id", sess.id).then(() => {}); } }, 1000);
 
 /* ---------------- media: Spotify, see-through YouTube overlay, video library ---------------- */
+/* ---------------- media dock: Spotify + YouTube sign-in (each person's own account), Reese video library ---------------- */
+const MCFG = () => window.REWIND || {}, REDIR = location.origin + location.pathname.replace(/[^/]*$/, "") + "oauth.html";
 function spEmbed(u) { const m = String(u).match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|track|episode|show|artist)\/([A-Za-z0-9]+)/); return m ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0` : null; }
 function ytEmbed(u) { const m = String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/); return m ? `https://www.youtube-nocookie.com/embed/${m[1]}?autoplay=1&rel=0` : null; }
-function mediaUI() { const M = prefs.media || (prefs.media = { show: false, tab: "sp", op: 100, ct: false }); $("media").classList.toggle("hidden", !M.show); $("mediabtn").classList.toggle("on", !!M.show);
+const jget = (k) => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }, jset = (k, v) => { try { v ? localStorage.setItem(k, JSON.stringify(v)) : localStorage.removeItem(k); } catch (e) {} };
+function mediaUI() { const M = prefs.media || (prefs.media = { show: false, tab: "lib", op: 100, ct: false }); if (!["sp", "yt", "lib"].includes(M.tab)) M.tab = "lib";
+  $("media").classList.toggle("hidden", !M.show); $("mediabtn").classList.toggle("on", !!M.show); $("media").classList.toggle("big", !!M.big);
   document.querySelectorAll(".mt button").forEach((b) => b.classList.toggle("on", b.dataset.m === M.tab)); ["sp", "yt", "lib"].forEach((k) => $("m-" + k).classList.toggle("hidden", k !== M.tab));
   $("media").style.opacity = (M.op || 100) / 100; $("m-op").value = M.op || 100; $("m-ct").classList.toggle("on", !!M.ct); $("media").classList.toggle("thru", !!M.ct);
   if (M.x != null) { $("media").style.left = Math.min(M.x, innerWidth - 120) + "px"; $("media").style.top = Math.min(M.y, innerHeight - 60) + "px"; }
-  if (M.sp && !$("sp-frame").innerHTML) setSp(M.sp, false); if (M.tab === "lib") renderLib(); }
-function setSp(u, save = true) { const e = spEmbed(u); if (!e) return toast("That doesn't look like a Spotify link"); $("sp-url").value = u; $("sp-frame").innerHTML = `<iframe src="${e}" width="100%" height="232" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`; if (save) { prefs.media.sp = u; savePrefs(); } }
-function setYt(u) { const e = ytEmbed(u); if (!e) return toast("That doesn't look like a YouTube link"); $("yt-url").value = u; $("yt-frame").innerHTML = `<iframe src="${e}" width="100%" height="236" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`; prefs.media.tab = "yt"; savePrefs(); mediaUI(); }
-function renderLib() { const mine = prefs.vids || [], rv = reese.filter((r) => r.video_url).map((r) => ({ name: "Reese · " + r.day + " " + r.session, url: r.video_url }));
-  $("lib-list").innerHTML = [...rv, ...mine].map((v, i) => `<div class="libr"><button class="small ghost" data-yt="${esc(v.url)}">▶</button><span>${esc(v.name || v.url)}</span>${i >= rv.length ? `<button class="pb" data-libdel="${i - rv.length}">×</button>` : ""}</div>`).join("") || '<div class="tiny muted">No videos yet. Add Reese recaps or any lesson you want next to the chart.</div>'; }
+  if (!M.show) return; if (M.tab === "sp") spUI(); else if (M.tab === "yt") ytUI(); else libUI(); }
+function playVid(u, title) { const e = ytEmbed(u); if (!e) return toast("Can't play that video"); prefs.media = prefs.media || {}; if (!prefs.media.show) { prefs.media.show = true; savePrefs(); mediaUI(); }
+  $("m-vid").innerHTML = `<div class="vh"><span>${esc(title || "")}</span><button class="pb" id="m-vx" title="Close video">×</button></div><div class="vfr"><iframe src="${e}" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
+  $("m-vid").classList.remove("hidden"); $("m-vx").onclick = () => { $("m-vid").innerHTML = ""; $("m-vid").classList.add("hidden"); }; }
+const setYt = (u) => playVid(u);
+const thumb = (id) => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`, vAgo = (d) => { const s = (Date.now() - new Date(d)) / 1000; return s < 3600 ? Math.max(1, s / 60 | 0) + "m" : s < 86400 ? (s / 3600 | 0) + "h" : s < 2592e3 ? (s / 86400 | 0) + "d" : new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
+const mmss = (s) => (s ? `${(s / 60) | 0}:${String(s % 60 | 0).padStart(2, "0")}` : "");
+const vcard = (id, title, sub, extra = "") => `<button class="vc" data-vid="${id}" data-title="${esc(title)}"><span class="vt"><img loading="lazy" src="${thumb(id)}" alt="">${extra}</span><b>${esc(title)}</b><i>${esc(sub || "")}</i></button>`;
+function needSetup(which) { return `<div class="mempty"><b>${which} sign-in isn't switched on yet</b><span>King is finishing the one-time setup. It'll appear here on its own.</span></div>`; }
+
+/* ---- Reese library ---- */
+let RV = null, rvFilter = "videos", rvQ = "";
+async function libUI() { const el = $("m-lib");
+  if (!RV) { el.innerHTML = '<div class="mempty"><span>Loading Reese\'s videos…</span></div>'; if (DEMO) RV = [{ id: "DZEVxR7slnM", title: "Backtesting My 80%+ Winrate IFVG Strategy", published: "2026-11-06", dur: 3026, kind: "videos" }, { id: "Qm1fTcyysEw", title: "How I made $11,480 In 11 Minutes", published: "2026-11-01", dur: 747, kind: "videos" }];
+    else { const { data } = await sb.from("reese_videos").select("id,title,published,dur,kind").order("published", { ascending: false }).limit(1000); RV = data || []; } }
+  const n = { videos: RV.filter((v) => v.kind === "videos").length, shorts: RV.filter((v) => v.kind === "shorts").length };
+  const list = RV.filter((v) => v.kind === rvFilter && (!rvQ || (v.title || "").toLowerCase().includes(rvQ)));
+  el.innerHTML = `<div class="mtools"><span class="seg mini" id="rv-f"><button data-f="videos" class="${rvFilter === "videos" ? "on" : ""}">Videos ${n.videos}</button><button data-f="shorts" class="${rvFilter === "shorts" ? "on" : ""}">Shorts ${n.shorts}</button></span><input id="rv-q" placeholder="Search his videos" value="${esc(rvQ)}"></div>
+    <div class="vgrid">${list.slice(0, 120).map((v) => vcard(v.id, v.title, (v.published ? new Date(v.published + "T12:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" }) : ""), v.dur ? `<em>${mmss(v.dur)}</em>` : "")).join("") || '<div class="mempty"><span>No videos match.</span></div>'}</div>`;
+  $("rv-f").onclick = (e) => { const b = e.target.closest("[data-f]"); if (b) { rvFilter = b.dataset.f; libUI(); } };
+  $("rv-q").oninput = (e) => { rvQ = e.target.value.toLowerCase(); clearTimeout(libUI.t); libUI.t = setTimeout(() => { const pos = e.target.selectionStart; libUI().then(() => { const q = $("rv-q"); q.focus(); q.setSelectionRange(pos, pos); }); }, 200); }; }
+
+/* ---- Spotify (PKCE: no secret, each person signs into their own account) ---- */
+const SP_SCOPES = "playlist-read-private playlist-read-collaborative user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played user-library-read";
+let spV = null, spMe = null, spPls = null;
+const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+async function spConnect() { const id = MCFG().spotify; if (!id) return toast("Spotify isn't set up yet");
+  spV = b64u(crypto.getRandomValues(new Uint8Array(48))); const ch = b64u(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(spV))), st = b64u(crypto.getRandomValues(new Uint8Array(12))); spConnect.st = st;
+  const u = "https://accounts.spotify.com/authorize?" + new URLSearchParams({ response_type: "code", client_id: id, scope: SP_SCOPES, redirect_uri: REDIR, code_challenge_method: "S256", code_challenge: ch, state: "sp." + st });
+  window.open(u, "kz-oauth", "width=480,height=720"); }
+async function spToken(body) { const r = await fetch("https://accounts.spotify.com/api/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: MCFG().spotify, ...body }) });
+  const j = await r.json(); if (!r.ok) throw new Error(j.error_description || j.error || "Spotify sign-in failed"); const old = jget("kz-sp") || {};
+  jset("kz-sp", { at: j.access_token, rt: j.refresh_token || old.rt, exp: Date.now() + (j.expires_in - 60) * 1000 }); }
+async function spApi(path, opt = {}, retry = true) { let t = jget("kz-sp"); if (!t) throw new Error("not connected");
+  if (Date.now() > t.exp) { await spToken({ grant_type: "refresh_token", refresh_token: t.rt }); t = jget("kz-sp"); }
+  const r = await fetch("https://api.spotify.com/v1" + path, { ...opt, headers: { Authorization: "Bearer " + t.at, "Content-Type": "application/json", ...(opt.headers || {}) } });
+  if (r.status === 401 && retry) { jset("kz-sp", { ...t, exp: 0 }); return spApi(path, opt, false); }
+  if (r.status === 204 || r.status === 202) return null; const j = await r.json().catch(() => null); if (!r.ok) { const e = new Error((j && j.error && j.error.message) || "Spotify error " + r.status); e.status = r.status; throw e; } return j; }
+function spPlay(kind, id) { $("sp-frame").innerHTML = `<iframe src="https://open.spotify.com/embed/${kind}/${id}?utm_source=generator&theme=0" width="100%" height="152" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`; prefs.media.sp = `https://open.spotify.com/${kind}/${id}`; savePrefs(); }
+async function spNow() { const box = $("sp-now"); if (!box) return; try { const p = await spApi("/me/player"); const it = p && p.item;
+  box.innerHTML = it ? `<img src="${esc((it.album && it.album.images[2] || it.album.images[0] || {}).url || "")}" alt=""><div><b>${esc(it.name)}</b><i>${esc((it.artists || []).map((a) => a.name).join(", "))} · on ${esc(p.device ? p.device.name : "Spotify")}</i></div><span class="spc"><button class="pb" data-sp="previous">⏮</button><button class="pb" data-sp="${p.is_playing ? "pause" : "play"}">${p.is_playing ? "⏸" : "▶"}</button><button class="pb" data-sp="next">⏭</button></span>`
+    : '<div><i>Nothing playing on your Spotify right now. Pick a playlist below, or press play in your Spotify app and the controls show up here.</i></div>'; } catch (e) { box.innerHTML = ""; } }
+async function spUI() { const el = $("m-sp"); if (!el.querySelector("#sp-frame")) el.innerHTML = '<div id="sp-body"></div><div id="sp-frame"></div>';
+  const body = $("sp-body"); if (!MCFG().spotify) { body.innerHTML = needSetup("Spotify"); return; }
+  if (!jget("kz-sp")) { body.innerHTML = `<div class="mempty"><b>Your music, next to the chart</b><span>Sign in with your own Spotify to see your playlists and control what's playing.</span><button class="primary small" id="sp-in">Connect Spotify</button></div>`; $("sp-in").onclick = spConnect; return; }
+  try { spMe = spMe || (await spApi("/me")); spPls = spPls || (await spApi("/me/playlists?limit=50")).items || []; } catch (e) { body.innerHTML = `<div class="mempty"><span>${esc(e.message)}</span><button class="small" id="sp-in">Reconnect Spotify</button></div>`; $("sp-in").onclick = () => { jset("kz-sp", null); spMe = spPls = null; spConnect(); }; return; }
+  body.innerHTML = `<div class="mwho"><span>🎧 ${esc(spMe.display_name || spMe.id)}</span><button class="pb tiny" id="sp-out">Sign out</button></div><div class="spnow" id="sp-now"></div>
+    <div class="plgrid">${spPls.filter(Boolean).map((p) => `<button class="pl" data-pl="${p.id}"><img loading="lazy" src="${esc((p.images && p.images[0] && p.images[0].url) || "")}" alt=""><b>${esc(p.name)}</b></button>`).join("")}</div>`;
+  if (prefs.media.sp && !$("sp-frame").innerHTML) { const m = prefs.media.sp.match(/spotify\.com\/(\w+)\/(\w+)/); if (m) spPlay(m[1], m[2]); }
+  $("sp-out").onclick = () => { jset("kz-sp", null); spMe = spPls = null; $("sp-frame").innerHTML = ""; spUI(); };
+  body.onclick = async (e) => { const p = e.target.closest("[data-pl]"); if (p) return spPlay("playlist", p.dataset.pl); const c = e.target.closest("[data-sp]"); if (!c) return;
+    try { await spApi("/me/player/" + c.dataset.sp, { method: c.dataset.sp === "play" || c.dataset.sp === "pause" ? "PUT" : "POST" }); setTimeout(spNow, 350); } catch (er) { toast(er.status === 403 ? "Spotify only allows remote controls with Premium. The player below still works." : er.message); } };
+  spNow(); clearInterval(spUI.iv); spUI.iv = setInterval(() => { if (prefs.media.show && prefs.media.tab === "sp") spNow(); }, 8000); }
+
+/* ---- YouTube (Google sign-in, read-only: subscriptions + liked + search) ---- */
+let ytCl = null, ytMe = null, ytFeed = null, ytTab = "feed", ytQ = "";
+function gsi() { return window.google && google.accounts && google.accounts.oauth2 ? Promise.resolve() : new Promise((ok, no) => { const s = document.createElement("script"); s.src = "https://accounts.google.com/gsi/client"; s.onload = ok; s.onerror = () => no(new Error("Couldn't load Google sign-in")); document.head.appendChild(s); }); }
+async function ytConnect(silent) { const id = MCFG().google; if (!id) return toast("YouTube isn't set up yet"); await gsi();
+  ytCl = ytCl || google.accounts.oauth2.initTokenClient({ client_id: id, scope: "https://www.googleapis.com/auth/youtube.readonly", callback: (r) => { if (r.error) return toast("YouTube sign-in: " + r.error); jset("kz-yt", { at: r.access_token, exp: Date.now() + (r.expires_in - 60) * 1000, ok: 1 }); ytUI(); } });
+  ytCl.requestAccessToken({ prompt: silent ? "" : "consent" }); }
+async function ytApi(path) { const t = jget("kz-yt"); if (!t || Date.now() > t.exp) { const e = new Error("expired"); e.exp = 1; throw e; }
+  const r = await fetch("https://www.googleapis.com/youtube/v3/" + path, { headers: { Authorization: "Bearer " + t.at } }); const j = await r.json();
+  if (r.status === 401) { jset("kz-yt", { ...t, exp: 0 }); const e = new Error("expired"); e.exp = 1; throw e; } if (!r.ok) throw new Error((j.error && j.error.message) || "YouTube error"); return j; }
+async function ytLoadFeed() { const subs = await ytApi("subscriptions?part=snippet&mine=true&maxResults=50&order=relevance"); const ch = (subs.items || []).slice(0, 30).map((s) => s.snippet.resourceId.channelId);
+  const per = await Promise.all(ch.map((c) => ytApi(`playlistItems?part=snippet,contentDetails&maxResults=4&playlistId=UU${c.slice(2)}`).then((j) => j.items || []).catch(() => [])));
+  return per.flat().map((i) => ({ id: i.contentDetails.videoId, title: i.snippet.title, ch: i.snippet.videoOwnerChannelTitle || i.snippet.channelTitle, at: i.contentDetails.videoPublishedAt || i.snippet.publishedAt })).filter((v) => v.title !== "Private video").sort((a, b) => new Date(b.at) - new Date(a.at)); }
+async function ytUI() { const el = $("m-yt"); if (!MCFG().google) { el.innerHTML = needSetup("YouTube"); return; } const t = jget("kz-yt");
+  if (!t) { el.innerHTML = `<div class="mempty"><b>Your YouTube, next to the chart</b><span>Sign in with your own Google account to see the newest videos from your subscriptions, your liked videos, and search.</span><button class="primary small" id="yt-in">Connect YouTube</button></div>`; $("yt-in").onclick = () => ytConnect(false); return; }
+  if (Date.now() > t.exp) { el.innerHTML = `<div class="mempty"><span>Google signs you out of YouTube every hour. One click to pick back up.</span><button class="primary small" id="yt-in">Continue with YouTube</button><button class="pb tiny" id="yt-out">Sign out</button></div>`; $("yt-in").onclick = () => ytConnect(true); $("yt-out").onclick = () => { jset("kz-yt", null); ytFeed = null; ytUI(); }; return; }
+  el.innerHTML = `<div class="mtools"><span class="seg mini" id="yt-t"><button data-t="feed" class="${ytTab === "feed" ? "on" : ""}">Subscriptions</button><button data-t="liked" class="${ytTab === "liked" ? "on" : ""}">Liked</button></span><input id="yt-q" placeholder="Search YouTube" value="${esc(ytQ)}"><button class="pb tiny" id="yt-out" title="Sign out of YouTube">⎋</button></div><div class="vgrid" id="yt-g"><div class="mempty"><span>Loading…</span></div></div>`;
+  $("yt-t").onclick = (e) => { const b = e.target.closest("[data-t]"); if (b) { ytTab = b.dataset.t; ytQ = ""; ytUI(); } };
+  $("yt-out").onclick = () => { try { google.accounts.oauth2.revoke(t.at); } catch (e) {} jset("kz-yt", null); ytFeed = null; ytUI(); };
+  $("yt-q").onkeydown = (e) => { if (e.key === "Enter") { ytQ = e.target.value.trim(); ytTab = ytQ ? "search" : "feed"; ytUI(); } };
+  try { let list;
+    if (ytTab === "search" && ytQ) list = ((await ytApi("search?part=snippet&type=video&maxResults=24&q=" + encodeURIComponent(ytQ))).items || []).map((i) => ({ id: i.id.videoId, title: i.snippet.title, ch: i.snippet.channelTitle, at: i.snippet.publishedAt }));
+    else if (ytTab === "liked") list = ((await ytApi("videos?part=snippet&myRating=like&maxResults=40")).items || []).map((i) => ({ id: i.id, title: i.snippet.title, ch: i.snippet.channelTitle, at: i.snippet.publishedAt }));
+    else { if (!ytFeed || Date.now() - ytFeed.t > 9e5) ytFeed = { t: Date.now(), v: await ytLoadFeed() }; list = ytFeed.v; }
+    $("yt-g").innerHTML = list.slice(0, 80).map((v) => vcard(v.id, v.title, `${v.ch || ""} · ${vAgo(v.at)}`)).join("") || '<div class="mempty"><span>Nothing here yet.</span></div>';
+  } catch (e) { if (e.exp) return ytUI(); $("yt-g").innerHTML = `<div class="mempty"><span>${esc(e.message)}</span></div>`; } }
+
+addEventListener("message", async (e) => { if (e.origin !== location.origin || !e.data || e.data.type !== "kz-oauth") return; const q = new URLSearchParams(e.data.search || "");
+  if ((q.get("state") || "").startsWith("sp.")) { if (q.get("error")) return toast("Spotify: " + q.get("error")); if (q.get("state") !== "sp." + spConnect.st || !spV) return toast("Spotify sign-in expired, try again");
+    try { await spToken({ grant_type: "authorization_code", code: q.get("code"), redirect_uri: REDIR, code_verifier: spV }); spV = null; spMe = spPls = null; toast("✅ Spotify connected"); spUI(); } catch (er) { toast(er.message); } } });
+$("media").addEventListener("click", (e) => { const v = e.target.closest("[data-vid]"); if (v) playVid("https://youtu.be/" + v.dataset.vid, v.dataset.title); });
+
 
 /* ---------------- friends: leaderboard, challenges, shared trades, suggestions, chat ---------------- */
 let me = null, names = {}, chatSub = null, chatSeen = +(localStorage.getItem("rw-chat-seen") || 0);
@@ -1275,12 +1374,17 @@ function toolSettings(d) { if (d.type === "long" || d.type === "short") return t
 /* fix 13: chart settings + sync across charts (interval, crosshair, time, date range); click the symbol on a chart to change it */
 let syncing = false;
 function syncCross(p, pr) { const S = prefs.sync || {}; if (syncing || S.cross === false || panes.length < 2) return; syncing = true;
-  try { for (const q of panes) { if (q === p || q.dead) continue; if (!pr.point || pr.time == null) { q.chart.clearCrosshairPosition(); continue; } const pz = p.series.coordinateToPrice(pr.point.y); if (pz == null) continue; q.chart.setCrosshairPosition(pz, bucket(pr.time, q.sec), q.series); } } catch (e) {} syncing = false; }
+  try { for (const q of panes) { if (q === p || q.dead) continue; if (!pr.point || pr.time == null) { q.chart.clearCrosshairPosition(); continue; } let pz = p.series.coordinateToPrice(pr.point.y); if (pz == null) continue; const qt = bucket(pr.time, q.sec);
+      if (paneSym(q) !== paneSym(p)) { const c = q.candles; let lo = 0, hi = c.length - 1, k = -1; while (lo <= hi) { const m = (lo + hi) >> 1; if (c[m].time <= qt) { k = m; lo = m + 1; } else hi = m - 1; } if (k < 0) continue; pz = c[k].close; }
+      q.chart.setCrosshairPosition(pz, qt, q.series); } } catch (e) {} syncing = false; }
 function syncTime(p) { const S = prefs.sync || {}; if (syncing || S.time === false || panes.length < 2 || p.i !== active) return; const vr = p.chart.timeScale().getVisibleRange(); if (!vr) return; syncing = true;
   try { for (const q of panes) if (q !== p && !q.dead && q.candles.length) q.chart.timeScale().setVisibleRange(vr); } catch (e) {} syncing = false; }
-function chartSetUI() { const S = prefs.sync || {}; $("cs-sint").checked = !!S.int; $("cs-scross").checked = S.cross !== false; $("cs-stime").checked = S.time !== false; $("cs-srange").checked = S.range !== false;
+function chartSetUI() { const S = prefs.sync || {}; $("cs-ssym").checked = !!S.sym; $("cs-sint").checked = !!S.int; $("cs-scross").checked = S.cross !== false; $("cs-stime").checked = S.time !== false; $("cs-srange").checked = S.range !== false;
   document.querySelectorAll("#cs-sym [data-s]").forEach((b) => b.classList.toggle("on", b.dataset.s === sym)); }
-function symMenu(e) { const r = e.target.getBoundingClientRect(); menu([{ h: "Symbol" }, ...["NQ", "ES"].map((s) => ({ t: (s === sym ? "✓ " : "\u2003 ") + s + (s === "NQ" ? " · Nasdaq-100 E-mini" : " · S&P 500 E-mini"), f: () => { if (s === sym) return; $("sym").value = s; $("sym").onchange(); } }))], r.left, r.bottom + 4); }
+function symMenu(e) { const r = e.target.getBoundingClientRect(), pe = e.target.closest(".pane"), p = panes.find((q) => q.el === pe) || panes[active], own = p && p.i > 0 && !(prefs.sync && prefs.sync.sym), cur = own ? paneSym(p) : sym;
+  menu([{ h: own ? `Chart ${p.i + 1} symbol` : "Symbol you trade (chart 1)" }, ...["NQ", "ES"].map((s) => ({ t: (s === cur ? "✓ " : "\u2003 ") + s + (s === "NQ" ? " · Nasdaq-100 E-mini" : " · S&P 500 E-mini"), f: () => { if (s === cur) return; if (own) return setPaneSym(p.i, s); $("sym").value = s; $("sym").onchange(); } }))], r.left, r.bottom + 4); }
+async function setPaneSym(i, s) { prefs.syms = prefs.syms || []; prefs.syms[i] = s === sym ? null : s; savePrefs(); const p = panes[i]; if (!p) return; label(p);
+  if (B["1m"].bars.length) { if (s !== sym && !X[s]) { toast("Loading " + s + "…"); await loadOthers(); toast(""); } rebuildPane(p); drawOpens(); drawOrders(); p.chart.timeScale().scrollToRealTime(); } }
 
 /* fix 15: journal as a trading calendar. Each day shows net P&L, trade count and win rate (by the market date you replayed); weekly totals on the right; click a day to see its trades. */
 let jMonth = null, jDay = null;
@@ -1390,10 +1494,8 @@ $("mediabtn").onclick = () => { prefs.media = prefs.media || {}; prefs.media.sho
 document.querySelectorAll(".mt button").forEach((b) => (b.onclick = () => { prefs.media.tab = b.dataset.m; savePrefs(); mediaUI(); }));
 $("m-op").oninput = () => { prefs.media.op = +$("m-op").value; mediaUI(); }; $("m-op").onchange = savePrefs;
 $("m-ct").onclick = () => { prefs.media.ct = !prefs.media.ct; savePrefs(); mediaUI(); if (prefs.media.ct) toast("Click-through on: clicks go to the chart. Turn it off with the ⌖ button (it stays clickable)."); };
+$("m-big").onclick = () => { prefs.media.big = !prefs.media.big; savePrefs(); mediaUI(); };
 $("m-x").onclick = () => { prefs.media.show = false; savePrefs(); mediaUI(); };
-$("sp-go").onclick = () => setSp($("sp-url").value.trim()); $("yt-go").onclick = () => setYt($("yt-url").value.trim());
-$("lib-add").onclick = () => { const u = $("lib-url").value.trim(); if (!ytEmbed(u)) return toast("Add a YouTube link"); (prefs.vids = prefs.vids || []).push({ url: u, name: $("lib-name").value.trim() }); $("lib-url").value = $("lib-name").value = ""; savePrefs(); renderLib(); };
-$("lib-list").onclick = (e) => { const p = e.target.closest("[data-yt]"); if (p) return setYt(p.dataset.yt); const d = e.target.closest("[data-libdel]"); if (d) { prefs.vids.splice(+d.dataset.libdel, 1); savePrefs(); renderLib(); } };
 grip($("mgrip"), (e, st) => { if (e.target.closest("button,input")) return; const m = $("media"); if (!st.r) st.r = m.getBoundingClientRect(); m.style.left = Math.max(0, Math.min(innerWidth - 120, st.r.left + e.clientX - st.x)) + "px"; m.style.top = Math.max(0, Math.min(innerHeight - 60, st.r.top + e.clientY - st.y)) + "px"; },
   () => { const r = $("media").getBoundingClientRect(); prefs.media.x = r.left; prefs.media.y = r.top; savePrefs(); });
 $("ai-th-go").onclick = aiTheme; $("ai-th").onkeydown = (e) => { if (e.key === "Enter") aiTheme(); };
@@ -1416,7 +1518,7 @@ $("dtb").onmouseleave = () => dtbShow(dtbP);
 $("chartsetbtn").onclick = () => { fillSettings(); chartSetUI(); $("chartset").classList.remove("hidden"); };
 $("cs-x").onclick = () => $("chartset").classList.add("hidden"); $("chartset").onclick = (e) => { if (e.target.id === "chartset") $("chartset").classList.add("hidden"); };
 $("cs-sym").onclick = (e) => { const b = e.target.closest("[data-s]"); if (!b || b.dataset.s === sym) return; $("sym").value = b.dataset.s; $("sym").onchange(); chartSetUI(); };
-$("cs-save").onclick = () => { prefs.sync = { int: $("cs-sint").checked, cross: $("cs-scross").checked, time: $("cs-stime").checked, range: $("cs-srange").checked }; saveSettings(); $("chartset").classList.add("hidden"); toast("Chart settings saved"); };
+$("cs-save").onclick = () => { prefs.sync = { sym: $("cs-ssym").checked, int: $("cs-sint").checked, cross: $("cs-scross").checked, time: $("cs-stime").checked, range: $("cs-srange").checked }; saveSettings(); if (B["1m"].bars.length) loadOthers().then(rebuildAll); else panes.forEach(label); $("chartset").classList.add("hidden"); toast("Chart settings saved"); };
 $("s-save2").onclick = () => { saveSettings(); $("s-msg2").textContent = "Saved"; };
 $("charts").addEventListener("click", (e) => { if (e.target.closest(".lname")) symMenu(e); });
 $("jc-grid").onclick = (e) => { const b = e.target.closest("[data-day]"); if (!b) return; jDay = jDay === b.dataset.day ? null : b.dataset.day; loadJournal(); };
