@@ -80,6 +80,17 @@ async def main():
         check("motion + anime loaded", await E("!!(window.Motion && Motion.animate && window.anime && anime.animate)"))
         await pg.click('[data-view="stats"]'); await pg.wait_for_timeout(1200); check("stats count-up settles to real text", await E("[...document.querySelectorAll('#st-kpi b')].every(b=>b.textContent.length>0)"))
         await pg.screenshot(path="/home/claude/shot/v5-stats.png")
+        # fix 1: hover toolbar + tool settings
+        await E("view('trade'); drawings=[]; const p=panes[0], t=p.candles[p.candles.length-20].time, pr=p.candles[p.candles.length-20].close; newDrawing('hline', p, {t, p: pr}); repaintAll()")
+        await pg.wait_for_timeout(300)
+        yy = await E("(()=>{const p=panes[0], r=p.el.getBoundingClientRect(); return [r.left+r.width*0.4, r.top+yOf(p, drawings[0].a.p)]})()")
+        await pg.mouse.move(yy[0], yy[1]); await pg.wait_for_timeout(250)
+        check("hovering a drawing shows its toolbar", await E("!$('dtb').classList.contains('hidden') && $('dtb').querySelectorAll('[data-c]').length===6"))
+        await E("$('dtb').querySelector('[data-c=\"#ff6b7a\"]').click()"); check("toolbar color applies", await E("drawings[0].color==='#ff6b7a'"))
+        await E("$('dtb').querySelector('[data-act=lock]').click()"); check("toolbar lock applies", await E("drawings[0].locked===true"))
+        await E("toolSettings(drawings[0])"); check("tool settings dialog opens", await E("!!$('ts-l')")); await E("$('ts-l').value='PDH sweep'; $('dl-ok').click()")
+        check("tool label saved", await E("drawings[0].label==='PDH sweep'")); await pg.screenshot(path="/home/claude/shot/fix1.png")
+        await E("drawings=[]; sel=null; hov=null; $('dtb').classList.add('hidden'); repaintAll()")
         # v0.5 TradeSea parity batch 1
         await E("view('trade')"); await pg.wait_for_timeout(300)
         await E("flatten(); market(1)"); pos0 = await E("pos.avg")

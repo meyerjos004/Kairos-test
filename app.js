@@ -245,7 +245,7 @@ function pOf(p, y, x) { let pr = p.series.coordinateToPrice(y); if (pr == null) 
   return rnd(pr); }
 
 /* ---------------- drawings (canvas layer) ---------------- */
-let tool = "cursor", drawings = [], pend = null, sel = null, did = 1;
+let tool = "cursor", drawings = [], pend = null, sel = null, hov = null, did = 1;
 const FIB = [[1, "0"], [0.5, "0.5"], [0.62, "0.62"], [0.705, "0.705"], [0.79, "0.79"], [0, "1"], [-0.27, "-0.27"], [-0.62, "-0.62"]];
 const SHARED = ["hline"];   // horizontal lines show on every chart; everything else stays on the chart it was drawn on
 function setTool(t) { tool = t; pend = null; document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === t)); panes.forEach((p) => { p.el.style.cursor = t === "cursor" ? "" : "crosshair"; p.chart.applyOptions({ crosshair: { mode: t === "cross" ? 0 : 1 } }); paint(p); }); }
@@ -415,8 +415,10 @@ function paint(p) {   // data speed: Fast = every frame, Balanced ~30 fps, Lite 
   if (p.dead) return; try { p.prim.req && p.prim.req(); } catch (e) {}
 }
 function drawOne(p, g, d, W, H) {
-  const on = sel && sel.id === d.id; g.lineWidth = on ? 2 : 1.4; g.font = "11px Geist Mono, monospace"; g.setLineDash([]);
-  const gold = "rgba(255,206,120,.9)", blue = "rgba(122,167,255,.95)"; g.strokeStyle = gold; g.fillStyle = gold;
+  const on = (sel && sel.id === d.id) || (hov && hov.id === d.id); g.lineWidth = (d.w || 1.4) + (on ? 0.6 : 0); g.font = "11px Inter, sans-serif"; g.setLineDash([]);
+  const gold = d.color || "rgba(255,206,120,.9)", blue = "rgba(122,167,255,.95)"; g.strokeStyle = gold; g.fillStyle = gold;
+  const DASH = { dash: [7, 5], dot: [2, 4] }; if (DASH[d.dash] && !["long", "short", "measure"].includes(d.type)) g.setLineDash(DASH[d.dash]);
+  if (d.label && !["long", "short", "measure", "text"].includes(d.type)) { const lx = d.type === "hline" ? 8 : Math.min(xOf(p, d.a.t) ?? 0, xOf(p, d.b.t) ?? W), ly = Math.min(yOf(p, d.a.p) ?? 0, yOf(p, d.b.p) ?? yOf(p, d.a.p) ?? 0); g.save(); g.setLineDash([]); g.font = "600 11px Inter, sans-serif"; g.fillStyle = gold; g.fillText(d.label, lx + 4, ly - 6); g.restore(); }
   const x1 = xOf(p, d.a.t), y1 = yOf(p, d.a.p), x2 = xOf(p, d.b.t), y2 = yOf(p, d.b.p); if (y1 == null) return;
   const dot = (x, y) => { if (on && x != null && y != null) { g.beginPath(); g.arc(x, y, 4.5, 0, 7); g.fillStyle = "#0c1016"; g.fill(); g.strokeStyle = "#fff"; g.lineWidth = 1.5; g.stroke(); g.strokeStyle = gold; g.fillStyle = gold; } };
   if (d.type === "measure") { if (x1 == null || x2 == null || y2 == null) return; const up = d.b.p >= d.a.p; g.fillStyle = up ? "rgba(43,212,160,.13)" : "rgba(255,107,122,.13)";
@@ -429,7 +431,7 @@ function drawOne(p, g, d, W, H) {
   if (d.type === "hray") { if (x1 == null) return; g.beginPath(); g.moveTo(x1, y1); g.lineTo(W, y1); g.stroke(); dot(x1, y1); return; }
   if (d.type === "vline") { if (x1 == null) return; g.beginPath(); g.moveTo(x1, 0); g.lineTo(x1, H); g.stroke(); return; }
   if (d.type === "text") { if (x1 == null) return; g.font = "600 12px Geist, sans-serif"; g.fillStyle = "#e6eaf0"; g.fillText(d.text, x1, y1); return; }
-  if (d.type === "rect") { if (x1 == null || x2 == null || y2 == null) return; g.fillStyle = "rgba(122,167,255,.10)"; g.strokeStyle = blue;
+  if (d.type === "rect") { if (x1 == null || x2 == null || y2 == null) return; const rc = /^#[0-9a-f]{6}$/i.test(d.color || "") ? d.color : "#7aa7ff"; g.fillStyle = rc + Math.round(((d.fill ?? 10) / 100) * 255).toString(16).padStart(2, "0"); g.strokeStyle = d.color ? rc : blue;
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); g.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); dot(x1, y1); dot(x2, y2); return; }
   if (d.type === "fib") { if (y2 == null) return; const xa = Math.min(x1 ?? 0, x2 ?? W);
     for (const [f, lab] of FIB) { const pr = d.b.p + (d.a.p - d.b.p) * f, y = yOf(p, pr); if (y == null) continue;
@@ -483,13 +485,14 @@ function initPointer(p) {
       pend = { pane: p.i, d: { id: 0, type: tool, pane: p.i, a }, b: a }; hold(true); p.el.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault(); return;
     }
     const l = hitLine(p, y); if (l) { drag = { kind: "line", l }; hold(true); p.el.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault(); return; }
-    const h = hitDrawing(p, x, y); if (h) { sel = h.d; drag = { kind: "draw", h, a0: { t: tOf(p, x), p: pOf(p, y) }, snap: JSON.parse(JSON.stringify(h.d)) }; hold(true); p.el.setPointerCapture(e.pointerId); repaintAll(); e.stopPropagation(); e.preventDefault(); return; }
+    const h = hitDrawing(p, x, y); if (h && h.d.locked) { sel = h.d; repaintAll(); dtbShow(p); e.stopPropagation(); e.preventDefault(); return; }
+    if (h) { sel = h.d; dtbShow(p); drag = { kind: "draw", h, a0: { t: tOf(p, x), p: pOf(p, y) }, snap: JSON.parse(JSON.stringify(h.d)) }; hold(true); p.el.setPointerCapture(e.pointerId); repaintAll(); e.stopPropagation(); e.preventDefault(); return; }
     if (sel) { sel = null; repaintAll(); }
   }, true);
   p.el.addEventListener("pointermove", (e) => {
     const { x, y } = pt(e);
     if (pend && pend.pane === p.i) { const t = tOf(p, x), pr = pOf(p, y, x); if (t != null && pr != null) pend.b = { t, p: pr }; paint(p); return; }
-    if (!drag) { if (tool === "cursor") { const l = hitLine(p, y), h = !l && hitDrawing(p, x, y); p.el.style.cursor = l ? "ns-resize" : h ? (h.h === "move" ? "move" : h.h === "w" ? "ew-resize" : "pointer") : ""; } return; }
+    if (!drag) { if (tool === "cursor") { const l = hitLine(p, y), h = !l && hitDrawing(p, x, y); p.el.style.cursor = l ? "ns-resize" : h ? (h.d.locked ? "pointer" : h.h === "move" ? "move" : h.h === "w" ? "ew-resize" : "pointer") : ""; const nh = h ? h.d : null; if (nh !== hov) { hov = nh; repaintAll(); dtbShow(p); } } return; }
     const pr = pOf(p, y, x), tt = tOf(p, x); if (pr == null || tt == null) return;
     if (drag.kind === "line") { const l = drag.l; l.price = pr; l.ref.applyOptions({ price: pr }); if (l.kind === "sl") pos.sl = pr; else if (l.kind === "tp") pos.tp = pr; else if (l.obj) l.obj.price = pr; if (l.kind === "draft") $("o-px").value = pr; return; }
     const { h, snap, a0 } = drag, d = h.d, dp = pr - a0.p, dt = tt - a0.t;
@@ -1230,6 +1233,28 @@ function tsSettingsUI() { padBtnsUI(); maskUI(); sndUI(); lockUI(); speedUI(); }
       let y = r.top - t.height - 8; if (y < 4) y = r.bottom + 8; let x = r.left + r.width / 2 - t.width / 2; x = Math.max(6, Math.min(innerWidth - t.width - 6, x)); tp.style.left = x + "px"; tp.style.top = y + "px"; }, 350); });
   document.addEventListener("mouseout", (e) => { if (cur && !cur.contains(e.relatedTarget)) hide(); }); document.addEventListener("pointerdown", hide, true); })();
 
+/* fix 1: hover a drawing (or select it) and a small toolbar pops up: color, thickness, line style, settings, lock, delete. Every tool has its own settings. */
+const DCOL = ["#ffce78", "#7aa7ff", "#5ee6b8", "#ff6b7a", "#c4b5fd", "#e6eaf0"];
+let dtbP = null, dtbT = 0;
+function dtbShow(p) { const d = hov || sel, el = $("dtb"); clearTimeout(dtbT); if (!d) { dtbT = setTimeout(() => { if (!el.matches(":hover") && !(hov || sel)) el.classList.add("hidden"); }, 450); return; }
+  dtbP = p; el.dataset.id = d.id; const r = p.el.getBoundingClientRect(), x1 = xOf(p, d.a.t), x2 = xOf(p, d.b.t), y = d.type === "long" || d.type === "short" ? yOf(p, Math.max(d.entry, d.sl, d.tp)) : Math.min(yOf(p, d.a.p) ?? 1e9, yOf(p, d.b.p) ?? 1e9);
+  const pos = d.type === "long" || d.type === "short";
+  el.innerHTML = (pos ? "" : DCOL.map((c) => `<button class="dc ${d.color === c ? "on" : ""}" data-c="${c}" style="background:${c}" title="Color"></button>`).join("") + '<i class="dsep"></i>' +
+    [1, 2, 3].map((w) => `<button data-w="${w}" class="${(d.w || 1.4) === w ? "on" : ""}" title="Thickness ${w}"><b style="height:${w}px"></b></button>`).join("") + '<i class="dsep"></i>' +
+    [["solid", "—"], ["dash", "– –"], ["dot", "···"]].map(([k, s]) => `<button data-dash="${k}" class="${(d.dash || "solid") === k ? "on" : ""}" title="Line style">${s}</button>`).join("") + '<i class="dsep"></i>') +
+    `<button data-act="set" title="Settings">⚙</button><button data-act="lock" title="${d.locked ? "Unlock" : "Lock"}">${d.locked ? "🔒" : "🔓"}</button><button data-act="del" title="Delete">🗑</button>`;
+  el.classList.remove("hidden"); const tw = el.offsetWidth, cx = r.left + ((x1 ?? 0) + (x2 ?? x1 ?? 0)) / 2, ty = r.top + (y < 1e8 ? y : 40) - 46;
+  el.style.left = Math.max(r.left + 4, Math.min(r.right - tw - 70, cx - tw / 2)) + "px"; el.style.top = Math.max(r.top + 4, ty) + "px"; }
+function toolSettings(d) { if (d.type === "long" || d.type === "short") return toolDlg(d);
+  dlg(`<h3>${({ trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Zone", fib: "Fib retracement", text: "Note", measure: "Measure" })[d.type] || d.type} settings</h3>
+    <label>${d.type === "text" ? "Text" : "Label (shows on the chart)"}<input id="ts-l" value="${esc(d.type === "text" ? d.text : d.label || "")}" maxlength="60"></label>
+    <div class="row2"><label>Color<input id="ts-c" type="color" value="${/^#/.test(d.color || "") ? d.color : "#ffce78"}"></label><label>Thickness<select id="ts-w">${[1, 1.4, 2, 3, 4].map((w) => `<option ${(d.w || 1.4) === w ? "selected" : ""}>${w}</option>`).join("")}</select></label><label>Style<select id="ts-s">${["solid", "dash", "dot"].map((s) => `<option ${(d.dash || "solid") === s ? "selected" : ""}>${s}</option>`).join("")}</select></label></div>
+    ${d.type === "rect" ? `<label>Fill strength<input id="ts-f" type="range" min="0" max="60" value="${d.fill ?? 12}"></label>` : ""}
+    ${d.type !== "hline" && d.type !== "vline" && d.type !== "text" ? `<div class="row2"><label>Price A<input id="ts-pa" type="number" step="0.25" value="${d.a.p}"></label><label>Price B<input id="ts-pb" type="number" step="0.25" value="${d.b.p}"></label></div>` : `<label>Price<input id="ts-pa" type="number" step="0.25" value="${d.a.p}"></label>`}
+    <label class="ck"><input id="ts-lk" type="checkbox" ${d.locked ? "checked" : ""}> Locked (can't be dragged)</label>`, () => {
+    const l = $("ts-l").value.trim(); if (d.type === "text") d.text = l || d.text; else d.label = l; d.color = $("ts-c").value; d.w = +$("ts-w").value; d.dash = $("ts-s").value; d.locked = $("ts-lk").checked;
+    if ($("ts-f")) d.fill = +$("ts-f").value; d.a.p = rnd(+$("ts-pa").value || d.a.p); if ($("ts-pb")) d.b.p = rnd(+$("ts-pb").value || d.b.p); else d.b.p = d.a.p; repaintAll(); }); }
+
 /* ---------------- motion polish (Motion.dev springs + Anime.js count-ups; both optional, app works without them) ---------------- */
 const FX = {
   ok: () => !matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -1309,6 +1334,12 @@ $("s-lockgo").onclick = () => { let v = $("s-lock").value; if (v === "0") return
   prefs.lockUntil = until; savePrefs(); lockUI(); toast("🔒 Locked out"); };
 $("s-speed").onclick = (e) => { const b = e.target.closest("[data-sp]"); if (!b) return; prefs.speed = b.dataset.sp; savePrefs(); speedUI(); };
 $("pbe").onclick = beNow; $("pcan").onclick = () => { cancelAll(); snd("cancel"); }; $("pflat").onclick = flatten; $("pclose2").onclick = () => closeAll(); $("prev2").onclick = reverse;
+$("dtb").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const d = drawings.find((z) => z.id === +$("dtb").dataset.id); if (!d) return;
+  if (b.dataset.c) d.color = b.dataset.c; else if (b.dataset.w) d.w = +b.dataset.w; else if (b.dataset.dash) d.dash = b.dataset.dash;
+  else if (b.dataset.act === "set") { $("dtb").classList.add("hidden"); return toolSettings(d); } else if (b.dataset.act === "lock") d.locked = !d.locked;
+  else if (b.dataset.act === "del") { disarmTool(d); drawings = drawings.filter((z) => z !== d); if (sel === d) sel = null; if (hov === d) hov = null; $("dtb").classList.add("hidden"); repaintAll(); return; }
+  repaintAll(); sel = d; dtbShow(dtbP); };
+$("dtb").onmouseleave = () => dtbShow(dtbP);
 $("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
 $("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tour").classList.contains("hidden")) tour(99); });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
