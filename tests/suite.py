@@ -123,6 +123,16 @@ async def main():
         await pg.screenshot(path="/home/claude/shot/fix19.png")
         await E("document.querySelectorAll('.ddm .ddo')[1].click()"); await pg.wait_for_timeout(200); check("picking an option changes the select", await E("$('stepsz').selectedIndex===1"))
         await E("$('stepsz').selectedIndex=0; $('stepsz').dispatchEvent(new Event('change'))")
+        # Alltra real trades: import + chart arrows + journal section
+        await E("view('trade')"); t_now = await E("nowT()")
+        await E(f"importExt([{{id:'a1', instrumentSymbol:'MNQZ6', signedQuantity:2, avgEntryPrice: last(), avgExitPrice: last()+10, openedAt: new Date(({t_now}-600)*1000).toISOString(), closedAt: new Date(({t_now}-300)*1000).toISOString(), netPnlMinor: 4000}}, {{id:'a2', instrumentSymbol:'NQZ6', signedQuantity:-1, avgEntryPrice: last(), openedAt: new Date(({t_now}+86400*3)*1000).toISOString(), netPnlMinor:-2500}}])")
+        await pg.wait_for_timeout(400)
+        check("Alltra import stores trades", await E("extT.length===2"))
+        check("chart shows the past trade as an arrow, hides the future one", await E("(()=>{ extMarkers(panes[0]); return panes[0].series.markers().length })()") == 2, await E("panes[0].series.markers().length"))
+        await E("view('journal')"); await pg.wait_for_timeout(500); check("journal has an Alltra section", await E("$('ext-rows').querySelectorAll('tr').length===2 && $('ext-bm').getAttribute('href').startsWith('javascript:')"))
+        rows = await E("csvRows('Symbol,Side,Qty,Entry Price,Exit Price,Open Time,Close Time,Net P&L\\nMNQ,Short,3,21000,20990,2026-10-14 09:40:00,2026-10-14 09:55:00,$60.00').map(extMap)")
+        check("CSV export maps (side, qty, prices, P&L)", rows and rows[0]["dir"] == -1 and rows[0]["qty"] == 3 and abs(rows[0]["pnl"] - 60) < 1e-6, rows)
+        await pg.screenshot(path="/home/claude/shot/alltra.png"); await E("view('trade')")
         # v0.5 TradeSea parity batch 1
         await E("view('trade')"); await pg.wait_for_timeout(300)
         await E("flatten(); market(1)"); pos0 = await E("pos.avg")

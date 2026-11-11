@@ -139,7 +139,7 @@ async function stepFwd(ui = true) {
   if (B["1m"].i % 500 === 0) await ensureAhead(); if (B["1m"].i % 60 === 0 && sess) db.saveCursor(sess.id, cursorT);
   if (!ui) return fresh["1m"];
   if (fresh["1m"].some((x) => ["00:00", "09:30", "10:00", "18:00"].includes(lhm(loc(x.t))))) drawOpens();
-  refresh(); repaintAll(); return fresh["1m"];
+  if (extT.length) panes.forEach(extMarkers); refresh(); repaintAll(); return fresh["1m"];
 }
 // Skip ahead to the next NY open (09:30) or Asia open (20:00), New York time. Orders and stops still fill on the way.
 async function skipTo(hm, name) {
@@ -191,7 +191,7 @@ function saveShot() { const p = panes[active]; if (!p) return; const c = p.chart
 function indMenu() { if (ctxJust === "ind") { ctxJust = null; return; }   // fix 14: second click closes it const r = $("indbtn").getBoundingClientRect(), I = prefs.ind, ck = (v) => (v ? "✓ " : "\u2003 "), flip = (k) => () => { I[k] = !I[k]; savePrefs(); repaintAll(); };
   menu([{ h: "Indicators" }, { t: ck(prefs.opens) + "Key opens (18:00, midnight, 9:30, 10:00)", f: () => { prefs.opens = !prefs.opens; savePrefs(); fillSettings(); drawOpens(); } },
   { t: ck(prefs.sess) + "Shade the NY session", f: () => { prefs.sess = !prefs.sess; savePrefs(); fillSettings(); repaintAll(); } },
-  { t: ck(I.sbox) + "Trading sessions (Tokyo / London / New York boxes)", f: flip("sbox") }, { t: "\u2003 Sessions settings…", f: sessDlg }, { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session high / low lines only (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") }, { t: ck(I.pw) + "Week + previous week high / low", f: flip("pw") }, { t: ck(I.eq) + "Equal highs / lows (resting liquidity)", f: flip("eq") },
+  { t: ck(I.ext !== false) + "My real trades from Alltra (arrows)", f: () => { I.ext = I.ext === false; savePrefs(); panes.forEach(extMarkers); } }, { t: ck(I.sbox) + "Trading sessions (Tokyo / London / New York boxes)", f: flip("sbox") }, { t: "\u2003 Sessions settings…", f: sessDlg }, { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session high / low lines only (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") }, { t: ck(I.pw) + "Week + previous week high / low", f: flip("pw") }, { t: ck(I.eq) + "Equal highs / lows (resting liquidity)", f: flip("eq") },
   { t: ck(I.fvg) + "Fair value gaps (FVG)", f: flip("fvg") }, { t: ck(I.ob) + "Order blocks (OB) on the same timeframes", f: flip("ob") }, ...(I.fvg || I.ob ? ["5m", "15m", "1h", "4h", "1D"].map((tf) => ({ t: "\u2003 " + ck((I.fvgTfs || []).includes(tf)) + tf + " gaps", f: () => { const s = new Set(I.fvgTfs || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.fvgTfs = [...s]; savePrefs(); repaintAll(); } })).concat([{ t: "\u2003 " + ck(I.ifvg) + "Show inversions (IFVG)", f: flip("ifvg") }]) : []),
   { h: "Higher-timeframe candles on the right (PO3)" }, ...["15m", "1h", "4h", "1D", "1W"].map((tf) => ({ t: ck((I.htfc || []).includes(tf)) + "Current " + tf + " candle", f: () => { const s = new Set(I.htfc || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.htfc = ["15m", "1h", "4h", "1D", "1W"].filter((x) => s.has(x)); savePrefs(); repaintAll(); } })), { t: ck(I.h4) + "Past 4H candle outlines on the chart", f: flip("h4") }], r.left, r.bottom + 6); $("ctx").dataset.from = "ind"; }
 const TOOLNAMES = { cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
@@ -220,7 +220,7 @@ function rebuildPane(p) {
   const f = B["15s"], lastM = p.sec >= 60 && need15 && src.i >= 0 && f.i >= 0 && hasFine(src.bars[src.i].t) ? src.bars[src.i].t : null;   // fix 16: current minute from 15s only
   for (let j = 0; j <= src.i && j < src.bars.length; j++) { if (lastM != null && src.bars[j].t === lastM) break; pushBar(p, src.bars[j]); }
   if (lastM != null) { let k = f.i; while (k > 0 && f.bars[k - 1].t >= lastM) k--; for (; k <= f.i; k++) if (f.bars[k].t >= lastM) pushBar(p, f.bars[k]); }
-  p.series.setData(p.candles); label(p); paint(p);
+  p.series.setData(p.candles); label(p); extMarkers(p); paint(p);
 }
 function watchScales() {
   for (const p of panes) { if (!p.candles.length) continue; const ref = p.candles[p.candles.length - 1].close, ts = p.chart.timeScale();
@@ -1180,7 +1180,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); if (!prefs.tourDone && !DEMO) setTimeout(() => tour(0), prefs.splash !== false ? 1500 : 400);
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); loadExt().then(() => { extUI(); panes.forEach(extMarkers); extHandshake(); }).catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); if (!prefs.tourDone && !DEMO) setTimeout(() => tour(0), prefs.splash !== false ? 1500 : 400);
   if (!$("start").value) $("start").value = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) notionUI().catch(() => {});
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
@@ -1313,6 +1313,38 @@ function frOpen() { prefs.side = true; savePrefs(); sideUI(); document.querySele
   document.addEventListener("pointerdown", (e) => { if (open && !e.target.closest(".ddm,.ddb")) close(); }, true); addEventListener("keydown", (e) => { if (e.key === "Escape") close(); });
   addEventListener("resize", close); document.addEventListener("scroll", (e) => { if (open && !e.target.closest?.(".ddm")) close(); }, true); all(); })();
 
+/* Alltra: Will's (or anyone's) real trades from the Alltra journal, synced with a one-click bookmark or a CSV. They show as arrows on the chart when the replay reaches them, and in their own Journal section. */
+let extT = [];
+const ALLTRA_ORIGIN = "https://alltra.app", KAIROS_URL = location.origin + location.pathname;
+async function loadExt() { if (DEMO) { extT = mem.ext || []; return; } const { data } = await sb.from("external_trades").select("id,source,account,symbol,dir,qty,entry,exit,t_entry,t_exit,pnl").order("t_entry").limit(5000); extT = data || []; }
+function extMap(o) { const g = (...ks) => { for (const k of ks) { const v = o[k]; if (v !== undefined && v !== null && v !== "") return v; } };
+  const sym = String(g("instrumentSymbol", "resolvedSymbol", "rawSymbol", "symbol", "Symbol", "instrument", "Instrument", "contract", "Contract") || "").toUpperCase();
+  const sq = +g("signedQuantity") || 0, qty = Math.abs(+g("totalQuantity", "quantity", "qty", "Qty", "Quantity", "contracts", "Contracts", "totalContracts", "maxContracts") || sq || 1);
+  const sd = String(g("side", "Side", "direction", "Direction", "type", "Type") || "").toLowerCase(), dir = /short|sell|^s/.test(sd) ? -1 : sd ? 1 : sq < 0 ? -1 : 1;
+  const ts = (v) => (v == null ? null : typeof v === "number" ? (v > 1e12 ? Math.floor(v / 1000) : v) : Math.floor(Date.parse(String(v).replace(" ", "T")) / 1000) || null);
+  const pm = g("netPnlMinor", "computedNetPnlMinor", "tradeNetPnlMinor", "pnlMinor"), pr = pm != null ? +pm / 100 : +String(g("netPnl", "pnl", "PnL", "P&L", "Net P&L", "Net PnL", "profit", "Profit") ?? "NaN").replace(/[$,]/g, "");
+  const t0 = ts(g("openedAt", "entryTime", "Open Time", "Entry Time", "Opened", "opened_at", "Date")), en = +g("avgEntryPrice", "entryPrice", "Entry Price", "entry", "Entry", "Avg Entry");
+  return { source: "alltra", ext_id: String(g("id", "tradeId", "Trade ID", "ID") ?? [sym, t0, en, qty].join("|")).slice(0, 120), symbol: sym.slice(0, 20), dir, qty, entry: en, exit: +g("avgExitPrice", "exitPrice", "Exit Price", "exit", "Exit", "Avg Exit") || null,
+    t_entry: t0, t_exit: ts(g("closedAt", "exitTime", "Close Time", "Exit Time", "Closed", "closed_at")), pnl: isNaN(pr) ? null : pr, account: String(g("accountName", "account", "Account") || "").slice(0, 60), raw: o }; }
+async function importExt(rows) { const recs = rows.map(extMap).filter((r) => r.t_entry && r.entry > 0); if (!recs.length) return toast("No trades found in that data");
+  if (DEMO) { mem.ext = recs; await loadExt(); } else for (let i = 0; i < recs.length; i += 400) { const { error } = await sb.from("external_trades").upsert(recs.slice(i, i + 400), { onConflict: "user_id,source,ext_id" }); if (error) return toast("Import failed: " + error.message); }
+  await loadExt(); extUI(); panes.forEach(extMarkers); toast(`✅ ${recs.length} Alltra trades synced`); }
+function csvRows(txt) { const out = [], L = []; let cur = "", q = false, row = [];
+  for (let i = 0; i < txt.length; i++) { const c = txt[i]; if (q) { if (c === '"' && txt[i + 1] === '"') { cur += '"'; i++; } else if (c === '"') q = false; else cur += c; } else if (c === '"') q = true; else if (c === ",") { row.push(cur); cur = ""; } else if (c === "\n" || c === "\r") { if (c === "\r" && txt[i + 1] === "\n") i++; row.push(cur); L.push(row); row = []; cur = ""; } else cur += c; }
+  if (cur || row.length) { row.push(cur); L.push(row); } const h = (L.shift() || []).map((s) => s.trim()); for (const r of L) if (r.some((x) => x.trim())) out.push(Object.fromEntries(h.map((k, i) => [k, (r[i] ?? "").trim()]))); return out; }
+function extMarkers(p) { if (!p || p.dead || !p.candles.length) return; if (!extT.length || (prefs.ind && prefs.ind.ext === false)) { try { p.series.setMarkers([]); } catch (e) {} return; }
+  const now = nowT() || 0, a = p.candles[0].time, z = p.candles[p.candles.length - 1].time + p.sec, base = sym.replace(/^M/, ""), mk = [];
+  for (const t of extT) { if (!t.symbol || !t.symbol.replace(/^M/, "").startsWith(base)) continue; if (t.t_entry <= now) { const lt = bucket(loc(t.t_entry), p.sec); if (lt >= a && lt < z) mk.push({ time: lt, position: t.dir > 0 ? "belowBar" : "aboveBar", color: t.dir > 0 ? "#4f8cff" : "#ff4d5e", shape: t.dir > 0 ? "arrowUp" : "arrowDown", text: (t.dir > 0 ? "L " : "S ") + (+t.qty) }); }
+    if (t.t_exit && t.t_exit <= now) { const lx = bucket(loc(t.t_exit), p.sec); if (lx >= a && lx < z) mk.push({ time: lx, position: t.dir > 0 ? "aboveBar" : "belowBar", color: t.pnl == null ? "#9aa6b8" : t.pnl >= 0 ? "#2bd4a0" : "#ff6b7a", shape: "circle", text: t.pnl == null ? "exit" : money(t.pnl) }); } }
+  mk.sort((u, v) => u.time - v.time); try { p.series.setMarkers(mk); } catch (e) {} }
+function extUI() { if (!$("ext-rows")) return; const n = extT.length, w = extT.filter((t) => t.pnl > 0).length, net = extT.reduce((s, t) => s + (+t.pnl || 0), 0);
+  $("ext-stats").innerHTML = n ? `<b>${n}</b> trades · <b class="${net >= 0 ? "pos-up" : "pos-dn"}">${money(net)}</b> · ${Math.round((100 * w) / n)}% win` : "No Alltra trades synced yet.";
+  $("ext-rows").innerHTML = extT.slice().reverse().slice(0, 300).map((t) => `<tr><td>${t.t_entry ? fmt(loc(t.t_entry)) : "—"}</td><td>${esc(t.symbol)}</td><td>${t.dir > 0 ? "Long" : "Short"}</td><td>${+t.qty}</td><td>${px2(+t.entry)}</td><td>${t.exit ? px2(+t.exit) : "—"}</td><td class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${t.pnl == null ? "—" : money(t.pnl)}</td><td>${esc(t.account || "")}</td><td><button class="small ghost" data-extgo="${t.t_entry}" data-extsym="${esc(t.symbol)}">Replay</button></td></tr>`).join("");
+  const bm = `javascript:(async()=>{if(location.host!=='alltra.app'){alert('Open alltra.app (signed in) and click this again.');return}let a=[],p=1,c=1;do{const r=await fetch('/api/proxy/v1/trades?page='+p+'&pageSize=100').then(r=>r.json());a=a.concat(r.data||[]);c=r.pageCount||1;p++}while(p<=c&&p<300);const w=window.open('${KAIROS_URL}#alltra','kairos');const f=e=>{if(e.origin!=='${location.origin}'||e.data!=='kairos-ready')return;w.postMessage({type:'alltra-trades',trades:a},'${location.origin}');removeEventListener('message',f)};addEventListener('message',f)})()`;
+  $("ext-bm").setAttribute("href", bm); }
+addEventListener("message", (e) => { if (e.origin !== ALLTRA_ORIGIN || !e.data || e.data.type !== "alltra-trades" || !Array.isArray(e.data.trades)) return; importExt(e.data.trades.slice(0, 20000)); });
+function extHandshake() { if (location.hash === "#alltra" && window.opener) { try { window.opener.postMessage("kairos-ready", ALLTRA_ORIGIN); } catch (e) {} history.replaceState(null, "", location.pathname); view("journal"); } }
+
 /* ---------------- motion polish (Motion.dev springs + Anime.js count-ups; both optional, app works without them) ---------------- */
 const FX = {
   ok: () => !matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -1410,6 +1442,8 @@ $("jc-next").onclick = () => { const [y, m] = jMonth.split("-").map(Number), d =
 $("jc-all").onclick = () => { jDay = null; loadJournal(); };
 $("frbtn").onclick = () => { if (prefs.side && !$("md-friends").classList.contains("hidden")) { prefs.side = false; savePrefs(); sideUI(); } else frOpen(); };
 $("sfr-open").onclick = () => view("friends");
+$("ext-file").onchange = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const t = String(r.result); importExt(t.trim().startsWith("[") || t.trim().startsWith("{") ? [].concat(JSON.parse(t).data || JSON.parse(t)) : csvRows(t)); } catch (er) { toast("Couldn't read that file"); } }; r.readAsText(f); e.target.value = ""; };
+$("ext-rows").onclick = async (e) => { const b = e.target.closest("[data-extgo]"); if (!b) return; if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); const s = /^M?ES/.test(b.dataset.extsym) ? "ES" : "NQ"; $("sym").value = s; $("start").value = fmt(loc(+b.dataset.extgo - 45 * 60)).replace(" ", "T"); view("trade"); await loadReplay(); };
 $("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
 $("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tour").classList.contains("hidden")) tour(99); });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
