@@ -104,6 +104,12 @@ async def main():
         check("journal shows a trading calendar with P&L days", await E("document.querySelectorAll('#jc-grid .jcd').length>=28 && document.querySelectorAll('#jc-grid .jcd.up,#jc-grid .jcd.dn').length>0"))
         await E("document.querySelector('#jc-grid .jcd.up,#jc-grid .jcd.dn').click()"); await pg.wait_for_timeout(500)
         check("clicking a day filters the trades", await E("!!jDay && document.querySelectorAll('#jrows tr').length>0")); await pg.screenshot(path="/home/claude/shot/fix15.png"); await E("jDay=null; view('trade')")
+        # fix 16: take or fade = single 1m chart, locked to 15s
+        await E("flatten(); setLayout('2')"); await pg.wait_for_timeout(400); await E("quizNext()"); await pg.wait_for_timeout(1500)
+        check("take-or-fade opens one 1m chart locked to 15s", await E("panes.length===1 && prefs.tfs[active]==='1m' && need15===true && lock15===true"), await E("[panes.length, prefs.tfs[active], need15, lock15]"))
+        await E("setPaneTf(active,'1h')"); await pg.wait_for_timeout(500)
+        check("higher TF shows only the candle up to now", await E("(()=>{const p=panes[active], c=p.candles[p.candles.length-1]; return c && Math.abs(c.close-last())<1e-6;})()"), await E("(()=>{const p=panes[active], c=p.candles[p.candles.length-1]; return [c&&c.close, last(), p.sec, need15, B[\"15s\"].bars.length];})()"))
+        await E("quizStop(); setPaneTf(active,'5m')"); await pg.wait_for_timeout(300); check("leaving the quiz unlocks 15s", await E("lock15===false"))
         # v0.5 TradeSea parity batch 1
         await E("view('trade')"); await pg.wait_for_timeout(300)
         await E("flatten(); market(1)"); pos0 = await E("pos.avg")

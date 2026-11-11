@@ -95,14 +95,14 @@ async function notion(action, extra = {}) {
 
 /* ---------------- replay core: two bases (1m always, 15s when a pane needs it), one shared clock ---------------- */
 const B = { "1m": { bars: [], i: -1 }, "15s": { bars: [], i: -1 } };
-let need15 = false, cursorT = 0, sym = "NQ", inst = INST.NQ, timer = null, months = new Set(), sess = null;
+let need15 = false, lock15 = false, cursorT = 0, sym = "NQ", inst = INST.NQ, timer = null, months = new Set(), sess = null;
 const paneSec = (i) => SEC[prefs.tfs[i] || "5m"];
 function lastBar() { const a = B["1m"].bars[B["1m"].i], b = need15 ? B["15s"].bars[B["15s"].i] : null; if (!a) return b; if (!b) return a; return b.t >= a.t ? b : a; }
 const last = () => (lastBar() ? lastBar().c : null);
 const nowT = () => cursorT;
 async function loadReplay() {
   pause(); if (pos.qty || orders.length) return toast("Close positions and cancel orders first");
-  sym = $("sym").value; inst = INST[sym]; need15 = panes.some((p) => paneSec(p.i) < 60);
+  sym = $("sym").value; inst = INST[sym]; need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
   const s = $("start").value; if (!s) return toast("Pick a start date and time"); const t0 = nyToUtc(s), ym = ymOf(t0);
   toast("Loading " + sym + "…"); months = new Set([addM(ym, -1), ym, addM(ym, 1)]);
   for (const tf of ["1m", "15s"]) { B[tf].bars = []; B[tf].i = -1; if (tf === "15s" && !need15) continue; B[tf].bars = (await Promise.all([...months].sort().map((m) => loadMonth(inst.data, tf, m)))).flat().sort((a, b) => a.t - b.t); }
@@ -132,7 +132,8 @@ async function stepFwd(ui = true) {
   const prevT = cursorT; cursorT = Math.min(...nxt); if (reese.length && prevT) reeseCheck(loc(prevT), loc(cursorT));
   const fresh = { "1m": [], "15s": [] };
   for (const tf of ["1m", "15s"]) { const b = B[tf]; while (b.bars[b.i + 1] && b.bars[b.i + 1].t <= cursorT) { b.i++; fresh[tf].push(b.bars[b.i]); } }
-  if (ui) panes.forEach((p) => { const src = paneSec(p.i) < 60 ? fresh["15s"] : fresh["1m"]; for (const x of src) p.series.update(pushBar(p, x)); });
+  // fix 16: with 15s data on, 1m+ charts are built from the 15s bars inside the current minute, so no chart ever shows the rest of a minute that hasn't happened yet
+  if (ui) panes.forEach((p) => { const src = paneSec(p.i) < 60 ? fresh["15s"] : need15 ? [...fresh["1m"].filter((x) => !hasFine(x.t)), ...fresh["15s"]].sort((u, v) => u.t - v.t) : fresh["1m"]; for (const x of src) p.series.update(pushBar(p, x)); });
   for (const x of fresh["15s"]) engineBar(x);                                   // fills use the finest bars available
   for (const x of fresh["1m"]) if (!(need15 && hasFine(x.t))) engineBar(x);
   if (B["1m"].i % 500 === 0) await ensureAhead(); if (B["1m"].i % 60 === 0 && sess) db.saveCursor(sess.id, cursorT);
@@ -181,7 +182,7 @@ function makePane(i) {
 function setActive(i) { active = i; panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
 function label(p) { const tf = prefs.tfs[p.i] || "5m"; p.el.querySelector(".lname").textContent = `${sym} · ${tf} · CME`; p.el.querySelector(".wmark").textContent = `CME ${sym} ${tf}`; }
 function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}">${n === "1D" ? "D" : n}</button>`).join(""); }
-async function setPaneTf(i, tf, noSync) { const p = panes[i]; if (!p) return; prefs.tfs[i] = tf; if (!noSync && prefs.sync && prefs.sync.int) for (const q of panes) if (q.i !== i) { prefs.tfs[q.i] = tf; label(q); rebuildPane(q); } savePrefs(); tfUI(); label(p); if (panes.some((q) => paneSec(q.i) < 60)) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); }
+async function setPaneTf(i, tf, noSync) { const p = panes[i]; if (!p) return; prefs.tfs[i] = tf; if (!noSync && prefs.sync && prefs.sync.int) for (const q of panes) if (q.i !== i) { prefs.tfs[q.i] = tf; label(q); rebuildPane(q); } savePrefs(); tfUI(); label(p); if (lock15 || panes.some((q) => paneSec(q.i) < 60)) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); }
 function scaleUI() { const p = panes[active]; if (!p) return; $("sc-pct").classList.toggle("on", p.mode === 2); $("sc-log").classList.toggle("on", p.mode === 1); $("sc-auto").classList.toggle("on", p.auto); }
 function setScale(k) { const p = panes[active]; if (!p) return; if (k === "auto") p.auto = !p.auto; else { const m = k === "pct" ? 2 : 1; p.mode = p.mode === m ? 0 : m; } p.chart.priceScale("right").applyOptions({ mode: p.mode, autoScale: p.auto }); scaleUI(); paint(p); }
 function showRange(days) { const S = prefs.sync || {}; for (const p of (S.range !== false ? panes : [panes[active]])) { if (!p || !p.candles.length) continue; const to = p.candles[p.candles.length - 1].time, from = Math.max(p.candles[0].time, to - days * 86400); p.chart.timeScale().setVisibleRange({ from, to: to + p.sec * 6 }); } }
@@ -212,11 +213,13 @@ function buildPanes() {
   panes.forEach((p) => { p.dead = true; try { if (p.prim) p.series.detachPrimitive(p.prim); } catch (e) {} p.chart.remove(); }); $("charts").innerHTML = ""; panes = [];
   const [c, r] = LAYOUTS[prefs.layout] || [1, 1], n = c * r; $("charts").style.gridTemplateColumns = `repeat(${c},minmax(0,1fr))`; $("charts").style.gridTemplateRows = `repeat(${r},minmax(0,1fr))`;
   while (prefs.tfs.length < 8) prefs.tfs.push(DEF_TFS[prefs.tfs.length]);
-  for (let i = 0; i < n; i++) { const p = makePane(i); panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = panes.some((p) => paneSec(p.i) < 60);
+  for (let i = 0; i < n; i++) { const p = makePane(i); panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
 }
 function rebuildPane(p) {
   p.sec = paneSec(p.i); p.candles = []; const src = p.sec < 60 ? B["15s"] : B["1m"];
-  for (let j = 0; j <= src.i && j < src.bars.length; j++) pushBar(p, src.bars[j]);
+  const f = B["15s"], lastM = p.sec >= 60 && need15 && src.i >= 0 && f.i >= 0 && hasFine(src.bars[src.i].t) ? src.bars[src.i].t : null;   // fix 16: current minute from 15s only
+  for (let j = 0; j <= src.i && j < src.bars.length; j++) { if (lastM != null && src.bars[j].t === lastM) break; pushBar(p, src.bars[j]); }
+  if (lastM != null) { let k = f.i; while (k > 0 && f.bars[k - 1].t >= lastM) k--; for (; k <= f.i; k++) if (f.bars[k].t >= lastM) pushBar(p, f.bars[k]); }
   p.series.setData(p.candles); label(p); paint(p);
 }
 function watchScales() {
@@ -947,17 +950,19 @@ async function quizNext() {
   let it = quizBank.length ? quizBank[Math.floor(Math.random() * quizBank.length)] : null;
   if (!it && DEMO) { await loadReplay(); for (let i = 0; i < 40; i++) await stepFwd(); const lp = last(); it = { symbol: "NQ", t_entry: nowT() + 60, dir: 1, entry: rnd(lp - 4), stop: rnd(lp - 16), target: rnd(lp + 26), outcome: "win", why: ["10AM manipulation", "SWEPT LIQUIDITY", "5M CLOSE BACK"] }; }
   if (!it) return toast("No quiz setups yet");
-  QZ = { it, answered: false }; view("trade"); $("sym").value = it.symbol; $("start").value = fmt(loc(it.t_entry)).replace(" ", "T"); if (!DEMO || !B["1m"].bars.length) await loadReplay();
+  // fix 16: one chart on the 1m, replay locked to 15s so any higher timeframe you flip to only shows candles up to "now" (no peeking at finished candles)
+  QZ = { it, answered: false }; view("trade"); lock15 = true; if (prefs.layout !== "1") setLayout("1"); prefs.tfs[active] = "1m"; tfUI(); label(panes[active]);
+  $("sym").value = it.symbol; $("start").value = fmt(loc(it.t_entry)).replace(" ", "T"); if (!DEMO || !B["1m"].bars.length) await loadReplay(); else { await ensure15(); rebuildAll(); }
   drawings = drawings.filter((d) => !d.quiz); const d = { id: did++, type: it.dir > 0 ? "long" : "short", side: it.dir, pane: active, a: { t: loc(it.t_entry), p: +it.entry }, b: { t: loc(it.t_entry) + 90 * 60, p: +it.entry }, entry: +it.entry, sl: +it.stop, tp: +it.target, state: "idle", quiz: true }; drawings.push(d);
   const rr = Math.abs(it.target - it.entry) / Math.abs(it.entry - it.stop);
   $("qz-desc").innerHTML = `${it.dir > 0 ? "Long" : "Short"} ${it.symbol} @ <b>${px2(+it.entry)}</b> · stop ${px2(+it.stop)} · target ${px2(+it.target)} · ${rr.toFixed(1)}R`; $("qzbar").classList.remove("hidden"); $("qz-res").classList.add("hidden"); $("qz-next").classList.add("hidden"); ["qz-take", "qz-fade"].forEach((k) => ($(k).disabled = false));
-  panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); repaintAll(); }
+  panes.forEach((p) => { p.chart.timeScale().applyOptions({ barSpacing: 9 }); p.chart.timeScale().scrollToRealTime(); }); repaintAll(); }
 async function quizAnswer(take) { if (!QZ || QZ.answered) return; QZ.answered = true; ["qz-take", "qz-fade"].forEach((k) => ($(k).disabled = true)); const it = QZ.it, right = (it.outcome === "win") === take;
   const q = prefs.quiz || { n: 0, right: 0, streak: 0, best: 0 }; q.n++; if (right) { q.right++; q.streak++; q.best = Math.max(q.best, q.streak); } else q.streak = 0; prefs.quiz = q; addXp(right ? 10 : 2); if (right) prefs.credits = (prefs.credits || 0) + 8; savePrefs();
   const end = it.t_exit || it.t_entry + 3600; for (let n = 0; n < 900 && nowT() < end + 600; n++) { const g = await stepFwd(false); if (g === false) break; } rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime());
   sfx(right ? "win" : "loss"); $("qz-res").innerHTML = `<b class="${right ? "pos-up" : "pos-dn"}">${right ? "Right!" : "Not this time."}</b> It ${it.outcome === "win" ? "hit the target" : "hit the stop"}${it.r != null ? " (" + it.r + "R)" : ""}.<div class="tiny muted">Why it set up: ${(it.why || []).map(esc).join(" · ")}</div>${right ? '<div class="tiny">+10 XP, +8 credits</div>' : ""}`;
   $("qz-res").classList.remove("hidden"); $("qz-next").classList.remove("hidden"); }
-function quizStop() { QZ = null; $("qzbar").classList.add("hidden"); drawings = drawings.filter((d) => !d.quiz); repaintAll(); }
+function quizStop() { QZ = null; lock15 = false; $("qzbar").classList.add("hidden"); drawings = drawings.filter((d) => !d.quiz); repaintAll(); }
 // ---- course
 const LESSONS = [["Sessions and times", "Which windows he trades (NY 9:30, the 10:00 open, Asia 8pm) and when he stays out."], ["Bias", "How he picks a direction from the higher timeframe range: premium vs discount, conditions, draws on liquidity."], ["Setup checklist", "His order: condition → manipulation into a level → SMT → displacement → entry gap."],
   ["Entry", "Inversion and respected gaps on the 15s-1m, entering off displacement, OTE 0.705-0.79."], ["Stop and targets", "Stop past the manipulation leg, 1:1 marked, partials and break-even, trailing to the next level."], ["When he skips", "No obvious draw, fighting ES, low conviction, structure that trades into a range before inversion."]];
