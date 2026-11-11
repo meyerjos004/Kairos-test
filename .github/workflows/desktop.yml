@@ -1,0 +1,34 @@
+# Builds the KAIROS OS Beta Windows installer and publishes it as a GitHub release.
+# Ship an update: bump desktop/package.json "version", add desktop/notes/<version>.md, then push a tag v<version>.
+name: Desktop app
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Bundle the site into the app
+        run: node desktop/copy-web.js
+      - name: Install
+        working-directory: desktop
+        run: npm install --no-audit --no-fund
+      - name: Build + publish installer
+        working-directory: desktop
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always
+      - name: Release notes
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          V=$(node -p "require('./desktop/package.json').version")
+          if [ -f "desktop/notes/$V.md" ]; then gh release edit "v$V" --title "KAIROS OS Beta $V" --notes-file "desktop/notes/$V.md"; fi
