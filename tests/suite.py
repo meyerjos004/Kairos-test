@@ -99,6 +99,11 @@ async def main():
         await E("prefs.sync.int=false; setLayout('1')"); await pg.wait_for_timeout(400)
         await E("document.querySelector('.lname').click()"); check("clicking the symbol opens a symbol menu", await E("!$('ctx').classList.contains('hidden') && $('ctx').innerText.includes('ES')")); await E("hideCtx()")
         check("settings page has no chart colors / account size", await E("!$('v-settings').contains($('s-up')) && !$('v-settings').contains($('s-bal'))"))
+        # fix 15: journal calendar
+        await E("view('journal')"); await pg.wait_for_timeout(700)
+        check("journal shows a trading calendar with P&L days", await E("document.querySelectorAll('#jc-grid .jcd').length>=28 && document.querySelectorAll('#jc-grid .jcd.up,#jc-grid .jcd.dn').length>0"))
+        await E("document.querySelector('#jc-grid .jcd.up,#jc-grid .jcd.dn').click()"); await pg.wait_for_timeout(500)
+        check("clicking a day filters the trades", await E("!!jDay && document.querySelectorAll('#jrows tr').length>0")); await pg.screenshot(path="/home/claude/shot/fix15.png"); await E("jDay=null; view('trade')")
         # v0.5 TradeSea parity batch 1
         await E("view('trade')"); await pg.wait_for_timeout(300)
         await E("flatten(); market(1)"); pos0 = await E("pos.avg")

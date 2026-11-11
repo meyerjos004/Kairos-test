@@ -1106,7 +1106,8 @@ async function loadJournal() {
   $("stats").innerHTML = box("Trades", n) + box("Win rate", n ? Math.round((100 * w.length) / n) + "%" : "—") + box("Avg R", avgR.toFixed(2)) + box("Profit factor", gl ? (gp / gl).toFixed(2) : "—") + box("Net P&L", money(gp - gl)) + box("Max drawdown", money(-mdd)) + box("Avg win", w.length ? money(gp / w.length) : "—") + box("Avg loss", l.length ? money(-gl / l.length) : "—");
   if (!eqC) { eqC = LightweightCharts.createChart($("eqchart"), { layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, timeScale: { visible: false }, autoSize: true }); eqS = eqC.addAreaSeries({ lineColor: "#5ee6b8", topColor: "rgba(94,230,184,.25)", bottomColor: "rgba(94,230,184,0)", lineWidth: 2 }); }
   eqS.setData(eq); eqC.timeScale().fitContent();
-  $("jrows").innerHTML = jT.slice().reverse().map((t) => `<tr data-id="${t.id}"><td>${fmt(loc(t.t_entry))}</td><td>${t.symbol}</td><td>${t.dir > 0 ? "Long" : "Short"}</td><td>${t.qty}</td><td>${px2(t.entry)}</td><td>${px2(t.exit)}</td><td>${t.r ?? "—"}</td><td class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</td><td><input class="note" value="${(t.notes || "").replace(/"/g, "&quot;")}" placeholder="add a note"></td><td>${t.shots && t.shots.length ? '<a href="#" class="shotlink">📷</a>' : ""}${t.notion_page ? " N" : ""} <button class="small ghost sharebtn" title="Share with friends">⤴</button></td></tr>`).join("");
+  calUI(); const rowsT = jDay ? jT.filter((t) => sessDay(t.t_entry) === jDay) : jT;
+  $("jrows").innerHTML = rowsT.slice().reverse().map((t) => `<tr data-id="${t.id}"><td>${fmt(loc(t.t_entry))}</td><td>${t.symbol}</td><td>${t.dir > 0 ? "Long" : "Short"}</td><td>${t.qty}</td><td>${px2(t.entry)}</td><td>${px2(t.exit)}</td><td>${t.r ?? "—"}</td><td class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</td><td><input class="note" value="${(t.notes || "").replace(/"/g, "&quot;")}" placeholder="add a note"></td><td>${t.shots && t.shots.length ? '<a href="#" class="shotlink">📷</a>' : ""}${t.notion_page ? " N" : ""} <button class="small ghost sharebtn" title="Share with friends">⤴</button></td></tr>`).join("");
 }
 function exportCsv() {
   const h = ["date_ny", "symbol", "side", "qty", "entry", "stop", "target", "exit", "r", "pnl", "fees", "outcome", "notes"];
@@ -1265,6 +1266,21 @@ function chartSetUI() { const S = prefs.sync || {}; $("cs-sint").checked = !!S.i
   document.querySelectorAll("#cs-sym [data-s]").forEach((b) => b.classList.toggle("on", b.dataset.s === sym)); }
 function symMenu(e) { const r = e.target.getBoundingClientRect(); menu([{ h: "Symbol" }, ...["NQ", "ES"].map((s) => ({ t: (s === sym ? "✓ " : "\u2003 ") + s + (s === "NQ" ? " · Nasdaq-100 E-mini" : " · S&P 500 E-mini"), f: () => { if (s === sym) return; $("sym").value = s; $("sym").onchange(); } }))], r.left, r.bottom + 4); }
 
+/* fix 15: journal as a trading calendar. Each day shows net P&L, trade count and win rate (by the market date you replayed); weekly totals on the right; click a day to see its trades. */
+let jMonth = null, jDay = null;
+function calUI() { const days = {}; for (const t of jT) { const d = sessDay(t.t_entry); (days[d] = days[d] || []).push(t); }
+  if (!jMonth) { const last = Object.keys(days).sort().pop(); jMonth = (last || new Date().toISOString().slice(0, 10)).slice(0, 7); }
+  const [Y, M] = jMonth.split("-").map(Number), first = new Date(Date.UTC(Y, M - 1, 1)), start = new Date(first); start.setUTCDate(1 - first.getUTCDay());
+  $("jc-title").textContent = first.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  let html = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Week"].map((d) => `<div class="jch">${d}</div>`).join(""), mNet = 0, mN = 0;
+  for (let w = 0; w < 6; w++) { let wNet = 0, wN = 0, any = false;
+    for (let k = 0; k < 7; k++) { const dt = new Date(start); dt.setUTCDate(start.getUTCDate() + w * 7 + k); const ds = dt.toISOString().slice(0, 10), inM = dt.getUTCMonth() === M - 1, ts = days[ds] || [];
+      const net = ts.reduce((s, t) => s + +t.pnl, 0), wins = ts.filter((t) => t.pnl > 0).length; if (inM) any = true; if (inM) { wNet += net; wN += ts.length; mNet += net; mN += ts.length; }
+      html += `<button class="jcd ${inM ? "" : "out"} ${ts.length ? (net >= 0 ? "up" : "dn") : ""} ${jDay === ds ? "on" : ""}" data-day="${ds}"><span class="n">${dt.getUTCDate()}</span>${ts.length ? `<b>${money(net)}</b><span class="tiny">${ts.length} trade${ts.length > 1 ? "s" : ""} · ${Math.round((100 * wins) / ts.length)}%</span>` : ""}</button>`; }
+    html += `<div class="jcw ${wN ? (wNet >= 0 ? "up" : "dn") : ""}">${wN ? `<b>${money(wNet)}</b><span class="tiny">${wN} trades</span>` : ""}</div>`; if (!any && w > 3) break; }
+  $("jc-grid").innerHTML = html; $("jc-sum").textContent = mN ? `${first.toLocaleString("en-US", { month: "short", timeZone: "UTC" })}: ${money(mNet)} · ${mN} trades` : "No trades this month";
+  $("jc-all").classList.toggle("hidden", !jDay); }
+
 /* ---------------- motion polish (Motion.dev springs + Anime.js count-ups; both optional, app works without them) ---------------- */
 const FX = {
   ok: () => !matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -1356,6 +1372,10 @@ $("cs-sym").onclick = (e) => { const b = e.target.closest("[data-s]"); if (!b ||
 $("cs-save").onclick = () => { prefs.sync = { int: $("cs-sint").checked, cross: $("cs-scross").checked, time: $("cs-stime").checked, range: $("cs-srange").checked }; saveSettings(); $("chartset").classList.add("hidden"); toast("Chart settings saved"); };
 $("s-save2").onclick = () => { saveSettings(); $("s-msg2").textContent = "Saved"; };
 $("charts").addEventListener("click", (e) => { if (e.target.closest(".lname")) symMenu(e); });
+$("jc-grid").onclick = (e) => { const b = e.target.closest("[data-day]"); if (!b) return; jDay = jDay === b.dataset.day ? null : b.dataset.day; loadJournal(); };
+$("jc-prev").onclick = () => { const [y, m] = jMonth.split("-").map(Number), d = new Date(Date.UTC(y, m - 2, 1)); jMonth = d.toISOString().slice(0, 7); jDay = null; calUI(); loadJournal(); };
+$("jc-next").onclick = () => { const [y, m] = jMonth.split("-").map(Number), d = new Date(Date.UTC(y, m, 1)); jMonth = d.toISOString().slice(0, 7); jDay = null; calUI(); loadJournal(); };
+$("jc-all").onclick = () => { jDay = null; loadJournal(); };
 $("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
 $("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tour").classList.contains("hidden")) tour(99); });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
