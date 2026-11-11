@@ -168,6 +168,15 @@ async def main():
             if await E("alerts.length===0"): break
             await E("stepFwd()")
         check("alert fires when price crosses", await E("alerts.length===0"))
+        # saved layouts + share card
+        await E("setLayout('2'); setPaneTf(0,'1m',true); setPaneTf(1,'15m',true); window.prompt=()=>'SMT test'; saveLayout()"); await pg.wait_for_timeout(500)
+        check("layout saves", await E("prefs.saved.at(-1).name==='SMT test' && prefs.saved.at(-1).layout==='2'"))
+        await E("setLayout('1'); prefs.tfs[0]='5m'"); await pg.wait_for_timeout(400); await E("loadLayout(prefs.saved.length-1)"); await pg.wait_for_timeout(700)
+        check("saved layout restores charts + timeframes", await E("panes.length===2 && prefs.tfs[0]==='1m' && prefs.tfs[1]==='15m'"))
+        await E("prefs.saved.pop(); setLayout('1')"); await pg.wait_for_timeout(400)
+        await E("shareCard({symbol:'NQ',dir:1,qty:2,pnl:840,r:2.1,entry:21000,exit:21021,t_entry:nowT()-600}, true)"); await pg.wait_for_timeout(800)
+        check("share card renders", await E("!!window.__lastCard && window.__lastCard.width===1200 && !$('dlg').classList.contains('hidden') && !!$('dlgbox').querySelector('img')"))
+        await pg.screenshot(path="/home/claude/shot/card.png"); await E("$('dlg').classList.add('hidden')")
         # media dock: Reese library + Spotify/YouTube sign-in panels
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))
