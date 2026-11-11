@@ -698,6 +698,69 @@ async function renderStats() {
   const seen = new Set(); stC.s.setData(eq.filter((p) => (seen.has(p.time) ? false : seen.add(p.time)))); stC.timeScale().fitContent();
 }
 
+/* ---------------- friends: leaderboard, challenges, shared trades, suggestions, chat ---------------- */
+let me = null, names = {}, chatSub = null, chatSeen = +(localStorage.getItem("rw-chat-seen") || 0);
+const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000; return s < 60 ? "now" : s < 3600 ? Math.floor(s / 60) + "m" : s < 86400 ? Math.floor(s / 3600) + "h" : Math.floor(s / 86400) + "d"; };
+async function loadMe() {
+  if (DEMO) { me = { user_id: "demo", name: "You", share_stats: true }; names = { demo: "You", b: "Ben", w: "Will" }; return; }
+  const { data } = await sb.from("profiles").select("*"); (data || []).forEach((p) => (names[p.user_id] = p.name || "trader")); me = (data || []).find((p) => p.user_id === user.id);
+  if (!me) { const nm = (user.email || "me").split("@")[0].replace(/[0-9_.]+$/, "") || "me"; const r = await sb.from("profiles").insert({ name: nm }).select().single(); me = r.data || { user_id: user.id, name: nm, share_stats: true }; names[user.id] = me.name; }
+  else sb.from("profiles").update({ seen_at: new Date().toISOString() }).eq("user_id", user.id).then(() => {});
+}
+function ftab(k) { document.querySelectorAll("#ftabs button").forEach((b) => b.classList.toggle("on", b.dataset.f === k)); ["lb", "ch", "sh", "sg"].forEach((x) => $("f-" + x).classList.toggle("hidden", x !== k)); ({ lb: renderLB, ch: renderCh, sh: renderSh, sg: renderSg })[k](); }
+async function lbRows(t0, t1, sy) { if (DEMO) return [{ user_id: "demo", name: "You", trades: mem.trades.length, wins: mem.trades.filter((t) => t.pnl > 0).length, net: mem.trades.reduce((a, t) => a + t.pnl, 0), avg_r: 0.4, best: 406 }, { user_id: "b", name: "Ben", trades: 9, wins: 5, net: 820, avg_r: 0.6, best: 640 }];
+  const { data, error } = await sb.rpc("leaderboard", { t0, t1, sym: sy || null }); if (error) toast(error.message); return data || []; }
+function lbTable(rows) { if (!rows.length) return '<div class="empty">No trades in this range yet</div>'; const medal = ["🥇", "🥈", "🥉"];
+  return `<table class="bt lb"><tr><th></th><th>Trader</th><th>Trades</th><th>Win</th><th>Avg R</th><th>Best trade</th><th>Net</th></tr>${rows.map((r, i) => `<tr class="${me && r.user_id === me.user_id ? "mine" : ""}"><td>${medal[i] || i + 1}</td><td>${esc(r.name)}</td><td>${r.trades}</td><td>${r.trades ? Math.round((100 * r.wins) / r.trades) : 0}%</td><td>${r.avg_r ?? "—"}</td><td>${money(+r.best || 0)}</td><td class="${+r.net >= 0 ? "pos-up" : "pos-dn"}">${money(+r.net)}</td></tr>`).join("")}</table>`; }
+async function renderLB() { const D = +$("lb-range").value, now = Math.floor(Date.now() / 1000); let t0 = 0, t1 = 9999999999;
+  if (D) { const all = await db.allTrades(); const end = all.length ? Math.max(...all.map((t) => t.t_entry)) : now; t0 = end - D * 86400; }
+  $("lb-share").checked = !me || me.share_stats !== false; $("lb-list").innerHTML = lbTable(await lbRows(t0, t1, $("lb-sym").value)); }
+async function renderCh() { let list = [];
+  if (DEMO) list = mem.ch || []; else { const { data } = await sb.from("challenges").select("*").order("created_at", { ascending: false }).limit(30); list = data || []; }
+  const cards = await Promise.all(list.map(async (c) => { const rows = await lbRows(c.start_ts, c.end_ts, c.symbol); const mine = me && rows.some((r) => r.user_id === me.user_id);
+    return `<div class="card chc"><div class="ah"><b>${esc(c.title)}</b><span class="muted tiny">${esc(names[c.user_id] || "")} · ${ago(c.created_at)}</span></div><div class="muted small">${c.symbol} · ${fmt(loc(c.start_ts)).slice(0, 10)} → ${fmt(loc(c.end_ts)).slice(0, 10)} (New York)</div>
+      <div class="row" style="justify-content:flex-start"><button class="small primary" data-take="${c.id}">${mine ? "Replay it again" : "Take this week"}</button>${me && c.user_id === me.user_id ? `<button class="small ghost" data-delch="${c.id}">Delete</button>` : ""}</div>
+      ${mine ? lbTable(rows) : `<div class="tiny muted">${rows.length} friend${rows.length === 1 ? "" : "s"} done. Results unlock after you trade it, so nobody gets spoiled.</div>`}</div>`; }));
+  $("ch-list").innerHTML = cards.join("") || '<div class="empty">No challenges yet. Load a week, then hit the button above.</div>'; $("ch-list").dataset.ids = JSON.stringify(list); }
+async function newChallenge() { if (!nowT()) return toast("Load a replay first, then challenge from the week you're on");
+  const lt = loc(nowT()), wd = new Date(lt * 1000).getUTCDay(), monLt = Math.floor(lt / 86400) * 86400 - ((wd + 6) % 7) * 86400, start = monLt - 6 * 3600 - (loc(nowT()) - nowT()), end = start + 5 * 86400;
+  const title = prompt("Name the challenge", sym + " week of " + fmt(monLt).slice(0, 10)); if (!title) return; const row = { title, symbol: sym, start_ts: start, end_ts: end };
+  if (DEMO) (mem.ch = mem.ch || []).unshift({ id: "c" + Date.now(), user_id: "demo", created_at: new Date().toISOString(), ...row }); else { const { error } = await sb.from("challenges").insert(row); if (error) return toast(error.message); }
+  view("friends"); ftab("ch"); toast("Challenge posted"); }
+async function takeChallenge(c) { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); $("sym").value = c.symbol; $("start").value = fmt(loc(c.start_ts) + 60).replace(" ", "T"); view("trade"); await loadReplay(); }
+async function shareTrade(t) { const note = prompt("Add a note for your friends (optional)", t.notes || ""); if (note === null) return;
+  const snap = { symbol: t.symbol, dir: t.dir, qty: t.qty, entry: t.entry, stop: t.stop, target: t.target, exit: t.exit, r: t.r, pnl: t.pnl, outcome: t.outcome, t_entry: t.t_entry, t_exit: t.t_exit, tags: t.tags || [], shot: t.shots && t.shots[0] };
+  if (DEMO) (mem.sh = mem.sh || []).unshift({ id: "s" + Date.now(), user_id: "demo", trade_id: t.id, snap, note, created_at: new Date().toISOString() }); else { const { error } = await sb.from("shared_trades").insert({ trade_id: t.id, snap, note }); if (error) return toast(error.message); }
+  toast("Shared with the group"); }
+async function renderSh() { let list = [], rt = [];
+  if (DEMO) { list = mem.sh || []; rt = mem.rt || []; } else { const a = await sb.from("shared_trades").select("*").order("created_at", { ascending: false }).limit(40); list = a.data || []; const b = list.length ? await sb.from("ratings").select("*").in("share_id", list.map((x) => x.id)) : { data: [] }; rt = b.data || []; }
+  $("sh-list").innerHTML = list.map((x) => { const t = x.snap, rs = rt.filter((r) => r.share_id === x.id), avg = rs.length ? rs.reduce((a, r) => a + r.stars, 0) / rs.length : 0, mine = rs.find((r) => me && r.user_id === me.user_id);
+    return `<div class="card shc" data-id="${x.id}"><div class="ah"><b>${esc(names[x.user_id] || "trader")}</b><span class="muted tiny">${ago(x.created_at)}</span></div>
+      <div class="shrow"><span class="${t.dir > 0 ? "pos-up" : "pos-dn"}">${t.dir > 0 ? "Long" : "Short"} ${t.qty} ${t.symbol}</span> @ ${px2(t.entry)} → ${px2(t.exit)} · <b class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</b>${t.r != null ? " · " + t.r + "R" : ""} · <span class="muted">${fmt(loc(t.t_entry))} NY</span></div>
+      ${t.tags && t.tags.length ? `<div class="tags">${t.tags.map((g) => `<span class="pill">${esc(g)}</span>`).join("")}</div>` : ""}${x.note ? `<p class="small">"${esc(x.note)}"</p>` : ""}
+      <div class="row" style="justify-content:flex-start;align-items:center"><span class="stars" data-share="${x.id}">${[1, 2, 3, 4, 5].map((n) => `<button class="star ${mine && n <= mine.stars ? "on" : ""}" data-n="${n}">★</button>`).join("")}</span><span class="muted small">${rs.length ? avg.toFixed(1) + " from " + rs.length : "not rated yet"}</span><button class="small ghost" data-replay="${x.id}">Replay this setup</button></div>
+      ${rs.filter((r) => r.note).map((r) => `<div class="small rnote"><b>${esc(names[r.user_id] || "")}</b>: ${esc(r.note)}</div>`).join("")}</div>`; }).join("") || '<div class="empty">Nothing shared yet</div>';
+  $("sh-list").dataset.list = JSON.stringify(list.map((x) => ({ id: x.id, snap: x.snap }))); }
+async function rateShare(id, n) { const note = prompt("Leave a note with your " + n + "★ (optional)", "") ?? ""; const row = { share_id: id, stars: n, note };
+  if (DEMO) { mem.rt = (mem.rt || []).filter((r) => !(r.share_id === id && r.user_id === "demo")); mem.rt.push({ ...row, user_id: "demo" }); } else { const { error } = await sb.from("ratings").upsert(row, { onConflict: "share_id,user_id" }); if (error) return toast(error.message); }
+  renderSh(); }
+async function renderSg() { let list = []; if (DEMO) list = mem.sg || []; else { const { data } = await sb.from("suggestions").select("*").limit(200); list = data || []; }
+  list.sort((a, b) => (b.votes || []).length - (a.votes || []).length || Date.parse(b.created_at) - Date.parse(a.created_at)); const uid = me && me.user_id;
+  $("sg-list").innerHTML = list.map((x) => `<div class="card sgc"><button class="vote ${(x.votes || []).includes(uid) ? "on" : ""}" data-vote="${x.id}">▲ ${(x.votes || []).length}</button><div class="sgb"><div>${esc(x.body)}</div><div class="tiny muted">${esc(names[x.user_id] || "")} · ${ago(x.created_at)} · <span class="pill ${x.status === "done" ? "up" : ""}">${x.status}</span></div></div>
+    ${isAdmin ? `<select data-st="${x.id}">${["new", "planned", "building", "done", "no"].map((s) => `<option ${s === x.status ? "selected" : ""}>${s}</option>`).join("")}</select>` : ""}</div>`).join("") || '<div class="empty">No ideas yet. Be the first.</div>'; }
+async function addSg() { const b = $("sg-text").value.trim(); if (b.length < 3) return; if (DEMO) (mem.sg = mem.sg || []).push({ id: "g" + Date.now(), user_id: "demo", body: b, status: "new", votes: [], created_at: new Date().toISOString() }); else { const { error } = await sb.from("suggestions").insert({ body: b }); if (error) return toast(error.message); } $("sg-text").value = ""; renderSg(); }
+function chatRow(m) { const mine = me && m.user_id === me.user_id; return `<div class="cm ${mine ? "mine" : ""}"><span class="cn">${esc(names[m.user_id] || "trader")}</span><span class="cb">${esc(m.body)}</span><span class="ct">${new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span></div>`; }
+async function initChat() { let list = [];
+  if (DEMO) list = mem.msgs || (mem.msgs = [{ id: 1, user_id: "b", body: "who's backtesting tonight", created_at: new Date(Date.now() - 6e5).toISOString() }]);
+  else { const { data } = await sb.from("messages").select("*").eq("room", "lobby").order("created_at", { ascending: false }).limit(100); list = (data || []).reverse();
+    if (!chatSub) chatSub = sb.channel("lobby").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "room=eq.lobby" }, (pl) => addChat(pl.new)).subscribe(); }
+  $("chat").innerHTML = list.map(chatRow).join(""); $("chat").scrollTop = 1e9; const lastT = list.length ? Date.parse(list[list.length - 1].created_at) : 0; $("chatdot").classList.toggle("hidden", !(lastT > chatSeen && list[list.length - 1].user_id !== (me && me.user_id))); }
+function addChat(m) { if ($("chat").querySelector(`[data-mid="${m.id}"]`)) return; const d = document.createElement("div"); d.innerHTML = chatRow(m); d.firstChild.dataset.mid = m.id; $("chat").appendChild(d.firstChild); $("chat").scrollTop = 1e9;
+  if (!me || m.user_id !== me.user_id) { if ($("v-friends").classList.contains("hidden")) $("chatdot").classList.remove("hidden"); sfx("click"); } }
+async function sendChat() { const b = $("chat-in").value.trim(); if (!b) return; $("chat-in").value = "";
+  if (DEMO) { const m = { id: Date.now(), user_id: "demo", body: b, created_at: new Date().toISOString() }; mem.msgs.push(m); addChat(m); return; } const { data, error } = await sb.from("messages").insert({ body: b }).select().single(); if (error) return toast(error.message); addChat(data); }
+
 /* ---------------- journal ---------------- */
 let eqC, eqS, jT = [];
 async function loadJournal() {
@@ -708,7 +771,7 @@ async function loadJournal() {
   $("stats").innerHTML = box("Trades", n) + box("Win rate", n ? Math.round((100 * w.length) / n) + "%" : "—") + box("Avg R", avgR.toFixed(2)) + box("Profit factor", gl ? (gp / gl).toFixed(2) : "—") + box("Net P&L", money(gp - gl)) + box("Max drawdown", money(-mdd)) + box("Avg win", w.length ? money(gp / w.length) : "—") + box("Avg loss", l.length ? money(-gl / l.length) : "—");
   if (!eqC) { eqC = LightweightCharts.createChart($("eqchart"), { layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, timeScale: { visible: false }, autoSize: true }); eqS = eqC.addAreaSeries({ lineColor: "#5ee6b8", topColor: "rgba(94,230,184,.25)", bottomColor: "rgba(94,230,184,0)", lineWidth: 2 }); }
   eqS.setData(eq); eqC.timeScale().fitContent();
-  $("jrows").innerHTML = jT.slice().reverse().map((t) => `<tr data-id="${t.id}"><td>${fmt(loc(t.t_entry))}</td><td>${t.symbol}</td><td>${t.dir > 0 ? "Long" : "Short"}</td><td>${t.qty}</td><td>${px2(t.entry)}</td><td>${px2(t.exit)}</td><td>${t.r ?? "—"}</td><td class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</td><td><input class="note" value="${(t.notes || "").replace(/"/g, "&quot;")}" placeholder="add a note"></td><td>${t.shots && t.shots.length ? '<a href="#" class="shotlink">📷</a>' : ""}${t.notion_page ? " N" : ""}</td></tr>`).join("");
+  $("jrows").innerHTML = jT.slice().reverse().map((t) => `<tr data-id="${t.id}"><td>${fmt(loc(t.t_entry))}</td><td>${t.symbol}</td><td>${t.dir > 0 ? "Long" : "Short"}</td><td>${t.qty}</td><td>${px2(t.entry)}</td><td>${px2(t.exit)}</td><td>${t.r ?? "—"}</td><td class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</td><td><input class="note" value="${(t.notes || "").replace(/"/g, "&quot;")}" placeholder="add a note"></td><td>${t.shots && t.shots.length ? '<a href="#" class="shotlink">📷</a>' : ""}${t.notion_page ? " N" : ""} <button class="small ghost sharebtn" title="Share with friends">⤴</button></td></tr>`).join("");
 }
 function exportCsv() {
   const h = ["date_ny", "symbol", "side", "qty", "entry", "stop", "target", "exit", "r", "pnl", "fees", "outcome", "notes"];
@@ -733,6 +796,7 @@ async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("p
 function savePrefs() { if (!DEMO && user) sb.from("prefs").upsert({ user_id: user.id, data: prefs, updated_at: new Date().toISOString() }).then(() => {}); }
 const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", joinask: "Join ask", reverse: "Reverse", flatten: "Flatten all", cancel: "Cancel all", close: "Close all", trend: "Trend line", hline: "Horizontal line", vline: "Vertical line", rect: "Zone", long: "Long position", short: "Short position", measure: "Measure" };
 function fillSettings() {
+  if ($("s-name")) $("s-name").value = (me && me.name) || "";
   if ($("s-sound")) { $("s-sound").checked = prefs.sound !== false; $("s-vol").value = prefs.vol ?? 60; $("s-hap").checked = prefs.haptics !== false; $("s-splash").checked = prefs.splash !== false; }
   $("s-bal").value = prefs.bal; $("s-dll").value = prefs.dll; $("s-ptg").value = prefs.ptg; $("s-act").value = prefs.act; $("s-mdd").value = prefs.mdd; $("s-fee").value = prefs.fee; $("s-mfee").value = prefs.mfee;
   $("s-opens").checked = !!prefs.opens; $("s-sess").checked = !!prefs.sess; $("s-up").value = prefs.up; $("s-dn").value = prefs.dn; $("sym").value = prefs.sym; $("o-sl").value = prefs.slPts; $("o-tp").value = prefs.tpPts;
@@ -742,6 +806,7 @@ function fillSettings() {
 function saveSettings() {
   Object.assign(prefs, { bal: +$("s-bal").value, dll: +$("s-dll").value, ptg: +$("s-ptg").value, act: $("s-act").value, mdd: +$("s-mdd").value, fee: +$("s-fee").value, mfee: +$("s-mfee").value, opens: $("s-opens").checked, sess: $("s-sess").checked, up: $("s-up").value, dn: $("s-dn").value });
   document.querySelectorAll("[data-key]").forEach((i) => (prefs.keys[i.dataset.key] = i.value.toLowerCase()));
+  const nm = $("s-name").value.trim(); if (me && nm && nm !== me.name) { me.name = nm; names[me.user_id] = nm; if (!DEMO) sb.from("profiles").update({ name: nm }).eq("user_id", me.user_id).then(() => {}); }
   Object.assign(prefs, { sound: $("s-sound").checked, vol: +$("s-vol").value, haptics: $("s-hap").checked, splash: $("s-splash").checked }); sfx("fill");
   if (acct) { acct.rules = { ...(acct.rules || {}), mdd: prefs.mdd, dll: prefs.dll, ptg: prefs.ptg }; db.updAccount(acct.id, { rules: acct.rules }).catch(() => {}); }
   panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: prefs.up, wickDownColor: prefs.dn })); savePrefs(); drawOpens(); repaintAll(); refresh(); $("s-msg").textContent = "Saved";
@@ -756,7 +821,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "accounts") renderAccts(); if (v === "admin") loadAdmin(); if (v === "settings") notionUI(); }
+function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "friends") { ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") renderAccts(); if (v === "admin") loadAdmin(); if (v === "settings") notionUI(); }
 function layMenu() { $("laymenu").innerHTML = Object.entries(LAYOUTS).map(([k, [c, r]]) => `<button class="lay ${k === prefs.layout ? "on" : ""}" data-lay="${k}"><i style="grid-template-columns:repeat(${c},1fr);grid-template-rows:repeat(${r},1fr)">${"<b></b>".repeat(c * r)}</i>${c * r} chart${c * r > 1 ? "s" : ""}${k === "2h" ? " ↕" : ""}</button>`).join(""); }
 function splash() { const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><span class="sp-logo">⟲</span><span class="sp-name">Rewind</span></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 900); setTimeout(() => s.remove(), 1400); }
 if (prefs.splash !== false) splash();
@@ -774,7 +839,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  await loadAccts().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales);
+  await loadAccts().catch(() => {}); await loadMe().catch(() => {}); initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales);
   if (!$("start").value) $("start").value = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) notionUI().catch(() => {});
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
@@ -813,6 +878,18 @@ $("acctpill").onclick = acctMenu; $("ac-new").onclick = () => acctDlg(null);
 $("ac-list").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const id = b.dataset.use || b.dataset.edit || b.dataset.arch, a = accts.find((x) => x.id === id); if (!a) return;
   if (b.dataset.use) { pickAcct(id); renderAccts(); } else if (b.dataset.edit) acctDlg(a); else if (confirm("Archive " + a.name + "? Its trades stay in your journal.")) db.updAccount(id, { archived: true }).then(() => { accts = accts.filter((x) => x.id !== id); if (acct && acct.id === id) pickAcct(null); renderAccts(); }); };
 ["st-acct", "st-sym", "st-range"].forEach((k) => ($(k).onchange = () => { if (k === "st-acct") { prefs.stAcct = $(k).value; savePrefs(); } renderStats(); }));
+$("ftabs").onclick = (e) => { const b = e.target.closest("[data-f]"); if (b) ftab(b.dataset.f); };
+["lb-range", "lb-sym"].forEach((k) => ($(k).onchange = renderLB));
+$("lb-share").onchange = async () => { if (!me) return; me.share_stats = $("lb-share").checked; if (!DEMO) await sb.from("profiles").update({ share_stats: me.share_stats }).eq("user_id", me.user_id); renderLB(); };
+$("ch-new").onclick = newChallenge;
+$("ch-list").onclick = async (e) => { const list = JSON.parse($("ch-list").dataset.ids || "[]"), b = e.target.closest("button"); if (!b) return; const c = list.find((x) => x.id === (b.dataset.take || b.dataset.delch)); if (!c) return;
+  if (b.dataset.take) takeChallenge(c); else if (confirm("Delete this challenge?")) { if (DEMO) mem.ch = mem.ch.filter((x) => x.id !== c.id); else await sb.from("challenges").delete().eq("id", c.id); renderCh(); } };
+$("sh-list").onclick = (e) => { const st = e.target.closest(".star"); if (st) return rateShare(st.closest(".stars").dataset.share, +st.dataset.n); const rb = e.target.closest("[data-replay]");
+  if (rb) { const x = JSON.parse($("sh-list").dataset.list).find((z) => z.id === rb.dataset.replay); if (x) takeChallenge({ symbol: x.snap.symbol, start_ts: x.snap.t_entry - 3600 }); } };
+$("sg-add").onclick = addSg; $("sg-text").onkeydown = (e) => { if (e.key === "Enter") addSg(); };
+$("sg-list").onclick = async (e) => { const b = e.target.closest("[data-vote]"); if (!b) return; if (DEMO) { const x = mem.sg.find((z) => z.id === b.dataset.vote); x.votes = x.votes.includes("demo") ? [] : ["demo"]; } else { const { error } = await sb.rpc("vote_suggestion", { sid: b.dataset.vote }); if (error) toast(error.message); } renderSg(); };
+$("sg-list").onchange = async (e) => { const id = e.target.dataset.st; if (id && !DEMO) { await sb.from("suggestions").update({ status: e.target.value }).eq("id", id); renderSg(); } };
+$("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
 $("dockbtn").onclick = () => { prefs.dockClosed = !prefs.dockClosed; savePrefs(); dockUI(); };
 $("tfbar").onclick = (e) => { const b = e.target.closest(".tf"); if (b) setPaneTf(active, b.dataset.tf); };
 $("ranges").onclick = (e) => { const b = e.target.closest("[data-r]"); if (b) showRange(+b.dataset.r); };
@@ -841,6 +918,7 @@ $("b-ord").onclick = (e) => { const c = +e.target.dataset.c; if (c) { const o = 
 $("s-save").onclick = saveSettings; $("j-sym").onchange = loadJournal; $("j-csv").onclick = exportCsv;
 $("j-notion").onclick = async () => { $("j-msg").textContent = "Syncing…"; try { const r = await notion("sync"); $("j-msg").textContent = "Sent " + r.synced + " trades to Notion"; loadJournal(); } catch (e) { $("j-msg").textContent = e.message; } };
 $("jrows").addEventListener("change", (e) => { if (e.target.classList.contains("note")) db.note(e.target.closest("tr").dataset.id, e.target.value); });
+$("jrows").addEventListener("click", (e) => { if (!e.target.classList.contains("sharebtn")) return; const t = jT.find((x) => x.id === e.target.closest("tr").dataset.id); if (t) shareTrade(t); });
 $("jrows").addEventListener("click", async (e) => { if (!e.target.classList.contains("shotlink")) return; e.preventDefault(); const t = jT.find((x) => x.id === e.target.closest("tr").dataset.id); const { data } = await sb.storage.from("shots").createSignedUrl(t.shots[0], 300); if (data) window.open(data.signedUrl, "_blank"); });
 $("n-oauth").onclick = async () => { try { const r = await notion("oauth_url"); location.href = r.url; } catch (e) { nmsg(e.message); } };
 $("n-save").onclick = async () => { nmsg("Checking token…"); try { await notion("save_token", { token: $("n-token").value }); $("n-token").value = ""; nmsg(""); notionUI(); } catch (e) { nmsg(e.message); } };

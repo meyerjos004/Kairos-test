@@ -30,6 +30,7 @@
     <button data-view="journal" class="ri vtab" title="Journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M5 16a4 4 0 0 1 4-4h10"/></svg></button>
     <button data-view="stats" class="ri vtab" title="Stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M6 15l4-5 3 3 5-7"/><circle cx="18" cy="6" r="1.2"/></svg></button>
     <button data-view="accounts" class="ri vtab" title="Accounts (portfolio)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M3.5 10h17M7 15h4"/></svg></button>
+    <button data-view="friends" class="ri vtab" title="Friends: leaderboard, challenges, shared trades, chat" id="vt-friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M2.5 19a5.5 5.5 0 0 1 11 0M14 19a4.5 4.5 0 0 1 7.5-3.3"/></svg><i class="dot hidden" id="chatdot"></i></button>
     <button data-view="settings" class="ri vtab" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <button data-view="admin" class="ri vtab hidden" id="vt-admin" title="Admin: invites, features, data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg></button>
     <div class="rsp"></div>
@@ -161,6 +162,8 @@
         <label class="ck"><input id="s-opens" type="checkbox" checked> Key opens (18:00, midnight, 9:30, 10:00)</label>
         <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label>
         <div class="row2"><label>Up candle<input id="s-up" type="color" value="#2bd4a0"></label><label>Down candle<input id="s-dn" type="color" value="#ff6b7a"></label></div>
+        <h3>You</h3>
+        <label>Display name (friends see this)<input id="s-name" maxlength="24"></label>
         <h3>Feel</h3>
         <label class="ck"><input id="s-sound" type="checkbox" checked> Sounds (fills, wins, losses)</label>
         <label>Sound volume<input id="s-vol" type="range" min="0" max="100" value="60"></label>
@@ -202,6 +205,19 @@
   <section id="v-accounts" class="view hidden scroll">
     <div class="toolbar"><h2 class="vh">Accounts</h2><button id="ac-new" class="primary small">New account</button><span class="muted small">Each account has its own balance, rules and history. Trades go to the account selected at the top.</span></div>
     <div class="acards" id="ac-list"></div>
+  </section>
+
+  <section id="v-friends" class="view hidden">
+    <div class="fwrap">
+      <div class="fmain scroll">
+        <div class="toolbar"><h2 class="vh">Friends</h2><div class="seg" id="ftabs"><button data-f="lb" class="on">Leaderboard</button><button data-f="ch">Same-week challenges</button><button data-f="sh">Shared trades</button><button data-f="sg">Suggestions</button></div></div>
+        <div id="f-lb" class="fpanel"><div class="toolbar"><select id="lb-range"><option value="0">All time</option><option value="7">Last 7 days (replay dates)</option><option value="30">Last 30 days</option></select><select id="lb-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select><label class="ck small"><input id="lb-share" type="checkbox" checked> Show my stats to friends</label></div><div class="card" id="lb-list"></div><p class="tiny muted" style="margin:0 16px">Only totals are shared (trades, win rate, net, average R). Your individual trades stay private unless you share one.</p></div>
+        <div id="f-ch" class="fpanel hidden"><div class="toolbar"><button id="ch-new" class="primary small">Challenge friends with the week I'm on</button><span class="muted small">Everyone replays the same week, at their own pace. Results show after.</span></div><div id="ch-list"></div></div>
+        <div id="f-sh" class="fpanel hidden"><div class="toolbar"><span class="muted small">Share a trade from the Journal (the ⤴ button). Friends can rate it 1-5 and leave notes.</span></div><div id="sh-list"></div></div>
+        <div id="f-sg" class="fpanel hidden"><div class="toolbar sgadd"><input id="sg-text" placeholder="Idea for the app…"><button id="sg-add" class="primary small">Suggest</button></div><div id="sg-list"></div></div>
+      </div>
+      <aside class="fchat"><div class="fch-h">Chat <span class="muted tiny" id="ch-online"></span></div><div class="fch-list" id="chat"></div><div class="fch-in"><input id="chat-in" placeholder="Message the group…" maxlength="1000"><button id="chat-send" class="primary small">Send</button></div></aside>
+    </div>
   </section>
 
   <section id="v-admin" class="view hidden scroll">
