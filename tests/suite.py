@@ -12,6 +12,8 @@ async def main():
             u=r.request.url
             if "lightweight-charts" in u: return await r.fulfill(body=LC, content_type="application/javascript")
             if "supabase-js" in u: return await r.fulfill(body=SB, content_type="application/javascript")
+            if "/motion@" in u: return await r.fulfill(body=open("/home/claude/shot/node_modules/motion/dist/motion.js").read(), content_type="application/javascript")
+            if "/animejs@" in u: return await r.fulfill(body=open("/home/claude/shot/node_modules/animejs/dist/bundles/anime.umd.min.js").read(), content_type="application/javascript")
             if u.startswith("http://rw/"):
                 f=u[len("http://rw/"):].split("?")[0] or "index.html"; ct={"js":"application/javascript","css":"text/css","svg":"image/svg+xml","json":"application/json"}.get(f.split(".")[-1],"text/html")
                 return await r.fulfill(body=open(ROOT+"/"+f,"rb").read(), content_type=ct)
@@ -75,6 +77,9 @@ async def main():
         await pg.click('[data-view="trade"]')
         async with pg.expect_download() as dl2: await pg.click("#shotbtn")
         d2 = await dl2.value; check("chart screenshot downloads", d2.suggested_filename.endswith(".png"))
+        check("motion + anime loaded", await E("!!(window.Motion && Motion.animate && window.anime && anime.animate)"))
+        await pg.click('[data-view="stats"]'); await pg.wait_for_timeout(1200); check("stats count-up settles to real text", await E("[...document.querySelectorAll('#st-kpi b')].every(b=>b.textContent.length>0)"))
+        await pg.screenshot(path="/home/claude/shot/v5-stats.png")
         # v0.5: chat + fix box
         await E("showView && showView('friends')") if await E("typeof showView==='function'") else await pg.click('[data-view="friends"]')
         await pg.wait_for_timeout(300); n0 = await E("document.querySelectorAll('#chat .cm').length")

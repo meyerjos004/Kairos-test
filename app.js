@@ -1063,6 +1063,22 @@ async function boot() {
 $("a-in").onclick = async () => { const { error } = await sb.auth.signInWithPassword({ email: $("a-email").value.trim(), password: $("a-pass").value }); $("a-msg").textContent = error ? error.message : ""; if (!error) boot(); };
 $("a-up").onclick = async () => { const { data, error } = await sb.auth.signUp({ email: $("a-email").value.trim(), password: $("a-pass").value, options: { emailRedirectTo: location.origin + location.pathname } }); $("a-msg").textContent = error ? error.message : data.session ? "" : "Check your email to confirm, then sign in here."; if (data && data.session) boot(); };
 $("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); }; $("lockbtn").onclick = lockDlg;
+
+/* ---------------- motion polish (Motion.dev springs + Anime.js count-ups; both optional, app works without them) ---------------- */
+const FX = {
+  ok: () => !matchMedia("(prefers-reduced-motion: reduce)").matches,
+  spring(el, from = { opacity: [0, 1], y: [10, 0] }, o = {}) { try { if (el && window.Motion && FX.ok()) Motion.animate(el, from, { type: "spring", bounce: 0.22, duration: 0.45, ...o }); } catch (e) {} },
+  pop(el) { FX.spring(el, { opacity: [0, 1], scale: [0.94, 1] }, { bounce: 0.3, duration: 0.4 }); },
+  stagger(els) { try { if (window.Motion && FX.ok() && els.length) Motion.animate(els, { opacity: [0, 1], y: [8, 0] }, { delay: Motion.stagger(0.03), type: "spring", bounce: 0.2, duration: 0.4 }); } catch (e) {} },
+  count(el) { try { if (!window.anime || !FX.ok() || !el) return; const txt = el.textContent, m = txt.match(/-?[\d,]*\.?\d+/); if (!m) return;
+    const end = parseFloat(m[0].replace(/,/g, "")), dec = (m[0].split(".")[1] || "").length, pre = txt.slice(0, m.index), post = txt.slice(m.index + m[0].length), o = { v: 0 };
+    anime.animate(o, { v: end, duration: 700, ease: "outExpo", onUpdate: () => { el.textContent = pre + o.v.toLocaleString(undefined, { minimumFractionDigits: dec, maximumFractionDigits: dec }) + post; }, onComplete: () => { el.textContent = txt; } }); } catch (e) { } },
+};
+{ const _view = view; view = function (v) { _view(v); const el = $("v-" + v); if (el) FX.spring(el, { opacity: [0.4, 1], y: [6, 0] }, { duration: 0.35 }); };
+  const _rs = renderStats; renderStats = async function () { await _rs.apply(this, arguments); document.querySelectorAll("#st-kpi b").forEach(FX.count); FX.stagger([...document.querySelectorAll("#st-kpi > div")]); };
+  const _dlg = dlg; dlg = function () { const r = _dlg.apply(this, arguments); FX.pop($("dlgbox")); return r; };
+  const _toast = toast; toast = function (m) { _toast(m); if (m) FX.spring($("toast"), { opacity: [0, 1], y: [16, 0] }, { bounce: 0.35 }); };
+  const _sp = splash; splash = function () { _sp(); const l = document.querySelector(".splash .sp-in"); if (l && window.anime && FX.ok()) try { anime.animate(l, { scale: [0.8, 1], opacity: [0, 1], rotate: ["-8deg", "0deg"], duration: 700, ease: "outElastic(1, .6)" }); } catch (e) {} }; }
 document.querySelectorAll(".vtab[data-view]").forEach((b) => (b.onclick = () => view(b.dataset.view)));
 $("go").onclick = () => { blind = null; blindUI(); loadReplay(); }; $("play").onclick = play; $("step").onclick = () => { pause(); $("stepsz").value === "candle" ? stepCandle() : stepFwd(); };
 $("blindbtn").onclick = () => { if (blind) { const d = blind.day; blind = null; blindUI(); toast("It was " + new Date(d + "T12:00:00Z").toUTCString().slice(0, 16)); } else mysteryDay(); }; $("back").onclick = () => { pause(); stepBack(); };
