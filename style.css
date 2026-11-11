@@ -189,3 +189,13 @@ button,.tool,.tf,.ri{transition:background .16s var(--ease),color .16s var(--eas
 .themes{display:flex;flex-wrap:wrap;gap:8px}.th{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;padding:6px 8px}.th.on{border-color:var(--acc);color:var(--acc)}.th i{display:flex;gap:3px;align-items:flex-end;justify-content:center;width:46px;height:28px;border-radius:6px;padding:4px}.th i b{width:8px;height:12px;border-radius:2px}.th i b+b{height:18px}
 button.primary{background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 85%,#fff),var(--acc));color:#04140e}
 .mbar label input[type=range]{width:64px!important;display:inline-block!important;margin:0 0 0 4px!important}.media{width:400px}.mt button{padding:4px 7px}
+/* phone layout (v0.4) */
+@media (max-width:900px){
+  #app{flex-direction:column;height:auto;min-height:100vh}.rail{flex-direction:row;width:100%;height:50px;padding:0 6px;overflow-x:auto;position:sticky;top:0;z-index:50}.rlogo{margin:0 6px 0 0}.rsp{flex:1}
+  .main{min-height:0}header.top{flex-wrap:wrap;height:auto;padding:8px;gap:8px 12px}.replay{margin-left:0;width:100%;flex-wrap:wrap}.replay input[type=datetime-local]{flex:1;width:auto}
+  .view{height:auto;min-height:0}#v-trade{display:flex;flex-direction:column}.tbar{overflow-x:auto;height:44px;flex:none}.tbar::-webkit-scrollbar{display:none}
+  .work{flex-direction:column;flex:none}.tools{flex-direction:row;width:100%;height:42px;overflow-x:auto;border-right:none;border-bottom:1px solid var(--line);padding:0 6px}.tgrip{display:none}.tsep{width:6px;height:auto}
+  .charts{flex:none;height:62vh;min-height:320px}.side{width:100%;border-left:none;border-top:1px solid var(--line)}.cfoot{overflow-x:auto;white-space:nowrap;padding:0 8px}
+  .pad{left:8px!important;right:8px!important;width:auto!important;top:auto!important;bottom:10px!important}.favbar{display:none!important}.media{left:8px!important;right:8px!important;width:auto!important;top:auto!important;bottom:150px!important}
+  .qzbar{width:auto;left:8px;right:8px;transform:none;top:auto;bottom:160px}.bbody{max-height:40vh}.fchat{height:420px}
+}
