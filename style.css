@@ -3,9 +3,9 @@
   --bg:#08090c;--bg2:#0d0f14;--panel:#0e1116;--panel2:#12161d;--line:rgba(255,255,255,.07);--glass:rgba(22,27,36,.62);--glass2:rgba(30,37,49,.72);--edge:rgba(255,255,255,.06);--edge-hi:rgba(255,255,255,.08);
   --txt:#e6eaf0;--mut:#8590a2;--mut2:#5c6677;--acc:#5ee6b8;--acc2:#7aa7ff;--up:#2bd4a0;--dn:#ff6b7a;--warn:#ffc65c;
   --r:12px;--r2:9px;--spring:cubic-bezier(.22,1.2,.36,1);--ease:cubic-bezier(.25,.8,.25,1);
-  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;--body:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  --display:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;--body:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:"Inter",-apple-system,"Segoe UI",sans-serif;
 }
-*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font:13px/1.4 var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}html{color-scheme:dark}html,body{font-variant-numeric:tabular-nums;letter-spacing:-.005em;margin:0;height:100%;background:var(--bg);color:var(--txt);font:13px/1.4 var(--body);overflow:hidden;-webkit-font-smoothing:antialiased}
 .aurora{position:fixed;inset:-20%;z-index:-1;background:radial-gradient(40% 35% at 15% 10%,rgba(94,230,184,.07),transparent 70%),radial-gradient(35% 30% at 85% 20%,rgba(122,167,255,.07),transparent 70%),radial-gradient(50% 40% at 50% 110%,rgba(94,230,184,.05),transparent 70%);filter:blur(20px)}
 .glass{background:var(--glass);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border:1px solid var(--edge);box-shadow:inset 0 1px 0 var(--edge-hi),0 10px 30px rgba(0,0,0,.25)}
 button,input,select{font:inherit;color:var(--txt);background:rgba(255,255,255,.04);border:1px solid var(--edge);border-radius:var(--r2);padding:6px 10px;transition:background .18s var(--ease),border-color .18s var(--ease),transform .18s var(--spring),box-shadow .18s var(--ease)}
@@ -220,3 +220,8 @@ body.blind #start{color:transparent;text-shadow:none}body.blind #start::-webkit-
 .chips{display:flex;flex-wrap:wrap;gap:6px 14px;margin:6px 0 4px}
 .prow3{display:flex;gap:3px;margin-top:5px}.prow3 button{flex:1 1 0;font-size:10.5px;padding:3px 2px;min-width:0;white-space:nowrap}.prow3 button.hidden{display:none}
 #s-speed{margin:4px 0}
+
+/* fix 19: dark dropdowns everywhere (native list too) */
+select{background-color:var(--panel,#0e1116);color:var(--txt);border:1px solid var(--edge,rgba(255,255,255,.08))}
+select option,select optgroup{background:#10141b;color:#e6eaf0}
+.tip{position:fixed;z-index:9999;pointer-events:none;max-width:280px;padding:6px 10px;border-radius:8px;background:rgba(14,17,23,.96);border:1px solid rgba(255,255,255,.1);color:#e6eaf0;font:500 12px/1.35 var(--body);box-shadow:0 8px 24px rgba(0,0,0,.45);opacity:0;transform:translateY(3px);transition:opacity .14s,transform .14s}.tip.on{opacity:1;transform:none}
