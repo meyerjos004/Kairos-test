@@ -221,7 +221,7 @@ function watchScales() {
     if (sig !== p.sig) { p.sig = sig; paint(p); } }
   requestAnimationFrame(watchScales);
 }
-function rebuildAll() { panes.forEach(rebuildPane); drawOpens(); drawOrders(); refresh(); }
+function rebuildAll() { if (blind) panes.forEach((p) => p.chart.applyOptions({ timeScale: { tickMarkFormatter: (t) => new Date(t * 1000).toISOString().slice(11, 16) }, localization: { timeFormatter: (t) => new Date(t * 1000).toISOString().slice(11, 16) } })); panes.forEach(rebuildPane); drawOpens(); drawOrders(); refresh(); }
 function setLayout(k) {
   prefs.layout = k; savePrefs(); $("laymenu").classList.add("hidden");
   const had = B["1m"].bars.length; buildPanes(); if (had) (need15 ? ensure15() : Promise.resolve()).then(() => { rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); });
@@ -548,6 +548,7 @@ function chartMenu(p, x, y, cx, cy) {
   menu([{ h: `${sym} @ ${px2(pr)} · ${q} lot${q > 1 ? "s" : ""}` },
     { t: above ? `Sell limit @ ${px2(pr)}` : `Buy limit @ ${px2(pr)}`, c: above ? "s" : "b", f: () => place(above ? -1 : 1, "limit", pr, q, br) },
     { t: above ? `Buy stop @ ${px2(pr)}` : `Sell stop @ ${px2(pr)}`, c: above ? "b" : "s", f: () => place(above ? 1 : -1, "stop", pr, q, br) },
+    { t: "Start the replay from this candle", f: () => { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); $("start").value = fmt(t + 60).replace(" ", "T"); loadReplay(); } },
     "-", { t: "Long position here", c: "b", k: prefs.keys.long.toUpperCase(), f: () => { newDrawing("long", p, { t, p: pr }); repaintAll(); } },
     { t: "Short position here", c: "s", k: prefs.keys.short.toUpperCase(), f: () => { newDrawing("short", p, { t, p: pr }); repaintAll(); } },
     { t: "Horizontal line here", k: prefs.keys.hline.toUpperCase(), f: () => { newDrawing("hline", p, { t, p: pr }); repaintAll(); } },
@@ -610,7 +611,7 @@ function refresh() {
   $("b-acct").innerHTML = `<table class="bt"><tr><th>Account</th><th>Start</th><th>Balance</th><th>RP&amp;L today</th><th>UP&amp;L</th><th>Drawdown left</th><th>Daily loss limit</th><th>Status</th></tr><tr><td>${$("acctname").textContent}</td><td>${money(sess ? +sess.account_start : prefs.bal)}</td><td>${money(bal)}</td><td class="${cls(rp)}">${money(rp)}</td><td class="${cls(op)}">${money(op)}</td><td>${$("ddl").textContent}</td><td>${prefs.dll ? money(prefs.dll) : "off"}</td><td>${$("status").textContent}</td></tr></table>`;
   $("pbid").textContent = lp != null ? px2(lp) : "—"; $("pask").textContent = lp != null ? px2(lp + TICK) : "—"; $("padsym").textContent = sym;
   $("padpos").innerHTML = pos.qty ? `<span class="${cls(pos.qty)}">${pos.qty > 0 ? "LONG" : "SHORT"} ${Math.abs(pos.qty)}</span> @ ${px2(pos.avg)} · <span class="${cls(op)}">${money(op)}</span>` : "Flat";
-  $("clock").textContent = nowT() ? fmt(loc(nowT())) + " NY" : "—";
+  $("clock").textContent = nowT() ? (blind ? "Mystery day · " + fmt(loc(nowT())).slice(11) : fmt(loc(nowT()))) + " NY" : "—";
   $("sb-br").textContent = prefs.autoBr ? `SL ${prefs.slPts} / TP ${prefs.tpPts} pts` : "off"; $("sb-sz").textContent = prefs.byRisk ? prefs.riskp + "% risk" : prefs.lots + " lot(s)"; $("sb-tr").textContent = prefs.trail ? prefs.trail + " pts" : "off";
   $("b-pos").innerHTML = pos.qty ? `<table class="bt"><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Avg</th><th>Last</th><th>Stop</th><th>Target</th><th>UPL</th><th></th></tr><tr><td>${sym}</td><td class="${cls(pos.qty)}">${pos.qty > 0 ? "Long" : "Short"}</td><td>${Math.abs(pos.qty)}</td><td>${px2(pos.avg)}</td><td>${px2(lp)}</td><td>${px2(pos.sl)}</td><td>${px2(pos.tp)}</td><td class="${cls(op)}">${money(op)}</td><td><button data-a="close">Close</button> <button data-a="rev">Reverse</button> <button data-a="be">BE</button></td></tr></table>` : '<div class="empty">Flat</div>';
   $("b-ord").innerHTML = orders.length ? `<table class="bt"><tr><th>Side</th><th>Type</th><th>Qty</th><th>Price</th><th>Bracket</th><th></th></tr>${orders.map((o) => `<tr><td class="${cls(o.side)}">${o.side > 0 ? "Buy" : "Sell"}</td><td>${o.type}${o.tool ? " (position tool)" : ""}</td><td>${o.qty}</td><td>${px2(o.price)}</td><td>${o.br ? (o.br.slPx != null ? `SL ${px2(o.br.slPx)} / TP ${px2(o.br.tpPx)}` : `SL ${o.br.slPts} / TP ${o.br.tpPts} pts`) : "—"}</td><td><button data-c="${o.id}">Cancel</button></td></tr>`).join("")}</table>` : '<div class="empty">No working orders</div>';
@@ -687,6 +688,19 @@ const THEMES = { midnight: ["Midnight", { "--bg": "#08090c", "--panel": "#0e1116
   mono: ["Mono", { "--bg": "#0a0a0a", "--panel": "#121212", "--acc": "#f2f2f2", "--acc2": "#9a9a9a", "--txt": "#ededed", "--mut": "#8a8a8a", "--line": "rgba(255,255,255,.08)" }] };
 function applyTheme(k) { const t = THEMES[k] || THEMES.midnight; for (const [v, c] of Object.entries(t[1])) document.documentElement.style.setProperty(v, c); prefs.theme = k in THEMES ? k : "midnight";
   if ($("s-themes")) $("s-themes").innerHTML = Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="th ${id === prefs.theme ? "on" : ""}" data-th="${id}"><i style="background:${c["--bg"]};box-shadow:inset 0 0 0 1px ${c["--line"]}"><b style="background:${c["--acc"]}"></b><b style="background:${c["--acc2"]}"></b></i>${nm}</button>`).join(""); }
+
+/* ---------------- mystery day (blind, random) + candle stepping ---------------- */
+let blind = null;
+async function mysteryDay() { if (pos.qty || orders.length) return toast("Close positions and cancel orders first");
+  const a = Date.UTC(2021, 1, 1), z = Date.UTC(2026, 9, 30); let d; for (let i = 0; i < 50; i++) { d = new Date(a + Math.random() * (z - a)); const wd = d.getUTCDay(); if (wd >= 1 && wd <= 5 && !(d.getUTCMonth() === 11 && d.getUTCDate() >= 24) && !(d.getUTCMonth() === 0 && d.getUTCDate() <= 2)) break; }
+  const day = d.toISOString().slice(0, 10); blind = { day }; $("start").value = day + "T08:30"; await loadReplay(); blindUI(); toast("🎲 Mystery day loaded. The date stays hidden until you press Reveal.");
+}
+function blindUI() { const on = !!blind; document.body.classList.toggle("blind", on); $("blindbtn").textContent = on ? "Reveal" : "🎲"; $("blindbtn").title = on ? "Show the date" : "Mystery day: a random day with the date hidden until you finish";
+  panes.forEach((p) => p.chart.applyOptions({ timeScale: { tickMarkFormatter: on ? (t) => new Date(t * 1000).toISOString().slice(11, 16) : undefined }, localization: { timeFormatter: on ? (t) => new Date(t * 1000).toISOString().slice(11, 16) : undefined } })); refresh(); }
+async function stepCandle() {   // play out one whole candle of the selected chart: stop when the next bar would start a new candle
+  const p = panes[active]; if (!p || !p.candles.length) return stepFwd(); const base = p.sec < 60 ? B["15s"] : B["1m"];
+  for (let n = 0; n < 3000; n++) { const g = await stepFwd(false); if (g === false) break; const nx = base.bars[base.i + 1]; if (!nx || bucket(loc(nx.t), p.sec) !== bucket(loc(nowT()), p.sec)) break; }
+  rebuildAll(); }
 
 /* ---------------- first-run tour + help ---------------- */
 const TOUR = [["#start", "Pick a date and time (New York), then hit Load. Or press NY open / Asia open to jump there."], ["#tfbar", "Timeframes for the selected chart. Click a chart to select it; the grid button next to Indicators gives you 1 to 8 charts."],
@@ -1018,7 +1032,8 @@ $("a-in").onclick = async () => { const { error } = await sb.auth.signInWithPass
 $("a-up").onclick = async () => { const { data, error } = await sb.auth.signUp({ email: $("a-email").value.trim(), password: $("a-pass").value, options: { emailRedirectTo: location.origin + location.pathname } }); $("a-msg").textContent = error ? error.message : data.session ? "" : "Check your email to confirm, then sign in here."; if (data && data.session) boot(); };
 $("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); }; $("lockbtn").onclick = lockDlg;
 document.querySelectorAll(".vtab[data-view]").forEach((b) => (b.onclick = () => view(b.dataset.view)));
-$("go").onclick = loadReplay; $("play").onclick = play; $("step").onclick = () => { pause(); stepFwd(); }; $("back").onclick = () => { pause(); stepBack(); };
+$("go").onclick = () => { blind = null; blindUI(); loadReplay(); }; $("play").onclick = play; $("step").onclick = () => { pause(); $("stepsz").value === "candle" ? stepCandle() : stepFwd(); };
+$("blindbtn").onclick = () => { if (blind) { const d = blind.day; blind = null; blindUI(); toast("It was " + new Date(d + "T12:00:00Z").toUTCString().slice(0, 16)); } else mysteryDay(); }; $("back").onclick = () => { pause(); stepBack(); };
 $("laybtn").onclick = () => $("laymenu").classList.toggle("hidden"); $("laymenu").onclick = (e) => { const b = e.target.closest(".lay"); if (b) { setLayout(b.dataset.lay); layMenu(); } };
 document.addEventListener("click", (e) => { const b = e.target.closest("#tools [data-tool], #favbar [data-tool]"); if (b) setTool(b.dataset.tool); });
 $("tools").addEventListener("contextmenu", (e) => { const b = e.target.closest("[data-tool]"); e.preventDefault(); const items = [{ h: "Toolbar" }];
@@ -1119,7 +1134,7 @@ $("ad-list").addEventListener("click", async (e) => { const em = e.target.datase
 $("ad-feat").addEventListener("change", async (e) => { const k = e.target.dataset.feat; if (k) await sb.from("features").update({ enabled: e.target.checked, updated_at: new Date().toISOString() }).eq("key", k); });
 document.addEventListener("keydown", (e) => {
   if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || $("v-trade").classList.contains("hidden") || !$("dlg").classList.contains("hidden")) return; const k = e.key.toLowerCase(), K = prefs.keys;
-  if (e.code === "Space") { e.preventDefault(); play(); } else if (e.key === "ArrowRight") { pause(); stepFwd(); } else if (e.key === "ArrowLeft") { pause(); stepBack(); }
+  if (e.code === "Space") { e.preventDefault(); play(); } else if (e.key === "ArrowRight") { pause(); $("stepsz").value === "candle" ? stepCandle() : stepFwd(); } else if (e.key === "ArrowLeft") { pause(); stepBack(); }
   else if (e.key === "Escape") { setTool("cursor"); sel = null; hideCtx(); repaintAll(); } else if ((e.key === "Delete" || e.key === "Backspace") && sel) { if (sel.state === "armed") disarmTool(sel); drawings = drawings.filter((d) => d !== sel); sel = null; repaintAll(); }
   else if (k === K.buy) market(1); else if (k === K.sell) market(-1); else if (k === K.joinbid) joinBid(); else if (k === K.joinask) joinAsk(); else if (k === K.reverse) reverse(); else if (k === K.flatten) flatten(); else if (k === K.cancel) cancelAll(); else if (k === K.close) closeAll();
   else if (k === K.trend) setTool("trend"); else if (k === K.hline) setTool("hline"); else if (k === K.vline) setTool("vline"); else if (k === K.rect) setTool("rect"); else if (k === K.long) setTool("long"); else if (k === K.short) setTool("short"); else if (k === K.measure) setTool("measure");

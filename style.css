@@ -203,3 +203,5 @@ button.primary{background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 85
 .tour{position:fixed;inset:0;z-index:150}.tour-hole{position:fixed;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.62),0 0 0 2px var(--acc);transition:all .35s var(--spring);pointer-events:none}
 .tour-card{position:fixed;width:340px;padding:14px 16px;border-radius:14px;background:rgba(18,22,29,.97);border:1px solid rgba(255,255,255,.1);box-shadow:0 18px 50px rgba(0,0,0,.5);animation:pop .35s var(--spring) both;transition:left .35s var(--spring),top .35s var(--spring)}.tour-card p{margin:6px 0 10px;font-size:13.5px;line-height:1.5}
 #helpbtn{font:700 15px var(--display)}
+
+body.blind #start{color:transparent;text-shadow:none}body.blind #start::-webkit-datetime-edit{opacity:0}#blindbtn{padding:5px 9px}#stepsz{padding:5px 6px}
