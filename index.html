@@ -69,7 +69,7 @@
       <label class="symsearch" title="Instrument"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><select id="sym"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select></label>
       <div class="tfs" id="tfbar"></div>
       <span class="vsep"></span>
-      <div class="laywrap"><button id="indbtn" data-menu-from="ind" class="tb" title="Indicators"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c3 0 3-14 6-14M7 11h5"/><path d="M14 11l6 8M20 11l-6 8"/></svg> Indicators</button><div id="indmenu" class="menu hidden"></div></div>
+      <div class="laywrap"><button id="indbtn" data-menu-from="ind" class="tb" title="Indicators"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c3 0 3-14 6-14M7 11h5"/><path d="M14 11l6 8M20 11l-6 8"/></svg> Indicators</button><div id="indmenu" class="menu hidden"></div></div><button id="chkbtn" class="tb" title="Strategy checklist: tick your rules before you enter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/></svg> Checklist</button>
       <div class="laywrap"><button id="laybtn" class="ib" title="Chart layout (1 to 8 charts)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button><div id="laymenu" class="menu hidden"></div></div>
       <div class="tsp"></div>
       <button id="mediabtn" class="ib" title="Music and video overlay (Spotify, YouTube, Reese library)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg></button>
@@ -228,6 +228,7 @@
     <div class="stats" id="st-kpi"></div>
     <div id="st-eq" class="card chartcard"></div>
     <div class="grid3"><div class="card"><h4>By hour (New York)</h4><div id="st-hour"></div></div><div class="card"><h4>By weekday</h4><div id="st-wd"></div></div><div class="card"><h4>By confluence tag</h4><div id="st-tag"></div></div></div>
+    <div class="grid3"><div class="card"><h4>By strategy</h4><div id="st-strat"></div></div><div class="card"><h4>Checklist: all rules vs not</h4><div id="st-chk"></div></div><div class="card"><h4>How to use</h4><p class="small muted">Open <b>Checklist</b> on the chart, pick a strategy, tick the rules you actually see before you enter. Each trade is tagged, so these two tables show whether your A+ setups (every rule) really beat the rest.</p></div></div>
     <div class="grid3"><div class="card"><h4>R per trade (spread)</h4><div id="st-rd" class="rdist"></div></div><div class="card"><h4>Rules followed vs broken</h4><div id="st-rule"></div></div><div class="card"><h4>Mistakes and tilt</h4><div id="st-tilt"></div></div></div>
   </section>
 
@@ -307,6 +308,7 @@
 </div>
 <div id="media" class="media hidden"><div class="mbar" id="mgrip"><span class="seg mt"><button data-m="lib">Reese</button><button data-m="yt">YouTube</button><button data-m="sp">Spotify</button></span><span class="tsp"></span><button id="m-big" class="pb" title="Bigger / smaller">⤢</button><label class="tiny muted" title="See-through">◐<input id="m-op" type="range" min="15" max="100" value="100"></label><button id="m-ct" class="pb" title="Click-through: clicks go to the chart underneath">⌖</button><button id="m-x" class="pb" title="Close">×</button></div>
   <div class="mbody"><div id="m-vid" class="mvid hidden"></div><div id="m-lib" class="mp"></div><div id="m-yt" class="mp hidden"></div><div id="m-sp" class="mp hidden"></div></div></div>
+<div id="chk" class="chk glass hidden"></div>
 <div id="dtb" class="dtb hidden"></div>
 <div id="chartset" class="chartset hidden"><div class="csbox glass form"><div class="ah"><b>Chart settings</b><button id="cs-x" class="pb">×</button></div>
   <h3>Symbol</h3><div class="seg" id="cs-sym"><button data-s="NQ">NQ</button><button data-s="ES">ES</button></div>

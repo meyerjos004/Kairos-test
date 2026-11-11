@@ -188,6 +188,15 @@ async def main():
         await E("applyPreset(__z, presetsOf('rect')[0]); repaintAll()"); check("FVG preset applies (color, fill, label)", await E("__z.label==='FVG' && __z.fill===18 && __z.color==='#8b5cf6'"))
         await E("prefs.presetDef={rect:2}"); await E("(()=>{const c=panes[0].candles,n=c.length; window.__z2=newDrawing('rect',panes[0],{t:c[n-9].time,p:c[n-9].close},{t:c[n-3].time,p:c[n-3].close+4})})()")
         check("default preset used for new drawings", await E("__z2.label==='OB'")); await E("prefs.presetDef={}; drawings=[]; repaintAll()")
+        # strategy checklist: tags the trade with strategy + rules met
+        await E("view('trade'); flatten(); prefs.chkShow=true; prefs.stratOn=0; chk=new Set([0,1,2]); chkUI()"); await pg.wait_for_timeout(200)
+        check("checklist shows the strategy's rules", await E("document.querySelectorAll('#chk [data-r]').length===5 && $('chk').innerText.includes('3/5')"))
+        await pg.keyboard.press("b"); await pg.wait_for_timeout(150)
+        check("new trade tagged with strategy + rules met", await E("pos.tags.includes('strat:Reese IFVG') && pos.tags.includes('rules:3/5')"), await E("pos.tags"))
+        await E("flatten()"); await pg.wait_for_timeout(300)
+        check("checklist resets after the trade", await E("chk.size===0"))
+        await E("view('stats')"); await pg.wait_for_timeout(900); check("Stats shows by-strategy table", await E("$('st-strat').innerText.includes('Reese IFVG')"))
+        await E("prefs.chkShow=false; prefs.stratOn=null; chkUI(); view('trade')")
         # media dock: Reese library + Spotify/YouTube sign-in panels
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))

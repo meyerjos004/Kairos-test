@@ -645,10 +645,28 @@ function market(side, qty) { if (!canTrade()) return; qty = qty || (prefs.byRisk
 function joinBid() { if (canTrade()) place(1, "limit", last() - TICK, lotsNow(), autoBr()); }
 function joinAsk() { if (canTrade()) place(-1, "limit", last() + TICK, lotsNow(), autoBr()); }
 function place(side, type, price, qty, br, extra = {}) { if (!canTrade()) return; const o = { id: oid++, side, type, price: rnd(price), qty, br, ...extra }; orders.push(o); snd("place"); drawOrders(); refresh(); return o; }
+/* ---------------- strategy checklist: tick your rules before you enter; every trade gets tagged with the strategy and how many rules it met ---------------- */
+const STRAT_SEED = [{ name: "Reese IFVG", rules: ["Liquidity swept first (session high/low, PDH/PDL or data high/low)", "Clear IFVG on the 1m/5m in the sweep's direction", "ES confirms (SMT or same structure)", "Inside my hours (8:30-11:00 NY)", "Stop beyond the sweep, target the next draw (1:1 or better)"] },
+  { name: "10AM open (Powell)", rules: ["It's the 10:00 candle, not a Friday", "Direction set by the 9:30-10:00 range", "Fixed 4R target, stop at the range", "No red-folder news in the next 15 min"] }];
+let chk = new Set();
+const strats = () => (prefs.strats = prefs.strats && prefs.strats.length ? prefs.strats : STRAT_SEED.map((x) => ({ name: x.name, rules: x.rules.slice() })));
+const curStrat = () => (prefs.stratOn != null ? strats()[prefs.stratOn] : null);
+function stratTags() { const s = curStrat(); if (!s) return []; return ["strat:" + s.name, `rules:${[...chk].filter((i) => i < s.rules.length).length}/${s.rules.length}`]; }
+function chkUI() { const el = $("chk"); el.classList.toggle("hidden", !prefs.chkShow); $("chkbtn").classList.toggle("on", !!prefs.chkShow); if (!prefs.chkShow) return; const S = strats(), s = curStrat(), n = s ? [...chk].filter((i) => i < s.rules.length).length : 0;
+  el.innerHTML = `<div class="ah"><select id="chk-s"><option value="">No strategy</option>${S.map((x, i) => `<option value="${i}" ${prefs.stratOn === i ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select><button class="pb" id="chk-ed" title="Edit strategies">✎</button><button class="pb" id="chk-x" title="Close">×</button></div>
+    ${s ? `<div class="chkl">${s.rules.map((r, i) => `<label class="ck ${chk.has(i) ? "on" : ""}"><input type="checkbox" data-r="${i}" ${chk.has(i) ? "checked" : ""}> ${esc(r)}</label>`).join("")}</div>
+      <div class="chkf"><div class="mxbar"><i style="width:${Math.round((100 * n) / (s.rules.length || 1))}%"></i></div><span class="tiny ${n === s.rules.length ? "pos-up" : "muted"}">${n}/${s.rules.length}${n === s.rules.length ? " · good to go" : ""}</span></div>` : '<div class="tiny muted" style="padding:6px 2px">Pick a strategy to get its checklist. Each trade is tagged with it so Stats can show which rules actually pay.</div>'}`;
+  $("chk-s").onchange = (e) => { prefs.stratOn = e.target.value === "" ? null : +e.target.value; chk = new Set(); savePrefs(); chkUI(); };
+  $("chk-x").onclick = () => { prefs.chkShow = false; savePrefs(); chkUI(); }; $("chk-ed").onclick = stratDlg;
+  el.querySelectorAll("[data-r]").forEach((c) => (c.onchange = () => { const i = +c.dataset.r; c.checked ? chk.add(i) : chk.delete(i); chkUI(); })); }
+function stratDlg() { const S = strats();
+  dlg(`<h3>Strategies</h3><div class="tiny muted">One rule per line. Rename, edit, or clear a box to delete that strategy.</div>${[...S, { name: "", rules: [] }].map((s, i) => `<label>${i < S.length ? "Strategy" : "New strategy"}<input id="sd-n${i}" value="${esc(s.name)}" placeholder="Name" maxlength="30"></label><textarea id="sd-r${i}" rows="${Math.max(3, s.rules.length + 1)}" placeholder="Rules, one per line">${esc(s.rules.join("\n"))}</textarea>`).join("")}`, () => {
+    const out = []; for (let i = 0; i <= S.length; i++) { const n = $("sd-n" + i).value.trim(), r = $("sd-r" + i).value.split("\n").map((x) => x.trim()).filter(Boolean); if (n && r.length) out.push({ name: n, rules: r }); }
+    prefs.strats = out; if (prefs.stratOn != null && !out[prefs.stratOn]) prefs.stratOn = null; chk = new Set(); savePrefs(); chkUI(); }); }
 function fill(side, qty, price, t, br, toolId) {
   if (!pos.qty || Math.sign(pos.qty) === side) { snd("fill"); buzz(25); }
   if (!pos.qty || Math.sign(pos.qty) === side) {
-    const nq = pos.qty + side * qty; pos.avg = pos.qty ? (pos.avg * Math.abs(pos.qty) + price * qty) / Math.abs(nq) : price; if (!pos.qty) { pos.t = t; pos.hi = price; } pos.qty = nq;
+    const nq = pos.qty + side * qty; pos.avg = pos.qty ? (pos.avg * Math.abs(pos.qty) + price * qty) / Math.abs(nq) : price; if (!pos.qty) { pos.t = t; pos.hi = price; pos.tags = [...(pos.tags || []).filter((x) => !/^(strat|rules):/.test(x)), ...stratTags()]; } pos.qty = nq;
     if (br) { if (br.slPx != null) pos.sl = br.slPx; else if (br.slPts) pos.sl = rnd(pos.avg - side * br.slPts); if (br.tpPx != null) pos.tp = br.tpPx; else if (br.tpPts) pos.tp = rnd(pos.avg + side * br.tpPts); }
     pos.trail = (br && br.trail) || prefs.trail || 0; pos.risk = pos.sl != null ? Math.abs(pos.avg - pos.sl) : pos.risk || 0; if (toolId) { pos.tool = toolId; const td = drawings.find((z) => z.id === toolId); if (td && td.tags) pos.tags = td.tags.slice(); }
   } else { const cq = Math.min(Math.abs(pos.qty), qty); record(cq, price, t, "manual"); const rest = qty - cq; if (rest > 0) fill(side, rest, price, t, br, toolId); }
@@ -656,6 +674,7 @@ function fill(side, qty, price, t, br, toolId) {
 }
 function record(cq, price, t, outcome) {
   const side = Math.sign(pos.qty), pnl = (price - pos.avg) * side * cq * inst.pt - fee(cq), r = pos.risk ? ((price - pos.avg) * side) / pos.risk : null;
+  if (Math.abs(pos.qty) <= cq && prefs.chkShow) setTimeout(() => { chk = new Set(); chkUI(); }, 0);
   const row = { session_id: sess && sess.id, ...(acct ? { account_id: acct.id } : {}), tags: pos.tags || [], symbol: sym, dir: side, qty: cq, entry: +pos.avg.toFixed(2), stop: pos.sl, target: pos.tp, exit: price, t_entry: pos.t, t_exit: t, outcome, r: r == null ? null : +r.toFixed(2), pnl: +pnl.toFixed(2), fees: fee(cq) };
   hist.push(row); pos.qty -= side * cq; snd(outcome === "win" ? "target" : outcome === "loss" ? "stop" : "closed"); buzz(pnl > 0 ? [20, 40, 20] : 60);
   if (!pos.qty) { const tl = drawings.find((d) => d.id === pos.tool); if (tl) tl.state = "done"; pos = flat(); repaintAll(); }
@@ -995,7 +1014,9 @@ async function renderStats() {
     return `<table class="bt"><tr><th></th><th>Trades</th><th>Win</th><th>Net</th><th></th></tr>${ks.map((k) => { const v = sum(g[k]), w = g[k].filter((t) => t.pnl > 0).length; return `<tr><td>${k}</td><td>${g[k].length}</td><td>${Math.round((100 * w) / g[k].length)}%</td><td class="${v >= 0 ? "pos-up" : "pos-dn"}">${money(v)}</td><td><i class="hbar ${v >= 0 ? "up" : "dn"}" style="width:${Math.round((60 * Math.abs(v)) / mx)}px"></i></td></tr>`; }).join("")}</table>`; };
   $("st-hour").innerHTML = table(grp((t) => lhm(loc(t.t_entry)).slice(0, 2) + ":00"), [...Array(24).keys()].map((h) => String(h).padStart(2, "0") + ":00"));
   $("st-wd").innerHTML = table(grp((t) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(loc(t.t_entry) * 1000).getUTCDay()]), ["Mon", "Tue", "Wed", "Thu", "Fri", "Sun"]);
-  $("st-tag").innerHTML = table(grp((t) => (t.tags && t.tags.length ? t.tags : ["(no tags)"])));
+  $("st-tag").innerHTML = table(grp((t) => { const g = (t.tags || []).filter((x) => !/^(strat|rules):/.test(x)); return g.length ? g : ["(no tags)"]; }));
+  $("st-strat").innerHTML = table(grp((t) => { const s = (t.tags || []).find((x) => x.startsWith("strat:")); return s ? s.slice(6) : "(no strategy)"; }));
+  $("st-chk").innerHTML = table(grp((t) => { const r = (t.tags || []).find((x) => x.startsWith("rules:")); if (!r) return "No checklist"; const [a, b] = r.slice(6).split("/").map(Number); return a >= b ? "Every rule ticked" : a >= b - 1 ? "Missed 1 rule" : "Missed 2+ rules"; }), ["Every rule ticked", "Missed 1 rule", "Missed 2+ rules", "No checklist"]);
   const rs2 = tr.filter((t) => t.r != null).map((t) => +t.r), bins = [[-9, -1.5], [-1.5, -0.75], [-0.75, -0.25], [-0.25, 0.25], [0.25, 1], [1, 2], [2, 3], [3, 99]], lab = ["≤-1.5R", "-1R", "-0.5R", "~0", "+0.5R", "+1.5R", "+2.5R", "3R+"];
   const cnt = bins.map(([a, b]) => rs2.filter((r) => r > a && r <= b).length), mxc = Math.max(1, ...cnt);
   $("st-rd").innerHTML = rs2.length ? `<div class="rbars">${cnt.map((c, i) => `<div><i style="height:${Math.round((80 * c) / mxc)}px" class="${i < 3 ? "dn" : i > 3 ? "up" : ""}"></i><b>${c}</b><span>${lab[i]}</span></div>`).join("")}</div>` : '<div class="empty">No trades with R yet</div>';
@@ -1427,7 +1448,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); if (!prefs.tourDone && !DEMO) setTimeout(() => tour(0), prefs.splash !== false ? 1500 : 400);
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI(); if (!prefs.tourDone && !DEMO) setTimeout(() => tour(0), prefs.splash !== false ? 1500 : 400);
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().catch(() => {}); }   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
@@ -1642,6 +1663,7 @@ $("sg-add").onclick = addSg; $("sg-text").onkeydown = (e) => { if (e.key === "En
 $("sg-list").onclick = async (e) => { const b = e.target.closest("[data-vote]"); if (!b) return; if (DEMO) { const x = mem.sg.find((z) => z.id === b.dataset.vote); x.votes = x.votes.includes("demo") ? [] : ["demo"]; } else { const { error } = await sb.rpc("vote_suggestion", { sid: b.dataset.vote }); if (error) toast(error.message); } renderSg(); };
 $("sg-list").onchange = async (e) => { const id = e.target.dataset.st; if (id && !DEMO) { await sb.from("suggestions").update({ status: e.target.value }).eq("id", id); renderSg(); } };
 $("lv-list").onclick = (e) => { const b = e.target.closest("[data-inv]"); if (b) invite(b.dataset.inv); }; $("livepill").onclick = () => { view("friends"); ftab("lv"); };
+$("chkbtn").onclick = () => { prefs.chkShow = !prefs.chkShow; savePrefs(); chkUI(); };
 $("mediabtn").onclick = () => { prefs.media = prefs.media || {}; prefs.media.show = !prefs.media.show; savePrefs(); mediaUI(); };
 document.querySelectorAll(".mt button").forEach((b) => (b.onclick = () => { prefs.media.tab = b.dataset.m; savePrefs(); mediaUI(); }));
 $("m-op").oninput = () => { prefs.media.op = +$("m-op").value; mediaUI(); }; $("m-op").onchange = savePrefs;
