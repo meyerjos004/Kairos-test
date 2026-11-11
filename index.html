@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rewind · futures replay</title>
+<link rel="icon" href="icon.svg">
+<link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+<div id="auth" class="screen hidden">
+  <div class="card authcard">
+    <div class="brand big"><span class="logo">⟲</span> Rewind</div>
+    <p class="muted">Bar-by-bar futures replay. Invite only.</p>
+    <input id="a-email" type="email" placeholder="email" autocomplete="email">
+    <input id="a-pass" type="password" placeholder="password (8+ chars)" autocomplete="current-password">
+    <div class="row"><button id="a-in" class="primary">Sign in</button><button id="a-up">Create account</button></div>
+    <p id="a-msg" class="muted small"></p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="brand"><span class="logo">⟲</span> Rewind</div>
+    <nav>
+      <button data-tab="replay" class="tab on">Replay</button>
+      <button data-tab="journal" class="tab">Journal</button>
+      <button data-tab="settings" class="tab">Settings</button>
+      <button data-tab="admin" class="tab hidden" id="tab-admin">Admin</button>
+    </nav>
+    <div class="who"><span id="who"></span> <button id="logout" class="ghost small">Sign out</button></div>
+  </header>
+
+  <section id="v-replay" class="view">
+    <div class="toolbar">
+      <select id="sym"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select>
+      <select id="tf"></select>
+      <input id="start" type="datetime-local" title="Start (New York time)">
+      <button id="go" class="primary">Load</button>
+      <span class="sep"></span>
+      <button id="back" title="Step back">⏮</button>
+      <button id="play" title="Play / pause (space)">▶</button>
+      <button id="step" title="Step one bar (→)">⏭</button>
+      <select id="speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option><option value="10">100×</option></select>
+      <span id="clock" class="clock">—</span>
+    </div>
+    <div class="main">
+      <div id="chart"></div>
+      <aside class="panel">
+        <div class="acct">
+          <div><label>Balance</label><b id="bal">—</b></div>
+          <div><label>Today</label><b id="dayp">—</b></div>
+          <div><label>Drawdown left</label><b id="ddl">—</b></div>
+        </div>
+        <div id="locked" class="warn hidden">🔒 Prop rule hit. Session locked.</div>
+        <div class="ticket">
+          <div class="row2">
+            <label>Risk %<input id="riskp" type="number" step="0.1" value="1"></label>
+            <label>Qty<input id="qty" type="number" step="1" value="0" title="0 = size from risk %"></label>
+          </div>
+          <div class="row2">
+            <label>Stop (pts)<input id="stoppts" type="number" step="0.25" value="15"></label>
+            <label>Target (R)<input id="tgtr" type="number" step="0.5" value="3"></label>
+          </div>
+          <div class="row"><button id="buy" class="buy">Buy</button><button id="sell" class="sell">Sell</button></div>
+          <div class="row"><button id="flat" class="ghost">Close position</button><button id="be" class="ghost">Stop → BE</button></div>
+          <div id="pos" class="pos muted small">Flat</div>
+        </div>
+        <div class="recent"><h4>This session</h4><div id="recent" class="small"></div></div>
+      </aside>
+    </div>
+  </section>
+
+  <section id="v-journal" class="view hidden">
+    <div class="stats" id="stats"></div>
+    <div id="eqchart"></div>
+    <div class="toolbar"><select id="j-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select><button id="j-csv" class="ghost">Export CSV</button></div>
+    <table class="tbl"><thead><tr><th>Date (NY)</th><th>Sym</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>R</th><th>P&L</th><th>Notes</th><th></th></tr></thead><tbody id="jrows"></tbody></table>
+  </section>
+
+  <section id="v-settings" class="view hidden">
+    <div class="card form">
+      <h3>Account & prop rules</h3>
+      <label>Starting balance<input id="s-bal" type="number" value="50000"></label>
+      <label>Daily loss limit ($, 0 = off)<input id="s-dll" type="number" value="1000"></label>
+      <label>Max drawdown ($, trailing from high, 0 = off)<input id="s-mdd" type="number" value="2000"></label>
+      <label>Commission per contract, round trip ($)<input id="s-fee" type="number" step="0.01" value="4.50"></label>
+      <label>Micro commission per contract ($)<input id="s-mfee" type="number" step="0.01" value="1.50"></label>
+      <h3>Chart</h3>
+      <label><input id="s-opens" type="checkbox" checked> Show key opens (midnight, 9:30, 10:00)</label>
+      <button id="s-save" class="primary">Save</button> <span id="s-msg" class="muted small"></span>
+    </div>
+  </section>
+
+  <section id="v-admin" class="view hidden">
+    <div class="card form">
+      <h3>Invite list</h3>
+      <div class="row"><input id="ad-email" type="email" placeholder="friend@email.com"><button id="ad-add" class="primary">Invite</button></div>
+      <div id="ad-list" class="small"></div>
+      <h3>Features (everyone)</h3>
+      <div id="ad-feat"></div>
+      <h3>Data on file</h3>
+      <div id="ad-data" class="small muted"></div>
+    </div>
+  </section>
+</div>
+<footer class="tiny muted">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a>. Practice tool, not financial advice.</footer>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
