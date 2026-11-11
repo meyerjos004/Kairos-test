@@ -15,7 +15,7 @@ const SEC = Object.fromEntries(TFS);
 const TICK = 0.25;
 const LAYOUTS = { "1": [1, 1], "2": [2, 1], "2h": [1, 2], "3": [3, 1], "4": [2, 2], "6": [3, 2], "8": [4, 2] };
 const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
-const IND_DEF = { data: true, sess: true, pd: true, fvg: false, fvgTf: "1h", h4: false, po3: false };
+const IND_DEF = { data: true, sess: true, pd: true, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: true, h4: false, po3: false };
 const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
@@ -187,8 +187,8 @@ function saveShot() { const p = panes[active]; if (!p) return; const c = p.chart
 function indMenu() { const r = $("indbtn").getBoundingClientRect(), I = prefs.ind, ck = (v) => (v ? "✓ " : "\u2003 "), flip = (k) => () => { I[k] = !I[k]; savePrefs(); repaintAll(); };
   menu([{ h: "Indicators" }, { t: ck(prefs.opens) + "Key opens (18:00, midnight, 9:30, 10:00)", f: () => { prefs.opens = !prefs.opens; savePrefs(); fillSettings(); drawOpens(); } },
   { t: ck(prefs.sess) + "Shade the NY session", f: () => { prefs.sess = !prefs.sess; savePrefs(); fillSettings(); repaintAll(); } },
-  { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session highs / lows (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") },
-  { t: ck(I.fvg) + "Higher-timeframe gaps (FVG)", k: I.fvgTf, f: flip("fvg") }, I.fvg ? { t: "\u2003 Gap timeframe: " + I.fvgTf + " → " + (I.fvgTf === "1h" ? "15m" : I.fvgTf === "15m" ? "4h" : "1h"), f: () => { I.fvgTf = I.fvgTf === "1h" ? "15m" : I.fvgTf === "15m" ? "4h" : "1h"; savePrefs(); repaintAll(); } } : null,
+  { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session highs / lows (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") }, { t: ck(I.pw) + "Previous week high / low", f: flip("pw") }, { t: ck(I.eq) + "Equal highs / lows (resting liquidity)", f: flip("eq") },
+  { t: ck(I.fvg) + "Fair value gaps (FVG)", f: flip("fvg") }, ...(I.fvg ? ["5m", "15m", "1h", "4h", "1D"].map((tf) => ({ t: "\u2003 " + ck((I.fvgTfs || []).includes(tf)) + tf + " gaps", f: () => { const s = new Set(I.fvgTfs || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.fvgTfs = [...s]; savePrefs(); repaintAll(); } })).concat([{ t: "\u2003 " + ck(I.ifvg) + "Show inversions (IFVG)", f: flip("ifvg") }]) : []),
   { t: ck(I.h4) + "4H candle outlines", f: flip("h4") }, { t: ck(I.po3) + "Daily candle (PO3) on the right", f: flip("po3") }], r.left, r.bottom + 6); }
 const TOOLNAMES = { cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
 function favUI() {
@@ -261,6 +261,22 @@ function studies() {
   let j = i; const lim = Math.max(0, i - 15 * 1440); const days = {};
   for (let k = i; k >= lim; k--) { const d = sessDay(bars[k].t); (days[d] = days[d] || []).push(bars[k]); if (Object.keys(days).length > 3) { delete days[d]; break; } }
   const order = Object.keys(days).sort(), prev = order[order.length - 2], cur = days[today] || [];
+  if (I.pw) {   // previous week high/low (week opens Sunday 18:00 New York)
+    const wk = (lt) => { const d = new Date((lt + 6 * 3600) * 1000); return Math.floor((lt + 6 * 3600) / 86400) - d.getUTCDay(); }, cw = wk(loc(t)); let hi = null, lo = null;
+    for (let k = i; k >= Math.max(0, i - 15 * 1440); k--) { const x = bars[k], w = wk(loc(x.t)); if (w === cw) continue; if (w < cw - 7) break; if (!hi || x.h > hi.h) hi = x; if (!lo || x.l < lo.l) lo = x; }
+    if (hi) out.levels.push({ price: hi.h, t0: loc(hi.t), label: "PWH", col: "rgba(196,181,253,.8)" }, { price: lo.l, t0: loc(lo.t), label: "PWL", col: "rgba(196,181,253,.8)" }); }
+  if (I.eq) {   // equal highs / lows: two 15m swing points within a hair of each other that price hasn't run yet = resting liquidity
+    const cs = []; for (let k = Math.max(0, i - 3 * 1440); k <= i; k++) { const x = bars[k], bt = bucket(loc(x.t), 900), c = cs[cs.length - 1];
+      if (c && c.t === bt) { c.h = Math.max(c.h, x.h); c.l = Math.min(c.l, x.l); c.c = x.c; } else cs.push({ t: bt, o: x.o, h: x.h, l: x.l, c: x.c }); }
+    const tol = bars[i].c * 0.00012, sw = { h: [], l: [] };
+    for (let k = 2; k < cs.length - 2; k++) { const c = cs[k];
+      if (c.h >= cs[k - 1].h && c.h >= cs[k - 2].h && c.h > cs[k + 1].h && c.h > cs[k + 2].h) sw.h.push(k);
+      if (c.l <= cs[k - 1].l && c.l <= cs[k - 2].l && c.l < cs[k + 1].l && c.l < cs[k + 2].l) sw.l.push(k); }
+    const after = (k, f) => cs.slice(k + 1).some(f), seen = new Set();
+    for (const [side, key] of [["h", "EQH"], ["l", "EQL"]]) { const xs = sw[side];
+      for (let a1 = xs.length - 1; a1 > 0; a1--) for (let a2 = a1 - 1; a2 >= 0 && a1 - a2 <= 6; a2--) { const p1 = cs[xs[a1]][side], p2 = cs[xs[a2]][side]; if (Math.abs(p1 - p2) > tol) continue;
+        const lvl = side === "h" ? Math.max(p1, p2) : Math.min(p1, p2); if (after(xs[a1], (z) => (side === "h" ? z.h > lvl : z.l < lvl))) continue; const kk = key + Math.round(lvl); if (seen.has(kk)) continue; seen.add(kk);
+        out.levels.push({ price: lvl, t0: cs[xs[a2]].t, label: key, col: "rgba(255,214,102,.85)" }); } } }
   if (I.data) {   // data highs/lows: the high + low of a news candle (8:30, 10:00, 14:00 FOMC) that blew out the range. They act as draws until price trades through.
     const NEWS = ["08:30", "10:00", "14:00"], dl = [];
     for (const dd of order) { const xs = days[dd] || []; xs.sort((a, b) => a.t - b.t);
@@ -275,14 +291,22 @@ function studies() {
       out.levels.push({ price: hi.h, t0: loc(hi.t), label: nm + " H" + tag, col }, { price: lo.l, t0: loc(lo.t), label: nm + " L" + tag, col }); if (dd === today) break; } }
   if (I.pd && prev) { const rth = (days[prev] || []).filter((x) => hm(x) >= "09:30" && hm(x) < "16:00"); if (rth.length) { const hi = rth.reduce((m, x) => (x.h > m.h ? x : m)), lo = rth.reduce((m, x) => (x.l < m.l ? x : m));
       out.levels.push({ price: hi.h, t0: loc(hi.t), label: "PDH", col: "rgba(230,234,240,.7)" }, { price: lo.l, t0: loc(lo.t), label: "PDL", col: "rgba(230,234,240,.7)" }); } }
-  if (I.fvg) { const sec = SEC[I.fvgTf] || 3600, cs = []; for (let k = Math.max(0, i - 10 * 1440); k <= i; k++) { const x = bars[k], bt = bucket(loc(x.t), sec), c = cs[cs.length - 1];
-      if (c && c.t === bt) { c.h = Math.max(c.h, x.h); c.l = Math.min(c.l, x.l); c.c = x.c; } else cs.push({ t: bt, o: x.o, h: x.h, l: x.l, c: x.c }); }
-    const done = cs.slice(0, -1);   // only finished candles make gaps
-    for (let k = 2; k < done.length; k++) { const a = done[k - 2], c = done[k]; let g = null;
-      if (c.l > a.h) g = { top: c.l, bot: a.h, dir: 1 }; else if (c.h < a.l) g = { top: a.l, bot: c.h, dir: -1 }; if (!g) continue;
-      let alive = true; for (let m = k + 1; m < cs.length; m++) { if (g.dir > 0 ? cs[m].l <= g.bot : cs[m].h >= g.top) { alive = false; break; } }
-      if (alive) out.gaps.push({ ...g, t0: done[k - 1].t, label: I.fvgTf + " FVG" }); }
-    const lp = bars[i].c; out.gaps.sort((a, b) => Math.abs((a.top + a.bot) / 2 - lp) - Math.abs((b.top + b.bot) / 2 - lp)); out.gaps = out.gaps.slice(0, 5); }
+  if (I.fvg) {   // FVGs on each chosen timeframe. Shows only the UNFILLED part (it shrinks as price trades in). A candle closing through the far side flips it to an inversion gap (IFVG) that holds until a close back through.
+    const lp = bars[i].c, all = [];
+    for (const tf of (I.fvgTfs && I.fvgTfs.length ? I.fvgTfs : [I.fvgTf])) { const sec = SEC[tf] || 3600, cs = [];
+      for (let k = Math.max(0, i - (sec >= 14400 ? 15 : 10) * 1440); k <= i; k++) { const x = bars[k], bt = bucket(loc(x.t), sec), c = cs[cs.length - 1];
+        if (c && c.t === bt) { c.h = Math.max(c.h, x.h); c.l = Math.min(c.l, x.l); c.c = x.c; } else cs.push({ t: bt, o: x.o, h: x.h, l: x.l, c: x.c }); }
+      const done = cs.slice(0, -1);
+      for (let k = 2; k < done.length; k++) { const a0 = done[k - 2], c0 = done[k]; let g = null;
+        if (c0.l > a0.h) g = { top: c0.l, bot: a0.h, dir: 1 }; else if (c0.h < a0.l) g = { top: a0.l, bot: c0.h, dir: -1 }; if (!g) continue;
+        let alive = true, inv = false;
+        for (let m = k + 1; m < cs.length; m++) { const z = cs[m], fin = m < cs.length - 1;
+          if (!inv) { if (g.dir > 0) { if (z.l < g.top) g.top = Math.max(g.bot, z.l); } else if (z.h > g.bot) g.bot = Math.min(g.top, z.h);   // trade into it: keep only the unfilled part
+            if (fin && (g.dir > 0 ? z.c < g.bot : z.c > g.top)) { if (!I.ifvg) { alive = false; break; } inv = true; g = { top: g.dir > 0 ? c0.l : a0.l, bot: g.dir > 0 ? a0.h : c0.h, dir: -g.dir }; }   // the whole original gap flips
+            else if (g.top - g.bot <= 0) { alive = false; break; } }
+          else if (fin && (g.dir > 0 ? z.c < g.bot : z.c > g.top)) { alive = false; break; } }
+        if (alive && g.top > g.bot) all.push({ ...g, t0: done[k - 1].t, label: tf + (inv ? " IFVG" : " FVG"), inv, tf }); } }
+    all.sort((a, b) => Math.abs((a.top + a.bot) / 2 - lp) - Math.abs((b.top + b.bot) / 2 - lp)); out.gaps = all.slice(0, 8); }
   if (I.h4) { const cs = []; for (let k = Math.max(0, i - 3 * 1440); k <= i; k++) { const x = bars[k], bt = bucket(loc(x.t), 14400), c = cs[cs.length - 1];
       if (c && c.t === bt) { c.h = Math.max(c.h, x.h); c.l = Math.min(c.l, x.l); c.c = x.c; } else cs.push({ t: bt, o: x.o, h: x.h, l: x.l, c: x.c }); } out.h4 = cs.slice(-8); }
   if (I.po3 && cur.length) { const xs = cur.slice().reverse(); out.po3 = { o: xs[0].o, h: Math.max(...xs.map((x) => x.h)), l: Math.min(...xs.map((x) => x.l)), c: bars[i].c }; }
@@ -296,7 +320,9 @@ function paintStudies(p, g, W, H) {
     g.strokeStyle = z.c >= z.o ? "rgba(43,212,160,.35)" : "rgba(255,107,122,.35)"; g.lineWidth = 1; g.setLineDash([]); g.strokeRect(x1, y1, x2 - x1, y2 - y1);
     const yo = yOf(p, z.o), yc = yOf(p, z.c); if (yo != null && yc != null) { g.fillStyle = z.c >= z.o ? "rgba(43,212,160,.06)" : "rgba(255,107,122,.06)"; g.fillRect(x1, Math.min(yo, yc), x2 - x1, Math.abs(yo - yc)); } }
   for (const z of S.gaps) { const y1 = yOf(p, z.top), y2 = yOf(p, z.bot); if (y1 == null || y2 == null) continue; const x1 = X(z.t0);
-    g.fillStyle = z.dir > 0 ? "rgba(43,212,160,.09)" : "rgba(255,107,122,.09)"; g.fillRect(x1, y1, W - x1, y2 - y1); g.fillStyle = "rgba(200,210,225,.55)"; g.fillText(z.label, x1 + 4, Math.min(y1, y2) + 11); }
+    g.fillStyle = z.dir > 0 ? "rgba(43,212,160,.09)" : "rgba(255,107,122,.09)"; g.fillRect(x1, y1, W - x1, y2 - y1);
+    if (z.inv) { g.strokeStyle = z.dir > 0 ? "rgba(43,212,160,.5)" : "rgba(255,107,122,.5)"; g.setLineDash([4, 3]); g.strokeRect(x1, Math.min(y1, y2), W - x1, Math.abs(y2 - y1)); g.setLineDash([]); }
+    g.fillStyle = "rgba(200,210,225,.55)"; g.fillText(z.label, x1 + 4, Math.min(y1, y2) + 11); }
   for (const l of S.levels) { const y = yOf(p, l.price); if (y == null || y < 0 || y > H) continue; const x1 = X(l.t0);
     g.strokeStyle = l.col; g.lineWidth = 1; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(x1, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.col; g.fillText(l.label, W - g.measureText(l.label).width - 6, y - 4); }
   // contract roll marker: data switches contracts on the session after quarterly expiry (3rd Friday of Mar/Jun/Sep/Dec), so a price gap there is the roll, not a move
