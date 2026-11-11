@@ -102,6 +102,9 @@ async def main():
         # fix 15: journal calendar
         await E("view('journal')"); await pg.wait_for_timeout(700)
         check("journal shows a trading calendar with P&L days", await E("document.querySelectorAll('#jc-grid .jcd').length>=28 && document.querySelectorAll('#jc-grid .jcd.up,#jc-grid .jcd.dn').length>0"))
+        await E("view('trade'); $('chartset').classList.add('hidden'); hideCtx()"); await pg.wait_for_timeout(200); await pg.click("#indbtn"); await pg.wait_for_timeout(200)
+        check("indicators button opens its menu", await E("!$('ctx').classList.contains('hidden') && $('ctx').innerText.includes('Fair value gaps')"))
+        await pg.click("#indbtn"); await pg.wait_for_timeout(200); check("indicators button closes on second click", await E("$('ctx').classList.contains('hidden')"))
         await E("document.querySelector('#jc-grid .jcd.up,#jc-grid .jcd.dn').click()"); await pg.wait_for_timeout(500)
         check("clicking a day filters the trades", await E("!!jDay && document.querySelectorAll('#jrows tr').length>0")); await pg.screenshot(path="/home/claude/shot/fix15.png"); await E("jDay=null; view('trade')")
         # fix 16: take or fade = single 1m chart, locked to 15s
