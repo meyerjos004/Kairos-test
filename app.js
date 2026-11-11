@@ -1138,7 +1138,7 @@ function reesePop(r) {
   dlg(`<h3>Reese ${r.dir ? "traded" : r.result === "journal" ? "posted" : "planned"} this session</h3><div class="muted small">${r.day} · ${r.session} · ${r.symbol}</div>
     ${r.dir ? `<div class="shrow"><span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · <b>${r.result}</b></div>` : ""}
     <p class="small">${esc(r.summary)}</p>${(r.quotes || []).length ? `<div class="quotes">${r.quotes.slice(0, 4).map((q) => `<div>“${esc(q)}”</div>`).join("")}</div>` : ""}
-    ${reeseMedia(r, true)}${r.video_url ? `<p><button class="small" data-vid="${esc((r.video_url.match(/([A-Za-z0-9_-]{11})/) || [])[1] || "")}" data-title="Reese · ${esc(r.day)} recap" onclick="playVid('${esc(r.video_url)}', 'Reese · ${esc(r.day)} recap')">▶ Watch his recap</button></p>` : ""}
+    ${reeseMedia(r, true)}${r.video_url ? `<p><button class="small" data-vid="${esc((r.video_url.match(/([A-Za-z0-9_-]{11})/) || [])[1] || "")}" data-title="Reese · ${esc(r.day)} recap" onclick="playVid('${esc(r.video_url)}', 'Reese · ${esc(r.day)} ${r.video_start != null ? "· just the trade" : "recap"}', ${+r.video_start || 0}, ${+r.video_end || 0})">▶ ${r.video_start != null ? "Watch just this trade" : "Watch his recap"}</button>${r.video_start != null ? ` <button class="small ghost" onclick="playVid('${esc(r.video_url)}', 'Reese · ${esc(r.day)} recap')">Full video</button>` : ""}</p>` : ""}
     <div class="riskcard">${verdict}${xp ? ` <b>+${xp} XP</b>` : ""}<br>Your trades this session: ${mine.length ? mine.map((t) => `${t.dir > 0 ? "long" : "short"} ${money(+t.pnl)}`).join(", ") : "none"}</div>`, () => {
     if (r.entry && panes[0]) { const t0 = sessEnd(r) - 3 * 3600; drawings.push({ id: did++, type: "hline", pane: 0, a: { t: t0, p: +r.entry }, label: "Reese entry" }); if (r.exit) drawings.push({ id: did++, type: "hline", pane: 0, a: { t: t0, p: +r.exit }, label: "Reese exit" }); repaintAll(); } });
   const ok = $("dl-ok"); if (ok) ok.textContent = r.entry ? "Show his levels" : "OK"; fillReeseShots($("dlgbox")); }
@@ -1220,7 +1220,7 @@ setInterval(() => { if (!sess || document.visibilityState !== "visible" || $("v-
 /* ---------------- media dock: Spotify + YouTube sign-in (each person's own account), Reese video library ---------------- */
 const MCFG = () => window.REWIND || {}, REDIR = location.origin + location.pathname.replace(/[^/]*$/, "") + "oauth.html";
 function spEmbed(u) { const m = String(u).match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|track|episode|show|artist)\/([A-Za-z0-9]+)/); return m ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0` : null; }
-function ytEmbed(u) { const m = String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/); return m ? `https://www.youtube-nocookie.com/embed/${m[1]}?autoplay=1&rel=0` : null; }
+function ytEmbed(u, start, end) { const m = String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/); return m ? `https://www.youtube-nocookie.com/embed/${m[1]}?autoplay=1&rel=0${start > 0 ? "&start=" + Math.floor(start) : ""}${end > start ? "&end=" + Math.ceil(end) : ""}` : null; }
 const jget = (k) => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }, jset = (k, v) => { try { v ? localStorage.setItem(k, JSON.stringify(v)) : localStorage.removeItem(k); } catch (e) {} };
 function mediaUI() { const M = prefs.media || (prefs.media = { show: false, tab: "lib", op: 100, ct: false }); if (!["sp", "yt", "lib"].includes(M.tab)) M.tab = "lib";
   $("media").classList.toggle("hidden", !M.show); $("mediabtn").classList.toggle("on", !!M.show); $("media").classList.toggle("big", !!M.big);
@@ -1228,24 +1228,24 @@ function mediaUI() { const M = prefs.media || (prefs.media = { show: false, tab:
   $("media").style.opacity = (M.op || 100) / 100; $("m-op").value = M.op || 100; $("m-ct").classList.toggle("on", !!M.ct); $("media").classList.toggle("thru", !!M.ct);
   if (M.x != null) { $("media").style.left = Math.min(M.x, innerWidth - 120) + "px"; $("media").style.top = Math.min(M.y, innerHeight - 60) + "px"; }
   if (!M.show) return; if (M.tab === "sp") spUI(); else if (M.tab === "yt") ytUI(); else libUI(); }
-function playVid(u, title) { const e = ytEmbed(u); if (!e) return toast("Can't play that video"); prefs.media = prefs.media || {}; if (!prefs.media.show) { prefs.media.show = true; savePrefs(); mediaUI(); }
+function playVid(u, title, start, end) { const e = ytEmbed(u, start, end); if (!e) return toast("Can't play that video"); prefs.media = prefs.media || {}; if (!prefs.media.show) { prefs.media.show = true; savePrefs(); mediaUI(); }
   $("m-vid").innerHTML = `<div class="vh"><span>${esc(title || "")}</span><button class="pb" id="m-vx" title="Close video">×</button></div><div class="vfr"><iframe src="${e}" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
   $("m-vid").classList.remove("hidden"); $("m-vx").onclick = () => { $("m-vid").innerHTML = ""; $("m-vid").classList.add("hidden"); }; }
 const setYt = (u) => playVid(u);
 const thumb = (id) => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`, vAgo = (d) => { const s = (Date.now() - new Date(d)) / 1000; return s < 3600 ? Math.max(1, s / 60 | 0) + "m" : s < 86400 ? (s / 3600 | 0) + "h" : s < 2592e3 ? (s / 86400 | 0) + "d" : new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
 const mmss = (s) => (s ? `${(s / 60) | 0}:${String(s % 60 | 0).padStart(2, "0")}` : "");
-const vcard = (id, title, sub, extra = "") => `<button class="vc" data-vid="${id}" data-title="${esc(title)}"><span class="vt"><img loading="lazy" src="${thumb(id)}" alt="">${extra}</span><b>${esc(title)}</b><i>${esc(sub || "")}</i></button>`;
+const vcard = (id, title, sub, extra = "", cs = 0, ce = 0) => `<button class="vc" data-vid="${id}" data-title="${esc(title)}"${cs ? ` data-s="${cs}" data-e="${ce || 0}"` : ""}><span class="vt"><img loading="lazy" src="${thumb(id)}" alt="">${extra}</span><b>${esc(title)}</b><i>${esc(sub || "")}</i></button>`;
 function needSetup(which) { return `<div class="mempty"><b>${which} sign-in isn't switched on yet</b><span>King is finishing the one-time setup. It'll appear here on its own.</span></div>`; }
 
 /* ---- Reese library ---- */
 let RV = null, rvFilter = "videos", rvQ = "";
 async function libUI() { const el = $("m-lib");
-  if (!RV) { el.innerHTML = '<div class="mempty"><span>Loading Reese\'s videos…</span></div>'; if (DEMO) RV = [{ id: "DZEVxR7slnM", title: "Backtesting My 80%+ Winrate IFVG Strategy", published: "2026-11-06", dur: 3026, kind: "videos" }, { id: "Qm1fTcyysEw", title: "How I made $11,480 In 11 Minutes", published: "2026-11-01", dur: 747, kind: "videos" }];
-    else { const { data } = await sb.from("reese_videos").select("id,title,published,dur,kind").order("published", { ascending: false }).limit(1000); RV = data || []; } }
+  if (!RV) { el.innerHTML = '<div class="mempty"><span>Loading Reese\'s videos…</span></div>'; if (DEMO) RV = [{ id: "DZEVxR7slnM", title: "Backtesting My 80%+ Winrate IFVG Strategy", published: "2026-11-06", dur: 3026, kind: "videos" }, { id: "Qm1fTcyysEw", title: "How I made $11,480 In 11 Minutes", published: "2026-11-01", dur: 747, kind: "videos", clip_start: 295, clip_end: 743 }];
+    else { const { data } = await sb.from("reese_videos").select("*").order("published", { ascending: false }).limit(1000); RV = data || []; } }
   const n = { videos: RV.filter((v) => v.kind === "videos").length, shorts: RV.filter((v) => v.kind === "shorts").length };
   const list = RV.filter((v) => v.kind === rvFilter && (!rvQ || (v.title || "").toLowerCase().includes(rvQ)));
   el.innerHTML = `<div class="mtools"><span class="seg mini" id="rv-f"><button data-f="videos" class="${rvFilter === "videos" ? "on" : ""}">Videos ${n.videos}</button><button data-f="shorts" class="${rvFilter === "shorts" ? "on" : ""}">Shorts ${n.shorts}</button></span><input id="rv-q" placeholder="Search his videos" value="${esc(rvQ)}"></div>
-    <div class="vgrid">${list.slice(0, 120).map((v) => vcard(v.id, v.title, (v.published ? new Date(v.published + "T12:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" }) : ""), v.dur ? `<em>${mmss(v.dur)}</em>` : "")).join("") || '<div class="mempty"><span>No videos match.</span></div>'}</div>`;
+    <div class="vgrid">${list.slice(0, 120).map((v) => vcard(v.id, v.title, (v.published ? new Date(v.published + "T12:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" }) : ""), (v.dur ? `<em>${mmss(v.dur)}</em>` : "") + (v.clip_start ? '<em class="cl">✂ trade</em>' : ""), v.clip_start, v.clip_end)).join("") || '<div class="mempty"><span>No videos match.</span></div>'}</div>`;
   $("rv-f").onclick = (e) => { const b = e.target.closest("[data-f]"); if (b) { rvFilter = b.dataset.f; libUI(); } };
   $("rv-q").oninput = (e) => { rvQ = e.target.value.toLowerCase(); clearTimeout(libUI.t); libUI.t = setTimeout(() => { const pos = e.target.selectionStart; libUI().then(() => { const q = $("rv-q"); q.focus(); q.setSelectionRange(pos, pos); }); }, 200); }; }
 
@@ -1310,7 +1310,7 @@ async function ytUI() { const el = $("m-yt"); if (!MCFG().google) { el.innerHTML
 addEventListener("message", async (e) => { if (e.origin !== location.origin || !e.data || e.data.type !== "kz-oauth") return; const q = new URLSearchParams(e.data.search || "");
   if ((q.get("state") || "").startsWith("sp.")) { if (q.get("error")) return toast("Spotify: " + q.get("error")); if (q.get("state") !== "sp." + spConnect.st || !spV) return toast("Spotify sign-in expired, try again");
     try { await spToken({ grant_type: "authorization_code", code: q.get("code"), redirect_uri: REDIR, code_verifier: spV }); spV = null; spMe = spPls = null; toast("✅ Spotify connected"); spUI(); } catch (er) { toast(er.message); } } });
-$("media").addEventListener("click", (e) => { const v = e.target.closest("[data-vid]"); if (v) playVid("https://youtu.be/" + v.dataset.vid, v.dataset.title); });
+$("media").addEventListener("click", (e) => { const v = e.target.closest("[data-vid]"); if (v) playVid("https://youtu.be/" + v.dataset.vid, v.dataset.title, +v.dataset.s || 0, +v.dataset.e || 0); });
 
 
 /* ---------------- friends: leaderboard, challenges, shared trades, suggestions, chat ---------------- */

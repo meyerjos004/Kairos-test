@@ -275,6 +275,8 @@ async def main():
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))
         await E("document.querySelector('#m-lib .vc').click()"); await pg.wait_for_timeout(200); check("clicking a video plays it in the dock", await E("!!$('m-vid').querySelector('iframe') && !$('m-vid').classList.contains('hidden')"))
+        await E("document.querySelector('#m-lib .vc[data-s]').click()"); await pg.wait_for_timeout(200)
+        check("trade clip starts at the trade", await E("$('m-vid').querySelector('iframe').src.includes('start=295') && $('m-vid').querySelector('iframe').src.includes('end=743')"))
         await E("prefs.media.tab='sp'; mediaUI()"); await pg.wait_for_timeout(200); check("Spotify tab waits for setup (no paste box)", await E("!$('sp-url') && $('m-sp').innerText.includes('Spotify')"))
         await E("REWIND.spotify='x'; spUI()"); await pg.wait_for_timeout(200); check("Spotify shows Connect when set up", await E("!!$('sp-in')"))
         await E("REWIND.google='x'; prefs.media.tab='yt'; mediaUI()"); await pg.wait_for_timeout(200); check("YouTube shows Connect when set up", await E("!!$('yt-in') && !$('yt-url')"))
