@@ -122,7 +122,7 @@ async function loadReplay() {
   await acctStart();
   try { sess = await db.newSession({ name: sym + " " + fmt(loc(t0)), symbol: sym, start_ts: t0, cursor_ts: t0, tf: prefs.tfs[0], account_start: startBal, risk_pct: prefs.riskp, rules: { dll: prefs.dll, mdd: prefs.mdd, ptg: prefs.ptg }, ...(acct ? { account_id: acct.id } : {}) }); }
   catch (e) { return toast("Could not start a session: " + e.message); }
-  hist = []; lock = null; rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast(""); prefs.sym = sym; savePrefs();
+  hist = []; lock = null; alerts = []; rebuildAll(); drawAlerts(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast(""); prefs.sym = sym; savePrefs();
 }
 async function ensure15() {   // a pane switched to 15s/30s mid-session: load 15s data without resetting the session
   need15 = true; if (B["15s"].bars.length || !B["1m"].bars.length) return;
@@ -147,9 +147,10 @@ async function stepFwd(ui = true) {
   const fx = advOthers();
   // fix 16: with 15s data on, 1m+ charts are built from the 15s bars inside the current minute, so no chart ever shows the rest of a minute that hasn't happened yet
   if (ui) panes.forEach((p) => { const ps = paneSym(p), F = ps === sym ? fresh : fx[ps] || { "1m": [], "15s": [] }, S = storeOf(ps);
-    const src = paneSec(p.i) < 60 ? F["15s"] : need15 ? [...F["1m"].filter((x) => !hasFine(x.t, S)), ...F["15s"]].sort((u, v) => u.t - v.t) : F["1m"]; for (const x of src) p.series.update(pushBar(p, x)); });
+    const src = paneSec(p.i) < 60 ? F["15s"] : need15 ? [...F["1m"].filter((x) => !hasFine(x.t, S)), ...F["15s"]].sort((u, v) => u.t - v.t) : F["1m"]; for (const x of src) p.series.update(pushBar(p, x)); if (src.length) indTick(p); });
   for (const x of fresh["15s"]) engineBar(x);                                   // fills use the finest bars available
   for (const x of fresh["1m"]) if (!(need15 && hasFine(x.t))) engineBar(x);
+  checkAlerts();
   if (B["1m"].i % 500 === 0) await ensureAhead(); if (B["1m"].i % 60 === 0 && sess) db.saveCursor(sess.id, cursorT);
   if (!ui) return fresh["1m"];
   if (fresh["1m"].some((x) => ["00:00", "09:30", "10:00", "18:00"].includes(lhm(loc(x.t))))) drawOpens();
@@ -177,7 +178,7 @@ function pushBar(p, b) {
   const c = { time: k, open: b.o, high: b.h, low: b.l, close: b.c }; p.candles.push(c); return c;
 }
 function makePane(i) {
-  const el = document.createElement("div"); el.className = "pane"; el.innerHTML = `<div class="wmark"></div><div class="legend"><span class="lname"></span><i></i><span class="ohlc"></span></div><div class="chart"></div><canvas class="overlay"></canvas>`;
+  const el = document.createElement("div"); el.className = "pane"; el.innerHTML = `<div class="wmark"></div><div class="legend"><span class="lname"></span><i></i><span class="ohlc"></span><span class="ivals"></span></div><div class="chart"></div><canvas class="overlay"></canvas>`;
   $("charts").appendChild(el);
   const chart = LightweightCharts.createChart(el.querySelector(".chart"), { layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontSize: 11, fontFamily: "Inter, -apple-system, Segoe UI, sans-serif" },
     localization: { timeFormatter: hoverDate },
@@ -208,6 +209,11 @@ function indMenu(re) { if (re !== true && ctxJust === "ind") { ctxJust = null; r
   { t: ck(prefs.sess) + "Shade the NY session", f: () => { prefs.sess = !prefs.sess; savePrefs(); fillSettings(); repaintAll(); } },
   { t: ck(I.sbox) + "Trading sessions (Tokyo / London / New York boxes)", f: flip("sbox") }, { t: "\u2003 Sessions settings…", f: sessDlg }, { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session high / low lines only (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") }, { t: ck(I.pw) + "Week + previous week high / low", f: flip("pw") }, { t: ck(I.eq) + "Equal highs / lows (resting liquidity)", f: flip("eq") },
   { t: ck(I.fvg) + "Fair value gaps (FVG)", f: flip("fvg") }, { t: ck(I.ob) + "Order blocks (OB) on the same timeframes", f: flip("ob") }, ...(I.fvg || I.ob ? ["5m", "15m", "1h", "4h", "1D"].map((tf) => ({ t: "\u2003 " + ck((I.fvgTfs || []).includes(tf)) + tf + " gaps", f: () => { const s = new Set(I.fvgTfs || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.fvgTfs = [...s]; savePrefs(); repaintAll(); } })).concat([{ t: "\u2003 " + ck(I.ifvg) + "Show inversions (IFVG)", f: flip("ifvg") }]) : []),
+  { h: "Library" }, ...indCfg().ma.map((m) => ({ t: ck(m.on) + `${m.type.toUpperCase()} ${m.len}`, f: () => { m.on = !m.on; savePrefs(); panes.forEach(indFull); } })),
+  { t: ck(indCfg().bb.on) + `Bollinger Bands ${indCfg().bb.len}, ${indCfg().bb.mult}`, f: () => { indCfg().bb.on = !indCfg().bb.on; savePrefs(); panes.forEach(indFull); } },
+  { t: ck(indCfg().rsi.on) + `RSI ${indCfg().rsi.len} (in the chart legend)`, f: () => { indCfg().rsi.on = !indCfg().rsi.on; savePrefs(); panes.forEach(indFull); } },
+  { t: ck(indCfg().atr.on) + `ATR ${indCfg().atr.len} (in the chart legend)`, f: () => { indCfg().atr.on = !indCfg().atr.on; savePrefs(); panes.forEach(indFull); } },
+  { t: "\u2003 Lengths, colors, bands…", f: maDlg },
   { h: "Higher-timeframe candles on the right (PO3)" }, ...["15m", "1h", "4h", "1D", "1W"].map((tf) => ({ t: ck((I.htfc || []).includes(tf)) + "Current " + tf + " candle", f: () => { const s = new Set(I.htfc || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.htfc = ["15m", "1h", "4h", "1D", "1W"].filter((x) => s.has(x)); savePrefs(); repaintAll(); } })), { t: ck(I.h4) + "Past 4H candle outlines on the chart", f: flip("h4") }], r.left, r.bottom + 6, indMenu); $("ctx").dataset.from = "ind"; }
 const TOOLNAMES = { arrow: "Arrow", channel: "Parallel channel", fibext: "Fib extension", prange: "Price range", drange: "Date range", ellipse: "Ellipse", cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
 function favUI() {
@@ -235,7 +241,7 @@ function rebuildPane(p) {
   const f = S["15s"], lastM = p.sec >= 60 && need15 && src.i >= 0 && f.i >= 0 && hasFine(src.bars[src.i].t, S) ? src.bars[src.i].t : null;   // fix 16: current minute from 15s only
   for (let j = 0; j <= src.i && j < src.bars.length; j++) { if (lastM != null && src.bars[j].t === lastM) break; pushBar(p, src.bars[j]); }
   if (lastM != null) { let k = f.i; while (k > 0 && f.bars[k - 1].t >= lastM) k--; for (; k <= f.i; k++) if (f.bars[k].t >= lastM) pushBar(p, f.bars[k]); }
-  p.series.setData(p.candles); label(p); extMarkers(p); paint(p);
+  p.series.setData(p.candles); label(p); indFull(p); extMarkers(p); paint(p);
 }
 function watchScales() {
   for (const p of panes) { if (!p.candles.length) continue; const ref = p.candles[p.candles.length - 1].close, ts = p.chart.timeScale();
@@ -565,6 +571,56 @@ function htfRoom(p) {   // keep empty space on the right for the HTF candles so 
   if (p.dead || p.sec >= 86400) return; const n = prefs.ind && !p.noHtf ? (prefs.ind.htfc || []).length : 0, ts = p.chart.timeScale(), sp = ts.options().barSpacing || 6, want = n ? Math.ceil((n * 34 + 26) / sp) + 3 : 12;
   if (p.rOff !== want) { p.rOff = want; ts.applyOptions({ rightOffset: want }); } }
 
+/* ---------------- indicator library (price-only: our data has no volume, so no VWAP) ---------------- */
+const MA_DEF = [{ k: "e9", type: "ema", len: 9, color: "#f5c542" }, { k: "e21", type: "ema", len: 21, color: "#7aa7ff" }, { k: "e50", type: "ema", len: 50, color: "#c084fc" }, { k: "s200", type: "sma", len: 200, color: "#e5e7eb" }];
+const indCfg = () => { const I = prefs.ind || (prefs.ind = {}); if (!I.ma) I.ma = MA_DEF.map((m) => ({ ...m, on: false })); if (!I.bb) I.bb = { on: false, len: 20, mult: 2 }; if (!I.rsi) I.rsi = { on: false, len: 14 }; if (!I.atr) I.atr = { on: false, len: 14 }; return I; };
+function indSeries(p) { const I = indCfg(); p.ind = p.ind || {}; const want = {};
+  for (const m of I.ma) if (m.on) want[m.k] = { color: m.color, w: 1.5 };
+  if (I.bb.on) { want.bbu = { color: "rgba(122,167,255,.75)", w: 1 }; want.bbm = { color: "rgba(122,167,255,.45)", w: 1, dash: 2 }; want.bbl = { color: "rgba(122,167,255,.75)", w: 1 }; }
+  for (const k of Object.keys(p.ind)) if (!want[k] || p.ind[k].color !== want[k].color) { try { p.chart.removeSeries(p.ind[k].s); } catch (e) {} delete p.ind[k]; }
+  for (const [k, o] of Object.entries(want)) if (!p.ind[k]) p.ind[k] = { color: o.color, v: [], s: p.chart.addLineSeries({ color: o.color, lineWidth: o.w, lineStyle: o.dash || 0, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }) }; }
+function indVal(p, k, i) { const I = indCfg(), c = p.candles, cl = (j) => c[j].close;
+  const m = I.ma.find((z) => z.k === k);
+  if (m) { if (i < m.len - 1) return null; if (m.type === "ema") { const prev = p.ind[k].v[i - 1]; if (prev == null) { let s = 0; for (let j = i - m.len + 1; j <= i; j++) s += cl(j); return s / m.len; } const a = 2 / (m.len + 1); return a * cl(i) + (1 - a) * prev; }
+    let s = 0; for (let j = i - m.len + 1; j <= i; j++) s += cl(j); return s / m.len; }
+  if (k.startsWith("bb")) { const n = I.bb.len; if (i < n - 1) return null; let s = 0; for (let j = i - n + 1; j <= i; j++) s += cl(j); const mu = s / n; if (k === "bbm") return mu; let v = 0; for (let j = i - n + 1; j <= i; j++) v += (cl(j) - mu) ** 2; const sd = Math.sqrt(v / n); return k === "bbu" ? mu + I.bb.mult * sd : mu - I.bb.mult * sd; }
+  return null; }
+function oscAt(p, i) {   // Wilder RSI + ATR, kept as running state so each replay step is cheap
+  const I = indCfg(), c = p.candles, o = (p.osc = p.osc || { g: [], l: [], tr: [] }), n = I.rsi.len, na = I.atr.len;
+  if (i === 0) { o.g[0] = o.l[0] = 0; o.tr[0] = c[0].high - c[0].low; return; }
+  const ch = c[i].close - c[i - 1].close, tr = Math.max(c[i].high - c[i].low, Math.abs(c[i].high - c[i - 1].close), Math.abs(c[i].low - c[i - 1].close));
+  o.g[i] = i < n ? (o.g[i - 1] * (i - 1) + Math.max(ch, 0)) / i : (o.g[i - 1] * (n - 1) + Math.max(ch, 0)) / n;
+  o.l[i] = i < n ? (o.l[i - 1] * (i - 1) + Math.max(-ch, 0)) / i : (o.l[i - 1] * (n - 1) + Math.max(-ch, 0)) / n;
+  o.tr[i] = i < na ? (o.tr[i - 1] * i + tr) / (i + 1) : (o.tr[i - 1] * (na - 1) + tr) / na; }
+function oscLegend(p) { const I = indCfg(), el = p.el.querySelector(".ivals"); if (!el) return; const i = p.candles.length - 1, o = p.osc; if (i < 1 || !o) { el.innerHTML = ""; return; }
+  const parts = []; if (I.rsi.on) { const rs = o.l[i] ? o.g[i] / o.l[i] : 100, r = o.l[i] ? 100 - 100 / (1 + rs) : 100; parts.push(`RSI ${I.rsi.len} <b class="${r >= 70 ? "pos-dn" : r <= 30 ? "pos-up" : ""}">${r.toFixed(1)}</b>`); }
+  if (I.atr.on) parts.push(`ATR ${I.atr.len} <b>${o.tr[i].toFixed(2)}</b>`);
+  for (const m of I.ma) if (m.on && p.ind && p.ind[m.k]) { const v = p.ind[m.k].v[i]; if (v != null) parts.push(`<span style="color:${m.color}">${m.type.toUpperCase()} ${m.len}</span> <b>${px2(v)}</b>`); }
+  el.innerHTML = parts.join(" · "); }
+function indFull(p) { if (!p || p.dead) return; indSeries(p); const I = indCfg(), n = p.candles.length; p.osc = null;
+  for (const [k, z] of Object.entries(p.ind)) { z.v = []; const out = []; for (let i = 0; i < n; i++) { const v = indVal(p, k, i); z.v[i] = v; if (v != null) out.push({ time: p.candles[i].time, value: v }); } z.s.setData(out); }
+  if (I.rsi.on || I.atr.on) for (let i = 0; i < n; i++) oscAt(p, i); oscLegend(p); }
+function indTick(p) { if (!p || p.dead || !p.ind) return; const I = indCfg(), n = p.candles.length, i = n - 1; if (i < 0) return;
+  for (const [k, z] of Object.entries(p.ind)) { if (z.v.length < i) { indFull(p); return; } const v = indVal(p, k, i); z.v[i] = v; z.v.length = n; if (v != null) z.s.update({ time: p.candles[i].time, value: v }); }
+  if (I.rsi.on || I.atr.on) { if (!p.osc || p.osc.g.length < i) { p.osc = null; for (let j = 0; j < n; j++) oscAt(p, j); } else oscAt(p, i); } oscLegend(p); }
+function maDlg() { const I = indCfg();
+  dlg(`<h3>Moving averages, bands &amp; oscillators</h3><div class="tiny muted">Price-only. Our replay data has no volume, so VWAP and volume indicators aren't available.</div>
+    ${I.ma.map((m, k) => `<div class="row2"><label class="ck"><input type="checkbox" id="ma-on${k}" ${m.on ? "checked" : ""}> <select id="ma-t${k}"><option value="ema" ${m.type === "ema" ? "selected" : ""}>EMA</option><option value="sma" ${m.type === "sma" ? "selected" : ""}>SMA</option></select></label><label>Length<input id="ma-l${k}" type="number" min="2" max="500" value="${m.len}"></label><label>Color<input id="ma-c${k}" type="color" value="${m.color}"></label></div>`).join("")}
+    <div class="row2"><label class="ck"><input type="checkbox" id="bb-on" ${I.bb.on ? "checked" : ""}> Bollinger Bands</label><label>Length<input id="bb-l" type="number" min="2" max="200" value="${I.bb.len}"></label><label>Std dev<input id="bb-m" type="number" step="0.1" min="0.5" max="5" value="${I.bb.mult}"></label></div>
+    <div class="row2"><label class="ck"><input type="checkbox" id="rsi-on" ${I.rsi.on ? "checked" : ""}> RSI (legend)</label><label>Length<input id="rsi-l" type="number" min="2" max="100" value="${I.rsi.len}"></label></div>
+    <div class="row2"><label class="ck"><input type="checkbox" id="atr-on" ${I.atr.on ? "checked" : ""}> ATR (legend)</label><label>Length<input id="atr-l" type="number" min="2" max="100" value="${I.atr.len}"></label></div>`, () => {
+    I.ma = I.ma.map((m, k) => ({ ...m, on: $("ma-on" + k).checked, type: $("ma-t" + k).value, len: Math.max(2, Math.min(500, +$("ma-l" + k).value || m.len)), color: $("ma-c" + k).value }));
+    I.bb = { on: $("bb-on").checked, len: Math.max(2, +$("bb-l").value || 20), mult: Math.max(0.5, +$("bb-m").value || 2) }; I.rsi = { on: $("rsi-on").checked, len: Math.max(2, +$("rsi-l").value || 14) }; I.atr = { on: $("atr-on").checked, len: Math.max(2, +$("atr-l").value || 14) };
+    savePrefs(); panes.forEach((p) => { if (p.ind) for (const z of Object.values(p.ind)) try { p.chart.removeSeries(z.s); } catch (e) {} p.ind = {}; indFull(p); }); }); }
+
+/* ---------------- price alerts: fire once when the replay crosses the price ---------------- */
+let alerts = [];
+function addAlert(price) { const a = { id: Date.now(), price: rnd(price), sym, last: last() }; alerts.push(a); drawAlerts(); toast(`🔔 Alert set at ${px2(a.price)}`); }
+function drawAlerts() { for (const p of panes) { (p.alines || []).forEach((l) => { try { p.series.removePriceLine(l); } catch (e) {} }); p.alines = []; if (paneSym(p) !== sym) continue;
+  for (const a of alerts) if (a.sym === sym) p.alines.push(p.series.createPriceLine({ price: a.price, color: "#f5c542", lineWidth: 1, lineStyle: 1, title: "🔔", axisLabelVisible: true })); } }
+function checkAlerts() { if (!alerts.length) return; const b = lastBar(); if (!b) return; const hit = alerts.filter((a) => a.sym === sym && b.l <= a.price && b.h >= a.price);
+  if (!hit.length) return; alerts = alerts.filter((a) => !hit.includes(a)); drawAlerts(); for (const a of hit) { toast(`🔔 Price hit ${px2(a.price)}`); try { tone("alert"); } catch (e) {} } if (prefs.alertPause !== false) pause(); }
+
 /* ---------------- order engine ---------------- */
 let hist = [], lock = null;     // lock = {why, until (replay epoch, or Infinity)}
 const flat = () => ({ qty: 0, avg: 0, sl: null, tp: null, t: 0, risk: 0, trail: 0, hi: 0, tool: null, tags: [] });
@@ -671,7 +727,10 @@ function drawOpens() {
 function menu(items, cx, cy, again) {   // again: rebuild fn so toggles keep the menu open
   items = items.filter(Boolean); const m = $("ctx");
   m.innerHTML = items.map((it, i) => it === "-" ? '<div class="sepm"></div>' : it.h ? `<div class="mh">${it.h}</div>` : `<button class="mi ${it.c || ""}" data-i="${i}">${it.t}${it.k ? `<span>${it.k}</span>` : ""}</button>`).join("");
-  m.dataset.from = ""; m.classList.remove("hidden"); m.style.left = "0px"; m.style.top = "0px"; const r = m.getBoundingClientRect(); m.style.left = Math.min(cx, innerWidth - r.width - 8) + "px"; m.style.top = Math.min(cy, innerHeight - r.height - 8) + "px";
+  m.dataset.from = ""; m.classList.remove("hidden"); m.style.maxHeight = ""; m.style.overflowY = ""; m.style.left = "0px"; m.style.top = "0px"; const r = m.getBoundingClientRect(), room = innerHeight - cy - 8;
+  m.style.left = Math.min(cx, innerWidth - r.width - 8) + "px";
+  if (r.height > room && room >= 240) { m.style.top = cy + "px"; m.style.maxHeight = room + "px"; m.style.overflowY = "auto"; }   // long menus scroll instead of sliding up over the button that opened them
+  else m.style.top = Math.max(8, Math.min(cy, innerHeight - r.height - 8)) + "px";
   m.onclick = (e) => { const b = e.target.closest(".mi"); if (!b) return; const it = items[+b.dataset.i], keep = it.keep || (again && /^(✓ |\u2003 )/.test(it.t) && !/…$/.test(it.t));
     if (!keep) { hideCtx(); return it.f(); }
     it.f(); if (it.re) { b.firstChild.textContent = it.re(); return; }
@@ -707,6 +766,7 @@ function chartMenu(p, x, y, cx, cy) {
     "-", { t: "Long position here", c: "b", k: prefs.keys.long.toUpperCase(), f: () => { newDrawing("long", p, { t, p: pr }); repaintAll(); } },
     { t: "Short position here", c: "s", k: prefs.keys.short.toUpperCase(), f: () => { newDrawing("short", p, { t, p: pr }); repaintAll(); } },
     { t: "Horizontal line here", k: prefs.keys.hline.toUpperCase(), f: () => { newDrawing("hline", p, { t, p: pr }); repaintAll(); } },
+    { t: `🔔 Alert at ${px2(pr)}`, f: () => addAlert(pr) }, alerts.length ? { t: `Clear ${alerts.length} alert${alerts.length > 1 ? "s" : ""}`, f: () => { alerts = []; drawAlerts(); } } : null,
     "-", { t: "Chart settings…", f: () => $("chartsetbtn").click() }, { t: "Magnet: " + (prefs.magnet ? "on" : "off"), f: toggleMagnet, keep: true, re: () => "Magnet: " + (prefs.magnet ? "on" : "off") },
     { t: (prefs.hideDraw ? "Show" : "Hide") + " all drawings", keep: true, re: () => (prefs.hideDraw ? "Show" : "Hide") + " all drawings", f: () => { prefs.hideDraw = !prefs.hideDraw; savePrefs(); repaintAll(); } },
     { t: (drawings.length && drawings.every((d) => d.locked) ? "Unlock" : "Lock") + " all drawings", f: () => { const all = drawings.length && drawings.every((d) => d.locked); drawings.forEach((d) => (d.locked = !all)); repaintAll(); toast(all ? "Drawings unlocked" : "🔒 All drawings locked"); } },
@@ -1359,6 +1419,7 @@ const SND_KINDS = { chime: "Chime", buzz: "Buzz", pop: "Pop", coin: "Coin", bell
 const SND_DEF = { fill: "chime", place: "pop", cancel: "pop", stop: "buzz", target: "coin", closed: "chime", be: "pop", alert: "bell" };
 function tone(kind) { if (prefs.sound === false) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } const t0 = AC.currentTime, vol = (prefs.vol ?? 60) / 100 * 0.18;
   const note = (f, at, dur, type = "sine", v = vol) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f, t0 + at); g.gain.setValueAtTime(0, t0 + at); g.gain.linearRampToValueAtTime(v, t0 + at + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur); o.connect(g).connect(AC.destination); o.start(t0 + at); o.stop(t0 + at + dur + 0.02); };
+  if (kind === "alert") { note(1047, 0, 0.12, "triangle"); note(1568, 0.12, 0.12, "triangle"); note(2093, 0.24, 0.3); return; }
   if (kind === "chime") { note(880, 0, 0.12, "triangle"); note(1320, 0.06, 0.16); } else if (kind === "buzz") { note(150, 0, 0.22, "sawtooth", vol * 0.6); note(110, 0.05, 0.25, "square", vol * 0.35); }
   else if (kind === "pop") note(1200, 0, 0.05, "sine"); else if (kind === "coin") { note(988, 0, 0.08, "square", vol * 0.5); note(1319, 0.08, 0.25, "square", vol * 0.5); }
   else if (kind === "bell") { note(1568, 0, 0.6, "sine"); note(2349, 0, 0.4, "sine", vol * 0.4); }

@@ -151,6 +151,23 @@ async def main():
         check("channel has a width", ch is not None and ch != 0, ch)
         await E("prefs.hideDraw=true; repaintAll()"); check("hide all drawings", await E("prefs.hideDraw===true")); await E("prefs.hideDraw=false; repaintAll()")
         await E("drawings.forEach(d=>d.locked=true)"); check("lock all drawings", await E("drawings.length>0 && drawings.every(d=>d.locked)")); await E("drawings.forEach(d=>d.locked=false)")
+        # indicator library + price alerts
+        await E("view('trade'); setLayout('1')"); await pg.wait_for_timeout(400)
+        await E("indCfg().ma[0].on=true; indCfg().bb.on=true; indCfg().rsi.on=true; indCfg().atr.on=true; panes.forEach(indFull)"); await pg.wait_for_timeout(200)
+        check("EMA 9 line drawn", await E("panes[0].ind.e9 && panes[0].ind.e9.v.filter(v=>v!=null).length>50"))
+        ema_ok = await E("(()=>{const c=panes[0].candles, v=panes[0].ind.e9.v, i=c.length-1, a=2/10; return Math.abs(v[i] - (a*c[i].close + (1-a)*v[i-1])) < 1e-6})()")
+        check("EMA math is right", ema_ok)
+        check("Bollinger bands drawn", await E("!!(panes[0].ind.bbu && panes[0].ind.bbl)"))
+        await E("stepFwd(); stepFwd()"); await pg.wait_for_timeout(150)
+        check("indicators keep up while stepping", await E("panes[0].ind.e9.v.length===panes[0].candles.length && panes[0].ind.e9.v.at(-1)!=null"))
+        check("RSI + ATR show in the legend", await E("/RSI 14 .*ATR 14/.test(panes[0].el.querySelector('.ivals').textContent)"), await E("panes[0].el.querySelector('.ivals').textContent"))
+        await E("indCfg().ma[0].on=false; indCfg().bb.on=false; indCfg().rsi.on=false; indCfg().atr.on=false; panes.forEach(indFull)")
+        check("turning them off removes the lines", await E("Object.keys(panes[0].ind).length===0"))
+        await E("flatten(); alerts=[]; addAlert(last()+0.25)"); check("alert line appears", await E("panes[0].alines.length===1"))
+        for k in range(40):
+            if await E("alerts.length===0"): break
+            await E("stepFwd()")
+        check("alert fires when price crosses", await E("alerts.length===0"))
         # media dock: Reese library + Spotify/YouTube sign-in panels
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))
