@@ -15,7 +15,7 @@ const SEC = Object.fromEntries(TFS);
 const TICK = 0.25;
 const LAYOUTS = { "1": [1, 1], "2": [2, 1], "2h": [1, 2], "3": [3, 1], "4": [2, 2], "6": [3, 2], "8": [4, 2] };
 const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
-const IND_DEF = { sbox: true, data: true, sess: false, pd: true, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: true, h4: false, po3: false };
+const IND_DEF = { sbox: true, data: true, sess: false, pd: true, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: true, ob: false, h4: false, po3: false, htfc: ["4h", "1D"] };
 const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", be: "e", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
@@ -172,7 +172,7 @@ function makePane(i) {
   const p = { i, el, chart, series, sec: paneSec(i), candles: [], lines: [], opens: [], cv: el.querySelector("canvas.overlay") };
   p.mode = 0; p.auto = true;
   el.addEventListener("pointerdown", () => setActive(i), true);
-  chart.timeScale().subscribeVisibleLogicalRangeChange(() => paint(p)); new ResizeObserver(() => paint(p)).observe(el);
+  chart.timeScale().subscribeVisibleLogicalRangeChange(() => { paint(p); clearTimeout(p.hrT); p.hrT = setTimeout(() => htfRoom(p), 120); }); new ResizeObserver(() => paint(p)).observe(el);
   chart.subscribeCrosshairMove((pr) => { if (pr.point) p.hover = { point: pr.point }; const d = pr.seriesData && pr.seriesData.get(series);
     el.querySelector(".ohlc").innerHTML = d ? `O <b>${px2(d.open)}</b> H <b>${px2(d.high)}</b> L <b>${px2(d.low)}</b> C <b class="${d.close >= d.open ? "pos-up" : "pos-dn"}">${px2(d.close)}</b>` : ""; });
   initPointer(p);
@@ -191,8 +191,8 @@ function indMenu() { if (ctxJust === "ind") { ctxJust = null; return; }   // fix
   menu([{ h: "Indicators" }, { t: ck(prefs.opens) + "Key opens (18:00, midnight, 9:30, 10:00)", f: () => { prefs.opens = !prefs.opens; savePrefs(); fillSettings(); drawOpens(); } },
   { t: ck(prefs.sess) + "Shade the NY session", f: () => { prefs.sess = !prefs.sess; savePrefs(); fillSettings(); repaintAll(); } },
   { t: ck(I.sbox) + "Trading sessions (Tokyo / London / New York boxes)", f: flip("sbox") }, { t: "\u2003 Sessions settings…", f: sessDlg }, { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session high / low lines only (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") }, { t: ck(I.pw) + "Week + previous week high / low", f: flip("pw") }, { t: ck(I.eq) + "Equal highs / lows (resting liquidity)", f: flip("eq") },
-  { t: ck(I.fvg) + "Fair value gaps (FVG)", f: flip("fvg") }, ...(I.fvg ? ["5m", "15m", "1h", "4h", "1D"].map((tf) => ({ t: "\u2003 " + ck((I.fvgTfs || []).includes(tf)) + tf + " gaps", f: () => { const s = new Set(I.fvgTfs || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.fvgTfs = [...s]; savePrefs(); repaintAll(); } })).concat([{ t: "\u2003 " + ck(I.ifvg) + "Show inversions (IFVG)", f: flip("ifvg") }]) : []),
-  { t: ck(I.h4) + "4H candle outlines", f: flip("h4") }, { t: ck(I.po3) + "Daily candle (PO3) on the right", f: flip("po3") }], r.left, r.bottom + 6); $("ctx").dataset.from = "ind"; }
+  { t: ck(I.fvg) + "Fair value gaps (FVG)", f: flip("fvg") }, { t: ck(I.ob) + "Order blocks (OB) on the same timeframes", f: flip("ob") }, ...(I.fvg || I.ob ? ["5m", "15m", "1h", "4h", "1D"].map((tf) => ({ t: "\u2003 " + ck((I.fvgTfs || []).includes(tf)) + tf + " gaps", f: () => { const s = new Set(I.fvgTfs || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.fvgTfs = [...s]; savePrefs(); repaintAll(); } })).concat([{ t: "\u2003 " + ck(I.ifvg) + "Show inversions (IFVG)", f: flip("ifvg") }]) : []),
+  { h: "Higher-timeframe candles on the right (PO3)" }, ...["15m", "1h", "4h", "1D", "1W"].map((tf) => ({ t: ck((I.htfc || []).includes(tf)) + "Current " + tf + " candle", f: () => { const s = new Set(I.htfc || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.htfc = ["15m", "1h", "4h", "1D", "1W"].filter((x) => s.has(x)); savePrefs(); repaintAll(); } })), { t: ck(I.h4) + "Past 4H candle outlines on the chart", f: flip("h4") }], r.left, r.bottom + 6); $("ctx").dataset.from = "ind"; }
 const TOOLNAMES = { cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
 function favUI() {
   const fb = $("favbar"); fb.classList.toggle("hidden", !prefs.favShow); $("favbtn").classList.toggle("on", !!prefs.favShow);
@@ -296,25 +296,38 @@ function studies() {
       out.levels.push({ price: hi.h, t0: loc(hi.t), label: nm + " H" + tag, col }, { price: lo.l, t0: loc(lo.t), label: nm + " L" + tag, col }); if (dd === today) break; } }
   if (I.pd && prev) { const rth = (days[prev] || []).filter((x) => hm(x) >= "09:30" && hm(x) < "16:00"); if (rth.length) { const hi = rth.reduce((m, x) => (x.h > m.h ? x : m)), lo = rth.reduce((m, x) => (x.l < m.l ? x : m));
       out.levels.push({ price: hi.h, t0: loc(hi.t), label: "PDH", col: "rgba(230,234,240,.7)" }, { price: lo.l, t0: loc(lo.t), label: "PDL", col: "rgba(230,234,240,.7)" }); } }
-  if (I.fvg) {   // FVGs on each chosen timeframe. Shows only the UNFILLED part (it shrinks as price trades in). A candle closing through the far side flips it to an inversion gap (IFVG) that holds until a close back through.
-    const lp = bars[i].c, all = [];
+  if (I.fvg || I.ob) {   // fix 8: FVGs, inversion gaps and order blocks per chosen timeframe. Each zone has a start AND an end: an FVG box stops where it got inverted, the IFVG starts there and stops when it's invalidated. Only the unfilled part of a gap is shown.
+    const lp = bars[i].c, act = [], ended = [];
     for (const tf of (I.fvgTfs && I.fvgTfs.length ? I.fvgTfs : [I.fvgTf])) { const sec = SEC[tf] || 3600, cs = [];
       for (let k = Math.max(0, i - (sec >= 14400 ? 15 : 10) * 1440); k <= i; k++) { const x = bars[k], bt = bucket(loc(x.t), sec), c = cs[cs.length - 1];
         if (c && c.t === bt) { c.h = Math.max(c.h, x.h); c.l = Math.min(c.l, x.l); c.c = x.c; } else cs.push({ t: bt, o: x.o, h: x.h, l: x.l, c: x.c }); }
-      const done = cs.slice(0, -1);
-      for (let k = 2; k < done.length; k++) { const a0 = done[k - 2], c0 = done[k]; let g = null;
-        if (c0.l > a0.h) g = { top: c0.l, bot: a0.h, dir: 1 }; else if (c0.h < a0.l) g = { top: a0.l, bot: c0.h, dir: -1 }; if (!g) continue;
-        let alive = true, inv = false;
-        for (let m = k + 1; m < cs.length; m++) { const z = cs[m], fin = m < cs.length - 1;
-          if (!inv) { if (g.dir > 0) { if (z.l < g.top) g.top = Math.max(g.bot, z.l); } else if (z.h > g.bot) g.bot = Math.min(g.top, z.h);   // trade into it: keep only the unfilled part
-            if (fin && (g.dir > 0 ? z.c < g.bot : z.c > g.top)) { if (!I.ifvg) { alive = false; break; } inv = true; g = { top: g.dir > 0 ? c0.l : a0.l, bot: g.dir > 0 ? a0.h : c0.h, dir: -g.dir }; }   // the whole original gap flips
-            else if (g.top - g.bot <= 0) { alive = false; break; } }
-          else if (fin && (g.dir > 0 ? z.c < g.bot : z.c > g.top)) { alive = false; break; } }
-        if (alive && g.top > g.bot) all.push({ ...g, t0: done[k - 1].t, label: tf + (inv ? " IFVG" : " FVG"), inv, tf }); } }
-    all.sort((a, b) => Math.abs((a.top + a.bot) / 2 - lp) - Math.abs((b.top + b.bot) / 2 - lp)); out.gaps = all.slice(0, 8); }
+      const done = cs.slice(0, -1), end = (m) => cs[m].t + sec;
+      for (let k = 2; k < done.length; k++) { const a0 = done[k - 2], c0 = done[k]; let dir = 0, top, bot;
+        if (c0.l > a0.h) { dir = 1; top = c0.l; bot = a0.h; } else if (c0.h < a0.l) { dir = -1; top = a0.l; bot = c0.h; } if (!dir) continue;
+        if (I.fvg) { let g = { top, bot, dir, t0: done[k - 1].t, t1: null, label: tf + " FVG", tf }, inv = null;
+          for (let m = k + 1; m < cs.length; m++) { const z = cs[m], fin = m < cs.length - 1;
+            if (!inv) { if (dir > 0) { if (z.l < g.top) g.top = Math.max(g.bot, z.l); } else if (z.h > g.bot) g.bot = Math.min(g.top, z.h);
+              if (fin && (dir > 0 ? z.c < bot : z.c > top)) { g.t1 = end(m); if (I.ifvg) inv = { top, bot, dir: -dir, t0: end(m), t1: null, label: tf + " IFVG", tf, inv: true }; else break; }
+              else if (g.top - g.bot <= 0) { g.t1 = end(m); g.filled = true; break; } }
+            else if (fin && (inv.dir > 0 ? z.c < inv.bot : z.c > inv.top)) { inv.t1 = end(m); break; } }
+          (g.t1 ? ended : act).push(g); if (inv) (inv.t1 ? ended : act).push(inv); }
+        if (I.ob) { let j = k - 2; while (j >= Math.max(0, k - 6) && (dir > 0 ? !(done[j].c < done[j].o) : !(done[j].c > done[j].o))) j--; if (j < Math.max(0, k - 6)) continue;
+          const oc = done[j], ob = { top: oc.h, bot: oc.l, dir, t0: oc.t, t1: null, label: tf + " OB", tf, ob: true };
+          for (let m = k + 1; m < cs.length - 1; m++) if (dir > 0 ? cs[m].c < ob.bot : cs[m].c > ob.top) { ob.t1 = end(m); break; }
+          (ob.t1 ? ended : act).push(ob); } } }
+    const near = (z) => Math.abs((z.top + z.bot) / 2 - lp), seen = new Set(), uniq = (z) => { const k = z.label + z.top + z.bot; if (seen.has(k)) return false; seen.add(k); return true; };
+    const live = act.filter((z) => z.top - z.bot > 0 && uniq(z)).sort((a, b) => near(a) - near(b));
+    out.gaps = live.filter((z) => !z.ob).slice(0, 6).concat(live.filter((z) => z.ob).slice(0, 3), ended.filter((z) => !z.filled && z.top - z.bot > 0 && uniq(z)).sort((a, b) => b.t1 - a.t1).slice(0, 4)); }
   if (I.h4) { const cs = []; for (let k = Math.max(0, i - 3 * 1440); k <= i; k++) { const x = bars[k], bt = bucket(loc(x.t), 14400), c = cs[cs.length - 1];
       if (c && c.t === bt) { c.h = Math.max(c.h, x.h); c.l = Math.min(c.l, x.l); c.c = x.c; } else cs.push({ t: bt, o: x.o, h: x.h, l: x.l, c: x.c }); } out.h4 = cs.slice(-8); }
-  if (I.po3 && cur.length) { const xs = cur.slice().reverse(); out.po3 = { o: xs[0].o, h: Math.max(...xs.map((x) => x.h)), l: Math.min(...xs.map((x) => x.l)), c: bars[i].c }; }
+  // fix 9 + 11: the CURRENT candle of each chosen higher timeframe, drawn side by side on the right (PO3 view). Built only from bars up to the replay cursor.
+  out.htf = []; for (const tf of (I.htfc || [])) { const lt0 = loc(t); let start;
+    if (tf === "1D") start = (() => { let k = i; while (k > 0 && sessDay(bars[k - 1].t) === today) k--; return k; })();
+    else if (tf === "1W") { const wk = (lt) => Math.floor((lt + 6 * 3600) / 86400) - new Date((lt + 6 * 3600) * 1000).getUTCDay(), cw = wk(lt0); let k = i; while (k > 0 && wk(loc(bars[k - 1].t)) === cw && i - k < 8 * 1440) k--; start = k; }
+    else { const sec = SEC[tf], b0 = bucket(lt0, sec); let k = i; while (k > 0 && bucket(loc(bars[k - 1].t), sec) === b0) k--; start = k; }
+    let h = -Infinity, l = Infinity; for (let k = start; k <= i; k++) { if (bars[k].h > h) h = bars[k].h; if (bars[k].l < l) l = bars[k].l; }
+    out.htf.push({ tf, o: bars[start].o, h, l, c: bars[i].c }); }
+  if (I.po3 && cur.length && !(I.htfc || []).length) { const xs = cur.slice().reverse(); out.po3 = { o: xs[0].o, h: Math.max(...xs.map((x) => x.h)), l: Math.min(...xs.map((x) => x.l)), c: bars[i].c }; }
   return out;
 }
 
@@ -355,16 +368,22 @@ function paintStudies(p, g, W, H) {
   for (const z of S.h4) { if (p.sec >= 14400) break; const x1 = X(z.t), x2 = Math.min(W, X(z.t + 14400) || W), y1 = yOf(p, z.h), y2 = yOf(p, z.l); if (y1 == null || y2 == null || x2 <= x1) continue;
     g.strokeStyle = z.c >= z.o ? "rgba(43,212,160,.35)" : "rgba(255,107,122,.35)"; g.lineWidth = 1; g.setLineDash([]); g.strokeRect(x1, y1, x2 - x1, y2 - y1);
     const yo = yOf(p, z.o), yc = yOf(p, z.c); if (yo != null && yc != null) { g.fillStyle = z.c >= z.o ? "rgba(43,212,160,.06)" : "rgba(255,107,122,.06)"; g.fillRect(x1, Math.min(yo, yc), x2 - x1, Math.abs(yo - yc)); } }
-  for (const z of S.gaps) { const y1 = yOf(p, z.top), y2 = yOf(p, z.bot); if (y1 == null || y2 == null) continue; const x1 = X(z.t0);
-    g.fillStyle = z.dir > 0 ? "rgba(43,212,160,.09)" : "rgba(255,107,122,.09)"; g.fillRect(x1, y1, W - x1, y2 - y1);
-    if (z.inv) { g.strokeStyle = z.dir > 0 ? "rgba(43,212,160,.5)" : "rgba(255,107,122,.5)"; g.setLineDash([4, 3]); g.strokeRect(x1, Math.min(y1, y2), W - x1, Math.abs(y2 - y1)); g.setLineDash([]); }
-    g.fillStyle = "rgba(200,210,225,.55)"; g.fillText(z.label, x1 + 4, Math.min(y1, y2) + 11); }
+  for (const z of S.gaps) { const y1 = yOf(p, z.top), y2 = yOf(p, z.bot); if (y1 == null || y2 == null) continue; const x1 = X(z.t0), x2 = z.t1 ? Math.min(W, X(z.t1)) : W; if (x2 <= x1) continue;
+    const up = z.dir > 0, a1 = z.t1 ? 0.045 : z.ob ? 0.07 : 0.09; g.fillStyle = up ? `rgba(43,212,160,${a1})` : `rgba(255,107,122,${a1})`; g.fillRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1));
+    if (z.inv || z.ob) { g.strokeStyle = up ? "rgba(43,212,160,.5)" : "rgba(255,107,122,.5)"; g.setLineDash(z.ob ? [] : [4, 3]); g.strokeRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1)); g.setLineDash([]); }
+    g.fillStyle = z.t1 ? "rgba(200,210,225,.3)" : "rgba(200,210,225,.6)"; g.fillText(z.label, x1 + 4, Math.min(y1, y2) + 11); }
   for (const l of S.levels) { const y = yOf(p, l.price); if (y == null || y < 0 || y > H) continue; const x1 = X(l.t0);
     g.strokeStyle = l.col; g.lineWidth = 1; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(x1, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.col; g.fillText(l.label, W - g.measureText(l.label).width - 6, y - 4); }
   // contract roll marker: data switches contracts on the session after quarterly expiry (3rd Friday of Mar/Jun/Sep/Dec), so a price gap there is the roll, not a move
   if (p.sec < 86400) { const vr = ts.getVisibleLogicalRange(); if (vr && p.candles.length) { const a0 = p.candles[Math.max(0, Math.floor(vr.from))], a1 = p.candles[Math.min(p.candles.length - 1, Math.ceil(vr.to))];
     if (a0 && a1) for (let y = new Date(a0.time * 1000).getUTCFullYear(); y <= new Date(a1.time * 1000).getUTCFullYear(); y++) for (const m of [2, 5, 8, 11]) { const f = new Date(Date.UTC(y, m, 1)), fri = 1 + ((5 - f.getUTCDay() + 7) % 7) + 14, rt = Date.UTC(y, m, fri) / 1000 + 2 * 86400 + 18 * 3600;
       if (rt < a0.time || rt > a1.time + p.sec) continue; const x = xOf(p, rt); if (x == null) continue; g.strokeStyle = "rgba(255,198,92,.45)"; g.setLineDash([2, 4]); g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); g.setLineDash([]); g.fillStyle = "rgba(255,198,92,.8)"; g.fillText("contract roll", x + 4, 14); g.fillText("expiry (thin data)", X(rt - 2 * 86400 - 18 * 3600 + 9.5 * 3600) + 4, 26); } } }
+  (S.htf || []).forEach((P, k) => { const n = S.htf.length, x = W - 22 - (n - 1 - k) * 34, yh = yOf(p, P.h), yl = yOf(p, P.l), yo = yOf(p, P.o), yc = yOf(p, P.c); if ([yh, yl, yo, yc].some((v) => v == null)) return;
+    const up = P.c >= P.o; g.fillStyle = "rgba(8,10,14,.55)"; g.fillRect(x - 15, Math.min(yh, yl) - 18, 30, Math.abs(yl - yh) + 22);
+    g.strokeStyle = up ? prefs.up : prefs.dn; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, yh); g.lineTo(x, yl); g.stroke();
+    g.fillStyle = up ? prefs.up + "55" : prefs.dn + "55"; const top = Math.min(yo, yc), hh = Math.max(1, Math.abs(yo - yc)); g.fillRect(x - 8, top, 16, hh); g.strokeRect(x - 8, top, 16, hh);
+    g.strokeStyle = "rgba(200,210,225,.35)"; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x - 14, yo); g.lineTo(x + 14, yo); g.stroke(); g.setLineDash([]);
+    g.fillStyle = "rgba(220,228,240,.85)"; g.fillText(P.tf, x - g.measureText(P.tf).width / 2, Math.min(yh, yl) - 6); });
   if (S.po3) { const P = S.po3, x = W - 26, yh = yOf(p, P.h), yl = yOf(p, P.l), yo = yOf(p, P.o), yc = yOf(p, P.c); if ([yh, yl, yo, yc].every((v) => v != null)) {
       const up = P.c >= P.o; g.strokeStyle = up ? "rgba(43,212,160,.8)" : "rgba(255,107,122,.8)"; g.fillStyle = up ? "rgba(43,212,160,.22)" : "rgba(255,107,122,.22)";
       g.beginPath(); g.moveTo(x, yh); g.lineTo(x, yl); g.stroke(); g.fillRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc))); g.strokeRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc)));
@@ -493,7 +512,10 @@ function initPointer(p) {
   p.el.addEventListener("pointerup", up); p.el.addEventListener("pointercancel", up);
   p.el.addEventListener("contextmenu", (e) => { e.preventDefault(); const { x, y } = pt(e); setActive(p.i); chartMenu(p, x, y, e.clientX, e.clientY); });
 }
-function repaintAll() { panes.forEach(paint); }
+function repaintAll() { panes.forEach(htfRoom); panes.forEach(paint); }
+function htfRoom(p) {   // keep empty space on the right for the HTF candles so they never sit on top of live candles
+  if (p.dead || p.sec >= 86400) return; const n = prefs.ind && !p.noHtf ? (prefs.ind.htfc || []).length : 0, ts = p.chart.timeScale(), sp = ts.options().barSpacing || 6, want = n ? Math.ceil((n * 34 + 26) / sp) + 3 : 12;
+  if (p.rOff !== want) { p.rOff = want; ts.applyOptions({ rightOffset: want }); } }
 
 /* ---------------- order engine ---------------- */
 let hist = [], lock = null;     // lock = {why, until (replay epoch, or Infinity)}
