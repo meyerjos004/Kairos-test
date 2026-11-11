@@ -205,7 +205,7 @@ async def main():
         check("Stats shows the Monte Carlo card", await E("!!$('mc-cv') && /Pass/.test($('st-mc').innerText)"), await E("$('st-mc').innerText.slice(0,120)"))
         await pg.screenshot(path="/home/claude/shot/mc.png"); await E("view('trade')")
         # news events: CPI / FOMC lines from official dates
-        check("CPI + FOMC dates load", await E("econOn('2024-06-12').map(e=>e.name).join()==='CPI,FOMC' && econOn('2023-02-01')[0].name==='FOMC' && econOn('2024-06-13').length===0"))
+        check("CPI + FOMC dates load", await E("econOn('2024-06-12').map(e=>e.name).join()==='CPI,FOMC' && econOn('2023-02-01')[0].name==='FOMC' && econOn('2024-06-13').length===0 && econOn('2024-06-07')[0].name==='NFP' && econOn('2025-11-20')[0].name==='NFP'"))
         await E("view('trade'); prefs.ind.econ=true; $('start').value='2024-06-12T09:20'; loadReplay()"); await pg.wait_for_timeout(1500)
         await pg.screenshot(path="/home/claude/shot/econ.png")
         check("news toast on an event day", await E("document.body.innerText.includes('News today: CPI')"))
