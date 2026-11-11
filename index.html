@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>KAIROS OS · futures replay</title>
+<title>KAIROS OS Beta · futures replay</title>
 <link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="icon-32.png" sizes="32x32"><link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0a0a0d"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Rewind"><link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -188,9 +188,16 @@
         <h3>Privacy</h3>
         <div class="tiny muted">Blur numbers when you're streaming or sharing your screen.</div>
         <div class="chips" id="s-mask"><label class="ck"><input type="checkbox" data-mask="upl"> Mask UP&amp;L</label><label class="ck"><input type="checkbox" data-mask="rpl"> Mask RP&amp;L</label><label class="ck"><input type="checkbox" data-mask="bal"> Mask balance</label><label class="ck"><input type="checkbox" data-mask="ddl"> Mask drawdown left</label><label class="ck"><input type="checkbox" data-mask="acct"> Mask account name</label><label class="ck"><input type="checkbox" data-mask="all"> Mask all</label></div>
+        <h3>Trade sounds &amp; effects</h3>
+        <div class="tiny muted">Upload your own clips (mp3, wav, m4a or an mp4, up to 15 MB). They're saved on this device only. Set where each clip starts and how long it plays. Clips play when price is running toward your take profit or your stop, and when either one hits.</div>
+        <div id="s-fx"></div>
+        <div class="tiny muted" style="margin-top:6px">Ideas from trading TikTok: the "take loss, stop profit" clip, the vine boom for a stop-out, "I got like hella money" for a small win, the Industry trading-floor stress clip for a trade going against you. Find them in TikTok's Sounds tab or the Creative Center, save the audio, and upload it here.</div>
         <h3>Sounds per event</h3>
         <div id="s-snd" class="keys"></div>
         <label>Your own sound (mp3/wav, max 300 KB, saved on this device)<input id="s-sndfile" type="file" accept="audio/*"></label>
+        <h3>KAIROS OS</h3>
+        <div class="tiny muted" id="s-ver">Beta</div>
+        <div class="row2"><button class="small" id="s-intro">Replay the intro</button><button class="small" id="s-tour">Take the tour</button></div>
         <h3>Personal lockout</h3>
         <div class="tiny muted">Blocks new trades in replay until the time is up. No way to cancel it early. That's the point.</div>
         <div class="row2"><select id="s-lock"><option value="0">Pick…</option><option value="1">1 hour</option><option value="2">2 hours</option><option value="4">4 hours</option><option value="day">Rest of the day</option><option value="custom">Custom hours…</option></select><button id="s-lockgo" class="small">Lock me out</button></div>

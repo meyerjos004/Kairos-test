@@ -235,6 +235,42 @@ async def main():
         check("SMT only uses closed candles", await E("(()=>{const z=smtFind('5m',300); const now=bucket(loc(nowT()),300); return z.every(s=>s.t2<now)})()"))
         await pg.screenshot(path="/home/claude/shot/smt.png")
         await E("Object.keys(smtCfg()).forEach(k=>smtCfg()[k]=false); repaintAll()")
+        # Beta welcome cinematic + onboarding tour
+        await E("view('trade'); welcomeIntro(true)"); await pg.wait_for_timeout(300)
+        check("welcome gate shows", await E("!!document.getElementById('welcome') && $('w-go').offsetParent!==null"))
+        await pg.click("#w-go"); await pg.wait_for_timeout(1800); await pg.screenshot(path="/home/claude/shot/w1.png")
+        await pg.wait_for_timeout(2500); await pg.screenshot(path="/home/claude/shot/w2.png")
+        await pg.wait_for_timeout(2600); await pg.screenshot(path="/home/claude/shot/w3.png")
+        check("intro ends on the KAIROS Beta lockup + tour button", await E("document.getElementById('welcome').classList.contains('cta') && $('w-tour').getBoundingClientRect().width>0"))
+        await pg.click("#w-tour"); await pg.wait_for_timeout(1500)
+        check("tour starts", await E("!!document.querySelector('.tourbox') && !!document.querySelector('.tourspot')"))
+        await pg.screenshot(path="/home/claude/shot/t1.png")
+        for k in range(14):
+            if not await E("!!document.querySelector('.tourbox')"): break
+            await E("document.querySelector('.tourbox [data-t=n]').click()"); await pg.wait_for_timeout(120)
+        check("tour runs to the end", await E("!document.querySelector('.tourbox') && prefs.toured===APP_VERSION && prefs.welcomed===APP_VERSION"))
+        # trade effects + your own clips
+        k = await E("(()=>{window.__fx=[]; const o=window.fxEvent; window.fxEvent=(k,a)=>{__fx.push(k); return o(k,a)}; return 1})()")
+        await E("flatten(); lock=null; market(1)"); await pg.wait_for_timeout(150); await E("pos.tp = last() + 12; pos.sl = last() - 500; fxCfg().runPct = 20")
+        for k in range(300):
+            if await E("__fx.includes('run_tp') || !pos.qty"): break
+            await E("stepFwd()")
+        await E("if (pos.qty) { pos.tp = last() + 0.25 }")
+        for k in range(60):
+            if await E("__fx.includes('hit_tp') || !pos.qty"): break
+            await E("stepFwd()")
+        await pg.wait_for_timeout(100)
+        check("running-to-target + take-profit effects fire", await E("__fx.includes('run_tp') && __fx.includes('hit_tp')"), await E("__fx"))
+        await E("flatten(); lock=null; __fx=[]; market(1)"); await pg.wait_for_timeout(150); await E("pos.sl = last() - 0.25; pos.tp = last() + 500")
+        for k in range(60):
+            if await E("__fx.includes('hit_sl') || !pos.qty"): break
+            await E("stepFwd()")
+        await pg.wait_for_timeout(100)
+        check("stop-out effect fires", await E("__fx.includes('hit_sl')"), await E("[__fx, pos.qty]"))
+        await E("flatten()")
+        await E("(async()=>{ await fxPut('hit_tp', {blob: new Blob([new Uint8Array(64)], {type:'audio/wav'}), name:'hella-money.wav'}); fxCfg().slots.hit_tp={name:'hella-money.wav', len:6}; await fxLoadHave(); fxUI(); })()"); await pg.wait_for_timeout(400)
+        check("your own clip saves on this device", await E("fxHave.hit_tp===true && $('s-fx').innerText.includes('hella-money.wav')"))
+        await E("fxPut('hit_tp', null)")
         # media dock: Reese library + Spotify/YouTube sign-in panels
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))

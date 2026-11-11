@@ -163,7 +163,7 @@ async function stepFwd(ui = true) {
   for (const x of fresh["15s"]) engineBar(x);                                   // fills use the finest bars available
   for (const x of fresh["1m"]) if (!(need15 && hasFine(x.t))) engineBar(x);
   for (const s of otherSyms()) { const c = CTX[s]; if (!c || !(c.pos.qty || c.orders.length) || !fx[s]) continue; withSym(s, () => { for (const x of fx[s]["15s"]) engineBar(x); for (const x of fx[s]["1m"]) if (!(need15 && hasFine(x.t))) engineBar(x); }); }
-  checkAlerts();
+  checkAlerts(); try { fxTick(); } catch (e) {}
   if (B["1m"].i % 500 === 0) await ensureAhead(); if (B["1m"].i % 60 === 0 && sess) db.saveCursor(sess.id, cursorT);
   if (!ui) return fresh["1m"];
   if (fresh["1m"].some((x) => ["00:00", "09:30", "10:00", "18:00"].includes(lhm(loc(x.t))))) drawOpens();
@@ -734,7 +734,7 @@ function fill(side, qty, price, t, br, toolId) {
   } else { const cq = Math.min(Math.abs(pos.qty), qty); record(cq, price, t, "manual"); const rest = qty - cq; if (rest > 0) fill(side, rest, price, t, br, toolId); }
   drawOrders(); refresh(); repaintAll();
 }
-function record(cq, price, t, outcome) {
+function record(cq, price, t, outcome) { setTimeout(() => { try { const h = hist[hist.length - 1]; if (!h) return; const k = outcome === "loss" ? "hit_sl" : (outcome === "win" || (outcome === "trail" && h.pnl > 0)) ? "hit_tp" : null; if (k) fxEvent(k, h.pnl); } catch (e) {} }, 0);
   const side = Math.sign(pos.qty), pnl = (price - pos.avg) * side * cq * inst.pt - fee(cq), r = pos.risk ? ((price - pos.avg) * side) / pos.risk : null;
   if (Math.abs(pos.qty) <= cq && prefs.chkShow) setTimeout(() => { chk = new Set(); chkUI(); }, 0);
   const row = { session_id: sess && sess.id, ...(acct ? { account_id: acct.id } : {}), tags: pos.tags || [], symbol: sym, dir: side, qty: cq, entry: +pos.avg.toFixed(2), stop: pos.sl, target: pos.tp, exit: price, t_entry: pos.t, t_exit: t, outcome, r: r == null ? null : +r.toFixed(2), pnl: +pnl.toFixed(2), fees: fee(cq) };
@@ -1027,19 +1027,6 @@ async function stepCandle() {   // play out one whole candle of the selected cha
   rebuildAll(); }
 
 /* ---------------- first-run tour + help ---------------- */
-const TOUR = [["#start", "Pick a date and time (New York), then hit Load. Or press NY open / Asia open to jump there."], ["#tfbar", "Timeframes for the selected chart. Click a chart to select it; the grid button next to Indicators gives you 1 to 8 charts."],
-  ["#tools", "Drawing tools. The long/short box is the star: place it, right-click, Arm, and it enters on its own with its stop and target. Right-click any tool to add it to your favorites bar."],
-  ["#pad", "The Scalp Pad: buy, sell, join bid/ask. Drag it anywhere; right-click it for settings. Hot keys: B buy, S sell, X close, F flatten, C cancel, space play, ← → step."],
-  ["#acctpill", "Accounts: make an eval or funded account with its own rules. Your trades, Stats, Learn (Reese log + quiz) and Friends live in the bar on the left."]];
-let tourI = 0;
-function tour(i = 0) { tourI = i; const t = TOUR[i]; if (!t) { $("tour").classList.add("hidden"); prefs.tourDone = true; savePrefs(); return; } view("trade");
-  const el = document.querySelector(t[0]), r = el && el.getBoundingClientRect(); $("tour").classList.remove("hidden"); const hole = $("tourhole"), card = $("tourcard");
-  if (r && r.width) { Object.assign(hole.style, { left: r.left - 6 + "px", top: r.top - 6 + "px", width: r.width + 12 + "px", height: r.height + 12 + "px" }); } else Object.assign(hole.style, { left: "50%", top: "50%", width: "0px", height: "0px" });
-  const tall = r && r.height > 260, below = r && r.bottom + 180 < innerHeight;
-  card.style.left = (tall ? Math.min(r.right + 14, innerWidth - 360) : Math.max(12, Math.min(r ? r.left : innerWidth / 2, innerWidth - 360))) + "px";
-  card.style.top = (r ? (tall ? r.top + 40 : below ? r.bottom + 14 : Math.max(12, r.top - 170)) : innerHeight / 2) + "px";
-  card.innerHTML = `<div class="tiny muted">${i + 1} of ${TOUR.length}</div><p>${t[1]}</p><div class="row"><button class="ghost small" id="tour-x">Skip</button><button class="primary small" id="tour-n">${i === TOUR.length - 1 ? "Done" : "Next"}</button></div>`;
-  $("tour-n").onclick = () => tour(i + 1); $("tour-x").onclick = () => tour(99); }
 function helpDlg() { const K = prefs.keys, rows = [["Play / pause", "Space"], ["Step forward / back", "→ / ←"], ["Buy / sell market", (K.buy + " / " + K.sell).toUpperCase()], ["Join bid / ask", (K.joinbid + " / " + K.joinask).toUpperCase()], ["Close / reverse", (K.close + " / " + K.reverse).toUpperCase()], ["Flatten / cancel all", (K.flatten + " / " + K.cancel).toUpperCase()],
     ["Trend / h-line / v-line / zone", (K.trend + " / " + K.hline + " / " + K.vline + " / " + K.rect).toUpperCase()], ["Long / short box", (K.long + " / " + K.short).toUpperCase()], ["Measure", K.measure.toUpperCase()], ["Cancel tool / deselect", "Esc"], ["Delete drawing", "Del"]];
   dlg(`<h3>Help</h3><table class="bt">${rows.map(([a, b]) => `<tr><td>${a}</td><td><kbd>${b}</kbd></td></tr>`).join("")}</table><p class="tiny muted">Change hot keys in Settings. Right-click the chart, an order line, a drawing or the Scalp Pad for more options.</p>`, () => tour(0));
@@ -1528,6 +1515,89 @@ function splashSound() { if (prefs.sound === false || DEMO) return; try { const 
   ac.resume().then(() => (ac.state === "running" ? kChime(ac) : null)).catch(() => {}); setTimeout(() => { if (ac.state !== "running") ac.close(); }, 600); } catch (e) {} }   // browsers only allow this on refresh once you've used the site a bit; sign-in always plays it
 function splash() { splashSound(); const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><img class="sp-lock" src="brand/kairos-intro.svg?' + Date.now() + '" alt="KAIROS OS"></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 1700); setTimeout(() => s.remove(), 2200); }
 if (prefs.splash !== false) splash();
+/* ---------------- KAIROS OS Beta: welcome cinematic (first time you're let in) + onboarding tour ---------------- */
+const APP_VERSION = "0.9.0", APP_LABEL = "Beta";
+function wAudio() { try { const ac = new (window.AudioContext || window.webkitAudioContext)(), M = ac.createGain(); M.gain.value = 0.9; M.connect(ac.destination);
+  const len = ac.sampleRate * 3, ir = ac.createBuffer(2, len, ac.sampleRate); for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4); }
+  const V = ac.createConvolver(); V.buffer = ir; const vg = ac.createGain(); vg.gain.value = 0.5; V.connect(vg); vg.connect(M); return { ac, M, V }; } catch (e) { return null; } }
+function wTone(A, f, t0, dur, vol, type = "sine") { const o = A.ac.createOscillator(), g = A.ac.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(0, t0); g.gain.linearRampToValueAtTime(vol, t0 + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur); o.connect(g); g.connect(A.M); g.connect(A.V); o.start(t0); o.stop(t0 + dur + 0.05); }
+function wScore(A) { const ac = A.ac, t = ac.currentTime + 0.05;
+  [329.63, 392, 440].forEach((f, k) => wTone(A, f, t + 0.15 + k * 0.32, 1.6, 0.045, "triangle"));   // "Welcome to…"
+  const n = ac.createBufferSource(), nb = ac.createBuffer(1, ac.sampleRate * 2.4, ac.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1; n.buffer = nb;   // riser into the pause
+  const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 6; bp.frequency.setValueAtTime(300, t + 1.4); bp.frequency.exponentialRampToValueAtTime(5000, t + 3.5); const ng = ac.createGain(); ng.gain.setValueAtTime(0, t + 1.4); ng.gain.linearRampToValueAtTime(0.14, t + 3.4); ng.gain.linearRampToValueAtTime(0, t + 3.55);
+  n.connect(bp); bp.connect(ng); ng.connect(A.M); n.start(t + 1.4); n.stop(t + 3.8);
+  const T = t + 3.6, b = ac.createOscillator(), bg = ac.createGain(); b.frequency.setValueAtTime(130, T); b.frequency.exponentialRampToValueAtTime(34, T + 1.3); bg.gain.setValueAtTime(0, T); bg.gain.linearRampToValueAtTime(0.7, T + 0.02); bg.gain.exponentialRampToValueAtTime(0.001, T + 2.4); b.connect(bg); bg.connect(A.M); b.start(T); b.stop(T + 2.5);   // the drop
+  [110, 164.81, 220, 277.18, 329.63, 440].forEach((f, k) => { const o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter(); o.type = "sawtooth"; o.frequency.value = f; o.detune.value = k % 2 ? 8 : -8; lp.type = "lowpass"; lp.frequency.setValueAtTime(400, T); lp.frequency.linearRampToValueAtTime(2400, T + 1.5); lp.frequency.linearRampToValueAtTime(600, T + 5); g.gain.setValueAtTime(0, T); g.gain.linearRampToValueAtTime(0.024, T + 0.5); g.gain.exponentialRampToValueAtTime(0.0005, T + 6.5); o.connect(lp); lp.connect(g); g.connect(A.M); g.connect(A.V); o.start(T); o.stop(T + 6.6); });
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, k) => wTone(A, f, T + 1.1 + k * 0.09, 1.4, 0.03));   // sparkle as BETA lands
+}
+function welcomeIntro(force) { if (document.getElementById("welcome")) return; const el = document.createElement("div"); el.id = "welcome";
+  const nm = esc(((me && me.name) || (user && user.email) || "").split(/[@ ]/)[0]);
+  el.innerHTML = `<canvas class="wfield"></canvas><div class="wgate"><div class="wring"><i></i><i></i><i></i><img src="icon.svg" alt=""></div><b>${nm ? nm.charAt(0).toUpperCase() + nm.slice(1) + ", you're in." : "You're in."}</b><button class="primary" id="w-go">Enter KAIROS</button><span>sound on 🔊</span></div>
+    <div class="wstage"><div class="wwel">${"Welcome to".split("").map((c, i) => `<span style="--d:${i * 0.06}s">${c === " " ? "&nbsp;" : c}</span>`).join("")}<em>…</em></div><img class="wlock" src="brand/kairos-intro.svg?w=${Date.now()}" alt="KAIROS OS Beta"><div class="wtag">Every session, back on the screen.</div><div class="wcta"><button class="primary" id="w-tour">Show me around</button><button class="ghost" id="w-skip">Skip the tour</button></div></div>`;
+  document.body.appendChild(el); wField(el.querySelector(".wfield"));
+  const done = () => { prefs.welcomed = APP_VERSION; savePrefs(); el.classList.add("out"); setTimeout(() => el.remove(), 900); };
+  el.querySelector("#w-go").onclick = () => { const A = wAudio(); if (A && prefs.sound !== false) { A.ac.resume(); wScore(A); } el.classList.add("play");
+    setTimeout(() => el.classList.add("drop"), 3600); setTimeout(() => { const img = el.querySelector(".wlock"); img.src = "brand/kairos-intro.svg?d=" + Date.now(); }, 3600); setTimeout(() => el.classList.add("cta"), 6200); };
+  el.querySelector("#w-skip").onclick = done; el.querySelector("#w-tour").onclick = () => { done(); setTimeout(tour, 500); }; }
+function wField(cv) { const g = cv.getContext("2d"), D = Math.min(devicePixelRatio || 1, 2); let W, H, T = 0; const rs = () => { W = cv.width = innerWidth * D; H = cv.height = innerHeight * D; }; rs(); addEventListener("resize", rs);
+  const fr = () => { if (!cv.isConnected) return; T += 0.004; g.clearRect(0, 0, W, H); const L = 36;
+    for (let i = 0; i < L; i++) { const b = i / (L - 1), y0 = H * (0.08 + b * 0.92), a = 0.04 + 0.16 * Math.sin(Math.PI * b) ** 2; g.beginPath();
+      for (let x = 0; x <= W + 12; x += 12 * D) { const u = x / W, y = y0 + Math.sin(u * 6 + T * 3 + b * 4) * 14 * D + Math.sin(u * 2.2 - T * 1.7 + b * 9) * 22 * D; x ? g.lineTo(x, y) : g.moveTo(x, y); }
+      g.strokeStyle = `rgba(185,140,255,${a})`; g.lineWidth = D * 0.8; g.stroke(); } requestAnimationFrame(fr); }; requestAnimationFrame(fr); }
+
+/* onboarding tour: spotlight each real control, one short line each */
+const TOUR = [
+  { sel: "#start", t: "Pick any day", d: "Five years of real NQ and ES. Pick a date (or hit the dice for a mystery day) and it loads itself." },
+  { sel: "#play", t: "Replay it", d: "Play, pause, or step one bar at a time. Nothing from the future shows until it happens." },
+  { sel: "#pad", t: "Trade it like it's live", d: "Buy, sell, join bid/ask, brackets, breakeven. Hotkeys B and S work too. Prop rules (daily loss, drawdown) are on." },
+  { sel: "#laybtn", t: "Two charts, both tradable", d: "Split the screen, put NQ on one and ES on the other, and click a chart to trade it. Save layouts you like." },
+  { sel: "#indbtn", t: "Your tools", d: "Sessions, FVGs and IFVGs, data highs and lows, SMT on every timeframe, CPI/NFP/FOMC lines, EMAs and more." },
+  { sel: "#tools", t: "Draw on it", d: "Lines, boxes, fibs, channels, pitchforks, long/short positions. The ★ on any drawing saves a style like PDH or FVG." },
+  { sel: "#chkbtn", t: "Checklist", d: "Pick a strategy and tick the rules you actually see before you enter. Stats shows whether your A+ setups really pay." },
+  { sel: "#mediabtn", t: "Media dock", d: "Reese's whole video library, plus your own Spotify and YouTube, floating next to the chart." },
+  { sel: '[data-view="journal"]', t: "Journal", d: "Every trade lands here on a calendar. Tag mistakes after each one." },
+  { sel: '[data-view="learn"]', t: "Learn", d: "Reese's real trades unlock after you replay that day, plus take-or-fade drills and daily practice built from your mistakes." },
+  { sel: '[data-view="friends"]', t: "The group", d: "Leaderboard, challenges, shared trades and chat with the crew." },
+  { sel: '[data-view="settings"]', t: "Make it yours", d: "Themes, hotkeys, and your own sounds for take profits and stop-outs. Found a bug? The fix box goes straight to the build queue." }];
+function tour(i = 0) { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); if (i >= TOUR.length) { prefs.toured = APP_VERSION; savePrefs(); return toast("🎉 You're set. Have fun."); }
+  view("trade"); const s = TOUR[i], el = document.querySelector(s.sel); if (!el || !el.offsetParent) return tour(i + 1); const r = el.getBoundingClientRect();
+  const sp = document.createElement("div"); sp.className = "tourspot"; Object.assign(sp.style, { left: r.left - 6 + "px", top: r.top - 6 + "px", width: r.width + 12 + "px", height: r.height + 12 + "px" }); document.body.appendChild(sp);
+  const bx = document.createElement("div"); bx.className = "tourbox"; bx.innerHTML = `<div class="tk">${i + 1} / ${TOUR.length}</div><b>${s.t}</b><p>${s.d}</p><div class="tdots">${TOUR.map((_, k) => `<i class="${k === i ? "on" : k < i ? "done" : ""}"></i>`).join("")}</div><div class="tb2"><button class="ghost small" data-t="x">Skip</button>${i ? '<button class="small" data-t="b">Back</button>' : ""}<button class="primary small" data-t="n">${i === TOUR.length - 1 ? "Done" : "Next"}</button></div>`;
+  document.body.appendChild(bx); const bw = 320, bh = bx.offsetHeight || 190; let x = r.right + 16, y = r.top; if (x + bw > innerWidth - 10) x = Math.max(10, r.left - bw - 16); if (x < 10 || r.width > innerWidth * 0.5) { x = Math.min(innerWidth - bw - 10, Math.max(10, r.left)); y = r.bottom + 14; } if (y + bh > innerHeight - 10) y = Math.max(10, r.top - bh - 14);
+  Object.assign(bx.style, { left: x + "px", top: y + "px" }); try { tone("click"); } catch (e) {}
+  bx.onclick = (e) => { const b = e.target.closest("[data-t]"); if (!b) return; if (b.dataset.t === "n") tour(i + 1); else if (b.dataset.t === "b") tour(i - 1); else { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); prefs.toured = APP_VERSION; savePrefs(); } }; }
+/* ---------------- trade sounds (your own clips) + fun effects: price running to your target/stop, take profit, stop-out ---------------- */
+const FX_SLOTS = { run_tp: "Running toward take profit", run_sl: "Running toward your stop", hit_tp: "Take profit hit", hit_sl: "Stopped out" };
+const fxDB = () => new Promise((ok, no) => { const r = indexedDB.open("kairos-fx", 1); r.onupgradeneeded = () => r.result.createObjectStore("clips"); r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error); });
+async function fxGet(k) { try { const db = await fxDB(); return await new Promise((ok) => { const q = db.transaction("clips").objectStore("clips").get(k); q.onsuccess = () => ok(q.result || null); q.onerror = () => ok(null); }); } catch (e) { return null; } }
+async function fxPut(k, v) { const db = await fxDB(); return new Promise((ok, no) => { const tx = db.transaction("clips", "readwrite"); v ? tx.objectStore("clips").put(v, k) : tx.objectStore("clips").delete(k); tx.oncomplete = ok; tx.onerror = () => no(tx.error); }); }
+const fxCfg = () => (prefs.fx = prefs.fx || { on: true, runPct: 60, slots: {} });
+let fxAudio = null, fxHave = {};
+async function fxLoadHave() { for (const k of Object.keys(FX_SLOTS)) fxHave[k] = !!(await fxGet(k)); }
+async function fxPlay(k) { const C = fxCfg(), s = C.slots[k] || {}; const rec = await fxGet(k); if (!rec || prefs.sound === false) return false;
+  try { if (fxAudio) { fxAudio.pause(); URL.revokeObjectURL(fxAudio.src); } const a = new Audio(URL.createObjectURL(rec.blob)); fxAudio = a; const vol = Math.min(1, ((prefs.vol ?? 60) / 100) * ((s.vol ?? 100) / 100)); a.volume = vol;
+    a.currentTime = Math.max(0, +s.start || 0); await a.play(); const len = Math.max(0.5, +s.len || 8);
+    setTimeout(() => { if (fxAudio !== a) return; const t0 = Date.now(), f = setInterval(() => { const p = (Date.now() - t0) / 400; a.volume = Math.max(0, vol * (1 - p)); if (p >= 1) { clearInterval(f); a.pause(); } }, 40); }, len * 1000 - 400); return true; } catch (e) { return false; } }
+function fxLayer() { let L = document.getElementById("fxl"); if (!L) { L = document.createElement("div"); L.id = "fxl"; L.innerHTML = '<canvas></canvas><div class="fxv"></div><div class="fxt"></div>'; document.body.appendChild(L); } return L; }
+function fxBurst(win, amt) { if (fxCfg().on === false) return; const L = fxLayer(), cv = L.querySelector("canvas"), g = cv.getContext("2d"), D = Math.min(devicePixelRatio || 1, 2); cv.width = innerWidth * D; cv.height = innerHeight * D;
+  L.className = win ? "win" : "loss"; void L.offsetWidth; L.classList.add("go"); const t = L.querySelector(".fxt"); t.textContent = (win ? "+" : "−") + money(Math.abs(amt)).replace("-", ""); 
+  if (!win) { document.body.classList.add("fxshake"); setTimeout(() => document.body.classList.remove("fxshake"), 450); }
+  const P = [], cx = innerWidth / 2 * D, cy = innerHeight * 0.45 * D, cols = win ? ["#4ade80", "#b98cff", "#f5c542", "#e4d6ff"] : ["#f87171", "#7f1d1d", "#fda4af"];
+  for (let i = 0; i < (win ? 160 : 60); i++) { const a = Math.random() * 6.283, v = (win ? 6 + Math.random() * 14 : 2 + Math.random() * 6) * D; P.push({ x: cx, y: cy, vx: Math.cos(a) * v, vy: Math.sin(a) * v - (win ? 6 * D : -2 * D), r: (2 + Math.random() * 4) * D, c: cols[i % cols.length], s: Math.random() * 6, life: 1 }); }
+  const fr = () => { g.clearRect(0, 0, cv.width, cv.height); let alive = 0; for (const p of P) { if (p.life <= 0) continue; alive++; p.vy += (win ? 0.35 : 0.5) * D; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.life -= 0.012; p.s += 0.2;
+      g.globalAlpha = Math.max(0, p.life); g.fillStyle = p.c; g.save(); g.translate(p.x, p.y); g.rotate(p.s); g.fillRect(-p.r, -p.r / 2, p.r * 2, p.r); g.restore(); } g.globalAlpha = 1; if (alive) requestAnimationFrame(fr); else g.clearRect(0, 0, cv.width, cv.height); };
+  requestAnimationFrame(fr); setTimeout(() => L.classList.remove("go"), 1900); }
+function fxRun(toTp) { if (fxCfg().on === false) return; const L = fxLayer(); L.className = toTp ? "runtp" : "runsl"; void L.offsetWidth; L.classList.add("go"); setTimeout(() => L.classList.remove("go"), 2600); }
+async function fxEvent(kind, amt) { if (kind === "hit_tp" || kind === "hit_sl") fxBurst(kind === "hit_tp", amt); else fxRun(kind === "run_tp"); return fxPlay(kind); }
+function fxTick() { if (!pos.qty || (fxCfg().on === false && !Object.values(fxHave).some(Boolean))) return; const d = Math.sign(pos.qty), lp = last(); if (lp == null) return;
+  const tp = pos.tp ?? pos.avg + d * (prefs.tpPts || 20), sl = pos.sl ?? pos.avg - d * (prefs.slPts || 10), th = (fxCfg().runPct || 60) / 100;
+  const toTp = ((lp - pos.avg) * d) / Math.max(TICK, Math.abs(tp - pos.avg)), toSl = ((pos.avg - lp) * d) / Math.max(TICK, Math.abs(pos.avg - sl));
+  pos.fxr = pos.fxr || {}; if (toTp >= th && !pos.fxr.tp) { pos.fxr.tp = 1; fxEvent("run_tp"); } else if (toSl >= th && !pos.fxr.sl) { pos.fxr.sl = 1; fxEvent("run_sl"); } }
+function fxUI() { const box = $("s-fx"); if (!box) return; const C = fxCfg();
+  box.innerHTML = Object.entries(FX_SLOTS).map(([k, n]) => { const s = C.slots[k] || {}; return `<div class="fxrow"><b>${n}</b><span class="tiny muted">${fxHave[k] ? "🎵 " + esc(s.name || "your clip") : "No clip"}</span>
+    <label class="tiny">Start (s)<input type="number" min="0" step="0.5" value="${s.start || 0}" data-fxs="${k}"></label><label class="tiny">Length (s)<input type="number" min="0.5" max="30" step="0.5" value="${s.len || 8}" data-fxl="${k}"></label>
+    <label class="small ghost fxup">Upload<input type="file" accept="audio/*,video/mp4" data-fxu="${k}" hidden></label><button class="small" data-fxp="${k}" ${fxHave[k] ? "" : "disabled"}>▶</button><button class="small ghost" data-fxx="${k}" ${fxHave[k] ? "" : "disabled"}>×</button></div>`; }).join("")
+    + `<div class="row2"><label class="ck"><input type="checkbox" id="fx-on" ${C.on !== false ? "checked" : ""}> Effects (confetti on take profit, shake on a stop, glow while it runs)</label><label class="tiny">"Running" fires at<input type="number" id="fx-pct" min="20" max="95" step="5" value="${C.runPct || 60}">% of the way</label></div>`; }
 async function boot() {
   if (DEMO) { user = { id: "demo", email: "demo" }; const d = document.createElement("div"); d.className = "demo"; d.textContent = "DEMO · made-up prices · nothing is saved"; document.body.appendChild(d); }
   else {
@@ -1542,13 +1612,14 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI(); if (!prefs.tourDone && !DEMO) setTimeout(() => tour(0), prefs.splash !== false ? 1500 : 400);
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().catch(() => {}); }   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
   if (DEMO) { $("start").value = "2026-10-14T09:45"; await loadReplay(); for (let i = 0; i < 25; i++) await stepFwd(); }
-  refresh();
+  refresh(); fxLoadHave().then(fxUI).catch(() => {}); if ($("s-ver")) $("s-ver").textContent = `Beta · version ${APP_VERSION}${window.KAIROS_DESKTOP ? " · desktop app " + window.KAIROS_DESKTOP.version : ""}. 1.0 is the full release.`;
+  const qp = new URLSearchParams(location.search); if (qp.has("welcome") || (!DEMO && !prefs.welcomed)) setTimeout(() => welcomeIntro(), DEMO ? 300 : 2400); else if (qp.has("tour")) setTimeout(tour, 600);
 }
 $("a-in").onclick = async () => { try { kChime(new (window.AudioContext || window.webkitAudioContext)()); } catch (e) {} const { error } = await sb.auth.signInWithPassword({ email: $("a-email").value.trim(), password: $("a-pass").value }); $("a-msg").textContent = error ? error.message : ""; if (!error) boot(); };
 $("a-up").onclick = async () => { const { data, error } = await sb.auth.signUp({ email: $("a-email").value.trim(), password: $("a-pass").value, options: { emailRedirectTo: location.origin + location.pathname } }); $("a-msg").textContent = error ? error.message : data.session ? "" : "Check your email to confirm, then sign in here."; if (data && data.session) boot(); };
@@ -1774,6 +1845,14 @@ $("s-padbtns").onchange = (e) => { const all = [...document.querySelectorAll("[d
 $("s-mask").onchange = (e) => { const k = e.target.dataset.mask; if (!k) return; prefs.mask = { ...(prefs.mask || {}), [k]: e.target.checked }; savePrefs(); maskUI(); };
 $("s-snd").onchange = (e) => { const k = e.target.dataset.snd; if (!k) return; prefs.snd = { ...(prefs.snd || {}), [k]: e.target.value }; savePrefs(); snd(k); };
 $("s-snd").onclick = (e) => { const k = e.target.dataset.sndp; if (k) snd(k); };
+$("s-fx").addEventListener("change", async (e) => { const C = fxCfg(), el = e.target; const k = el.dataset.fxs || el.dataset.fxl || el.dataset.fxu;
+  if (el.id === "fx-on") { C.on = el.checked; savePrefs(); return; } if (el.id === "fx-pct") { C.runPct = Math.max(20, Math.min(95, +el.value || 60)); savePrefs(); return; } if (!k) return; C.slots[k] = C.slots[k] || {};
+  if (el.dataset.fxs) C.slots[k].start = Math.max(0, +el.value || 0); else if (el.dataset.fxl) C.slots[k].len = Math.max(0.5, Math.min(30, +el.value || 8));
+  else if (el.dataset.fxu) { const f = el.files[0]; if (!f) return; if (f.size > 15e6) return toast("Max 15 MB per clip"); await fxPut(k, { blob: f, name: f.name }); C.slots[k].name = f.name.slice(0, 40); fxHave[k] = true; fxUI(); toast(`🎵 Saved for "${FX_SLOTS[k]}" (on this device)`); }
+  savePrefs(); });
+$("s-fx").addEventListener("click", async (e) => { const p = e.target.closest("[data-fxp]"), x = e.target.closest("[data-fxx]"); if (p) { const k = p.dataset.fxp; fxEvent(k, k === "hit_sl" ? -250 : 420); }
+  if (x) { const k = x.dataset.fxx; await fxPut(k, null); fxHave[k] = false; if (fxCfg().slots[k]) delete fxCfg().slots[k].name; savePrefs(); fxUI(); } });
+$("s-intro").onclick = () => welcomeIntro(true); $("s-tour").onclick = () => { view("trade"); setTimeout(tour, 300); };
 $("s-sndfile").onchange = (e) => { const f = e.target.files[0]; if (!f) return; if (f.size > 300000) return toast("Max 300 KB"); const r = new FileReader(); r.onload = () => { try { localStorage.setItem("rw-snd", r.result); toast("Sound saved. Pick 'My sound' for any event."); tone("custom"); } catch (er) { toast("Couldn't save the sound on this device"); } }; r.readAsDataURL(f); };
 $("s-lockgo").onclick = () => { let v = $("s-lock").value; if (v === "0") return; if (v === "custom") { v = prompt("Lock out for how many hours?", "3"); if (!v || !(+v > 0)) return; }
   const until = v === "day" ? new Date(new Date().setHours(23, 59, 0, 0)).getTime() : Date.now() + +v * 3600e3; if (!confirm("Lock yourself out of trading until " + new Date(until).toLocaleString() + "? You can't undo this.")) return;
@@ -1799,7 +1878,7 @@ $("jc-all").onclick = () => { jDay = null; loadJournal(); };
 $("frbtn").onclick = () => { if (prefs.side && !$("md-friends").classList.contains("hidden")) { prefs.side = false; savePrefs(); sideUI(); } else frOpen(); };
 $("sfr-open").onclick = () => view("friends");
 $("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
-$("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tour").classList.contains("hidden")) tour(99); });
+$("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && document.querySelector(".tourbox")) { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); prefs.toured = APP_VERSION; savePrefs(); } });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
 $("ltabs").onclick = (e) => { const b = e.target.closest("[data-l]"); if (b) ltab(b.dataset.l); }; $("rl-spoil").onchange = renderRL;
 $("rl-list").onclick = (e) => { const b = e.target.closest("[data-rday]"); if (b) replayReese(reese.find((r) => r.id === b.dataset.rday)); };
