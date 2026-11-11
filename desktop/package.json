@@ -21,10 +21,45 @@
   "build": {
     "appId": "com.kairos.os",
     "productName": "KAIROS OS Beta",
-    "files": ["main.js", "preload.js", "splash.html", "splash-preload.js", "web/**/*", "build/icon.png"],
-    "directories": { "output": "dist", "buildResources": "build" },
-    "win": { "target": [{ "target": "nsis", "arch": ["x64"] }], "icon": "build/icon.png", "artifactName": "KAIROS-OS-Beta-Setup-${version}.${ext}" },
-    "nsis": { "oneClick": true, "perMachine": false, "shortcutName": "KAIROS OS", "uninstallDisplayName": "KAIROS OS Beta", "deleteAppDataOnUninstall": false },
-    "publish": [{ "provider": "github", "owner": "meyerjos004", "repo": "rewind", "releaseType": "release" }]
-  }
+    "files": [
+      "main.js",
+      "preload.js",
+      "splash.html",
+      "splash-preload.js",
+      "web/**/*",
+      "build/icon.png"
+    ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "artifactName": "KAIROS-OS-Beta-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "KAIROS OS",
+      "uninstallDisplayName": "KAIROS OS Beta",
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "meyerjos004",
+        "repo": "rewind",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "homepage": "https://meyerjos004.github.io/rewind/"
 }
