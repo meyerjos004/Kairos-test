@@ -97,7 +97,7 @@ header.top{height:46px;flex:none;display:flex;align-items:center;gap:18px;paddin
 .bottom{flex:none;display:flex;flex-direction:column;background:var(--panel);border-top:1px solid var(--line)}
 .btabs{display:flex;align-items:center;padding:3px 8px;gap:2px;height:34px}.btab{border:none;background:transparent;color:var(--mut);padding:5px 11px;border-radius:7px;font-size:12.5px}.btab:hover{color:var(--txt)}.btab.on{color:var(--txt);background:rgba(255,255,255,.06)}
 .bstat{margin-left:auto;padding-right:8px;color:var(--mut);font:12px var(--mono)}
-.bbody{height:150px;overflow:hidden;transition:height .28s var(--ease)}.bottom.closed .bbody{height:0}.bottom.closed #dockbtn{transform:rotate(180deg)}#dockbtn{transition:transform .25s var(--ease)}
+.bbody{height:150px;overflow:hidden}.bottom.closed #dockbtn{transform:rotate(180deg)}#dockbtn{transition:transform .25s var(--ease)}
 .bpanel{overflow:auto;height:100%}
 .bt{width:100%;border-collapse:collapse;font:12px var(--mono)}.bt th{color:var(--mut2);font:500 10.5px var(--body);text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:6px 12px}.bt td{padding:6px 12px;border-top:1px solid rgba(255,255,255,.04)}
 .bt button{padding:2px 9px;font-size:11px}.empty{padding:14px;color:var(--mut2);font-size:12px}
@@ -118,3 +118,13 @@ header.top{height:46px;flex:none;display:flex;align-items:center;gap:18px;paddin
 .demo{top:13px}
 @media (max-width:1500px){.kv:nth-of-type(4){display:none}}@media (max-width:1250px){.kv:nth-of-type(2){display:none}.replay input[type=datetime-local]{width:150px}}
 @media (max-width:900px){html,body{overflow:auto}#app{flex-direction:column;height:auto}.rail{flex-direction:row;width:auto;height:48px;padding:0 8px}.rsp{flex:1}header.top{flex-wrap:wrap;height:auto;padding:6px}.view{height:auto}.work{flex-direction:column}.tools{flex-direction:row;width:auto;height:44px;justify-content:center;flex-wrap:wrap}.charts{height:62vh}.side{width:auto}.tbar{overflow-x:auto}}
+
+/* v0.4 batch 1: floating tools, favorites bar, dock grip, skip buttons */
+.tgrip,.fgrip{color:var(--mut2);cursor:grab;font:700 11px var(--mono);letter-spacing:-2px;user-select:none;touch-action:none;text-align:center}
+.tgrip{padding:0 0 6px;width:100%}.tgrip:hover,.fgrip:hover{color:var(--txt)}
+.tools.float{position:fixed;z-index:35;height:auto;max-height:80vh;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(18,22,29,.94);backdrop-filter:blur(14px);box-shadow:0 14px 40px rgba(0,0,0,.45);padding:6px 0}
+.favbar{position:fixed;z-index:34;left:50%;top:104px;transform:translateX(-50%);display:flex;align-items:center;gap:2px;padding:4px 6px;border-radius:10px;background:rgba(18,22,29,.92);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.09);box-shadow:0 10px 30px rgba(0,0,0,.4);animation:pop .35s var(--spring) both}
+.fgrip{padding:0 6px 0 2px}.fbtools{display:flex;gap:2px}.favbar .tool{width:30px;height:28px}
+.bottom{position:relative}.dgrip{position:absolute;left:0;right:0;top:-3px;height:6px;cursor:ns-resize;z-index:5;touch-action:none}.dgrip:hover{background:rgba(94,140,255,.35)}
+.bbody{transition:height .22s var(--ease)}
+.skips button{font-size:11.5px;padding:5px 8px;color:var(--mut)}.skips button:hover{color:var(--txt)}
