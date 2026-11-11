@@ -126,7 +126,7 @@ async function stepFwd(ui = true) {
   if (!B["1m"].bars.length) return;
   const nxt = ["1m", "15s"].filter((tf) => tf === "1m" || need15).map((tf) => B[tf].bars[B[tf].i + 1]).filter(Boolean).map((b) => b.t);
   if (!nxt.length) { await ensureAhead(); if (!B["1m"].bars[B["1m"].i + 1]) { pause(); toast("End of data"); return false; } return stepFwd(ui); }
-  cursorT = Math.min(...nxt);
+  const prevT = cursorT; cursorT = Math.min(...nxt); if (reese.length && prevT) reeseCheck(loc(prevT), loc(cursorT));
   const fresh = { "1m": [], "15s": [] };
   for (const tf of ["1m", "15s"]) { const b = B[tf]; while (b.bars[b.i + 1] && b.bars[b.i + 1].t <= cursorT) { b.i++; fresh[tf].push(b.bars[b.i]); } }
   if (ui) panes.forEach((p) => { const src = paneSec(p.i) < 60 ? fresh["15s"] : fresh["1m"]; for (const x of src) p.series.update(pushBar(p, x)); });
@@ -634,25 +634,36 @@ function flashNum(id, v) { const el = $(id); if (lastShown[id] != null && v !== 
 
 /* ---------------- accounts (portfolio) ---------------- */
 let accts = [], acct = null, startBal = 50000, acctPeak = 0;
-const ACCT_PRESETS = { practice: ["Practice", 50000, { mdd: 2000, dll: 1000, ptg: 0 }], e25: ["Eval 25K", 25000, { mdd: 1000, dll: 500, ptg: 1250 }], e50: ["Eval 50K", 50000, { mdd: 2000, dll: 1000, ptg: 3000 }],
-  e100: ["Eval 100K", 100000, { mdd: 3000, dll: 1500, ptg: 6000 }], e150: ["Eval 150K", 150000, { mdd: 4500, dll: 2250, ptg: 9000 }], f50: ["Funded 50K", 50000, { mdd: 2000, dll: 1000, ptg: 0 }] };
+// LucidFlex eval numbers (public summaries, Nov 2026): EOD trailing max loss, no daily limit, 50% consistency, max loss locks at start - $100 once the close passes start + target
+const LUCID = { lf25: ["LucidFlex 25K eval", 25000, { mdd: 1000, dll: 0, ptg: 1250, eod: true, cons: 50, lock: true, maxMini: 2 }, 95], lf50: ["LucidFlex 50K eval", 50000, { mdd: 2000, dll: 0, ptg: 3000, eod: true, cons: 50, lock: true, maxMini: 4 }, 130],
+  lf100: ["LucidFlex 100K eval", 100000, { mdd: 3000, dll: 0, ptg: 6000, eod: true, cons: 50, lock: true, maxMini: 6 }, 200], lf150: ["LucidFlex 150K eval", 150000, { mdd: 4500, dll: 0, ptg: 9000, eod: true, cons: 50, lock: true, maxMini: 10 }, 260] };
+const ACCT_PRESETS = { practice: ["Practice", 50000, { mdd: 2000, dll: 1000, ptg: 0 }], ...Object.fromEntries(Object.entries(LUCID).map(([k, v]) => [k, v.slice(0, 3)])) };
 async function loadAccts() { accts = await db.accounts(); acct = accts.find((a) => a.id === prefs.acct) || null; applyAcctRules(); }
 function applyAcctRules() { if (!acct) return; const r = acct.rules || {}; ["mdd", "dll", "ptg"].forEach((k) => { if (r[k] != null) prefs[k] = +r[k]; }); fillSettings(); }
 async function acctStart() {   // balance and high-water mark for the selected account (from its saved trades)
-  if (!acct) { startBal = prefs.bal; acctPeak = 0; return; } const tr = (await db.allTrades()).filter((t) => t.account_id === acct.id).sort((a, b) => a.t_exit - b.t_exit);
-  let run = +acct.start_bal, pk = run; for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); } startBal = run; acctPeak = pk;
+  if (!acct) { startBal = prefs.bal; acctPeak = 0; return; } const S = acctState(acct, await db.allTrades()); startBal = S.run; acctPeak = S.pk;
+  if (S.blown) toast(acct.name + " is blown. Earn a new eval on the Learn page, or pick another account.");
 }
 function acctMenu() { const r = $("acctpill").getBoundingClientRect();
   menu([{ h: "Account" }, { t: (acct ? "\u2003 " : "✓ ") + "Replay (no account)", f: () => pickAcct(null) }, ...accts.map((a) => ({ t: (acct && acct.id === a.id ? "✓ " : "\u2003 ") + a.name, k: money(+a.start_bal).replace(/\.00$/, ""), f: () => pickAcct(a.id) })), "-", { t: "Manage accounts…", f: () => view("accounts") }], r.left, r.bottom + 6); }
 function pickAcct(id) { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); prefs.acct = id; acct = accts.find((a) => a.id === id) || null; applyAcctRules(); savePrefs(); refresh(); toast(acct ? "Trading on " + acct.name + ". Load a replay to start a session on it." : "Trading without an account"); }
+function acctState(a, all) {   // balance, max-loss line (intraday or end-of-day trailing, with Lucid-style lock), consistency, status
+  const R = a.rules || {}, tr = all.filter((t) => t.account_id === a.id).sort((x, y) => x.t_exit - y.t_exit), start = +a.start_bal; let run = start, pk = start, floor = R.mdd ? start - R.mdd : -Infinity, blown = false; const byDay = {};
+  for (const t of tr) { run += +t.pnl || 0; const d = sessDay(t.t_exit); byDay[d] = (byDay[d] || 0) + (+t.pnl || 0);
+    if (!R.eod) { pk = Math.max(pk, run); if (R.mdd) floor = Math.max(floor, pk - R.mdd); } if (run <= floor) blown = true; }
+  if (R.eod && R.mdd) { let bal = start; for (const d of Object.keys(byDay).sort()) { bal += byDay[d]; pk = Math.max(pk, bal); floor = Math.max(floor, pk - R.mdd); if (R.lock && R.ptg && pk >= start + R.ptg) floor = Math.max(floor, start - 100); } }
+  if (R.lock && R.ptg && pk >= start + R.ptg) floor = Math.min(floor, start - 100) === floor ? floor : Math.max(floor, start - 100);
+  const pnl = run - start, best = Math.max(0, ...Object.values(byDay)), consOk = !R.cons || pnl <= 0 || (100 * best) / pnl <= R.cons;
+  const passed = R.ptg && pnl >= R.ptg && consOk, ddLeft = R.mdd ? run - floor : null; if (ddLeft != null && ddLeft <= 0) blown = true;
+  return { tr, run, pk, floor, pnl, best, consOk, passed, blown, ddLeft, w: tr.filter((t) => t.pnl > 0).length };
+}
 async function renderAccts() {
-  const all = await db.allTrades(), rows = await Promise.all(accts.map(async (a) => { const tr = all.filter((t) => t.account_id === a.id).sort((x, y) => x.t_exit - y.t_exit); let run = +a.start_bal, pk = run; for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); }
-    const R = a.rules || {}, ddLeft = R.mdd ? R.mdd - (pk - run) : null, w = tr.filter((t) => t.pnl > 0).length, pnl = run - a.start_bal;
-    const st = ddLeft != null && ddLeft <= 0 ? ["Blown", "dn"] : R.ptg && pnl >= R.ptg ? ["Target hit", "up"] : ["Active", ""];
+  const all = await db.allTrades(), rows = await Promise.all(accts.map(async (a) => { const S = acctState(a, all), tr = S.tr, run = S.run, R = a.rules || {}, ddLeft = S.ddLeft, w = S.w, pnl = S.pnl;
+    const st = S.blown ? ["Blown", "dn"] : S.passed ? ["Passed", "up"] : R.ptg && pnl >= R.ptg ? ["Target hit, consistency " + Math.round((100 * S.best) / pnl) + "%", ""] : ["Active", ""];
     return `<div class="acard ${acct && acct.id === a.id ? "on" : ""}" data-id="${a.id}"><div class="ah"><b>${a.name}</b><span class="pill ${st[1]}">${st[0]}</span></div>
       <div class="abig ${pnl >= 0 ? "pos-up" : "pos-dn"}">${money(run)}</div><div class="muted small">${pnl >= 0 ? "+" : ""}${money(pnl)} since start · ${tr.length} trades · ${tr.length ? Math.round((100 * w) / tr.length) : 0}% win</div>
       ${R.ptg ? `<div class="bar"><i style="width:${Math.max(0, Math.min(100, (100 * pnl) / R.ptg))}%"></i></div><div class="tiny muted">Profit target ${money(R.ptg)}</div>` : ""}
-      <div class="kvs"><div><span>Drawdown left</span><b>${ddLeft == null ? "off" : money(ddLeft)}</b></div><div><span>Daily loss limit</span><b>${R.dll ? money(R.dll) : "off"}</b></div></div>
+      <div class="kvs"><div><span>Drawdown left${R.eod ? " (end of day)" : ""}</span><b>${ddLeft == null ? "off" : money(ddLeft)}</b></div><div><span>Daily loss limit</span><b>${R.dll ? money(R.dll) : "none"}</b></div>${R.cons ? `<div><span>Best day vs total (max ${R.cons}%)</span><b>${pnl > 0 ? Math.round((100 * S.best) / pnl) + "%" : "—"}</b></div>` : ""}${R.maxMini ? `<div><span>Max size</span><b>${R.maxMini} minis / ${R.maxMini * 10} micros</b></div>` : ""}</div>
       <div class="row"><button data-use="${a.id}" class="small">${acct && acct.id === a.id ? "Selected" : "Use"}</button><button data-edit="${a.id}" class="ghost small">Edit</button><button data-arch="${a.id}" class="ghost small">Archive</button></div></div>`; }));
   $("ac-list").innerHTML = rows.join("") || '<div class="empty">No accounts yet. Make one to track an eval or a funded account separately.</div>';
 }
@@ -663,6 +674,25 @@ function acctDlg(a) { const r = (a && a.rules) || {}; dlg(`<h3>${a ? "Edit accou
     try { if (a) { await db.updAccount(a.id, row); Object.assign(a, row); } else { const n = await db.newAccount(row); accts.push(n); } if (acct && a && acct.id === a.id) applyAcctRules(); renderAccts(); } catch (e) { toast(e.message); } });
   if (!a) $("acP").onchange = () => { const v = ACCT_PRESETS[$("acP").value]; $("acN").value = v[0]; $("acB").value = v[1]; $("acM").value = v[2].mdd; $("acD").value = v[2].dll; $("acT").value = v[2].ptg; };
 }
+
+/* ---------------- themes (original palettes; candle colours stay yours) ---------------- */
+const THEMES = { midnight: ["Midnight", { "--bg": "#08090c", "--panel": "#0e1116", "--acc": "#5ee6b8", "--acc2": "#7aa7ff", "--txt": "#e6eaf0", "--mut": "#8590a2", "--line": "rgba(255,255,255,.07)" }],
+  grid: ["Neon grid", { "--bg": "#05070d", "--panel": "#0a0f1a", "--acc": "#38e8ff", "--acc2": "#ff3dce", "--txt": "#e9f4ff", "--mut": "#7f93ad", "--line": "rgba(56,232,255,.12)" }],
+  ember: ["Ember", { "--bg": "#0d0907", "--panel": "#15100c", "--acc": "#ffb23d", "--acc2": "#ff6b4a", "--txt": "#f5ece4", "--mut": "#a8968a", "--line": "rgba(255,178,61,.10)" }],
+  glacier: ["Glacier", { "--bg": "#070b10", "--panel": "#0d141c", "--acc": "#9fd8ff", "--acc2": "#c3b5ff", "--txt": "#e8f2fb", "--mut": "#8aa0b5", "--line": "rgba(159,216,255,.10)" }],
+  mono: ["Mono", { "--bg": "#0a0a0a", "--panel": "#121212", "--acc": "#f2f2f2", "--acc2": "#9a9a9a", "--txt": "#ededed", "--mut": "#8a8a8a", "--line": "rgba(255,255,255,.08)" }] };
+function applyTheme(k) { const t = THEMES[k] || THEMES.midnight; for (const [v, c] of Object.entries(t[1])) document.documentElement.style.setProperty(v, c); prefs.theme = k in THEMES ? k : "midnight";
+  if ($("s-themes")) $("s-themes").innerHTML = Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="th ${id === prefs.theme ? "on" : ""}" data-th="${id}"><i style="background:${c["--bg"]};box-shadow:inset 0 0 0 1px ${c["--line"]}"><b style="background:${c["--acc"]}"></b><b style="background:${c["--acc2"]}"></b></i>${nm}</button>`).join(""); }
+
+/* ---------------- Utah prop firm tax estimate (2026 figures; estimate only) ---------------- */
+const TAX26 = { s: { sd: 16100, br: [[12400, .10], [50400, .12], [105700, .22], [201775, .24], [256225, .32], [640600, .35], [Infinity, .37]] }, mfj: { sd: 32200, br: [[24800, .10], [100800, .12], [211400, .22], [403550, .24], [512450, .32], [768700, .35], [Infinity, .37]] }, ssBase: 184500, ut: 0.0445 };
+function fedTax(ti, st) { let t = 0, lo = 0; for (const [hi, r] of TAX26[st].br) { if (ti > lo) t += (Math.min(ti, hi) - lo) * r; lo = hi; } return t; }
+function taxCalc() { const st = $("tx-st").value, pay = +$("tx-pay").value || 0, exp = +$("tx-exp").value || 0, w2 = +$("tx-w2").value || 0, wh = +$("tx-wh").value || 0;
+  const prof = Math.max(0, pay - exp), se = prof * 0.9235, ss = Math.min(se, Math.max(0, TAX26.ssBase - w2)) * 0.124, med = se * 0.029, seTax = prof > 400 ? ss + med : 0;
+  const agi = w2 + prof - seTax / 2, ti = Math.max(0, agi - TAX26[st].sd), fed = fedTax(ti, st), fedW2 = fedTax(Math.max(0, w2 - TAX26[st].sd), st), ut = agi * TAX26.ut;
+  const total = fed + seTax + ut, fromTrading = total - fedW2 - w2 * TAX26.ut, setAside = prof ? fromTrading / prof : 0, owe = Math.max(0, total - wh);
+  $("tx-out").innerHTML = [["Trading profit", money(prof)], ["Self-employment tax", money(seTax)], ["Federal income tax", money(fed)], ["Utah income tax (before credits)", money(ut)], ["Total tax", money(total)], ["Still to pay (after withholding)", money(owe)], ["Set aside from each payout", prof ? Math.round(setAside * 100) + "%" : "—"], ["Quarterly payment (Apr 15, Jun 15, Sep 15, Jan 15)", money(owe / 4)]]
+    .map(([k, v]) => `<div><span class="muted small">${k}</span><b>${v}</b></div>`).join(""); }
 
 /* ---------------- position presets + confluence checklist ---------------- */
 const CONF_REESE = ["HTF bias agrees", "Liquidity swept", "Inversion FVG", "SMT with ES", "PO3 / manipulation", "Key open", "In the killzone", "5m / 15m FVG entry", "Clear draw on liquidity"];
@@ -698,6 +728,88 @@ async function renderStats() {
   const seen = new Set(); stC.s.setData(eq.filter((p) => (seen.has(p.time) ? false : seen.add(p.time)))); stC.timeScale().fitContent();
 }
 
+/* ---------------- learn: Reese log, quiz, course, earn an eval, time tracking ---------------- */
+let reese = [], quizBank = [], QZ = null;
+const RSES = { NY: ["08:30", "16:00", 0], Asia: ["19:30", "24:00", 0], Evening: ["17:30", "24:00", 0] };
+async function loadReese() { if (DEMO) { reese = [{ id: "r1", day: "2026-10-15", session: "NY", symbol: "NQ", dir: 1, entry: 21420, exit: 21470, result: "win", summary: "Demo entry: 15s long after the 9:30 sweep, out at the 1h level.", quotes: ["ltf beating htf"] }]; return; }
+  const { data } = await sb.from("reese_trades").select("*").order("day"); reese = data || []; }
+const seen = () => new Set(prefs.seenSess || []);
+function sessEnd(r) { const [, z] = RSES[r.session] || RSES.NY; const base = Date.parse(r.day + "T00:00:00Z") / 1000, [hh, mm] = z.split(":").map(Number); return base + hh * 3600 + mm * 60; }   // New York wall-clock as fake-UTC (same as loc())
+function reeseCheck(prevLt, curLt) {   // called while stepping: a Reese session just ended on the replay clock
+  for (const r of reese) { const e = sessEnd(r); if (prevLt < e && curLt >= e) { const k = r.day + "|" + r.session, sn = seen(); if (!sn.has(k)) { sn.add(k); prefs.seenSess = [...sn]; savePrefs(); } reesePop(r); } } }
+function reesePop(r) {
+  const st = sessEnd(r) - (r.session === "NY" ? 7.5 * 3600 : 4.5 * 3600), mine = hist.filter((t) => loc(t.t_entry) >= st && loc(t.t_entry) < sessEnd(r) && (t.symbol === r.symbol || t.symbol.replace("M", "") === r.symbol.replace("M", "")));
+  let verdict = "", xp = 0; if (r.dir) { const same = mine.filter((t) => t.dir === r.dir), opp = mine.filter((t) => t.dir === -r.dir);
+    if (same.length) { verdict = "✅ You took the same side as Reese."; xp = 50; } else if (opp.length) { verdict = "↔️ You traded the other way."; xp = 10; } else { verdict = r.result === "win" ? "👀 You sat out a session he won. Look at what he saw." : "🧘 You sat out. He " + (r.result === "loss" ? "took a loss here." : "didn't make much."); xp = r.result === "loss" ? 25 : 0; } }
+  else verdict = "📋 No trade from him here, just his plan. Did yours match?";
+  if (xp) addXp(xp);
+  dlg(`<h3>Reese ${r.dir ? "traded" : "planned"} this session</h3><div class="muted small">${r.day} · ${r.session} · ${r.symbol}</div>
+    ${r.dir ? `<div class="shrow"><span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · <b>${r.result}</b></div>` : ""}
+    <p class="small">${esc(r.summary)}</p>${(r.quotes || []).length ? `<div class="quotes">${r.quotes.slice(0, 4).map((q) => `<div>“${esc(q)}”</div>`).join("")}</div>` : ""}
+    ${r.video_url ? `<p><a href="${esc(r.video_url)}" target="_blank" rel="noopener">Watch his clip ↗</a></p>` : ""}
+    <div class="riskcard">${verdict}${xp ? ` <b>+${xp} XP</b>` : ""}<br>Your trades this session: ${mine.length ? mine.map((t) => `${t.dir > 0 ? "long" : "short"} ${money(+t.pnl)}`).join(", ") : "none"}</div>`, () => {
+    if (r.entry && panes[0]) { const t0 = sessEnd(r) - 3 * 3600; drawings.push({ id: did++, type: "hline", pane: 0, a: { t: t0, p: +r.entry }, label: "Reese entry" }); if (r.exit) drawings.push({ id: did++, type: "hline", pane: 0, a: { t: t0, p: +r.exit }, label: "Reese exit" }); repaintAll(); } });
+  const ok = $("dl-ok"); if (ok) ok.textContent = r.entry ? "Show his levels" : "OK"; }
+function addXp(n) { prefs.xp = (prefs.xp || 0) + n; prefs.credits = (prefs.credits || 0) + Math.round(n / 5); savePrefs(); xpUI(); }
+function xpUI() { const x = prefs.xp || 0, lv = Math.floor(Math.sqrt(x / 50)) + 1, nx = 50 * lv * lv, pv = 50 * (lv - 1) * (lv - 1); $("xpbar").innerHTML = `Level <b>${lv}</b> <i class="xpb"><i style="width:${Math.round((100 * (x - pv)) / (nx - pv))}%"></i></i> ${x} XP · ${prefs.credits || 0} credits`; }
+function ltab(k) { document.querySelectorAll("#ltabs button").forEach((b) => b.classList.toggle("on", b.dataset.l === k)); ["rl", "qz", "co", "ev"].forEach((x) => $("l-" + x).classList.toggle("hidden", x !== k)); xpUI(); ({ rl: renderRL, qz: qzStats, co: renderCourse, ev: renderEv })[k](); }
+async function renderRL() { if (!reese.length) await loadReese(); const sn = seen(), hide = $("rl-spoil").checked;
+  $("rl-list").innerHTML = reese.slice().reverse().map((r) => { const done = sn.has(r.day + "|" + r.session), sp = hide && !done && r.dir;
+    return `<div class="card rc"><div class="ah"><b>${r.day} · ${r.session}</b><span class="pill ${sp ? "" : r.result === "win" ? "up" : r.result === "loss" ? "dn" : ""}">${sp ? "hidden" : r.result}</span></div>
+      ${sp ? '<p class="small muted">Replay this session first. The result unlocks when you finish it.</p>' : `${r.dir ? `<div class="shrow"><span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"} ${r.symbol}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""}</div>` : ""}<p class="small">${esc(r.summary)}</p>${(r.quotes || []).slice(0, 2).map((q) => `<div class="small rnote">“${esc(q)}”</div>`).join("")}`}
+      <div class="row" style="justify-content:flex-start"><button class="small primary" data-rday="${r.id}">Replay this session</button></div></div>`; }).join("") || '<div class="empty">No Reese trades loaded</div>'; }
+async function replayReese(r) { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); const [a] = RSES[r.session] || RSES.NY; $("sym").value = r.symbol; $("start").value = r.day + "T" + a; view("trade"); await loadReplay(); }
+// ---- quiz: "Taking dis? or fade it?"
+async function loadQuiz() { if (quizBank.length) return; if (DEMO) { quizBank = []; return; } const { data } = await sb.from("quiz_setups").select("*").limit(2000); quizBank = data || [];
+  if (!quizBank.length) try { quizBank = await (await fetch("quiz.json", { cache: "no-store" })).json(); } catch (e) {} }   // bank of real model setups (prices and times only), ships with the app
+function qzStats() { const q = prefs.quiz || { n: 0, right: 0, streak: 0, best: 0 }; $("qz-stats").innerHTML = [["Answered", q.n], ["Right", q.n ? Math.round((100 * q.right) / q.n) + "%" : "—"], ["Streak", q.streak], ["Best streak", q.best]].map(([k, v]) => `<div><span class="muted small">${k}</span><b>${v}</b></div>`).join(""); }
+async function quizNext() {
+  if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); await loadQuiz();
+  let it = quizBank.length ? quizBank[Math.floor(Math.random() * quizBank.length)] : null;
+  if (!it && DEMO) { await loadReplay(); for (let i = 0; i < 40; i++) await stepFwd(); const lp = last(); it = { symbol: "NQ", t_entry: nowT() + 60, dir: 1, entry: rnd(lp - 4), stop: rnd(lp - 16), target: rnd(lp + 26), outcome: "win", why: ["10AM manipulation", "SWEPT LIQUIDITY", "5M CLOSE BACK"] }; }
+  if (!it) return toast("No quiz setups yet");
+  QZ = { it, answered: false }; view("trade"); $("sym").value = it.symbol; $("start").value = fmt(loc(it.t_entry)).replace(" ", "T"); if (!DEMO || !B["1m"].bars.length) await loadReplay();
+  drawings = drawings.filter((d) => !d.quiz); const d = { id: did++, type: it.dir > 0 ? "long" : "short", side: it.dir, pane: active, a: { t: loc(it.t_entry), p: +it.entry }, b: { t: loc(it.t_entry) + 90 * 60, p: +it.entry }, entry: +it.entry, sl: +it.stop, tp: +it.target, state: "idle", quiz: true }; drawings.push(d);
+  const rr = Math.abs(it.target - it.entry) / Math.abs(it.entry - it.stop);
+  $("qz-desc").innerHTML = `${it.dir > 0 ? "Long" : "Short"} ${it.symbol} @ <b>${px2(+it.entry)}</b> · stop ${px2(+it.stop)} · target ${px2(+it.target)} · ${rr.toFixed(1)}R`; $("qzbar").classList.remove("hidden"); $("qz-res").classList.add("hidden"); $("qz-next").classList.add("hidden"); ["qz-take", "qz-fade"].forEach((k) => ($(k).disabled = false));
+  panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); repaintAll(); }
+async function quizAnswer(take) { if (!QZ || QZ.answered) return; QZ.answered = true; ["qz-take", "qz-fade"].forEach((k) => ($(k).disabled = true)); const it = QZ.it, right = (it.outcome === "win") === take;
+  const q = prefs.quiz || { n: 0, right: 0, streak: 0, best: 0 }; q.n++; if (right) { q.right++; q.streak++; q.best = Math.max(q.best, q.streak); } else q.streak = 0; prefs.quiz = q; addXp(right ? 10 : 2); if (right) prefs.credits = (prefs.credits || 0) + 8; savePrefs();
+  const end = it.t_exit || it.t_entry + 3600; for (let n = 0; n < 900 && nowT() < end + 600; n++) { const g = await stepFwd(false); if (g === false) break; } rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime());
+  sfx(right ? "win" : "loss"); $("qz-res").innerHTML = `<b class="${right ? "pos-up" : "pos-dn"}">${right ? "Right!" : "Not this time."}</b> It ${it.outcome === "win" ? "hit the target" : "hit the stop"}${it.r != null ? " (" + it.r + "R)" : ""}.<div class="tiny muted">Why it set up: ${(it.why || []).map(esc).join(" · ")}</div>${right ? '<div class="tiny">+10 XP, +8 credits</div>' : ""}`;
+  $("qz-res").classList.remove("hidden"); $("qz-next").classList.remove("hidden"); }
+function quizStop() { QZ = null; $("qzbar").classList.add("hidden"); drawings = drawings.filter((d) => !d.quiz); repaintAll(); }
+// ---- course
+const LESSONS = [["Sessions and times", "Which windows he trades (NY 9:30, the 10:00 open, Asia 8pm) and when he stays out."], ["Bias", "How he picks a direction from the higher timeframe range: premium vs discount, conditions, draws on liquidity."], ["Setup checklist", "His order: condition → manipulation into a level → SMT → displacement → entry gap."],
+  ["Entry", "Inversion and respected gaps on the 15s-1m, entering off displacement, OTE 0.705-0.79."], ["Stop and targets", "Stop past the manipulation leg, 1:1 marked, partials and break-even, trailing to the next level."], ["When he skips", "No obvious draw, fighting ES, low conviction, structure that trades into a range before inversion."]];
+function renderCourse() { const done = new Set(prefs.lessons || []);
+  $("co-lessons").innerHTML = LESSONS.map(([t, d], i) => `<div class="card lc ${done.has(i) ? "done" : ""}"><div class="ah"><b>${i + 1}. ${t}</b>${done.has(i) ? '<span class="pill up">done</span>' : ""}</div><p class="small muted">${d}</p><button class="small ${done.has(i) ? "ghost" : "primary"}" data-les="${i}">${done.has(i) ? "Read again" : "Read + mark done (+20 XP)"}</button></div>`).join("");
+  const wk = {}; reese.filter((r) => r.dir).forEach((r) => { const d = new Date(r.day + "T12:00:00Z"), mon = new Date(d - ((d.getUTCDay() + 6) % 7) * 864e5).toISOString().slice(0, 10); (wk[mon] = wk[mon] || []).push(r); });
+  $("co-weeks").innerHTML = Object.entries(wk).sort().reverse().map(([m, rs]) => `<div class="card"><div class="ah"><b>Week of ${m}</b><span class="muted tiny">${rs.length} Reese trade${rs.length > 1 ? "s" : ""}</span></div><p class="small muted">Trade it your way. After each session he traded, you'll see his trade next to yours and earn XP for matching his read.</p><button class="small primary" data-wk="${m}">Start this week</button></div>`).join(""); }
+function lessonDlg(i) { dlg(`<h3>${LESSONS[i][0]}</h3><p class="small">${LESSONS[i][1]}</p><p class="tiny muted">The full write-up lives in your playbook notes. Finish this lesson, then try a guided week to practice it.</p>`, () => { const s = new Set(prefs.lessons || []); if (!s.has(i)) { s.add(i); prefs.lessons = [...s]; addXp(20); prefs.credits = (prefs.credits || 0) + 20; savePrefs(); } renderCourse(); }); const ok = $("dl-ok"); if (ok) ok.textContent = "Mark done"; }
+// ---- earn an eval
+function renderEv() { $("ev-cr").textContent = (prefs.credits || 0) + " credits";
+  $("ev-list").innerHTML = Object.entries(LUCID).map(([k, [nm, bal, R, cost]]) => `<div class="card"><div class="ah"><b>${nm}</b><span class="pill">${cost} credits</span></div><div class="kvs"><div><span>Profit target</span><b>${money(R.ptg)}</b></div><div><span>Max loss (end of day, trailing)</span><b>${money(R.mdd)}</b></div><div><span>Consistency</span><b>best day ≤ ${R.cons}%</b></div><div><span>Max size</span><b>${R.maxMini} minis</b></div></div><button class="small ${(prefs.credits || 0) >= cost ? "primary" : "ghost"}" data-buy="${k}">${(prefs.credits || 0) >= cost ? "Get this eval" : "Need " + (cost - (prefs.credits || 0)) + " more"}</button></div>`).join(""); }
+async function buyEval(k) { const [nm, bal, R, cost] = LUCID[k]; if ((prefs.credits || 0) < cost) { ltab("qz"); return toast("Answer quiz questions to earn " + (cost - (prefs.credits || 0)) + " more credits"); }
+  prefs.credits -= cost; savePrefs(); const n = await db.newAccount({ name: nm + " #" + (accts.filter((a) => a.name.startsWith(nm)).length + 1), kind: "eval", start_bal: bal, rules: R }); accts.push(n); pickAcct(n.id); renderEv(); toast(nm + " ready and selected. Good luck."); sfx("win"); }
+// ---- time tracking (active replay time, saved on the session)
+let actSecs = 0, lastAct = Date.now();
+["pointerdown", "keydown", "wheel"].forEach((ev) => addEventListener(ev, () => (lastAct = Date.now()), { passive: true }));
+setInterval(() => { if (!sess || document.visibilityState !== "visible" || $("v-trade").classList.contains("hidden")) return; if (timer || Date.now() - lastAct < 90000) { actSecs++; sess.active_secs = (sess.active_secs || 0) + 1; if (actSecs % 60 === 0 && !DEMO) sb.from("sessions").update({ active_secs: sess.active_secs }).eq("id", sess.id).then(() => {}); } }, 1000);
+
+/* ---------------- media: Spotify, see-through YouTube overlay, video library ---------------- */
+function spEmbed(u) { const m = String(u).match(/open\.spotify\.com\/(?:intl-[a-z]+\/)?(playlist|album|track|episode|show|artist)\/([A-Za-z0-9]+)/); return m ? `https://open.spotify.com/embed/${m[1]}/${m[2]}?utm_source=generator&theme=0` : null; }
+function ytEmbed(u) { const m = String(u).match(/(?:youtu\.be\/|v=|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{11})/); return m ? `https://www.youtube-nocookie.com/embed/${m[1]}?autoplay=1&rel=0` : null; }
+function mediaUI() { const M = prefs.media || (prefs.media = { show: false, tab: "sp", op: 100, ct: false }); $("media").classList.toggle("hidden", !M.show); $("mediabtn").classList.toggle("on", !!M.show);
+  document.querySelectorAll(".mt button").forEach((b) => b.classList.toggle("on", b.dataset.m === M.tab)); ["sp", "yt", "lib"].forEach((k) => $("m-" + k).classList.toggle("hidden", k !== M.tab));
+  $("media").style.opacity = (M.op || 100) / 100; $("m-op").value = M.op || 100; $("m-ct").classList.toggle("on", !!M.ct); $("media").classList.toggle("thru", !!M.ct);
+  if (M.x != null) { $("media").style.left = Math.min(M.x, innerWidth - 120) + "px"; $("media").style.top = Math.min(M.y, innerHeight - 60) + "px"; }
+  if (M.sp && !$("sp-frame").innerHTML) setSp(M.sp, false); if (M.tab === "lib") renderLib(); }
+function setSp(u, save = true) { const e = spEmbed(u); if (!e) return toast("That doesn't look like a Spotify link"); $("sp-url").value = u; $("sp-frame").innerHTML = `<iframe src="${e}" width="100%" height="232" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`; if (save) { prefs.media.sp = u; savePrefs(); } }
+function setYt(u) { const e = ytEmbed(u); if (!e) return toast("That doesn't look like a YouTube link"); $("yt-url").value = u; $("yt-frame").innerHTML = `<iframe src="${e}" width="100%" height="236" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`; prefs.media.tab = "yt"; savePrefs(); mediaUI(); }
+function renderLib() { const mine = prefs.vids || [], rv = reese.filter((r) => r.video_url).map((r) => ({ name: "Reese · " + r.day + " " + r.session, url: r.video_url }));
+  $("lib-list").innerHTML = [...rv, ...mine].map((v, i) => `<div class="libr"><button class="small ghost" data-yt="${esc(v.url)}">▶</button><span>${esc(v.name || v.url)}</span>${i >= rv.length ? `<button class="pb" data-libdel="${i - rv.length}">×</button>` : ""}</div>`).join("") || '<div class="tiny muted">No videos yet. Add Reese recaps or any lesson you want next to the chart.</div>'; }
+
 /* ---------------- friends: leaderboard, challenges, shared trades, suggestions, chat ---------------- */
 let me = null, names = {}, chatSub = null, chatSeen = +(localStorage.getItem("rw-chat-seen") || 0);
 const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -708,7 +820,40 @@ async function loadMe() {
   if (!me) { const nm = (user.email || "me").split("@")[0].replace(/[0-9_.]+$/, "") || "me"; const r = await sb.from("profiles").insert({ name: nm }).select().single(); me = r.data || { user_id: user.id, name: nm, share_stats: true }; names[user.id] = me.name; }
   else sb.from("profiles").update({ seen_at: new Date().toISOString() }).eq("user_id", user.id).then(() => {});
 }
-function ftab(k) { document.querySelectorAll("#ftabs button").forEach((b) => b.classList.toggle("on", b.dataset.f === k)); ["lb", "ch", "sh", "sg"].forEach((x) => $("f-" + x).classList.toggle("hidden", x !== k)); ({ lb: renderLB, ch: renderCh, sh: renderSh, sg: renderSg })[k](); }
+function ftab(k) { document.querySelectorAll("#ftabs button").forEach((b) => b.classList.toggle("on", b.dataset.f === k)); ["lv", "lb", "ch", "sh", "sg"].forEach((x) => $("f-" + x).classList.toggle("hidden", x !== k)); ({ lv: renderLive, lb: renderLB, ch: renderCh, sh: renderSh, sg: renderSg })[k](); }
+// ---- live sessions (Realtime presence + invites), like a game lobby
+let liveCh = null, live = {}, room = null, roomSub = null;
+function myLive() { const dayP = dayRpl(); return { name: (me && me.name) || "me", room: room && room.id, sym, start: sess ? sess.start_ts : null, t: nowT() || null, pnl: Math.round(hist.reduce((a, t) => a + (+t.pnl || 0), 0)), day: Math.round(dayP), n: hist.length, playing: !!timer, done: !!(room && room.done), at: Date.now() }; }
+function initLive() {
+  if (DEMO) { live = { b: [{ name: "Ben", sym: "NQ", t: Date.parse("2026-10-14T14:20:00Z") / 1000, pnl: 340, n: 2, playing: true }], w: [{ name: "Will", sym: "ES", t: Date.parse("2026-09-02T13:55:00Z") / 1000, pnl: -120, n: 1, playing: false }] }; return; }
+  liveCh = sb.channel("live", { config: { presence: { key: user.id }, broadcast: { self: false } } });
+  liveCh.on("presence", { event: "sync" }, () => { live = liveCh.presenceState(); delete live[user.id]; livePill(); if (!$("f-lv").classList.contains("hidden") && !$("v-friends").classList.contains("hidden")) renderLive(); })
+    .on("broadcast", { event: "invite" }, ({ payload: p }) => { if (p.to !== user.id) return; sfx("fill"); buzz(40);
+      dlg(`<h3>${esc(p.fromName)} invited you</h3><p class="small">Replay <b>${esc(p.sym)}</b> from <b>${fmt(loc(p.start))} New York</b> together. You each trade at your own pace and compare at the end.</p>`, () => joinRoom({ id: p.room, host: p.from, sym: p.sym, start: p.start })); const ok = $("dl-ok"); if (ok) ok.textContent = "Join"; })
+    .subscribe((st) => { if (st === "SUBSCRIBED") liveCh.track(myLive()); });
+  setInterval(() => { if (liveCh) liveCh.track(myLive()); }, 15000);
+}
+function livePill() { if (!room) return $("livepill").classList.add("hidden"); const mates = Object.values(live).map((x) => x[0]).filter((x) => x.room === room.id), going = mates.filter((x) => !x.done);
+  $("livepill").classList.remove("hidden"); $("livepill").innerHTML = `<i></i> ${mates.length ? going.length + " of " + mates.length + " still trading" : "waiting for friends"}`; }
+async function renderLive() { const rows = Object.entries(live).map(([id, xs]) => ({ id, ...xs[0] })).filter((x) => x.at == null || Date.now() - x.at < 120000 || DEMO);
+  $("lv-list").innerHTML = rows.map((x) => `<div class="card lvc"><div class="ah"><b><i class="ldot ${x.playing ? "on" : ""}"></i> ${esc(x.name)}</b><span class="muted tiny">${x.done ? "done for the day" : x.playing ? "playing" : x.t ? "paused" : "in the app"}</span></div>
+    <div class="shrow">${x.t ? `${esc(x.sym)} · ${fmt(loc(x.t))} NY` : "no replay loaded"}</div>${x.t ? `<div class="small">${x.n} trade${x.n === 1 ? "" : "s"} · <b class="${x.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(x.pnl)}</b>${x.room && room && x.room === room.id ? ' · <span class="pill up">in your session</span>' : ""}</div>` : ""}
+    <div class="row" style="justify-content:flex-start"><button class="small primary" data-inv="${x.id}">Invite to my replay</button></div></div>`).join("") || '<div class="empty">Nobody else is in Rewind right now.</div>';
+  if (room) { const mates = rows.filter((x) => x.room === room.id); $("lv-room").classList.remove("hidden");
+    $("lv-room").innerHTML = `<div class="ah"><b>Your live session · ${esc(room.sym)} from ${fmt(loc(room.start))} NY</b><span><button class="small ${room.done ? "ghost" : "primary"}" id="lv-done">${room.done ? "Back to trading" : "I'm done for the day"}</button> <button class="small ghost" id="lv-leave">Leave</button></span></div>
+      <table class="bt"><tr><th>Trader</th><th>Status</th><th>Replay time</th><th>Trades</th><th>P&amp;L</th></tr>${[{ name: (me && me.name) || "me", ...myLive() }, ...mates].map((x) => `<tr><td>${esc(x.name)}</td><td>${x.done ? "done" : "trading"}</td><td>${x.t ? fmt(loc(x.t)).slice(5) : "—"}</td><td>${x.n}</td><td class="${x.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(x.pnl)}</td></tr>`).join("")}</table>
+      <div class="sub" style="margin:10px 0 4px">Shared notes</div><div class="fch-list roomnotes" id="rn-list"></div><div class="fch-in"><input id="rn-in" placeholder="What did you see? What would you do differently?"><button id="rn-send" class="primary small">Add</button></div>`;
+    $("lv-done").onclick = () => { room.done = !room.done; if (liveCh) liveCh.track(myLive()); renderLive(); }; $("lv-leave").onclick = () => { room = null; if (roomSub) sb.removeChannel(roomSub), (roomSub = null); if (liveCh) liveCh.track(myLive()); livePill(); renderLive(); };
+    $("rn-send").onclick = sendRoomNote; $("rn-in").onkeydown = (e) => { if (e.key === "Enter") sendRoomNote(); }; loadRoomNotes(); } else $("lv-room").classList.add("hidden"); }
+async function loadRoomNotes() { if (!room || !$("rn-list")) return; let list = []; if (DEMO) list = mem.rn || []; else { const { data } = await sb.from("messages").select("*").eq("room", "room:" + room.id).order("created_at").limit(200); list = data || [];
+    if (!roomSub) roomSub = sb.channel("rn:" + room.id).on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "room=eq.room:" + room.id }, () => loadRoomNotes()).subscribe(); }
+  $("rn-list").innerHTML = list.map(chatRow).join("") || '<div class="tiny muted">No notes yet.</div>'; }
+async function sendRoomNote() { const b = $("rn-in").value.trim(); if (!b || !room) return; $("rn-in").value = ""; if (DEMO) { (mem.rn = mem.rn || []).push({ id: Date.now(), user_id: "demo", body: b, created_at: new Date().toISOString() }); return loadRoomNotes(); } await sb.from("messages").insert({ room: "room:" + room.id, body: b }); loadRoomNotes(); }
+async function invite(uid) { if (!nowT() || !sess) return toast("Load a replay first, then invite");
+  if (!room) room = { id: (me ? me.user_id.slice(0, 8) : "me") + "-" + sess.start_ts, host: me && me.user_id, sym, start: sess.start_ts };
+  if (liveCh) { liveCh.send({ type: "broadcast", event: "invite", payload: { to: uid, from: user.id, fromName: (me && me.name) || "a friend", room: room.id, sym: room.sym, start: room.start } }); liveCh.track(myLive()); }
+  toast("Invite sent to " + ((live[uid] && live[uid][0].name) || "your friend")); livePill(); renderLive(); }
+async function joinRoom(r) { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); room = r; $("sym").value = r.sym; $("start").value = fmt(loc(r.start) + 60).replace(" ", "T"); view("trade"); await loadReplay(); if (liveCh) liveCh.track(myLive()); livePill(); }
 async function lbRows(t0, t1, sy) { if (DEMO) return [{ user_id: "demo", name: "You", trades: mem.trades.length, wins: mem.trades.filter((t) => t.pnl > 0).length, net: mem.trades.reduce((a, t) => a + t.pnl, 0), avg_r: 0.4, best: 406 }, { user_id: "b", name: "Ben", trades: 9, wins: 5, net: 820, avg_r: 0.6, best: 640 }];
   const { data, error } = await sb.rpc("leaderboard", { t0, t1, sym: sy || null }); if (error) toast(error.message); return data || []; }
 function lbTable(rows) { if (!rows.length) return '<div class="empty">No trades in this range yet</div>'; const medal = ["🥇", "🥈", "🥉"];
@@ -821,7 +966,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "friends") { ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") renderAccts(); if (v === "admin") loadAdmin(); if (v === "settings") notionUI(); }
+function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") notionUI(); }
 function layMenu() { $("laymenu").innerHTML = Object.entries(LAYOUTS).map(([k, [c, r]]) => `<button class="lay ${k === prefs.layout ? "on" : ""}" data-lay="${k}"><i style="grid-template-columns:repeat(${c},1fr);grid-template-rows:repeat(${r},1fr)">${"<b></b>".repeat(c * r)}</i>${c * r} chart${c * r > 1 ? "s" : ""}${k === "2h" ? " ↕" : ""}</button>`).join(""); }
 function splash() { const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><span class="sp-logo">⟲</span><span class="sp-name">Rewind</span></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 900); setTimeout(() => s.remove(), 1400); }
 if (prefs.splash !== false) splash();
@@ -839,7 +984,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  await loadAccts().catch(() => {}); await loadMe().catch(() => {}); initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales);
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI();
   if (!$("start").value) $("start").value = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) notionUI().catch(() => {});
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
@@ -874,6 +1019,7 @@ $("clr").onclick = () => { drawings.filter((d) => d.state === "armed").forEach(d
 document.querySelectorAll(".mode").forEach((b) => (b.onclick = () => { document.querySelectorAll(".mode").forEach((x) => x.classList.toggle("on", x === b)); ["scalp", "dom", "order"].forEach((m) => $("md-" + m).classList.toggle("hidden", m !== b.dataset.mode)); if (b.dataset.mode === "scalp" && !prefs.pad.show) { prefs.pad.show = true; padUI(); } refresh(); }));
 document.querySelectorAll(".btab").forEach((b) => (b.onclick = () => { if (b.classList.contains("on") && !prefs.dockClosed) { prefs.dockClosed = true; savePrefs(); return dockUI(); } prefs.dockClosed = false; savePrefs(); dockUI();
   document.querySelectorAll(".btab").forEach((x) => x.classList.toggle("on", x === b)); ["acct", "pos", "ord", "hist"].forEach((k) => $("b-" + k).classList.toggle("hidden", k !== b.dataset.b)); }));
+["tx-st", "tx-pay", "tx-exp", "tx-w2", "tx-wh"].forEach((k) => ($(k).oninput = taxCalc));
 $("acctpill").onclick = acctMenu; $("ac-new").onclick = () => acctDlg(null);
 $("ac-list").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const id = b.dataset.use || b.dataset.edit || b.dataset.arch, a = accts.find((x) => x.id === id); if (!a) return;
   if (b.dataset.use) { pickAcct(id); renderAccts(); } else if (b.dataset.edit) acctDlg(a); else if (confirm("Archive " + a.name + "? Its trades stay in your journal.")) db.updAccount(id, { archived: true }).then(() => { accts = accts.filter((x) => x.id !== id); if (acct && acct.id === id) pickAcct(null); renderAccts(); }); };
@@ -889,7 +1035,25 @@ $("sh-list").onclick = (e) => { const st = e.target.closest(".star"); if (st) re
 $("sg-add").onclick = addSg; $("sg-text").onkeydown = (e) => { if (e.key === "Enter") addSg(); };
 $("sg-list").onclick = async (e) => { const b = e.target.closest("[data-vote]"); if (!b) return; if (DEMO) { const x = mem.sg.find((z) => z.id === b.dataset.vote); x.votes = x.votes.includes("demo") ? [] : ["demo"]; } else { const { error } = await sb.rpc("vote_suggestion", { sid: b.dataset.vote }); if (error) toast(error.message); } renderSg(); };
 $("sg-list").onchange = async (e) => { const id = e.target.dataset.st; if (id && !DEMO) { await sb.from("suggestions").update({ status: e.target.value }).eq("id", id); renderSg(); } };
+$("lv-list").onclick = (e) => { const b = e.target.closest("[data-inv]"); if (b) invite(b.dataset.inv); }; $("livepill").onclick = () => { view("friends"); ftab("lv"); };
+$("mediabtn").onclick = () => { prefs.media = prefs.media || {}; prefs.media.show = !prefs.media.show; savePrefs(); mediaUI(); };
+document.querySelectorAll(".mt button").forEach((b) => (b.onclick = () => { prefs.media.tab = b.dataset.m; savePrefs(); mediaUI(); }));
+$("m-op").oninput = () => { prefs.media.op = +$("m-op").value; mediaUI(); }; $("m-op").onchange = savePrefs;
+$("m-ct").onclick = () => { prefs.media.ct = !prefs.media.ct; savePrefs(); mediaUI(); if (prefs.media.ct) toast("Click-through on: clicks go to the chart. Turn it off with the ⌖ button (it stays clickable)."); };
+$("m-x").onclick = () => { prefs.media.show = false; savePrefs(); mediaUI(); };
+$("sp-go").onclick = () => setSp($("sp-url").value.trim()); $("yt-go").onclick = () => setYt($("yt-url").value.trim());
+$("lib-add").onclick = () => { const u = $("lib-url").value.trim(); if (!ytEmbed(u)) return toast("Add a YouTube link"); (prefs.vids = prefs.vids || []).push({ url: u, name: $("lib-name").value.trim() }); $("lib-url").value = $("lib-name").value = ""; savePrefs(); renderLib(); };
+$("lib-list").onclick = (e) => { const p = e.target.closest("[data-yt]"); if (p) return setYt(p.dataset.yt); const d = e.target.closest("[data-libdel]"); if (d) { prefs.vids.splice(+d.dataset.libdel, 1); savePrefs(); renderLib(); } };
+grip($("mgrip"), (e, st) => { if (e.target.closest("button,input")) return; const m = $("media"); if (!st.r) st.r = m.getBoundingClientRect(); m.style.left = Math.max(0, Math.min(innerWidth - 120, st.r.left + e.clientX - st.x)) + "px"; m.style.top = Math.max(0, Math.min(innerHeight - 60, st.r.top + e.clientY - st.y)) + "px"; },
+  () => { const r = $("media").getBoundingClientRect(); prefs.media.x = r.left; prefs.media.y = r.top; savePrefs(); });
+$("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
+$("ltabs").onclick = (e) => { const b = e.target.closest("[data-l]"); if (b) ltab(b.dataset.l); }; $("rl-spoil").onchange = renderRL;
+$("rl-list").onclick = (e) => { const b = e.target.closest("[data-rday]"); if (b) replayReese(reese.find((r) => r.id === b.dataset.rday)); };
+$("qz-go").onclick = quizNext; $("qz-take").onclick = () => quizAnswer(true); $("qz-fade").onclick = () => quizAnswer(false); $("qz-more").onclick = quizNext; $("qz-stop").onclick = quizStop;
+$("co-lessons").onclick = (e) => { const b = e.target.closest("[data-les]"); if (b) lessonDlg(+b.dataset.les); };
+$("co-weeks").onclick = async (e) => { const b = e.target.closest("[data-wk]"); if (!b) return; if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); const d = new Date(b.dataset.wk + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() - 1); $("sym").value = "NQ"; $("start").value = d.toISOString().slice(0, 10) + "T17:30"; view("trade"); await loadReplay(); };
+$("ev-list").onclick = (e) => { const b = e.target.closest("[data-buy]"); if (b) buyEval(b.dataset.buy); };
 $("dockbtn").onclick = () => { prefs.dockClosed = !prefs.dockClosed; savePrefs(); dockUI(); };
 $("tfbar").onclick = (e) => { const b = e.target.closest(".tf"); if (b) setPaneTf(active, b.dataset.tf); };
 $("ranges").onclick = (e) => { const b = e.target.closest("[data-r]"); if (b) showRange(+b.dataset.r); };

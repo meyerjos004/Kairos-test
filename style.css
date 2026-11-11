@@ -165,3 +165,27 @@ button,.tool,.tf,.ri{transition:background .16s var(--ease),color .16s var(--eas
 .vote{min-width:52px;font:600 12px var(--mono)}.vote.on{color:var(--acc);border-color:rgba(94,230,184,.5);background:rgba(94,230,184,.1)}
 @media (max-width:1100px){.fchat{width:260px}}@media (max-width:900px){.fwrap{flex-direction:column}.fchat{width:auto;height:360px}}
 .shc .row>*,.chc .row>*{flex:none}.shc .row{gap:12px}
+
+/* v0.4 batch 4: learn */
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px;padding:6px 14px}.rgrid .card{margin:0}.sub{font:600 14px var(--display);margin:18px 16px 4px}
+.quotes{border-left:2px solid rgba(94,230,184,.4);padding:4px 10px;margin:8px 0;font-size:12.5px;color:var(--txt)}.quotes div{margin:3px 0}
+.xp{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:8px}.xp b{color:var(--acc)}.xpb{display:inline-block;width:110px;height:6px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}.xpb i{display:block;height:100%;background:linear-gradient(90deg,#3fd3a2,#7aa7ff)}
+.qzc{max-width:620px}.qzbar{position:fixed;z-index:40;left:50%;top:110px;transform:translateX(-50%);width:420px;padding:14px 16px;border-radius:14px;background:rgba(18,22,29,.95);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,.1);box-shadow:0 18px 50px rgba(0,0,0,.5);animation:pop .4s var(--spring) both;text-align:center}
+.qzq{font:800 20px var(--display);background:linear-gradient(90deg,#e6eaf0,#5ee6b8);-webkit-background-clip:text;background-clip:text;color:transparent}.qzd{font:12.5px var(--mono);color:var(--mut);margin:6px 0 4px}.qzr{margin-top:8px;font-size:13px;animation:pop .3s var(--spring) both}
+.lc.done{opacity:.8}.lc button,.rc button{flex:none}
+
+.taxc{margin:16px 14px}.taxgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:4px 14px}.taxout{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin:10px 0}.taxout div{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:10px;padding:8px 10px}.taxout b{display:block;font:600 16px var(--mono)}
+
+.livepill{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:4px 10px;border-radius:999px;background:rgba(122,167,255,.12);color:#b8ccff;border:1px solid rgba(122,167,255,.25)}.livepill i{width:7px;height:7px;border-radius:50%;background:#7aa7ff;box-shadow:0 0 8px #7aa7ff;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}.ldot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mut2);margin-right:4px}.ldot.on{background:var(--up);box-shadow:0 0 8px var(--up);animation:pulse 1.6s infinite}
+#lv-room{margin:6px 14px 12px}.roomnotes{max-height:220px;border:1px solid var(--line);border-radius:10px}.lvc button{flex:none}
+
+.media{position:fixed;z-index:33;right:18px;top:110px;width:380px;border-radius:12px;background:rgba(18,22,29,.94);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.09);box-shadow:0 14px 40px rgba(0,0,0,.45);overflow:hidden;animation:pop .35s var(--spring) both;transition:opacity .2s}
+.mbar{display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:grab;border-bottom:1px solid var(--line)}.mbar input[type=range]{width:70px;vertical-align:middle;margin:0 0 0 4px;padding:0}.mbar label{margin:0;display:flex;align-items:center}
+.mt button{font-size:11.5px;padding:4px 8px;color:var(--mut)}.mt button.on{color:var(--txt);background:rgba(255,255,255,.08)}.mbody{padding:8px}.mp .row input{flex:3}.mp iframe{border-radius:10px;display:block;margin-top:6px}
+.media.thru .mbody{pointer-events:none}.media.thru{border-style:dashed}.pb.on{color:var(--acc)}
+.libr{display:flex;align-items:center;gap:8px;padding:3px 0;font-size:12.5px}.libr span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.libr button{flex:none}
+
+.themes{display:flex;flex-wrap:wrap;gap:8px}.th{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;padding:6px 8px}.th.on{border-color:var(--acc);color:var(--acc)}.th i{display:flex;gap:3px;align-items:flex-end;justify-content:center;width:46px;height:28px;border-radius:6px;padding:4px}.th i b{width:8px;height:12px;border-radius:2px}.th i b+b{height:18px}
+button.primary{background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 85%,#fff),var(--acc));color:#04140e}
+.mbar label input[type=range]{width:64px!important;display:inline-block!important;margin:0 0 0 4px!important}.media{width:400px}.mt button{padding:4px 7px}

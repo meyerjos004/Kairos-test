@@ -30,6 +30,7 @@
     <button data-view="journal" class="ri vtab" title="Journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M5 16a4 4 0 0 1 4-4h10"/></svg></button>
     <button data-view="stats" class="ri vtab" title="Stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M6 15l4-5 3 3 5-7"/><circle cx="18" cy="6" r="1.2"/></svg></button>
     <button data-view="accounts" class="ri vtab" title="Accounts (portfolio)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M3.5 10h17M7 15h4"/></svg></button>
+    <button data-view="learn" class="ri vtab" title="Learn: Reese log, quiz, course, earn an eval"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9L12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11v4.5c0 1.4 2.5 2.7 5.5 2.7s5.5-1.3 5.5-2.7V11M21.5 9v5"/></svg></button>
     <button data-view="friends" class="ri vtab" title="Friends: leaderboard, challenges, shared trades, chat" id="vt-friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M2.5 19a5.5 5.5 0 0 1 11 0M14 19a4.5 4.5 0 0 1 7.5-3.3"/></svg><i class="dot hidden" id="chatdot"></i></button>
     <button data-view="settings" class="ri vtab" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <button data-view="admin" class="ri vtab hidden" id="vt-admin" title="Admin: invites, features, data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg></button>
@@ -53,7 +54,7 @@
       <select id="speed" title="Replay speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option><option value="10">100×</option></select>
     </div>
     <button id="lockbtn" class="ib" title="Personal lockout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
-    <span class="conn" title="Replay data">●</span>
+    <button id="livepill" class="livepill hidden" title="Friends in your live session"></button><span class="conn" title="Replay data">●</span>
   </header>
 
   <section id="v-trade" class="view">
@@ -64,6 +65,7 @@
       <div class="laywrap"><button id="indbtn" class="tb" title="Indicators"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c3 0 3-14 6-14M7 11h5"/><path d="M14 11l6 8M20 11l-6 8"/></svg> Indicators</button><div id="indmenu" class="menu hidden"></div></div>
       <div class="laywrap"><button id="laybtn" class="ib" title="Chart layout (1 to 8 charts)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button><div id="laymenu" class="menu hidden"></div></div>
       <div class="tsp"></div>
+      <button id="mediabtn" class="ib" title="Music and video overlay (Spotify, YouTube, Reese library)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg></button>
       <button id="favbtn" class="ib" title="Favorites toolbar (right-click any tool to add it)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></button>
       <button id="sidebtn" class="ib" title="DOM / order ticket panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M15 4.5v15"/></svg></button>
       <button id="shotbtn" class="ib" title="Save a picture of the active chart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
@@ -162,7 +164,9 @@
         <label class="ck"><input id="s-opens" type="checkbox" checked> Key opens (18:00, midnight, 9:30, 10:00)</label>
         <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label>
         <div class="row2"><label>Up candle<input id="s-up" type="color" value="#2bd4a0"></label><label>Down candle<input id="s-dn" type="color" value="#ff6b7a"></label></div>
-        <h3>You</h3>
+        <h3>Theme</h3>
+        <div class="themes" id="s-themes"></div>
+                <h3>You</h3>
         <label>Display name (friends see this)<input id="s-name" maxlength="24"></label>
         <h3>Feel</h3>
         <label class="ck"><input id="s-sound" type="checkbox" checked> Sounds (fills, wins, losses)</label>
@@ -205,13 +209,32 @@
   <section id="v-accounts" class="view hidden scroll">
     <div class="toolbar"><h2 class="vh">Accounts</h2><button id="ac-new" class="primary small">New account</button><span class="muted small">Each account has its own balance, rules and history. Trades go to the account selected at the top.</span></div>
     <div class="acards" id="ac-list"></div>
+    <div class="card taxc"><div class="ah"><b>Prop firm tax estimate · Utah · 2026</b><span class="pill">estimate only, not tax advice</span></div>
+      <p class="small muted">Real payouts from prop firms usually come as contractor income (a 1099), so you owe self-employment tax on top of income tax, and nothing is withheld. Type your real numbers; nothing here is saved to the cloud.</p>
+      <div class="taxgrid">
+        <label>Filing status<select id="tx-st"><option value="mfj">Married, filing jointly</option><option value="s">Single</option></select></label>
+        <label>Prop firm payouts this year ($)<input id="tx-pay" type="number" value="0"></label>
+        <label>Trading costs this year: evals, resets, data, software ($)<input id="tx-exp" type="number" value="0"></label>
+        <label>Other wages (W-2) for you + spouse ($)<input id="tx-w2" type="number" value="0"></label>
+        <label>Tax already withheld from those wages, federal + Utah ($)<input id="tx-wh" type="number" value="0"></label>
+      </div><div id="tx-out" class="taxout"></div>
+      <p class="tiny muted">Uses 2026 IRS brackets and standard deduction, 15.3% self-employment tax on 92.35% of profit (Social Security part capped at the 2026 wage base), half of it deducted, and Utah's flat 4.45% before credits. It skips credits, the QBI deduction and other details, so check with a tax pro before filing.</p></div>
+  </section>
+
+  <section id="v-learn" class="view hidden scroll">
+    <div class="toolbar"><h2 class="vh">Learn</h2><div class="seg" id="ltabs"><button data-l="rl" class="on">Reese log</button><button data-l="qz">Take it or fade it?</button><button data-l="co">Course</button><button data-l="ev">Earn an eval</button></div><div class="tsp"></div><span class="xp" id="xpbar"></span></div>
+    <div id="l-rl" class="fpanel"><div class="toolbar"><label class="ck small"><input id="rl-spoil" type="checkbox" checked> Hide results for sessions I haven't replayed yet</label><span class="muted small">After you finish a session he traded, Rewind shows what he took and compares it with yours.</span></div><div id="rl-list" class="rgrid"></div></div>
+    <div id="l-qz" class="fpanel hidden"><div class="card qzc"><div id="qz-body"><p>Rewind loads a real setup and stops right before the entry. You decide: <b>take it</b> or <b>fade it</b> (skip). Then it plays out and shows you why it won or lost.</p><button id="qz-go" class="primary">Start the quiz</button></div></div><div class="stats" id="qz-stats"></div></div>
+    <div id="l-co" class="fpanel hidden"><div id="co-lessons" class="rgrid"></div><h3 class="sub">Guided weeks: trade the same weeks Reese did</h3><div id="co-weeks" class="rgrid"></div></div>
+    <div id="l-ev" class="fpanel hidden"><div class="card"><div class="ah"><b>Wallet</b><span class="abig" id="ev-cr"></span></div><p class="small muted">Blew an account? Earn practice credits by answering quiz questions (10 each) and finishing lessons (20 each), then buy a fresh practice eval with the same rules as LucidFlex. Credits aren't money and can't buy anything real.</p></div><div id="ev-list" class="rgrid"></div><p class="tiny muted" style="margin:0 16px">LucidFlex numbers come from public summaries of Lucid's rules (Nov 2026). Check Lucid's own site before relying on them.</p></div>
   </section>
 
   <section id="v-friends" class="view hidden">
     <div class="fwrap">
       <div class="fmain scroll">
-        <div class="toolbar"><h2 class="vh">Friends</h2><div class="seg" id="ftabs"><button data-f="lb" class="on">Leaderboard</button><button data-f="ch">Same-week challenges</button><button data-f="sh">Shared trades</button><button data-f="sg">Suggestions</button></div></div>
-        <div id="f-lb" class="fpanel"><div class="toolbar"><select id="lb-range"><option value="0">All time</option><option value="7">Last 7 days (replay dates)</option><option value="30">Last 30 days</option></select><select id="lb-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select><label class="ck small"><input id="lb-share" type="checkbox" checked> Show my stats to friends</label></div><div class="card" id="lb-list"></div><p class="tiny muted" style="margin:0 16px">Only totals are shared (trades, win rate, net, average R). Your individual trades stay private unless you share one.</p></div>
+        <div class="toolbar"><h2 class="vh">Friends</h2><div class="seg" id="ftabs"><button data-f="lv" class="on">Live</button><button data-f="lb">Leaderboard</button><button data-f="ch">Same-week challenges</button><button data-f="sh">Shared trades</button><button data-f="sg">Suggestions</button></div></div>
+        <div id="f-lv" class="fpanel"><div class="toolbar"><span class="muted small">Who's replaying right now. Invite someone and you both replay the same start time, each at your own pace. When you're done you can still see who's trading, then compare and write shared notes.</span></div><div id="lv-room" class="card hidden"></div><div id="lv-list" class="rgrid"></div></div>
+        <div id="f-lb" class="fpanel hidden"><div class="toolbar"><select id="lb-range"><option value="0">All time</option><option value="7">Last 7 days (replay dates)</option><option value="30">Last 30 days</option></select><select id="lb-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select><label class="ck small"><input id="lb-share" type="checkbox" checked> Show my stats to friends</label></div><div class="card" id="lb-list"></div><p class="tiny muted" style="margin:0 16px">Only totals are shared (trades, win rate, net, average R). Your individual trades stay private unless you share one.</p></div>
         <div id="f-ch" class="fpanel hidden"><div class="toolbar"><button id="ch-new" class="primary small">Challenge friends with the week I'm on</button><span class="muted small">Everyone replays the same week, at their own pace. Results show after.</span></div><div id="ch-list"></div></div>
         <div id="f-sh" class="fpanel hidden"><div class="toolbar"><span class="muted small">Share a trade from the Journal (the ⤴ button). Friends can rate it 1-5 and leave notes.</span></div><div id="sh-list"></div></div>
         <div id="f-sg" class="fpanel hidden"><div class="toolbar sgadd"><input id="sg-text" placeholder="Idea for the app…"><button id="sg-add" class="primary small">Suggest</button></div><div id="sg-list"></div></div>
@@ -245,7 +268,12 @@
     <div id="padpos" class="padpos">Flat</div>
   </div>
 </div>
+<div id="media" class="media hidden"><div class="mbar" id="mgrip"><span class="seg mt"><button data-m="sp" class="on">Spotify</button><button data-m="yt">YouTube</button><button data-m="lib">Library</button></span><span class="tsp"></span><label class="tiny muted" title="See-through">◐<input id="m-op" type="range" min="15" max="100" value="100"></label><button id="m-ct" class="pb" title="Click-through: clicks go to the chart underneath">⌖</button><button id="m-x" class="pb" title="Close">×</button></div>
+  <div class="mbody"><div id="m-sp" class="mp"><div class="row"><input id="sp-url" placeholder="Paste a Spotify playlist, album or track link"><button id="sp-go" class="small">Play</button></div><div id="sp-frame"></div></div>
+  <div id="m-yt" class="mp hidden"><div class="row"><input id="yt-url" placeholder="Paste a YouTube link"><button id="yt-go" class="small">Play</button></div><div id="yt-frame"></div></div>
+  <div id="m-lib" class="mp hidden"><div id="lib-list"></div><div class="row"><input id="lib-url" placeholder="Add a video link to your library"><input id="lib-name" placeholder="Name"><button id="lib-add" class="small">Add</button></div></div></div></div>
 <div id="favbar" class="favbar hidden"><div class="fgrip" id="favgrip" title="Drag to move">⋮⋮</div><div class="fbtools"></div></div>
+<div id="qzbar" class="qzbar hidden"><div class="qzq">Taking dis? or fade it?</div><div class="qzd" id="qz-desc"></div><div class="row"><button id="qz-take" class="buy">Take it</button><button id="qz-fade" class="sell">Fade it</button></div><div class="qzr hidden" id="qz-res"></div><div class="row hidden" id="qz-next"><button id="qz-more" class="primary">Next setup</button><button id="qz-stop" class="ghost">Stop</button></div></div>
 <div id="ctx" class="menu glass hidden"></div>
 <div id="dlg" class="dlgwrap hidden"><div class="glass dlg pop" id="dlgbox"></div></div>
 <div id="toast" class="toast glass hidden"></div>
