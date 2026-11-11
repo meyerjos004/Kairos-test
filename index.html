@@ -181,6 +181,22 @@
         <label class="ck"><input id="s-hap" type="checkbox" checked> Vibrate on fills (phones that support it)</label>
         <label class="ck"><input id="s-review" type="checkbox" checked> Ask me to rate each trade when it closes</label>
         <label class="ck"><input id="s-splash" type="checkbox" checked> Short intro animation when the app opens</label>
+        <h3>Order pad</h3>
+        <div class="tiny muted">Pick up to 6 button groups for the Scalp pad.</div>
+        <div id="s-padbtns" class="chips"></div>
+        <h3>Privacy</h3>
+        <div class="tiny muted">Blur numbers when you're streaming or sharing your screen.</div>
+        <div class="chips" id="s-mask"><label class="ck"><input type="checkbox" data-mask="upl"> Mask UP&amp;L</label><label class="ck"><input type="checkbox" data-mask="rpl"> Mask RP&amp;L</label><label class="ck"><input type="checkbox" data-mask="bal"> Mask balance</label><label class="ck"><input type="checkbox" data-mask="ddl"> Mask drawdown left</label><label class="ck"><input type="checkbox" data-mask="acct"> Mask account name</label><label class="ck"><input type="checkbox" data-mask="all"> Mask all</label></div>
+        <h3>Sounds per event</h3>
+        <div id="s-snd" class="keys"></div>
+        <label>Your own sound (mp3/wav, max 300 KB, saved on this device)<input id="s-sndfile" type="file" accept="audio/*"></label>
+        <h3>Personal lockout</h3>
+        <div class="tiny muted">Blocks new trades in replay until the time is up. No way to cancel it early. That's the point.</div>
+        <div class="row2"><select id="s-lock"><option value="0">Pick…</option><option value="1">1 hour</option><option value="2">2 hours</option><option value="4">4 hours</option><option value="day">Rest of the day</option><option value="custom">Custom hours…</option></select><button id="s-lockgo" class="small">Lock me out</button></div>
+        <div id="s-lockmsg" class="tiny muted"></div>
+        <h3>Data speed</h3>
+        <div class="seg" id="s-speed"><button data-sp="fast">Fast</button><button data-sp="balanced">Balanced</button><button data-sp="lite">Lite</button></div>
+        <div class="tiny muted">Fast redraws every frame. Lite redraws less often for slower computers and phones.</div>
         <h3>Hot keys</h3>
         <div id="s-keys" class="keys"></div>
         <button id="s-save" class="primary">Save</button> <span id="s-msg" class="muted small"></span>
@@ -267,12 +283,12 @@
 <div id="pad" class="pad hidden">
   <div class="padbar" id="padbar"><span class="pt">Scalp</span><b id="padsym"></b><button id="padmore" class="pb" title="More: bid/ask, presets, close, reverse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button><button id="padx" class="pb" title="Dock (hide)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 15h16"/></svg></button></div>
   <div class="padbody">
-    <div class="prow"><button id="pbuy" class="buy" title="Buy market (B)">Buy</button><div class="qstep"><button id="qdn">−</button><b id="qn">1</b><span>lots</span><button id="qup">+</button></div><button id="psell" class="sell" title="Sell market (S)">Sell</button></div>
-    <div class="prow2"><button id="pjb" title="Join bid (J)">Join Bid</button><button id="pja" title="Join ask (A)">Join Ask</button></div>
+    <div class="prow" data-pg="buysell"><button id="pbuy" class="buy" title="Buy market (B)">Buy</button><div class="qstep"><button id="qdn">−</button><b id="qn">1</b><span>lots</span><button id="qup">+</button></div><button id="psell" class="sell" title="Sell market (S)">Sell</button></div>
+    <div class="prow2" data-pg="joinba"><button id="pjb" title="Join bid (J)">Join Bid</button><button id="pja" title="Join ask (A)">Join Ask</button></div>
+    <div class="prow3" id="padextra"><button id="pclose2" data-pg="close">Close</button><button id="prev2" data-pg="reverse">Reverse</button><button id="pbe" data-pg="be">B/E</button><button id="pcan" data-pg="cancel">Cancel</button><button id="pflat" data-pg="flatten">Flatten</button></div>
     <div id="padx2" class="padx2 hidden">
       <div class="pxrow"><div><label>Bid</label><b id="pbid">—</b></div><div><label>Ask</label><b id="pask">—</b></div></div>
       <div class="lots" id="lots"></div>
-      <div class="prow2"><button id="pclose">Close <kbd>X</kbd></button><button id="prev">Reverse <kbd>R</kbd></button></div>
     </div>
     <div id="padpos" class="padpos">Flat</div>
   </div>

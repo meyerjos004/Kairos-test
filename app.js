@@ -16,7 +16,7 @@ const TICK = 0.25;
 const LAYOUTS = { "1": [1, 1], "2": [2, 1], "2h": [1, 2], "3": [3, 1], "4": [2, 2], "6": [3, 2], "8": [4, 2] };
 const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
 const IND_DEF = { data: true, sess: true, pd: true, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: true, h4: false, po3: false };
-const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
+const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", be: "e", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
   lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false, ind: { ...IND_DEF }, dockH: 150, favs: ["trend", "hline", "rect", "long", "short"], favShow: true, favPos: null, toolsPos: null };
@@ -335,8 +335,9 @@ function paintStudies(p, g, W, H) {
       g.fillStyle = "rgba(200,210,225,.6)"; g.fillText("D", x - 3, yh - 5); } }
   g.restore();
 }
-function paint(p) {
-  if (!p) return; cancelAnimationFrame(p.raf); p.raf = requestAnimationFrame(() => {
+function paint(p) {   // data speed: Fast = every frame, Balanced ~30 fps, Lite ~10 fps
+  if (!p) return; const gap = { balanced: 33, lite: 100 }[prefs.speed] || 0; if (gap) { const w = gap - (performance.now() - (p.lastPaint || 0)); if (w > 0) { if (!p.pt) p.pt = setTimeout(() => { p.pt = 0; paint(p); }, w); return; } p.lastPaint = performance.now(); }
+  cancelAnimationFrame(p.raf); p.raf = requestAnimationFrame(() => {
     const cv = p.cv, r = p.el.getBoundingClientRect(), dpr = devicePixelRatio || 1; if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
     const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, r.width, r.height); const W = r.width - 64;
     if (prefs.sess && p.sec < 14400 && p.candles.length) {
@@ -466,15 +467,15 @@ function guard() {
   if (prefs.dll && dp <= -prefs.dll) hit("Personal daily loss limit hit"); else if (prefs.ptg && dp >= prefs.ptg) hit("Personal daily profit target reached");
   else if (prefs.mdd && peak - (balance() + openPnl()) >= prefs.mdd) hit("Max drawdown hit");
 }
-function canTrade() { if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } return true; }
+function canTrade() { if (prefs.lockUntil && Date.now() < prefs.lockUntil) { toast("🔒 Personal lockout until " + new Date(prefs.lockUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); return false; } if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } return true; }
 const lotsNow = () => Math.max(1, +prefs.lots || 1);
 const autoBr = () => (prefs.autoBr ? { slPts: prefs.slPts, tpPts: prefs.tpPts } : null);
 function market(side, qty) { if (!canTrade()) return; qty = qty || (prefs.byRisk ? Math.max(1, Math.floor((balance() * prefs.riskp / 100) / (prefs.slPts * inst.pt))) : lotsNow()); fill(side, qty, last(), nowT(), autoBr()); }
 function joinBid() { if (canTrade()) place(1, "limit", last() - TICK, lotsNow(), autoBr()); }
 function joinAsk() { if (canTrade()) place(-1, "limit", last() + TICK, lotsNow(), autoBr()); }
-function place(side, type, price, qty, br, extra = {}) { if (!canTrade()) return; const o = { id: oid++, side, type, price: rnd(price), qty, br, ...extra }; orders.push(o); drawOrders(); refresh(); return o; }
+function place(side, type, price, qty, br, extra = {}) { if (!canTrade()) return; const o = { id: oid++, side, type, price: rnd(price), qty, br, ...extra }; orders.push(o); snd("place"); drawOrders(); refresh(); return o; }
 function fill(side, qty, price, t, br, toolId) {
-  if (!pos.qty || Math.sign(pos.qty) === side) { sfx("fill"); buzz(25); }
+  if (!pos.qty || Math.sign(pos.qty) === side) { snd("fill"); buzz(25); }
   if (!pos.qty || Math.sign(pos.qty) === side) {
     const nq = pos.qty + side * qty; pos.avg = pos.qty ? (pos.avg * Math.abs(pos.qty) + price * qty) / Math.abs(nq) : price; if (!pos.qty) { pos.t = t; pos.hi = price; } pos.qty = nq;
     if (br) { if (br.slPx != null) pos.sl = br.slPx; else if (br.slPts) pos.sl = rnd(pos.avg - side * br.slPts); if (br.tpPx != null) pos.tp = br.tpPx; else if (br.tpPts) pos.tp = rnd(pos.avg + side * br.tpPts); }
@@ -485,7 +486,7 @@ function fill(side, qty, price, t, br, toolId) {
 function record(cq, price, t, outcome) {
   const side = Math.sign(pos.qty), pnl = (price - pos.avg) * side * cq * inst.pt - fee(cq), r = pos.risk ? ((price - pos.avg) * side) / pos.risk : null;
   const row = { session_id: sess && sess.id, ...(acct ? { account_id: acct.id } : {}), tags: pos.tags || [], symbol: sym, dir: side, qty: cq, entry: +pos.avg.toFixed(2), stop: pos.sl, target: pos.tp, exit: price, t_entry: pos.t, t_exit: t, outcome, r: r == null ? null : +r.toFixed(2), pnl: +pnl.toFixed(2), fees: fee(cq) };
-  hist.push(row); pos.qty -= side * cq; sfx(outcome === "win" || pnl > 0 ? "win" : "loss"); buzz(pnl > 0 ? [20, 40, 20] : 60);
+  hist.push(row); pos.qty -= side * cq; snd(outcome === "win" ? "target" : outcome === "loss" ? "stop" : "closed"); buzz(pnl > 0 ? [20, 40, 20] : 60);
   if (!pos.qty) { const tl = drawings.find((d) => d.id === pos.tool); if (tl) tl.state = "done"; pos = flat(); repaintAll(); }
   db.addTrade(row).then((d) => { Object.assign(row, d); reviewCard(row); shot(d.id); if (notionAuto) notion("sync", { ids: [d.id] }).catch(() => {}); }).catch((e) => toast("Trade not saved: " + e.message));
   guard();
@@ -609,7 +610,7 @@ function padUI() {
   const pd = $("pad"); pd.classList.toggle("hidden", !prefs.pad.show); $("padshow").textContent = prefs.pad.show ? "Hide Scalp Pad" : "Show Scalp Pad";
   $("padx2").classList.toggle("hidden", !prefs.pad.more); $("padmore").classList.toggle("on", !!prefs.pad.more);
   if (prefs.pad.x != null) { pd.style.bottom = "auto"; pd.style.left = Math.max(0, Math.min(prefs.pad.x, innerWidth - 300)) + "px"; pd.style.top = Math.max(0, Math.min(prefs.pad.y, innerHeight - 130)) + "px"; }
-  else { const r = $("charts").getBoundingClientRect(); if (r.width) { pd.style.top = "auto"; pd.style.left = Math.round(r.left + r.width / 2 - 150) + "px"; pd.style.bottom = Math.round(innerHeight - r.bottom + 40) + "px"; } }   // default: bottom-centre of the charts
+  else { const r = $("charts").getBoundingClientRect(); if (r.width) { pd.style.top = "auto"; pd.style.left = Math.round(r.left + r.width / 2 - 150) + "px"; pd.style.bottom = Math.round(innerHeight - r.bottom + 16) + "px"; } }   // default: bottom-centre of the charts
 }
 (() => { const bar = $("padbar"), pd = $("pad"); let d0 = null;
   bar.addEventListener("pointerdown", (e) => { if (e.target.closest(".pb")) return; const r = pd.getBoundingClientRect(); d0 = { dx: e.clientX - r.left, dy: e.clientY - r.top }; bar.setPointerCapture(e.pointerId); bar.style.cursor = "grabbing"; });
@@ -1054,14 +1055,14 @@ const nmsg = (m) => ($("n-msg").textContent = m);
 /* ---------------- prefs / settings / admin ---------------- */
 async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) }; } }
 function savePrefs() { if (!DEMO && user) sb.from("prefs").upsert({ user_id: user.id, data: prefs, updated_at: new Date().toISOString() }).then(() => {}); }
-const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", joinask: "Join ask", reverse: "Reverse", flatten: "Flatten all", cancel: "Cancel all", close: "Close all", trend: "Trend line", hline: "Horizontal line", vline: "Vertical line", rect: "Zone", long: "Long position", short: "Short position", measure: "Measure" };
+const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", joinask: "Join ask", reverse: "Reverse", flatten: "Flatten all", cancel: "Cancel all", close: "Close all", be: "Stop to breakeven", trend: "Trend line", hline: "Horizontal line", vline: "Vertical line", rect: "Zone", long: "Long position", short: "Short position", measure: "Measure" };
 function fillSettings() {
   if ($("s-name")) $("s-name").value = (me && me.name) || "";
   if ($("s-sound")) { $("s-sound").checked = prefs.sound !== false; $("s-vol").value = prefs.vol ?? 60; $("s-hap").checked = prefs.haptics !== false; $("s-splash").checked = prefs.splash !== false; $("s-review").checked = prefs.review !== false; }
   $("s-bal").value = prefs.bal; $("s-dll").value = prefs.dll; $("s-ptg").value = prefs.ptg; $("s-act").value = prefs.act; $("s-mdd").value = prefs.mdd; $("s-fee").value = prefs.fee; $("s-mfee").value = prefs.mfee;
   $("s-opens").checked = !!prefs.opens; $("s-sess").checked = !!prefs.sess; $("s-up").value = prefs.up; $("s-dn").value = prefs.dn; $("sym").value = prefs.sym; $("o-sl").value = prefs.slPts; $("o-tp").value = prefs.tpPts;
   $("s-keys").innerHTML = Object.entries(KEYNAMES).map(([k, n]) => `<div><span>${n}</span><input data-key="${k}" maxlength="1" value="${prefs.keys[k] || ""}"></div>`).join("");
-  $("magnet").classList.toggle("on", prefs.magnet);
+  $("magnet").classList.toggle("on", prefs.magnet); tsSettingsUI();
 }
 function saveSettings() {
   Object.assign(prefs, { bal: +$("s-bal").value, dll: +$("s-dll").value, ptg: +$("s-ptg").value, act: $("s-act").value, mdd: +$("s-mdd").value, fee: +$("s-fee").value, mfee: +$("s-mfee").value, opens: $("s-opens").checked, sess: $("s-sess").checked, up: $("s-up").value, dn: $("s-dn").value });
@@ -1081,7 +1082,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") notionUI(); }
+function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); } }
 function layMenu() { $("laymenu").innerHTML = Object.entries(LAYOUTS).map(([k, [c, r]]) => `<button class="lay ${k === prefs.layout ? "on" : ""}" data-lay="${k}"><i style="grid-template-columns:repeat(${c},1fr);grid-template-rows:repeat(${r},1fr)">${"<b></b>".repeat(c * r)}</i>${c * r} chart${c * r > 1 ? "s" : ""}${k === "2h" ? " ↕" : ""}</button>`).join(""); }
 function splash() { const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><span class="sp-logo">⟲</span><span class="sp-name">Rewind</span></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 900); setTimeout(() => s.remove(), 1400); }
 if (prefs.splash !== false) splash();
@@ -1125,6 +1126,30 @@ async function aiThWatch(id, t0) { clearTimeout(aiThT); const msg = $("ai-th-msg
   if (data && data.status === "failed") { msg.textContent = "Claude couldn't make that one. Try again with different words."; return; }
   msg.textContent = (data && data.status === "making" ? "🎨 Claude is making it…" : "🧠 Waiting for King's PC…") + " " + Math.round((Date.now() - t0) / 1000) + "s";
   aiThT = setTimeout(() => aiThWatch(id, t0), 4000); }
+
+/* ---------------- TradeSea-style settings: order pad buttons, privacy masks, sounds per event, personal lockout, data speed ---------------- */
+const PAD_GROUPS = { buysell: "Buy / sell", joinba: "Join bid / ask", close: "Close position", reverse: "Reverse", cancel: "Cancel all", flatten: "Flatten all", be: "Breakeven" };
+const PAD_DEF = ["buysell", "joinba", "close", "reverse", "be", "flatten"];
+function beNow() { if (!pos.qty) return toast("No open position"); const d = Math.sign(pos.qty); if ((last() - pos.avg) * d <= 0) return toast("Breakeven not available yet (trade isn't in profit)"); toBE(); snd("be"); toast("Stop moved to breakeven"); }
+function padBtnsUI() { const on = prefs.padBtns || PAD_DEF; document.querySelectorAll("#pad [data-pg]").forEach((el) => el.classList.toggle("hidden", !on.includes(el.dataset.pg)));
+  if ($("s-padbtns")) $("s-padbtns").innerHTML = Object.entries(PAD_GROUPS).map(([k, n]) => `<label class="ck"><input type="checkbox" data-pg2="${k}" ${on.includes(k) ? "checked" : ""}> ${n}</label>`).join(""); }
+function maskUI() { const m = prefs.mask || {}; ["upl", "rpl", "bal", "ddl", "acct"].forEach((k) => document.body.classList.toggle("mask-" + k, !!(m.all || m[k])));
+  document.querySelectorAll("[data-mask]").forEach((i) => (i.checked = !!m[i.dataset.mask])); }
+const SND_EVENTS = { fill: "Order filled", place: "Order placed", cancel: "Order cancelled", stop: "Stop loss hit", target: "Take profit hit", closed: "Position closed", be: "Moved to breakeven", alert: "Alert triggered" };
+const SND_KINDS = { chime: "Chime", buzz: "Buzz", pop: "Pop", coin: "Coin", bell: "Bell", custom: "My sound", off: "Off" };
+const SND_DEF = { fill: "chime", place: "pop", cancel: "pop", stop: "buzz", target: "coin", closed: "chime", be: "pop", alert: "bell" };
+function tone(kind) { if (prefs.sound === false) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } const t0 = AC.currentTime, vol = (prefs.vol ?? 60) / 100 * 0.18;
+  const note = (f, at, dur, type = "sine", v = vol) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f, t0 + at); g.gain.setValueAtTime(0, t0 + at); g.gain.linearRampToValueAtTime(v, t0 + at + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur); o.connect(g).connect(AC.destination); o.start(t0 + at); o.stop(t0 + at + dur + 0.02); };
+  if (kind === "chime") { note(880, 0, 0.12, "triangle"); note(1320, 0.06, 0.16); } else if (kind === "buzz") { note(150, 0, 0.22, "sawtooth", vol * 0.6); note(110, 0.05, 0.25, "square", vol * 0.35); }
+  else if (kind === "pop") note(1200, 0, 0.05, "sine"); else if (kind === "coin") { note(988, 0, 0.08, "square", vol * 0.5); note(1319, 0.08, 0.25, "square", vol * 0.5); }
+  else if (kind === "bell") { note(1568, 0, 0.6, "sine"); note(2349, 0, 0.4, "sine", vol * 0.4); }
+  else if (kind === "custom") { try { const u = localStorage.getItem("rw-snd"); if (u) { const au = new Audio(u); au.volume = Math.min(1, (prefs.vol ?? 60) / 100); au.play().catch(() => {}); } } catch (e) {} } }
+function snd(ev) { const m = { ...SND_DEF, ...(prefs.snd || {}) }; if (m[ev] && m[ev] !== "off") tone(m[ev]); }
+function sndUI() { const m = { ...SND_DEF, ...(prefs.snd || {}) }; if (!$("s-snd")) return;
+  $("s-snd").innerHTML = Object.entries(SND_EVENTS).map(([k, n]) => `<div><span>${n}</span><select data-snd="${k}">${Object.entries(SND_KINDS).map(([s, l]) => `<option value="${s}" ${m[k] === s ? "selected" : ""}>${l}</option>`).join("")}</select><button class="small" data-sndp="${k}">▶</button></div>`).join(""); }
+function lockUI() { const u = prefs.lockUntil; $("s-lockmsg").textContent = u && Date.now() < u ? "🔒 Locked until " + new Date(u).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }) : ""; }
+function speedUI() { document.querySelectorAll("#s-speed [data-sp]").forEach((b) => b.classList.toggle("on", b.dataset.sp === (prefs.speed || "fast"))); }
+function tsSettingsUI() { padBtnsUI(); maskUI(); sndUI(); lockUI(); speedUI(); }
 
 /* ---------------- motion polish (Motion.dev springs + Anime.js count-ups; both optional, app works without them) ---------------- */
 const FX = {
@@ -1195,6 +1220,16 @@ $("lib-list").onclick = (e) => { const p = e.target.closest("[data-yt]"); if (p)
 grip($("mgrip"), (e, st) => { if (e.target.closest("button,input")) return; const m = $("media"); if (!st.r) st.r = m.getBoundingClientRect(); m.style.left = Math.max(0, Math.min(innerWidth - 120, st.r.left + e.clientX - st.x)) + "px"; m.style.top = Math.max(0, Math.min(innerHeight - 60, st.r.top + e.clientY - st.y)) + "px"; },
   () => { const r = $("media").getBoundingClientRect(); prefs.media.x = r.left; prefs.media.y = r.top; savePrefs(); });
 $("ai-th-go").onclick = aiTheme; $("ai-th").onkeydown = (e) => { if (e.key === "Enter") aiTheme(); };
+$("s-padbtns").onchange = (e) => { const all = [...document.querySelectorAll("[data-pg2]:checked")].map((i) => i.dataset.pg2); if (all.length > 6) { e.target.checked = false; return toast("Up to 6 groups"); } prefs.padBtns = all; savePrefs(); padBtnsUI(); };
+$("s-mask").onchange = (e) => { const k = e.target.dataset.mask; if (!k) return; prefs.mask = { ...(prefs.mask || {}), [k]: e.target.checked }; savePrefs(); maskUI(); };
+$("s-snd").onchange = (e) => { const k = e.target.dataset.snd; if (!k) return; prefs.snd = { ...(prefs.snd || {}), [k]: e.target.value }; savePrefs(); snd(k); };
+$("s-snd").onclick = (e) => { const k = e.target.dataset.sndp; if (k) snd(k); };
+$("s-sndfile").onchange = (e) => { const f = e.target.files[0]; if (!f) return; if (f.size > 300000) return toast("Max 300 KB"); const r = new FileReader(); r.onload = () => { try { localStorage.setItem("rw-snd", r.result); toast("Sound saved. Pick 'My sound' for any event."); tone("custom"); } catch (er) { toast("Couldn't save the sound on this device"); } }; r.readAsDataURL(f); };
+$("s-lockgo").onclick = () => { let v = $("s-lock").value; if (v === "0") return; if (v === "custom") { v = prompt("Lock out for how many hours?", "3"); if (!v || !(+v > 0)) return; }
+  const until = v === "day" ? new Date(new Date().setHours(23, 59, 0, 0)).getTime() : Date.now() + +v * 3600e3; if (!confirm("Lock yourself out of trading until " + new Date(until).toLocaleString() + "? You can't undo this.")) return;
+  prefs.lockUntil = until; savePrefs(); lockUI(); toast("🔒 Locked out"); };
+$("s-speed").onclick = (e) => { const b = e.target.closest("[data-sp]"); if (!b) return; prefs.speed = b.dataset.sp; savePrefs(); speedUI(); };
+$("pbe").onclick = beNow; $("pcan").onclick = () => { cancelAll(); snd("cancel"); }; $("pflat").onclick = flatten; $("pclose2").onclick = () => closeAll(); $("prev2").onclick = reverse;
 $("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
 $("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tour").classList.contains("hidden")) tour(99); });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
@@ -1215,7 +1250,7 @@ $("qdn").onclick = () => { prefs.lots = Math.max(1, prefs.lots - 1); lotsUI(); s
 $("padmore").onclick = () => { prefs.pad.more = !prefs.pad.more; savePrefs(); padUI(); };
 $("padshow").onclick = () => { prefs.pad.show = !prefs.pad.show; savePrefs(); padUI(); }; $("padx").onclick = () => { prefs.pad.show = false; savePrefs(); padUI(); };
 $("lots").onclick = (e) => { const n = +e.target.dataset.lot; if (!n) return; prefs.lots = n; lotsUI(); savePrefs(); refresh(); };
-$("pbuy").onclick = () => market(1); $("psell").onclick = () => market(-1); $("pjb").onclick = joinBid; $("pja").onclick = joinAsk; $("pclose").onclick = () => closeAll(); $("prev").onclick = reverse;
+$("pbuy").onclick = () => market(1); $("psell").onclick = () => market(-1); $("pjb").onclick = joinBid; $("pja").onclick = joinAsk;
 $("scancel").onclick = cancelAll; $("sflat").onclick = flatten; $("d-buy").onclick = () => market(1); $("d-sell").onclick = () => market(-1); $("d-jb").onclick = joinBid; $("d-ja").onclick = joinAsk; $("d-close").onclick = () => closeAll(); $("d-rev").onclick = reverse;
 let oside = 1;
 $("o-buy").onclick = () => { oside = 1; $("o-buy").classList.add("on"); $("o-sell").classList.remove("on"); if (draft) { draft.side = 1; drawOrders(); } };
@@ -1247,7 +1282,7 @@ document.addEventListener("keydown", (e) => {
   if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || $("v-trade").classList.contains("hidden") || !$("dlg").classList.contains("hidden")) return; const k = e.key.toLowerCase(), K = prefs.keys;
   if (e.code === "Space") { e.preventDefault(); play(); } else if (e.key === "ArrowRight") { pause(); $("stepsz").value === "candle" ? stepCandle() : stepFwd(); } else if (e.key === "ArrowLeft") { pause(); stepBack(); }
   else if (e.key === "Escape") { setTool("cursor"); sel = null; hideCtx(); repaintAll(); } else if ((e.key === "Delete" || e.key === "Backspace") && sel) { if (sel.state === "armed") disarmTool(sel); drawings = drawings.filter((d) => d !== sel); sel = null; repaintAll(); }
-  else if (k === K.buy) market(1); else if (k === K.sell) market(-1); else if (k === K.joinbid) joinBid(); else if (k === K.joinask) joinAsk(); else if (k === K.reverse) reverse(); else if (k === K.flatten) flatten(); else if (k === K.cancel) cancelAll(); else if (k === K.close) closeAll();
+  else if (k === K.buy) market(1); else if (k === K.sell) market(-1); else if (k === K.joinbid) joinBid(); else if (k === K.joinask) joinAsk(); else if (k === K.reverse) reverse(); else if (k === K.flatten) flatten(); else if (k === K.cancel) cancelAll(); else if (k === K.be) beNow(); else if (k === K.close) closeAll();
   else if (k === K.trend) setTool("trend"); else if (k === K.hline) setTool("hline"); else if (k === K.vline) setTool("vline"); else if (k === K.rect) setTool("rect"); else if (k === K.long) setTool("long"); else if (k === K.short) setTool("short"); else if (k === K.measure) setTool("measure");
 });
 addEventListener("resize", () => { padUI(); repaintAll(); });
