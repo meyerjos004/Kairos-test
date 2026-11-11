@@ -687,8 +687,8 @@ const THEMES = { midnight: ["Midnight", { "--bg": "#08090c", "--panel": "#0e1116
   ember: ["Ember", { "--bg": "#0d0907", "--panel": "#15100c", "--acc": "#ffb23d", "--acc2": "#ff6b4a", "--txt": "#f5ece4", "--mut": "#a8968a", "--line": "rgba(255,178,61,.10)" }],
   glacier: ["Glacier", { "--bg": "#070b10", "--panel": "#0d141c", "--acc": "#9fd8ff", "--acc2": "#c3b5ff", "--txt": "#e8f2fb", "--mut": "#8aa0b5", "--line": "rgba(159,216,255,.10)" }],
   mono: ["Mono", { "--bg": "#0a0a0a", "--panel": "#121212", "--acc": "#f2f2f2", "--acc2": "#9a9a9a", "--txt": "#ededed", "--mut": "#8a8a8a", "--line": "rgba(255,255,255,.08)" }] };
-function applyTheme(k) { const t = THEMES[k] || THEMES.midnight; for (const [v, c] of Object.entries(t[1])) document.documentElement.style.setProperty(v, c); prefs.theme = k in THEMES ? k : "midnight";
-  if ($("s-themes")) $("s-themes").innerHTML = Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="th ${id === prefs.theme ? "on" : ""}" data-th="${id}"><i style="background:${c["--bg"]};box-shadow:inset 0 0 0 1px ${c["--line"]}"><b style="background:${c["--acc"]}"></b><b style="background:${c["--acc2"]}"></b></i>${nm}</button>`).join(""); }
+function applyTheme(k) { for (const [id, v] of Object.entries(prefs.myThemes || {})) THEMES[id] = v; const t = THEMES[k] || THEMES.midnight; for (const [v, c] of Object.entries(t[1])) document.documentElement.style.setProperty(v, c); prefs.theme = k in THEMES ? k : "midnight";
+  if ($("s-themes")) $("s-themes").innerHTML = Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="th ${id === prefs.theme ? "on" : ""}" data-th="${id}"><i style="background:${c["--bg"]};box-shadow:inset 0 0 0 1px ${c["--line"]}"><b style="background:${c["--acc"]}"></b><b style="background:${c["--acc2"]}"></b></i>${esc(nm)}</button>`).join(""); }
 
 /* ---------------- quick trade review (rules followed? mistakes) ---------------- */
 const MISTAKES = ["No setup", "Chased", "FOMO", "Early exit", "Moved stop", "Too big", "Revenge", "Fought the trend", "Ignored ES", "Off my hours"];
@@ -1064,6 +1064,22 @@ $("a-in").onclick = async () => { const { error } = await sb.auth.signInWithPass
 $("a-up").onclick = async () => { const { data, error } = await sb.auth.signUp({ email: $("a-email").value.trim(), password: $("a-pass").value, options: { emailRedirectTo: location.origin + location.pathname } }); $("a-msg").textContent = error ? error.message : data.session ? "" : "Check your email to confirm, then sign in here."; if (data && data.session) boot(); };
 $("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); }; $("lockbtn").onclick = lockDlg;
 
+/* ---------------- AI themes: your words -> the PC's Claude Code -> a new theme ---------------- */
+const TH_KEYS = ["--bg", "--panel", "--acc", "--acc2", "--txt", "--mut", "--line"], TH_OK = /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i;
+function themeFrom(res) { if (!res || !res.vars) return null; const v = {}; for (const k of TH_KEYS) { const c = String(res.vars[k] || "").trim(); if (!TH_OK.test(c)) return null; v[k] = c; } return [String(res.name || "AI theme").slice(0, 24), v]; }
+let aiThT = 0;
+async function aiTheme() { const p = $("ai-th").value.trim(); if (p.length < 3) return; const msg = $("ai-th-msg");
+  if (DEMO) { msg.textContent = "AI themes need a real login (they run on King's PC)."; return; }
+  const { data, error } = await sb.from("theme_requests").insert({ prompt: p }).select("id").single(); if (error) return toast(error.message);
+  $("ai-th").value = ""; msg.textContent = "🧠 Sent to Claude on King's PC… (if the PC is asleep it runs when it wakes; you can leave this page)"; aiThWatch(data.id, Date.now()); }
+async function aiThWatch(id, t0) { clearTimeout(aiThT); const msg = $("ai-th-msg");
+  const { data } = await sb.from("theme_requests").select("status,result").eq("id", id).single();
+  if (data && data.status === "done") { const th = themeFrom(data.result); if (!th) { msg.textContent = "That one came back broken. Try wording it differently."; return; }
+    const tid = "ai-" + id.slice(0, 6); prefs.myThemes = prefs.myThemes || {}; prefs.myThemes[tid] = th; THEMES[tid] = th; applyTheme(tid); savePrefs(); msg.textContent = "✅ " + th[0] + " is on. It's saved in your themes."; sfx("win"); return; }
+  if (data && data.status === "failed") { msg.textContent = "Claude couldn't make that one. Try again with different words."; return; }
+  msg.textContent = (data && data.status === "making" ? "🎨 Claude is making it…" : "🧠 Waiting for King's PC…") + " " + Math.round((Date.now() - t0) / 1000) + "s";
+  aiThT = setTimeout(() => aiThWatch(id, t0), 4000); }
+
 /* ---------------- motion polish (Motion.dev springs + Anime.js count-ups; both optional, app works without them) ---------------- */
 const FX = {
   ok: () => !matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -1132,6 +1148,7 @@ $("lib-add").onclick = () => { const u = $("lib-url").value.trim(); if (!ytEmbed
 $("lib-list").onclick = (e) => { const p = e.target.closest("[data-yt]"); if (p) return setYt(p.dataset.yt); const d = e.target.closest("[data-libdel]"); if (d) { prefs.vids.splice(+d.dataset.libdel, 1); savePrefs(); renderLib(); } };
 grip($("mgrip"), (e, st) => { if (e.target.closest("button,input")) return; const m = $("media"); if (!st.r) st.r = m.getBoundingClientRect(); m.style.left = Math.max(0, Math.min(innerWidth - 120, st.r.left + e.clientX - st.x)) + "px"; m.style.top = Math.max(0, Math.min(innerHeight - 60, st.r.top + e.clientY - st.y)) + "px"; },
   () => { const r = $("media").getBoundingClientRect(); prefs.media.x = r.left; prefs.media.y = r.top; savePrefs(); });
+$("ai-th-go").onclick = aiTheme; $("ai-th").onkeydown = (e) => { if (e.key === "Enter") aiTheme(); };
 $("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
 $("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tour").classList.contains("hidden")) tour(99); });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
