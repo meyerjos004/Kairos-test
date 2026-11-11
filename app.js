@@ -230,7 +230,7 @@ function indMenu(re) { if (re !== true && ctxJust === "ind") { ctxJust = null; r
   { t: ck(indCfg().atr.on) + `ATR ${indCfg().atr.len} (in the chart legend)`, f: () => { indCfg().atr.on = !indCfg().atr.on; savePrefs(); panes.forEach(indFull); } },
   { t: "\u2003 Lengths, colors, bands…", f: maDlg },
   { h: "Higher-timeframe candles on the right (PO3)" }, ...["15m", "1h", "4h", "1D", "1W"].map((tf) => ({ t: ck((I.htfc || []).includes(tf)) + "Current " + tf + " candle", f: () => { const s = new Set(I.htfc || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.htfc = ["15m", "1h", "4h", "1D", "1W"].filter((x) => s.has(x)); savePrefs(); repaintAll(); } })), { t: ck(I.h4) + "Past 4H candle outlines on the chart", f: flip("h4") }], r.left, r.bottom + 6, indMenu); $("ctx").dataset.from = "ind"; }
-const TOOLNAMES = { arrow: "Arrow", channel: "Parallel channel", fibext: "Fib extension", prange: "Price range", drange: "Date range", ellipse: "Ellipse", cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
+const TOOLNAMES = { pitchfork: "Pitchfork", arrow: "Arrow", channel: "Parallel channel", fibext: "Fib extension", prange: "Price range", drange: "Date range", ellipse: "Ellipse", cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
 function favUI() {
   const fb = $("favbar"); fb.classList.toggle("hidden", !prefs.favShow); $("favbtn").classList.toggle("on", !!prefs.favShow);
   fb.querySelector(".fbtools").innerHTML = prefs.favs.map((t) => { const src = document.querySelector('#tools [data-tool="' + t + '"]'); return src ? `<button data-tool="${t}" class="tool ${src.className.replace(/\btool\b|\bon\b/g, "").trim()} ${t === tool ? "on" : ""}" title="${src.title}">${src.innerHTML}</button>` : ""; }).join("") || '<span class="tiny muted" style="padding:0 8px">Right-click a tool to add it here</span>';
@@ -296,6 +296,7 @@ function newDrawing(type, p, a, b) {
   if (type === "long" || type === "short") { const s = type === "long" ? 1 : -1; d.b = { t: a.t + p.sec * 30, p: a.p }; d.entry = a.p; d.sl = rnd(a.p - s * prefs.slPts); d.tp = rnd(a.p + s * prefs.tpPts); d.side = s; d.state = "idle"; d.qty = null; }
   if (type === "text") d.text = prompt("Note text") || "Note";
   if (type === "channel") d.off = chOff(d);
+  if (type === "pitchfork") d.c = { t: d.b.t + Math.max(p.sec, (d.b.t - d.a.t) * 0.4), p: d.a.p - (d.b.p - d.a.p) * 0.6 };
   const pd = (prefs.presetDef || {})[type]; if (pd != null && prefs.presets && prefs.presets[type] && prefs.presets[type][pd]) applyPreset(d, prefs.presets[type][pd]);
   drawings.push(d); sel = d; return d;
 }
@@ -515,6 +516,12 @@ function drawOne(p, g, d, W, H) {
     const rc = /^#[0-9a-f]{6}$/i.test(d.color || "") ? d.color : "#7aa7ff"; g.fillStyle = rc + Math.round(((d.fill ?? 8) / 100) * 255).toString(16).padStart(2, "0"); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.lineTo(x2, u2); g.lineTo(x1, u1); g.closePath(); g.fill();
     g.strokeStyle = gold; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.moveTo(x1, u1); g.lineTo(x2, u2); g.stroke(); g.save(); g.setLineDash([4, 4]); g.globalAlpha = 0.6; g.beginPath(); g.moveTo(x1, m1); g.lineTo(x2, m2); g.stroke(); g.restore();
     dot(x1, y1); dot(x2, y2); dot((x1 + x2) / 2, (u1 + u2) / 2); return; }
+  if (d.type === "pitchfork") { const c = d.c || { t: d.b.t + p.sec * 10, p: d.a.p - (d.b.p - d.a.p) * 0.6 }, x3 = xOf(p, c.t), y3 = yOf(p, c.p); if (x1 == null || x2 == null || y2 == null || x3 == null || y3 == null) return;
+    const mx = (x2 + x3) / 2, my = (y2 + y3) / 2, dx = mx - x1, dy = my - y1; if (Math.abs(dx) < 1) return; const k = dy / dx, ext = (x0, y0) => [W, y0 + k * (W - x0)];
+    const rc = /^#[0-9a-f]{6}$/i.test(d.color || "") ? d.color : "#7aa7ff", [ex2, ey2] = ext(x2, y2), [ex3, ey3] = ext(x3, y3), [emx, emy] = ext(x1, y1);
+    g.fillStyle = rc + Math.round(((d.fill ?? 8) / 100) * 255).toString(16).padStart(2, "0"); g.beginPath(); g.moveTo(x2, y2); g.lineTo(ex2, ey2); g.lineTo(ex3, ey3); g.lineTo(x3, y3); g.closePath(); g.fill();
+    g.strokeStyle = gold; g.beginPath(); g.moveTo(x1, y1); g.lineTo(emx, emy); g.moveTo(x2, y2); g.lineTo(ex2, ey2); g.moveTo(x3, y3); g.lineTo(ex3, ey3); g.stroke();
+    g.save(); g.setLineDash([3, 4]); g.globalAlpha = 0.6; g.beginPath(); g.moveTo(x2, y2); g.lineTo(x3, y3); g.stroke(); g.restore(); dot(x1, y1); dot(x2, y2); dot(x3, y3); return; }
   if (d.type === "fibext") { if (x1 == null || y2 == null) return; const xa = Math.min(x1, x2 ?? x1);
     g.save(); g.setLineDash([3, 4]); g.globalAlpha = 0.6; g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2 ?? x1, y2); g.stroke(); g.restore();
     for (const [f, lab] of FIBX) { const pr = d.a.p + (d.b.p - d.a.p) * f, y = yOf(p, pr); if (y == null) continue; g.strokeStyle = f === 1.618 || f === 1.272 ? blue : f === 1 || f === 0 ? "rgba(255,255,255,.6)" : "rgba(255,206,120,.55)"; g.setLineDash(f === 0 || f === 1 ? [] : [4, 4]);
@@ -566,6 +573,7 @@ function hitDrawing(p, x, y) {
     if (d.type === "hline") { if (Math.abs(y - y1) < 6) return { d, h: "a" }; continue; }
     if (d.type === "vline") { if (x1 != null && Math.abs(x - x1) < 6) return { d, h: "a" }; continue; }
     if (x1 != null && Math.hypot(x - x1, y - y1) < 8) return { d, h: "a" }; if (x2 != null && y2 != null && Math.hypot(x - x2, y - y2) < 8) return { d, h: "b" };
+    if (d.type === "pitchfork" && d.c) { const x3 = xOf(p, d.c.t), y3 = yOf(p, d.c.p); if (x3 != null && y3 != null && Math.hypot(x - x3, y - y3) < 8) return { d, h: "pc" }; if (x1 != null && x2 != null && y2 != null && x3 != null && y3 != null && near(x1, y1, (x2 + x3) / 2, (y2 + y3) / 2) < 6) return { d, h: "move" }; }
     if (d.type === "channel" && x1 != null && x2 != null) { const o = chOff(d), u1 = yOf(p, d.a.p + o), u2 = yOf(p, d.b.p + o); if (u1 != null && u2 != null) { if (Math.hypot(x - (x1 + x2) / 2, y - (u1 + u2) / 2) < 8) return { d, h: "c" }; if (near(x1, y1, x2, y2) < 6 || near(x1, u1, x2, u2) < 6) return { d, h: "move" }; } }
     if (["trend", "ray", "arrow"].includes(d.type) && near(x1, y1, x2, y2) < 6) return { d, h: "move" };
     if (["prange", "drange", "ellipse"].includes(d.type) && x1 != null && x2 != null && x >= Math.min(x1, x2) && x <= Math.max(x1, x2) && y >= Math.min(y1, y2) && y <= Math.max(y1, y2)) return { d, h: "move" };
@@ -605,8 +613,8 @@ function initPointer(p) {
       if (h.h === "sl") d.sl = pr; else if (h.h === "tp") d.tp = pr; else if (h.h === "entry") d.entry = pr; else if (h.h === "w") d.b.t = Math.max(d.a.t + p.sec, tt);
       else { d.entry = rnd(snap.entry + dp); d.sl = rnd(snap.sl + dp); d.tp = rnd(snap.tp + dp); d.a.t = snap.a.t + dt; d.b.t = snap.b.t + dt; }
       syncTool(d);
-    } else if (h.h === "c") d.off = pr - lineAt(d, (d.a.t + d.b.t) / 2); else if (h.h === "a") d.a = { t: tt, p: pr }; else if (h.h === "b") d.b = { t: tt, p: pr };
-    else { d.a = { t: snap.a.t + dt, p: rnd(snap.a.p + dp) }; d.b = { t: snap.b.t + dt, p: rnd(snap.b.p + dp) }; }
+    } else if (h.h === "pc") d.c = { t: tt, p: pr }; else if (h.h === "c") d.off = pr - lineAt(d, (d.a.t + d.b.t) / 2); else if (h.h === "a") d.a = { t: tt, p: pr }; else if (h.h === "b") d.b = { t: tt, p: pr };
+    else { d.a = { t: snap.a.t + dt, p: rnd(snap.a.p + dp) }; d.b = { t: snap.b.t + dt, p: rnd(snap.b.p + dp) }; if (snap.c) d.c = { t: snap.c.t + dt, p: rnd(snap.c.p + dp) }; }
     repaintAll();
   });
   const up = (e) => {

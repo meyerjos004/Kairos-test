@@ -39,7 +39,7 @@ async def main():
             await E(f"setLayout('{k}')"); await pg.wait_for_timeout(600); n = await E("panes.length"); want={"1":1,"2":2,"2h":2,"3":3,"4":4,"6":6,"8":8}[k]; check(f"layout {k} -> {want} charts", n == want, n)
         # drawings via mouse
         box = await pg.locator("#charts .pane").first.bounding_box(); cx, cy = box["x"]+box["width"]*0.5, box["y"]+box["height"]*0.5
-        for t in ["trend","rect","fib","measure","fibext","channel","arrow","prange","drange","ellipse"]:
+        for t in ["trend","rect","fib","measure","fibext","channel","pitchfork","arrow","prange","drange","ellipse"]:
             n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.move(cx-80, cy-40); await pg.mouse.down(); await pg.mouse.move(cx+60, cy+50, steps=6); await pg.mouse.up(); await pg.wait_for_timeout(100)
             check(f"draw {t}", await E("drawings.length") == n0 + 1)
         for t in ["hline","vline","long","short","text"]:
