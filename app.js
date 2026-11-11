@@ -15,7 +15,7 @@ const SEC = Object.fromEntries(TFS);
 const TICK = 0.25;
 const LAYOUTS = { "1": [1, 1], "2": [2, 1], "2h": [1, 2], "3": [3, 1], "4": [2, 2], "6": [3, 2], "8": [4, 2] };
 const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
-const IND_DEF = { sess: true, pd: true, fvg: false, fvgTf: "1h", h4: false, po3: false };
+const IND_DEF = { data: true, sess: true, pd: true, fvg: false, fvgTf: "1h", h4: false, po3: false };
 const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
@@ -187,7 +187,7 @@ function saveShot() { const p = panes[active]; if (!p) return; const c = p.chart
 function indMenu() { const r = $("indbtn").getBoundingClientRect(), I = prefs.ind, ck = (v) => (v ? "✓ " : "\u2003 "), flip = (k) => () => { I[k] = !I[k]; savePrefs(); repaintAll(); };
   menu([{ h: "Indicators" }, { t: ck(prefs.opens) + "Key opens (18:00, midnight, 9:30, 10:00)", f: () => { prefs.opens = !prefs.opens; savePrefs(); fillSettings(); drawOpens(); } },
   { t: ck(prefs.sess) + "Shade the NY session", f: () => { prefs.sess = !prefs.sess; savePrefs(); fillSettings(); repaintAll(); } },
-  { t: ck(I.sess) + "Session highs / lows (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") },
+  { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session highs / lows (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") },
   { t: ck(I.fvg) + "Higher-timeframe gaps (FVG)", k: I.fvgTf, f: flip("fvg") }, I.fvg ? { t: "\u2003 Gap timeframe: " + I.fvgTf + " → " + (I.fvgTf === "1h" ? "15m" : I.fvgTf === "15m" ? "4h" : "1h"), f: () => { I.fvgTf = I.fvgTf === "1h" ? "15m" : I.fvgTf === "15m" ? "4h" : "1h"; savePrefs(); repaintAll(); } } : null,
   { t: ck(I.h4) + "4H candle outlines", f: flip("h4") }, { t: ck(I.po3) + "Daily candle (PO3) on the right", f: flip("po3") }], r.left, r.bottom + 6); }
 const TOOLNAMES = { cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
@@ -261,6 +261,15 @@ function studies() {
   let j = i; const lim = Math.max(0, i - 15 * 1440); const days = {};
   for (let k = i; k >= lim; k--) { const d = sessDay(bars[k].t); (days[d] = days[d] || []).push(bars[k]); if (Object.keys(days).length > 3) { delete days[d]; break; } }
   const order = Object.keys(days).sort(), prev = order[order.length - 2], cur = days[today] || [];
+  if (I.data) {   // data highs/lows: the high + low of a news candle (8:30, 10:00, 14:00 FOMC) that blew out the range. They act as draws until price trades through.
+    const NEWS = ["08:30", "10:00", "14:00"], dl = [];
+    for (const dd of order) { const xs = days[dd] || []; xs.sort((a, b) => a.t - b.t);
+      for (let k = 0; k < xs.length; k++) { const x = xs[k], h = hm(x); if (!NEWS.includes(h)) continue; const prior = xs.slice(Math.max(0, k - 30), k).map((y) => y.h - y.l).sort((p, q) => p - q);
+        if (prior.length < 10) continue; const med = prior[prior.length >> 1] || 0.25, rg = x.h - x.l; if (rg < 4 * med || rg < x.c * 0.0004) continue;
+        let tH = false, tL = false; for (let m = bars.indexOf(x) + 1; m <= i && m > 0; m++) { if (bars[m].h > x.h) tH = true; if (bars[m].l < x.l) tL = true; if (tH && tL) break; }
+        const lb = h.replace(/^0/, "") + (dd === today ? "" : " " + dd.slice(5));
+        dl.push({ price: x.h, t0: loc(x.t), label: "Data H " + lb + (tH ? " ✓" : ""), col: tH ? "rgba(255,159,67,.35)" : "rgba(255,159,67,.95)" }, { price: x.l, t0: loc(x.t), label: "Data L " + lb + (tL ? " ✓" : ""), col: tL ? "rgba(255,159,67,.35)" : "rgba(255,159,67,.95)" }); } }
+    out.levels.push(...dl.slice(-12)); out.data = dl; }
   if (I.sess) for (const [nm, a, z, col] of SESS) { for (const dd of [today, prev]) { const xs = (days[dd] || []).filter((x) => { const h = hm(x); return z === "24:00" ? h >= a : h >= a && h < z; }); if (!xs.length) continue;
       const hi = xs.reduce((m, x) => (x.h > m.h ? x : m)), lo = xs.reduce((m, x) => (x.l < m.l ? x : m)), tag = dd === today ? "" : " (prev)";
       out.levels.push({ price: hi.h, t0: loc(hi.t), label: nm + " H" + tag, col }, { price: lo.l, t0: loc(lo.t), label: nm + " L" + tag, col }); if (dd === today) break; } }
