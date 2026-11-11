@@ -177,6 +177,12 @@ async def main():
         await E("shareCard({symbol:'NQ',dir:1,qty:2,pnl:840,r:2.1,entry:21000,exit:21021,t_entry:nowT()-600}, true)"); await pg.wait_for_timeout(800)
         check("share card renders", await E("!!window.__lastCard && window.__lastCard.width===1200 && !$('dlg').classList.contains('hidden') && !!$('dlgbox').querySelector('img')"))
         await pg.screenshot(path="/home/claude/shot/card.png"); await E("$('dlg').classList.add('hidden')")
+        # Fix my mistakes: daily practice from tagged mistakes
+        await E("""mem.trades.push(...[1,2,3,4].map(k=>({id:'mx'+k, symbol:'NQ', dir:1, qty:1, pnl:k%2? -120: 80, r: k%2?-1:0.7, t_entry: nowT()-k*600, t_exit: nowT()-k*500, created_at: new Date().toISOString(), rules_ok: k>2, mistakes: k<=2? ['Chased'] : []})))""")
+        await E("view('learn'); ltab('mx')"); await pg.wait_for_timeout(700)
+        check("Fix my mistakes shows the biggest leak", await E("$('l-mx').innerText.includes('Chased') && document.querySelectorAll('#l-mx .mxt').length===3"), await E("$('l-mx').innerText.slice(0,200)"))
+        check("daily tasks track progress", await E("/\\d+ \\/ 3/.test($('l-mx').innerText)"))
+        await pg.screenshot(path="/home/claude/shot/mx.png"); await E("view('trade')")
         # media dock: Reese library + Spotify/YouTube sign-in panels
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))
