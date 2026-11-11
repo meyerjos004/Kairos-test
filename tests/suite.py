@@ -68,7 +68,7 @@ async def main():
         for v in ["journal","stats","accounts","learn","friends","settings","trade"]:
             await pg.click(f'[data-view="{v}"]'); await pg.wait_for_timeout(500); check(f"view {v} opens", await E(f"!$('v-{v}').classList.contains('hidden')"))
         # settings save
-        await pg.click('[data-view="settings"]'); await pg.fill("#s-dll", "777"); await pg.click("#s-save"); check("settings save", await E("prefs.dll") == 777)
+        await E("view('accounts')"); await pg.wait_for_timeout(300); await pg.fill("#s-dll", "777"); await pg.click("#s-save2"); check("settings save (replay account limits)", await E("prefs.dll") == 777)
         # csv export
         await pg.click('[data-view="journal"]'); await pg.wait_for_timeout(400)
         async with pg.expect_download() as dl: await pg.click("#j-csv")
@@ -91,6 +91,14 @@ async def main():
         await E("toolSettings(drawings[0])"); check("tool settings dialog opens", await E("!!$('ts-l')")); await E("$('ts-l').value='PDH sweep'; $('dl-ok').click()")
         check("tool label saved", await E("drawings[0].label==='PDH sweep'")); await pg.screenshot(path="/home/claude/shot/fix1.png")
         await E("drawings=[]; sel=null; hov=null; $('dtb').classList.add('hidden'); repaintAll()")
+        # fix 13 + 18
+        await E("view('trade')"); await E("$('chartsetbtn').click()"); await pg.wait_for_timeout(300)
+        check("chart settings opens with sync toggles + colors", await E("!$('chartset').classList.contains('hidden') && !!$('cs-scross') && !!$('s-up')"))
+        await E("$('cs-sint').checked=true; $('cs-save').click()"); await E("setLayout('2')"); await pg.wait_for_timeout(500)
+        await E("setPaneTf(0,'15m')"); await pg.wait_for_timeout(400); check("interval sync applies to every chart", await E("prefs.tfs[1]==='15m'"))
+        await E("prefs.sync.int=false; setLayout('1')"); await pg.wait_for_timeout(400)
+        await E("document.querySelector('.lname').click()"); check("clicking the symbol opens a symbol menu", await E("!$('ctx').classList.contains('hidden') && $('ctx').innerText.includes('ES')")); await E("hideCtx()")
+        check("settings page has no chart colors / account size", await E("!$('v-settings').contains($('s-up')) && !$('v-settings').contains($('s-bal'))"))
         # v0.5 TradeSea parity batch 1
         await E("view('trade')"); await pg.wait_for_timeout(300)
         await E("flatten(); market(1)"); pos0 = await E("pos.avg")

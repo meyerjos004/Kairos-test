@@ -172,8 +172,8 @@ function makePane(i) {
   const p = { i, el, chart, series, sec: paneSec(i), candles: [], lines: [], opens: [], cv: el.querySelector("canvas.overlay") };
   p.mode = 0; p.auto = true;
   el.addEventListener("pointerdown", () => setActive(i), true);
-  chart.timeScale().subscribeVisibleLogicalRangeChange(() => { paint(p); clearTimeout(p.hrT); p.hrT = setTimeout(() => htfRoom(p), 120); }); new ResizeObserver(() => paint(p)).observe(el);
-  chart.subscribeCrosshairMove((pr) => { if (pr.point) p.hover = { point: pr.point }; const d = pr.seriesData && pr.seriesData.get(series);
+  chart.timeScale().subscribeVisibleLogicalRangeChange(() => { syncTime(p); paint(p); clearTimeout(p.hrT); p.hrT = setTimeout(() => htfRoom(p), 120); }); new ResizeObserver(() => paint(p)).observe(el);
+  chart.subscribeCrosshairMove((pr) => { syncCross(p, pr); if (pr.point) p.hover = { point: pr.point }; const d = pr.seriesData && pr.seriesData.get(series);
     el.querySelector(".ohlc").innerHTML = d ? `O <b>${px2(d.open)}</b> H <b>${px2(d.high)}</b> L <b>${px2(d.low)}</b> C <b class="${d.close >= d.open ? "pos-up" : "pos-dn"}">${px2(d.close)}</b>` : ""; });
   initPointer(p);
   return p;
@@ -181,10 +181,10 @@ function makePane(i) {
 function setActive(i) { active = i; panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
 function label(p) { const tf = prefs.tfs[p.i] || "5m"; p.el.querySelector(".lname").textContent = `${sym} · ${tf} · CME`; p.el.querySelector(".wmark").textContent = `CME ${sym} ${tf}`; }
 function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}">${n === "1D" ? "D" : n}</button>`).join(""); }
-async function setPaneTf(i, tf) { const p = panes[i]; if (!p) return; prefs.tfs[i] = tf; savePrefs(); tfUI(); label(p); if (panes.some((q) => paneSec(q.i) < 60)) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); }
+async function setPaneTf(i, tf, noSync) { const p = panes[i]; if (!p) return; prefs.tfs[i] = tf; if (!noSync && prefs.sync && prefs.sync.int) for (const q of panes) if (q.i !== i) { prefs.tfs[q.i] = tf; label(q); rebuildPane(q); } savePrefs(); tfUI(); label(p); if (panes.some((q) => paneSec(q.i) < 60)) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); }
 function scaleUI() { const p = panes[active]; if (!p) return; $("sc-pct").classList.toggle("on", p.mode === 2); $("sc-log").classList.toggle("on", p.mode === 1); $("sc-auto").classList.toggle("on", p.auto); }
 function setScale(k) { const p = panes[active]; if (!p) return; if (k === "auto") p.auto = !p.auto; else { const m = k === "pct" ? 2 : 1; p.mode = p.mode === m ? 0 : m; } p.chart.priceScale("right").applyOptions({ mode: p.mode, autoScale: p.auto }); scaleUI(); paint(p); }
-function showRange(days) { const p = panes[active]; if (!p || !p.candles.length) return; const to = p.candles[p.candles.length - 1].time, from = Math.max(p.candles[0].time, to - days * 86400); p.chart.timeScale().setVisibleRange({ from, to: to + p.sec * 6 }); }
+function showRange(days) { const S = prefs.sync || {}; for (const p of (S.range !== false ? panes : [panes[active]])) { if (!p || !p.candles.length) continue; const to = p.candles[p.candles.length - 1].time, from = Math.max(p.candles[0].time, to - days * 86400); p.chart.timeScale().setVisibleRange({ from, to: to + p.sec * 6 }); } }
 function saveShot() { const p = panes[active]; if (!p) return; const c = p.chart.takeScreenshot(), g = c.getContext("2d"); try { g.drawImage(p.cv, 0, 0, c.width, c.height); } catch (e) {}
   const a = document.createElement("a"); a.download = `rewind-${sym}-${prefs.tfs[active]}-${nowT() ? fmt(loc(nowT())).replace(/[: ]/g, "-") : "chart"}.png`; a.href = c.toDataURL("image/png"); a.click(); }
 function indMenu() { if (ctxJust === "ind") { ctxJust = null; return; }   // fix 14: second click closes it const r = $("indbtn").getBoundingClientRect(), I = prefs.ind, ck = (v) => (v ? "✓ " : "\u2003 "), flip = (k) => () => { I[k] = !I[k]; savePrefs(); repaintAll(); };
@@ -478,7 +478,7 @@ function initPointer(p) {
   const pt = (e) => { const r = p.el.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   const hold = (on) => p.chart.applyOptions({ handleScroll: !on, handleScale: !on });
   p.el.addEventListener("pointerdown", (e) => {
-    if (e.button !== 0 || e.target.closest(".ptitle")) return; const { x, y } = pt(e); hideCtx();
+    if (e.button !== 0 || e.target.closest(".ptitle,.lname")) return; const { x, y } = pt(e); hideCtx();
     if (tool !== "cursor" && tool !== "cross") {
       const a = { t: tOf(p, x), p: pOf(p, y, x) }; if (a.t == null || a.p == null) return;
       if (["hline", "vline", "hray", "text", "long", "short"].includes(tool)) { newDrawing(tool, p, a); if (!e.shiftKey) setTool("cursor"); repaintAll(); e.stopPropagation(); e.preventDefault(); return; }
@@ -659,7 +659,7 @@ function chartMenu(p, x, y, cx, cy) {
     "-", { t: "Long position here", c: "b", k: prefs.keys.long.toUpperCase(), f: () => { newDrawing("long", p, { t, p: pr }); repaintAll(); } },
     { t: "Short position here", c: "s", k: prefs.keys.short.toUpperCase(), f: () => { newDrawing("short", p, { t, p: pr }); repaintAll(); } },
     { t: "Horizontal line here", k: prefs.keys.hline.toUpperCase(), f: () => { newDrawing("hline", p, { t, p: pr }); repaintAll(); } },
-    "-", { t: "Chart settings…", f: () => view("settings") }, { t: "Magnet: " + (prefs.magnet ? "on" : "off"), f: toggleMagnet },
+    "-", { t: "Chart settings…", f: () => $("chartsetbtn").click() }, { t: "Magnet: " + (prefs.magnet ? "on" : "off"), f: toggleMagnet },
     { t: "Remove all drawings", f: () => { drawings.filter((d) => d.state === "armed").forEach(disarmTool); drawings = []; sel = null; repaintAll(); } }], cx, cy);
 }
 function dlg(html, onOk) { $("dlgbox").innerHTML = html + '<div class="row" style="margin-top:12px"><button id="dl-x">Cancel</button><button id="dl-ok" class="primary">Save</button></div>'; $("dlg").classList.remove("hidden");
@@ -1255,6 +1255,16 @@ function toolSettings(d) { if (d.type === "long" || d.type === "short") return t
     const l = $("ts-l").value.trim(); if (d.type === "text") d.text = l || d.text; else d.label = l; d.color = $("ts-c").value; d.w = +$("ts-w").value; d.dash = $("ts-s").value; d.locked = $("ts-lk").checked;
     if ($("ts-f")) d.fill = +$("ts-f").value; d.a.p = rnd(+$("ts-pa").value || d.a.p); if ($("ts-pb")) d.b.p = rnd(+$("ts-pb").value || d.b.p); else d.b.p = d.a.p; repaintAll(); }); }
 
+/* fix 13: chart settings + sync across charts (interval, crosshair, time, date range); click the symbol on a chart to change it */
+let syncing = false;
+function syncCross(p, pr) { const S = prefs.sync || {}; if (syncing || S.cross === false || panes.length < 2) return; syncing = true;
+  try { for (const q of panes) { if (q === p || q.dead) continue; if (!pr.point || pr.time == null) { q.chart.clearCrosshairPosition(); continue; } const pz = p.series.coordinateToPrice(pr.point.y); if (pz == null) continue; q.chart.setCrosshairPosition(pz, bucket(pr.time, q.sec), q.series); } } catch (e) {} syncing = false; }
+function syncTime(p) { const S = prefs.sync || {}; if (syncing || S.time === false || panes.length < 2 || p.i !== active) return; const vr = p.chart.timeScale().getVisibleRange(); if (!vr) return; syncing = true;
+  try { for (const q of panes) if (q !== p && !q.dead && q.candles.length) q.chart.timeScale().setVisibleRange(vr); } catch (e) {} syncing = false; }
+function chartSetUI() { const S = prefs.sync || {}; $("cs-sint").checked = !!S.int; $("cs-scross").checked = S.cross !== false; $("cs-stime").checked = S.time !== false; $("cs-srange").checked = S.range !== false;
+  document.querySelectorAll("#cs-sym [data-s]").forEach((b) => b.classList.toggle("on", b.dataset.s === sym)); }
+function symMenu(e) { const r = e.target.getBoundingClientRect(); menu([{ h: "Symbol" }, ...["NQ", "ES"].map((s) => ({ t: (s === sym ? "✓ " : "\u2003 ") + s + (s === "NQ" ? " · Nasdaq-100 E-mini" : " · S&P 500 E-mini"), f: () => { if (s === sym) return; $("sym").value = s; $("sym").onchange(); } }))], r.left, r.bottom + 4); }
+
 /* ---------------- motion polish (Motion.dev springs + Anime.js count-ups; both optional, app works without them) ---------------- */
 const FX = {
   ok: () => !matchMedia("(prefers-reduced-motion: reduce)").matches,
@@ -1340,6 +1350,12 @@ $("dtb").onclick = (e) => { const b = e.target.closest("button"); if (!b) return
   else if (b.dataset.act === "del") { disarmTool(d); drawings = drawings.filter((z) => z !== d); if (sel === d) sel = null; if (hov === d) hov = null; $("dtb").classList.add("hidden"); repaintAll(); return; }
   repaintAll(); sel = d; dtbShow(dtbP); };
 $("dtb").onmouseleave = () => dtbShow(dtbP);
+$("chartsetbtn").onclick = () => { fillSettings(); chartSetUI(); $("chartset").classList.remove("hidden"); };
+$("cs-x").onclick = () => $("chartset").classList.add("hidden"); $("chartset").onclick = (e) => { if (e.target.id === "chartset") $("chartset").classList.add("hidden"); };
+$("cs-sym").onclick = (e) => { const b = e.target.closest("[data-s]"); if (!b || b.dataset.s === sym) return; $("sym").value = b.dataset.s; $("sym").onchange(); chartSetUI(); };
+$("cs-save").onclick = () => { prefs.sync = { int: $("cs-sint").checked, cross: $("cs-scross").checked, time: $("cs-stime").checked, range: $("cs-srange").checked }; saveSettings(); $("chartset").classList.add("hidden"); toast("Chart settings saved"); };
+$("s-save2").onclick = () => { saveSettings(); $("s-msg2").textContent = "Saved"; };
+$("charts").addEventListener("click", (e) => { if (e.target.closest(".lname")) symMenu(e); });
 $("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
 $("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tour").classList.contains("hidden")) tour(99); });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };

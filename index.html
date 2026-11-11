@@ -74,6 +74,7 @@
       <button id="mediabtn" class="ib" title="Music and video overlay (Spotify, YouTube, Reese library)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V6l11-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="17.5" cy="16" r="2.5"/></svg></button>
       <button id="favbtn" class="ib" title="Favorites toolbar (right-click any tool to add it)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/></svg></button>
       <button id="sidebtn" class="ib" title="DOM / order ticket panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M15 4.5v15"/></svg></button>
+      <button id="chartsetbtn" class="ib" title="Chart settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
       <button id="shotbtn" class="ib" title="Save a picture of the active chart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
       <button id="fullbtn" class="ib" title="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     </div>
@@ -157,19 +158,6 @@
   <section id="v-settings" class="view hidden scroll">
     <div class="cols">
       <div class="glass form">
-        <h3>Account</h3>
-        <label>Starting balance<input id="s-bal" type="number" value="50000"></label>
-        <label>Max drawdown, trailing from the high ($, 0 = off)<input id="s-mdd" type="number" value="2000"></label>
-        <label>Commission per contract, round trip ($)<input id="s-fee" type="number" step="0.01" value="4.50"></label>
-        <label>Micro commission per contract ($)<input id="s-mfee" type="number" step="0.01" value="1.50"></label>
-        <h3>Personal risk limits</h3>
-        <label>Personal daily loss limit, PDLL ($, 0 = off)<input id="s-dll" type="number" value="1000"></label>
-        <label>Personal daily profit target, PDPT ($, 0 = off)<input id="s-ptg" type="number" value="0"></label>
-        <label>When a limit is hit<select id="s-act"><option value="block">Liquidate and block for the day</option><option value="liq">Liquidate only</option></select></label>
-        <h3>Chart</h3>
-        <label class="ck"><input id="s-opens" type="checkbox" checked> Key opens (18:00, midnight, 9:30, 10:00)</label>
-        <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label>
-        <div class="row2"><label>Up candle<input id="s-up" type="color" value="#2bd4a0"></label><label>Down candle<input id="s-dn" type="color" value="#ff6b7a"></label></div>
         <h3>Theme</h3>
         <div class="themes" id="s-themes"></div>
         <div class="aith"><div class="toolbar"><input id="ai-th" maxlength="300" placeholder="✨ Describe a theme (e.g. “Tron Legacy, orange + cyan, very dark”)"><button id="ai-th-go" class="primary small">Make it</button></div><div id="ai-th-msg" class="tiny muted"></div></div>
@@ -234,6 +222,17 @@
   <section id="v-accounts" class="view hidden scroll">
     <div class="toolbar"><h2 class="vh">Accounts</h2><button id="ac-new" class="primary small">New account</button><span class="muted small">Each account has its own balance, rules and history. Trades go to the account selected at the top.</span></div>
     <div class="acards" id="ac-list"></div>
+    <div class="glass form acdef"><h3>Replay account (no account picked)</h3><div class="tiny muted">Used when you replay without picking an account above.</div>
+        
+        <label>Starting balance<input id="s-bal" type="number" value="50000"></label>
+        <label>Max drawdown, trailing from the high ($, 0 = off)<input id="s-mdd" type="number" value="2000"></label>
+        <label>Commission per contract, round trip ($)<input id="s-fee" type="number" step="0.01" value="4.50"></label>
+        <label>Micro commission per contract ($)<input id="s-mfee" type="number" step="0.01" value="1.50"></label>
+        <h3>Personal risk limits</h3>
+        <label>Personal daily loss limit, PDLL ($, 0 = off)<input id="s-dll" type="number" value="1000"></label>
+        <label>Personal daily profit target, PDPT ($, 0 = off)<input id="s-ptg" type="number" value="0"></label>
+        <label>When a limit is hit<select id="s-act"><option value="block">Liquidate and block for the day</option><option value="liq">Liquidate only</option></select></label>
+      <button id="s-save2" class="primary small">Save</button> <span id="s-msg2" class="muted small"></span></div>
     <div class="card taxc"><div class="ah"><b>Prop firm tax estimate · Utah · 2026</b><span class="pill">estimate only, not tax advice</span></div>
       <p class="small muted">Real payouts from prop firms usually come as contractor income (a 1099), so you owe self-employment tax on top of income tax, and nothing is withheld. Type your real numbers; nothing here is saved to the cloud.</p>
       <div class="taxgrid">
@@ -298,6 +297,15 @@
   <div id="m-yt" class="mp hidden"><div class="row"><input id="yt-url" placeholder="Paste a YouTube link"><button id="yt-go" class="small">Play</button></div><div id="yt-frame"></div></div>
   <div id="m-lib" class="mp hidden"><div id="lib-list"></div><div class="row"><input id="lib-url" placeholder="Add a video link to your library"><input id="lib-name" placeholder="Name"><button id="lib-add" class="small">Add</button></div></div></div></div>
 <div id="dtb" class="dtb hidden"></div>
+<div id="chartset" class="chartset hidden"><div class="csbox glass form"><div class="ah"><b>Chart settings</b><button id="cs-x" class="pb">×</button></div>
+  <h3>Symbol</h3><div class="seg" id="cs-sym"><button data-s="NQ">NQ</button><button data-s="ES">ES</button></div>
+        <h3>Look</h3>
+        <label class="ck"><input id="s-opens" type="checkbox" checked> Key opens (18:00, midnight, 9:30, 10:00)</label>
+        <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label>
+        <div class="row2"><label>Up candle<input id="s-up" type="color" value="#2bd4a0"></label><label>Down candle<input id="s-dn" type="color" value="#ff6b7a"></label></div>
+  <h3>Sync across charts (multi-chart layouts)</h3>
+  <div class="chips"><label class="ck"><input type="checkbox" checked disabled> Symbol (always)</label><label class="ck"><input type="checkbox" id="cs-sint"> Interval</label><label class="ck"><input type="checkbox" id="cs-scross" checked> Crosshair</label><label class="ck"><input type="checkbox" id="cs-stime" checked> Time (scroll together)</label><label class="ck"><input type="checkbox" id="cs-srange" checked> Date range buttons</label></div>
+  <button id="cs-save" class="primary small">Save</button></div></div>
 <div id="favbar" class="favbar hidden"><div class="fgrip" id="favgrip" title="Drag to move">⋮⋮</div><div class="fbtools"></div></div>
 <div id="qzbar" class="qzbar hidden"><div class="qzq">Taking dis? or fade it?</div><div class="qzd" id="qz-desc"></div><div class="row"><button id="qz-take" class="buy">Take it</button><button id="qz-fade" class="sell">Fade it</button></div><div class="qzr hidden" id="qz-res"></div><div class="row hidden" id="qz-next"><button id="qz-more" class="primary">Next setup</button><button id="qz-stop" class="ghost">Stop</button></div></div>
 <div id="tour" class="tour hidden"><div class="tour-hole" id="tourhole"></div><div class="tour-card" id="tourcard"></div></div>
