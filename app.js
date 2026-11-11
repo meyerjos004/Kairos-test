@@ -15,10 +15,11 @@ const SEC = Object.fromEntries(TFS);
 const TICK = 0.25;
 const LAYOUTS = { "1": [1, 1], "2": [2, 1], "2h": [1, 2], "3": [3, 1], "4": [2, 2], "6": [3, 2], "8": [4, 2] };
 const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
+const IND_DEF = { sess: true, pd: true, fvg: false, fvgTf: "1h", h4: false, po3: false };
 const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
-  lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false, dockH: 150, favs: ["trend", "hline", "rect", "long", "short"], favShow: true, favPos: null, toolsPos: null };
+  lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false, ind: { ...IND_DEF }, dockH: 150, favs: ["trend", "hline", "rect", "long", "short"], favShow: true, favPos: null, toolsPos: null };
 
 /* ---------------- time (shown in New York time) ---------------- */
 const offCache = new Map();
@@ -77,6 +78,10 @@ const db = {
   saveCursor(id, ts) { if (!DEMO) sb.from("sessions").update({ cursor_ts: ts, updated_at: new Date().toISOString() }).eq("id", id).then(() => {}); },
   async addTrade(row) { if (DEMO) { const r = { id: "t" + Math.random().toString(36).slice(2), ...row }; mem.trades.push(r); return r; } const { data, error } = await sb.from("trades").insert(row).select().single(); if (error) throw error; return data; },
   async trades(sym) { if (DEMO) return mem.trades.filter((t) => !sym || t.symbol === sym); let q = sb.from("trades").select("*").order("t_exit").limit(5000); if (sym) q = q.eq("symbol", sym); const { data } = await q; return data || []; },
+  async accounts() { if (DEMO) return (mem.accounts || (mem.accounts = [])).slice(); const { data } = await sb.from("accounts").select("*").eq("archived", false).order("created_at"); return data || []; },
+  async newAccount(row) { if (DEMO) { const r = { id: "a" + Date.now(), created_at: new Date().toISOString(), ...row }; (mem.accounts = mem.accounts || []).push(r); return r; } const { data, error } = await sb.from("accounts").insert(row).select().single(); if (error) throw error; return data; },
+  async updAccount(id, ch) { if (DEMO) { Object.assign(mem.accounts.find((a) => a.id === id), ch); return; } const { error } = await sb.from("accounts").update(ch).eq("id", id); if (error) throw error; },
+  async allTrades() { if (DEMO) return mem.trades; const { data } = await sb.from("trades").select("*").order("t_exit").limit(10000); return data || []; },
   note(id, v) { if (DEMO) { const t = mem.trades.find((x) => x.id === id); if (t) t.notes = v; return; } sb.from("trades").update({ notes: v }).eq("id", id).then(() => {}); },
 };
 async function notion(action, extra = {}) {
@@ -101,7 +106,8 @@ async function loadReplay() {
   if (!B["1m"].bars.length) return toast("No data for that month");
   if (need15 && !B["15s"].bars.length) toast("No 15s data around that date (15s covers NY mornings). 15s and 30s panes will be empty.");
   cursorT = t0 - 1; for (const tf of ["1m", "15s"]) { const bs = B[tf].bars; let k = -1; for (let j = 0; j < bs.length && bs[j].t <= cursorT; j++) k = j; B[tf].i = k; }
-  try { sess = await db.newSession({ name: sym + " " + fmt(loc(t0)), symbol: sym, start_ts: t0, cursor_ts: t0, tf: prefs.tfs[0], account_start: prefs.bal, risk_pct: prefs.riskp, rules: { dll: prefs.dll, mdd: prefs.mdd, ptg: prefs.ptg } }); }
+  await acctStart();
+  try { sess = await db.newSession({ name: sym + " " + fmt(loc(t0)), symbol: sym, start_ts: t0, cursor_ts: t0, tf: prefs.tfs[0], account_start: startBal, risk_pct: prefs.riskp, rules: { dll: prefs.dll, mdd: prefs.mdd, ptg: prefs.ptg }, ...(acct ? { account_id: acct.id } : {}) }); }
   catch (e) { return toast("Could not start a session: " + e.message); }
   hist = []; lock = null; rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast(""); prefs.sym = sym; savePrefs();
 }
@@ -177,8 +183,12 @@ function setScale(k) { const p = panes[active]; if (!p) return; if (k === "auto"
 function showRange(days) { const p = panes[active]; if (!p || !p.candles.length) return; const to = p.candles[p.candles.length - 1].time, from = Math.max(p.candles[0].time, to - days * 86400); p.chart.timeScale().setVisibleRange({ from, to: to + p.sec * 6 }); }
 function saveShot() { const p = panes[active]; if (!p) return; const c = p.chart.takeScreenshot(), g = c.getContext("2d"); try { g.drawImage(p.cv, 0, 0, c.width, c.height); } catch (e) {}
   const a = document.createElement("a"); a.download = `rewind-${sym}-${prefs.tfs[active]}-${nowT() ? fmt(loc(nowT())).replace(/[: ]/g, "-") : "chart"}.png`; a.href = c.toDataURL("image/png"); a.click(); }
-function indMenu() { const r = $("indbtn").getBoundingClientRect(); menu([{ h: "Indicators" }, { t: (prefs.opens ? "✓ " : "  ") + "Key opens (18:00, midnight, 9:30, 10:00)", f: () => { prefs.opens = !prefs.opens; savePrefs(); fillSettings(); drawOpens(); } },
-  { t: (prefs.sess ? "✓ " : "  ") + "Shade the NY session", f: () => { prefs.sess = !prefs.sess; savePrefs(); fillSettings(); repaintAll(); } }], r.left, r.bottom + 6); }
+function indMenu() { const r = $("indbtn").getBoundingClientRect(), I = prefs.ind, ck = (v) => (v ? "✓ " : "\u2003 "), flip = (k) => () => { I[k] = !I[k]; savePrefs(); repaintAll(); };
+  menu([{ h: "Indicators" }, { t: ck(prefs.opens) + "Key opens (18:00, midnight, 9:30, 10:00)", f: () => { prefs.opens = !prefs.opens; savePrefs(); fillSettings(); drawOpens(); } },
+  { t: ck(prefs.sess) + "Shade the NY session", f: () => { prefs.sess = !prefs.sess; savePrefs(); fillSettings(); repaintAll(); } },
+  { t: ck(I.sess) + "Session highs / lows (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") },
+  { t: ck(I.fvg) + "Higher-timeframe gaps (FVG)", k: I.fvgTf, f: flip("fvg") }, I.fvg ? { t: "\u2003 Gap timeframe: " + I.fvgTf + " → " + (I.fvgTf === "1h" ? "15m" : I.fvgTf === "15m" ? "4h" : "1h"), f: () => { I.fvgTf = I.fvgTf === "1h" ? "15m" : I.fvgTf === "15m" ? "4h" : "1h"; savePrefs(); repaintAll(); } } : null,
+  { t: ck(I.h4) + "4H candle outlines", f: flip("h4") }, { t: ck(I.po3) + "Daily candle (PO3) on the right", f: flip("po3") }], r.left, r.bottom + 6); }
 const TOOLNAMES = { cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
 function favUI() {
   const fb = $("favbar"); fb.classList.toggle("hidden", !prefs.favShow); $("favbtn").classList.toggle("on", !!prefs.favShow);
@@ -241,6 +251,50 @@ function newDrawing(type, p, a, b) {
   if (type === "text") d.text = prompt("Note text") || "Note";
   drawings.push(d); sel = d; return d;
 }
+/* ---------------- indicators (session highs/lows, previous day, HTF gaps, 4H candles, daily PO3) ---------------- */
+let ST = { key: null };
+const SESS = [["Asia", "20:00", "24:00", "rgba(255,198,92,.75)"], ["London", "02:00", "05:00", "rgba(122,167,255,.8)"], ["NY AM", "09:30", "11:00", "rgba(94,230,184,.8)"]];
+function studies() {
+  const b1 = B["1m"], key = b1.i + ":" + JSON.stringify(prefs.ind); if (ST.key === key) return ST; const bars = b1.bars, i = b1.i, out = { key, levels: [], gaps: [], h4: [], po3: null }; ST = out; if (i < 0) return out;
+  const I = prefs.ind, t = bars[i].t, today = sessDay(t), hm = (x) => lhm(loc(x.t));
+  let j = i; const lim = Math.max(0, i - 15 * 1440); const days = {};
+  for (let k = i; k >= lim; k--) { const d = sessDay(bars[k].t); (days[d] = days[d] || []).push(bars[k]); if (Object.keys(days).length > 3) { delete days[d]; break; } }
+  const order = Object.keys(days).sort(), prev = order[order.length - 2], cur = days[today] || [];
+  if (I.sess) for (const [nm, a, z, col] of SESS) { for (const dd of [today, prev]) { const xs = (days[dd] || []).filter((x) => { const h = hm(x); return z === "24:00" ? h >= a : h >= a && h < z; }); if (!xs.length) continue;
+      const hi = xs.reduce((m, x) => (x.h > m.h ? x : m)), lo = xs.reduce((m, x) => (x.l < m.l ? x : m)), tag = dd === today ? "" : " (prev)";
+      out.levels.push({ price: hi.h, t0: loc(hi.t), label: nm + " H" + tag, col }, { price: lo.l, t0: loc(lo.t), label: nm + " L" + tag, col }); if (dd === today) break; } }
+  if (I.pd && prev) { const rth = (days[prev] || []).filter((x) => hm(x) >= "09:30" && hm(x) < "16:00"); if (rth.length) { const hi = rth.reduce((m, x) => (x.h > m.h ? x : m)), lo = rth.reduce((m, x) => (x.l < m.l ? x : m));
+      out.levels.push({ price: hi.h, t0: loc(hi.t), label: "PDH", col: "rgba(230,234,240,.7)" }, { price: lo.l, t0: loc(lo.t), label: "PDL", col: "rgba(230,234,240,.7)" }); } }
+  if (I.fvg) { const sec = SEC[I.fvgTf] || 3600, cs = []; for (let k = Math.max(0, i - 10 * 1440); k <= i; k++) { const x = bars[k], bt = bucket(loc(x.t), sec), c = cs[cs.length - 1];
+      if (c && c.t === bt) { c.h = Math.max(c.h, x.h); c.l = Math.min(c.l, x.l); c.c = x.c; } else cs.push({ t: bt, o: x.o, h: x.h, l: x.l, c: x.c }); }
+    const done = cs.slice(0, -1);   // only finished candles make gaps
+    for (let k = 2; k < done.length; k++) { const a = done[k - 2], c = done[k]; let g = null;
+      if (c.l > a.h) g = { top: c.l, bot: a.h, dir: 1 }; else if (c.h < a.l) g = { top: a.l, bot: c.h, dir: -1 }; if (!g) continue;
+      let alive = true; for (let m = k + 1; m < cs.length; m++) { if (g.dir > 0 ? cs[m].l <= g.bot : cs[m].h >= g.top) { alive = false; break; } }
+      if (alive) out.gaps.push({ ...g, t0: done[k - 1].t, label: I.fvgTf + " FVG" }); }
+    const lp = bars[i].c; out.gaps.sort((a, b) => Math.abs((a.top + a.bot) / 2 - lp) - Math.abs((b.top + b.bot) / 2 - lp)); out.gaps = out.gaps.slice(0, 5); }
+  if (I.h4) { const cs = []; for (let k = Math.max(0, i - 3 * 1440); k <= i; k++) { const x = bars[k], bt = bucket(loc(x.t), 14400), c = cs[cs.length - 1];
+      if (c && c.t === bt) { c.h = Math.max(c.h, x.h); c.l = Math.min(c.l, x.l); c.c = x.c; } else cs.push({ t: bt, o: x.o, h: x.h, l: x.l, c: x.c }); } out.h4 = cs.slice(-8); }
+  if (I.po3 && cur.length) { const xs = cur.slice().reverse(); out.po3 = { o: xs[0].o, h: Math.max(...xs.map((x) => x.h)), l: Math.min(...xs.map((x) => x.l)), c: bars[i].c }; }
+  return out;
+}
+function paintStudies(p, g, W, H) {
+  if (!prefs.ind || p.sec >= 86400 || !p.candles.length) return; const S = studies(), ts = p.chart.timeScale();
+  const X = (lt) => { const x = xOf(p, lt); return x == null ? 0 : Math.max(0, x); };
+  g.save(); g.font = "500 10px Geist Mono, monospace";
+  for (const z of S.h4) { if (p.sec >= 14400) break; const x1 = X(z.t), x2 = Math.min(W, X(z.t + 14400) || W), y1 = yOf(p, z.h), y2 = yOf(p, z.l); if (y1 == null || y2 == null || x2 <= x1) continue;
+    g.strokeStyle = z.c >= z.o ? "rgba(43,212,160,.35)" : "rgba(255,107,122,.35)"; g.lineWidth = 1; g.setLineDash([]); g.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    const yo = yOf(p, z.o), yc = yOf(p, z.c); if (yo != null && yc != null) { g.fillStyle = z.c >= z.o ? "rgba(43,212,160,.06)" : "rgba(255,107,122,.06)"; g.fillRect(x1, Math.min(yo, yc), x2 - x1, Math.abs(yo - yc)); } }
+  for (const z of S.gaps) { const y1 = yOf(p, z.top), y2 = yOf(p, z.bot); if (y1 == null || y2 == null) continue; const x1 = X(z.t0);
+    g.fillStyle = z.dir > 0 ? "rgba(43,212,160,.09)" : "rgba(255,107,122,.09)"; g.fillRect(x1, y1, W - x1, y2 - y1); g.fillStyle = "rgba(200,210,225,.55)"; g.fillText(z.label, x1 + 4, Math.min(y1, y2) + 11); }
+  for (const l of S.levels) { const y = yOf(p, l.price); if (y == null || y < 0 || y > H) continue; const x1 = X(l.t0);
+    g.strokeStyle = l.col; g.lineWidth = 1; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(x1, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.col; g.fillText(l.label, W - g.measureText(l.label).width - 6, y - 4); }
+  if (S.po3) { const P = S.po3, x = W - 26, yh = yOf(p, P.h), yl = yOf(p, P.l), yo = yOf(p, P.o), yc = yOf(p, P.c); if ([yh, yl, yo, yc].every((v) => v != null)) {
+      const up = P.c >= P.o; g.strokeStyle = up ? "rgba(43,212,160,.8)" : "rgba(255,107,122,.8)"; g.fillStyle = up ? "rgba(43,212,160,.22)" : "rgba(255,107,122,.22)";
+      g.beginPath(); g.moveTo(x, yh); g.lineTo(x, yl); g.stroke(); g.fillRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc))); g.strokeRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc)));
+      g.fillStyle = "rgba(200,210,225,.6)"; g.fillText("D", x - 3, yh - 5); } }
+  g.restore();
+}
 function paint(p) {
   if (!p) return; cancelAnimationFrame(p.raf); p.raf = requestAnimationFrame(() => {
     const cv = p.cv, r = p.el.getBoundingClientRect(), dpr = devicePixelRatio || 1; if (cv.width !== Math.round(r.width * dpr) || cv.height !== Math.round(r.height * dpr)) { cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); }
@@ -250,6 +304,7 @@ function paint(p) {
         g.fillStyle = "rgba(122,167,255,.04)";
         for (let k = from; k <= to + 1; k++) { const c = p.candles[k], inS = c && lhm(c.time) >= "09:30" && lhm(c.time) < "16:00";
           if (inS && s0 == null) s0 = k; if ((!inS || k === to + 1) && s0 != null) { const x1 = ts.logicalToCoordinate(s0) - 0.5 * (ts.logicalToCoordinate(s0 + 1) - ts.logicalToCoordinate(s0)), x2 = ts.logicalToCoordinate(k) - 0.5 * (ts.logicalToCoordinate(k + 1) - ts.logicalToCoordinate(k)); if (x1 != null && x2 != null) g.fillRect(x1, 0, x2 - x1, r.height); s0 = null; } } } }
+    try { paintStudies(p, g, W, r.height); } catch (e) {}
     const all = drawings.filter((d) => d.pane === p.i || SHARED.includes(d.type));
     if (pend && pend.pane === p.i && pend.b) all.push({ ...pend.d, b: pend.b, preview: true });
     for (const d of all) { try { drawOne(p, g, d, W, r.height); } catch (e) {} }
@@ -357,7 +412,7 @@ function repaintAll() { panes.forEach(paint); }
 
 /* ---------------- order engine ---------------- */
 let hist = [], lock = null;     // lock = {why, until (replay epoch, or Infinity)}
-const flat = () => ({ qty: 0, avg: 0, sl: null, tp: null, t: 0, risk: 0, trail: 0, hi: 0, tool: null });
+const flat = () => ({ qty: 0, avg: 0, sl: null, tp: null, t: 0, risk: 0, trail: 0, hi: 0, tool: null, tags: [] });
 let pos = flat(), orders = [], oid = 1, draft = null;
 const fee = (q) => Math.abs(q) * (inst.micro ? prefs.mfee : prefs.fee);
 const balance = () => (sess ? +sess.account_start : prefs.bal) + hist.reduce((s, t) => s + (+t.pnl || 0), 0);
@@ -379,17 +434,18 @@ function joinBid() { if (canTrade()) place(1, "limit", last() - TICK, lotsNow(),
 function joinAsk() { if (canTrade()) place(-1, "limit", last() + TICK, lotsNow(), autoBr()); }
 function place(side, type, price, qty, br, extra = {}) { if (!canTrade()) return; const o = { id: oid++, side, type, price: rnd(price), qty, br, ...extra }; orders.push(o); drawOrders(); refresh(); return o; }
 function fill(side, qty, price, t, br, toolId) {
+  if (!pos.qty || Math.sign(pos.qty) === side) { sfx("fill"); buzz(25); }
   if (!pos.qty || Math.sign(pos.qty) === side) {
     const nq = pos.qty + side * qty; pos.avg = pos.qty ? (pos.avg * Math.abs(pos.qty) + price * qty) / Math.abs(nq) : price; if (!pos.qty) { pos.t = t; pos.hi = price; } pos.qty = nq;
     if (br) { if (br.slPx != null) pos.sl = br.slPx; else if (br.slPts) pos.sl = rnd(pos.avg - side * br.slPts); if (br.tpPx != null) pos.tp = br.tpPx; else if (br.tpPts) pos.tp = rnd(pos.avg + side * br.tpPts); }
-    pos.trail = (br && br.trail) || prefs.trail || 0; pos.risk = pos.sl != null ? Math.abs(pos.avg - pos.sl) : pos.risk || 0; if (toolId) pos.tool = toolId;
+    pos.trail = (br && br.trail) || prefs.trail || 0; pos.risk = pos.sl != null ? Math.abs(pos.avg - pos.sl) : pos.risk || 0; if (toolId) { pos.tool = toolId; const td = drawings.find((z) => z.id === toolId); if (td && td.tags) pos.tags = td.tags.slice(); }
   } else { const cq = Math.min(Math.abs(pos.qty), qty); record(cq, price, t, "manual"); const rest = qty - cq; if (rest > 0) fill(side, rest, price, t, br, toolId); }
   drawOrders(); refresh(); repaintAll();
 }
 function record(cq, price, t, outcome) {
   const side = Math.sign(pos.qty), pnl = (price - pos.avg) * side * cq * inst.pt - fee(cq), r = pos.risk ? ((price - pos.avg) * side) / pos.risk : null;
-  const row = { session_id: sess && sess.id, symbol: sym, dir: side, qty: cq, entry: +pos.avg.toFixed(2), stop: pos.sl, target: pos.tp, exit: price, t_entry: pos.t, t_exit: t, outcome, r: r == null ? null : +r.toFixed(2), pnl: +pnl.toFixed(2), fees: fee(cq) };
-  hist.push(row); pos.qty -= side * cq;
+  const row = { session_id: sess && sess.id, ...(acct ? { account_id: acct.id } : {}), tags: pos.tags || [], symbol: sym, dir: side, qty: cq, entry: +pos.avg.toFixed(2), stop: pos.sl, target: pos.tp, exit: price, t_entry: pos.t, t_exit: t, outcome, r: r == null ? null : +r.toFixed(2), pnl: +pnl.toFixed(2), fees: fee(cq) };
+  hist.push(row); pos.qty -= side * cq; sfx(outcome === "win" || pnl > 0 ? "win" : "loss"); buzz(pnl > 0 ? [20, 40, 20] : 60);
   if (!pos.qty) { const tl = drawings.find((d) => d.id === pos.tool); if (tl) tl.state = "done"; pos = flat(); repaintAll(); }
   db.addTrade(row).then((d) => { Object.assign(row, d); shot(d.id); if (notionAuto) notion("sync", { ids: [d.id] }).catch(() => {}); }).catch((e) => toast("Trade not saved: " + e.message));
   guard();
@@ -477,6 +533,8 @@ function chartMenu(p, x, y, cx, cy) {
     if (d.type === "long" || d.type === "short") return menu([{ h: `${d.side > 0 ? "Long" : "Short"} position · ${d.state}` },
         d.state === "armed" ? { t: "Disarm (cancel the auto-entry)", f: () => disarmTool(d) } : d.state === "idle" ? { t: "Arm: auto-enter when price reaches entry", c: d.side > 0 ? "b" : "s", f: () => armTool(d) } : null,
         d.state === "idle" ? { t: "Enter now at market", f: () => { const q = posQty(d); d.qty = q; d.state = "filled"; fill(d.side, q, last(), nowT(), { slPx: d.sl, tpPx: d.tp }, d.id); } } : null,
+        { t: "Confluences…" + (d.tags && d.tags.length ? " (" + d.tags.length + ")" : ""), f: () => confDlg(d) },
+        ...RISK_PRESETS.map((pr) => ({ t: "\u2003 Risk preset " + pr[0], f: () => { if (d.state === "filled") return toast("Already filled"); applyRisk(d, pr); } })),
         { t: "Settings…", f: () => toolDlg(d) }, { t: "Flip to " + (d.side > 0 ? "short" : "long"), f: () => { if (d.state !== "idle") return toast("Disarm it first"); d.side = -d.side; d.type = d.side > 0 ? "long" : "short"; [d.sl, d.tp] = [rnd(2 * d.entry - d.sl), rnd(2 * d.entry - d.tp)]; repaintAll(); } },
         "-", { t: "Delete", c: "s", k: "Del", f: () => { disarmTool(d); drawings = drawings.filter((z) => z !== d); sel = null; repaintAll(); } }], cx, cy);
     return menu([{ h: d.type }, d.type === "text" ? { t: "Edit text…", f: () => { d.text = prompt("Note", d.text) || d.text; repaintAll(); } } : null,
@@ -540,11 +598,11 @@ $("dom").addEventListener("pointerup", (e) => {
 /* ---------------- panels ---------------- */
 function refresh() {
   const bal = balance(), op = openPnl(), rp = dayRpl(), cls = (v) => (v >= 0 ? "pos-up" : "pos-dn");
-  $("bal").textContent = money(bal); $("rpl").textContent = money(rp); $("rpl").className = cls(rp); $("upl").textContent = money(op); $("upl").className = cls(op);
-  let peak = sess ? +sess.account_start : prefs.bal, run = peak; for (const t of hist) { run += +t.pnl || 0; peak = Math.max(peak, run); }
+  flashNum("bal", Math.round(bal)); flashNum("rpl", Math.round(rp)); $("bal").textContent = money(bal); $("rpl").textContent = money(rp); $("rpl").className = cls(rp); $("upl").textContent = money(op); $("upl").className = cls(op);
+  let run = sess ? +sess.account_start : prefs.bal, peak = Math.max(run, acctPeak || 0); for (const t of hist) { run += +t.pnl || 0; peak = Math.max(peak, run); }
   $("ddl").textContent = prefs.mdd ? money(prefs.mdd - (peak - (bal + op))) : "off";
   const L = lockedNow(); $("status").textContent = L ? (lock.until === Infinity ? "Locked" : "Locked · " + Math.max(0, Math.ceil((lock.until - nowT()) / 60)) + "m") : "Active"; $("status").classList.toggle("locked", L); $("status").title = L ? lock.why : "";
-  const lp = last(); $("acctname").textContent = `Replay ${sym} · ${money(sess ? +sess.account_start : prefs.bal).replace(/\.00$/, "")}`;
+  const lp = last(); $("acctname").textContent = acct ? acct.name : `Replay · ${money(sess ? +sess.account_start : prefs.bal).replace(/\.00$/, "")}`;
   $("b-acct").innerHTML = `<table class="bt"><tr><th>Account</th><th>Start</th><th>Balance</th><th>RP&amp;L today</th><th>UP&amp;L</th><th>Drawdown left</th><th>Daily loss limit</th><th>Status</th></tr><tr><td>${$("acctname").textContent}</td><td>${money(sess ? +sess.account_start : prefs.bal)}</td><td>${money(bal)}</td><td class="${cls(rp)}">${money(rp)}</td><td class="${cls(op)}">${money(op)}</td><td>${$("ddl").textContent}</td><td>${prefs.dll ? money(prefs.dll) : "off"}</td><td>${$("status").textContent}</td></tr></table>`;
   $("pbid").textContent = lp != null ? px2(lp) : "—"; $("pask").textContent = lp != null ? px2(lp + TICK) : "—"; $("padsym").textContent = sym;
   $("padpos").innerHTML = pos.qty ? `<span class="${cls(pos.qty)}">${pos.qty > 0 ? "LONG" : "SHORT"} ${Math.abs(pos.qty)}</span> @ ${px2(pos.avg)} · <span class="${cls(op)}">${money(op)}</span>` : "Flat";
@@ -557,6 +615,87 @@ function refresh() {
   const w = hist.filter((t) => t.pnl > 0).length; $("bstat").textContent = hist.length ? `${hist.length} trades · ${Math.round((100 * w) / hist.length)}% win · net ${money(hist.reduce((s, t) => s + t.pnl, 0))}` : "";
   const sl = +$("o-sl").value, q = +$("o-qty").value, tp = +$("o-tp").value || 0; $("o-risk").innerHTML = sl && q ? `Risk <b>${money(sl * q * inst.pt + fee(q))}</b> · reward <b>${money(tp * q * inst.pt)}</b> · <b>${(tp / sl).toFixed(2)}R</b>` : "";
   renderDom();
+}
+
+/* ---------------- feel: sounds (made here with Web Audio, no files), haptics, number flashes ---------------- */
+let AC = null;
+function sfx(kind) {
+  if (prefs.sound === false) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } const t0 = AC.currentTime, vol = (prefs.vol ?? 60) / 100 * 0.18;
+  const note = (f, at, dur, type = "sine", v = vol) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f, t0 + at); g.gain.setValueAtTime(0, t0 + at); g.gain.linearRampToValueAtTime(v, t0 + at + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur); o.connect(g).connect(AC.destination); o.start(t0 + at); o.stop(t0 + at + dur + 0.02); };
+  if (kind === "fill") { note(880, 0, 0.09, "triangle"); note(1320, 0.05, 0.12, "sine", vol * 0.7); }
+  else if (kind === "win") { [660, 880, 1320].forEach((f, i) => note(f, i * 0.07, 0.22, "sine")); }
+  else if (kind === "loss") { note(330, 0, 0.18, "triangle"); note(247, 0.1, 0.3, "triangle", vol * 0.8); }
+  else if (kind === "click") note(1600, 0, 0.03, "square", vol * 0.25);
+  else if (kind === "lock") { note(220, 0, 0.35, "sawtooth", vol * 0.5); }
+}
+function buzz(ms) { if (prefs.haptics !== false && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {} }
+const lastShown = {};
+function flashNum(id, v) { const el = $(id); if (lastShown[id] != null && v !== lastShown[id]) { el.classList.remove("fl-up", "fl-dn"); void el.offsetWidth; el.classList.add(v > lastShown[id] ? "fl-up" : "fl-dn"); } lastShown[id] = v; }
+
+/* ---------------- accounts (portfolio) ---------------- */
+let accts = [], acct = null, startBal = 50000, acctPeak = 0;
+const ACCT_PRESETS = { practice: ["Practice", 50000, { mdd: 2000, dll: 1000, ptg: 0 }], e25: ["Eval 25K", 25000, { mdd: 1000, dll: 500, ptg: 1250 }], e50: ["Eval 50K", 50000, { mdd: 2000, dll: 1000, ptg: 3000 }],
+  e100: ["Eval 100K", 100000, { mdd: 3000, dll: 1500, ptg: 6000 }], e150: ["Eval 150K", 150000, { mdd: 4500, dll: 2250, ptg: 9000 }], f50: ["Funded 50K", 50000, { mdd: 2000, dll: 1000, ptg: 0 }] };
+async function loadAccts() { accts = await db.accounts(); acct = accts.find((a) => a.id === prefs.acct) || null; applyAcctRules(); }
+function applyAcctRules() { if (!acct) return; const r = acct.rules || {}; ["mdd", "dll", "ptg"].forEach((k) => { if (r[k] != null) prefs[k] = +r[k]; }); fillSettings(); }
+async function acctStart() {   // balance and high-water mark for the selected account (from its saved trades)
+  if (!acct) { startBal = prefs.bal; acctPeak = 0; return; } const tr = (await db.allTrades()).filter((t) => t.account_id === acct.id).sort((a, b) => a.t_exit - b.t_exit);
+  let run = +acct.start_bal, pk = run; for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); } startBal = run; acctPeak = pk;
+}
+function acctMenu() { const r = $("acctpill").getBoundingClientRect();
+  menu([{ h: "Account" }, { t: (acct ? "\u2003 " : "✓ ") + "Replay (no account)", f: () => pickAcct(null) }, ...accts.map((a) => ({ t: (acct && acct.id === a.id ? "✓ " : "\u2003 ") + a.name, k: money(+a.start_bal).replace(/\.00$/, ""), f: () => pickAcct(a.id) })), "-", { t: "Manage accounts…", f: () => view("accounts") }], r.left, r.bottom + 6); }
+function pickAcct(id) { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); prefs.acct = id; acct = accts.find((a) => a.id === id) || null; applyAcctRules(); savePrefs(); refresh(); toast(acct ? "Trading on " + acct.name + ". Load a replay to start a session on it." : "Trading without an account"); }
+async function renderAccts() {
+  const all = await db.allTrades(), rows = await Promise.all(accts.map(async (a) => { const tr = all.filter((t) => t.account_id === a.id).sort((x, y) => x.t_exit - y.t_exit); let run = +a.start_bal, pk = run; for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); }
+    const R = a.rules || {}, ddLeft = R.mdd ? R.mdd - (pk - run) : null, w = tr.filter((t) => t.pnl > 0).length, pnl = run - a.start_bal;
+    const st = ddLeft != null && ddLeft <= 0 ? ["Blown", "dn"] : R.ptg && pnl >= R.ptg ? ["Target hit", "up"] : ["Active", ""];
+    return `<div class="acard ${acct && acct.id === a.id ? "on" : ""}" data-id="${a.id}"><div class="ah"><b>${a.name}</b><span class="pill ${st[1]}">${st[0]}</span></div>
+      <div class="abig ${pnl >= 0 ? "pos-up" : "pos-dn"}">${money(run)}</div><div class="muted small">${pnl >= 0 ? "+" : ""}${money(pnl)} since start · ${tr.length} trades · ${tr.length ? Math.round((100 * w) / tr.length) : 0}% win</div>
+      ${R.ptg ? `<div class="bar"><i style="width:${Math.max(0, Math.min(100, (100 * pnl) / R.ptg))}%"></i></div><div class="tiny muted">Profit target ${money(R.ptg)}</div>` : ""}
+      <div class="kvs"><div><span>Drawdown left</span><b>${ddLeft == null ? "off" : money(ddLeft)}</b></div><div><span>Daily loss limit</span><b>${R.dll ? money(R.dll) : "off"}</b></div></div>
+      <div class="row"><button data-use="${a.id}" class="small">${acct && acct.id === a.id ? "Selected" : "Use"}</button><button data-edit="${a.id}" class="ghost small">Edit</button><button data-arch="${a.id}" class="ghost small">Archive</button></div></div>`; }));
+  $("ac-list").innerHTML = rows.join("") || '<div class="empty">No accounts yet. Make one to track an eval or a funded account separately.</div>';
+}
+function acctDlg(a) { const r = (a && a.rules) || {}; dlg(`<h3>${a ? "Edit account" : "New account"}</h3>${a ? "" : `<label>Start from<select id="acP">${Object.entries(ACCT_PRESETS).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join("")}</select></label>`}
+    <label>Name<input id="acN" value="${a ? a.name : "Practice"}"></label><label>Starting balance ($)<input id="acB" type="number" value="${a ? a.start_bal : 50000}"></label>
+    <div class="row2"><label>Max drawdown, trailing ($)<input id="acM" type="number" value="${r.mdd ?? 2000}"></label><label>Daily loss limit ($)<input id="acD" type="number" value="${r.dll ?? 1000}"></label></div><label>Profit target ($, 0 = none)<input id="acT" type="number" value="${r.ptg ?? 0}"></label><p class="tiny muted">Presets are examples. Set the numbers to match your firm's current rules.</p>`,
+  async () => { const row = { name: $("acN").value.trim() || "Account", start_bal: +$("acB").value || 50000, rules: { mdd: +$("acM").value || 0, dll: +$("acD").value || 0, ptg: +$("acT").value || 0 } };
+    try { if (a) { await db.updAccount(a.id, row); Object.assign(a, row); } else { const n = await db.newAccount(row); accts.push(n); } if (acct && a && acct.id === a.id) applyAcctRules(); renderAccts(); } catch (e) { toast(e.message); } });
+  if (!a) $("acP").onchange = () => { const v = ACCT_PRESETS[$("acP").value]; $("acN").value = v[0]; $("acB").value = v[1]; $("acM").value = v[2].mdd; $("acD").value = v[2].dll; $("acT").value = v[2].ptg; };
+}
+
+/* ---------------- position presets + confluence checklist ---------------- */
+const CONF_REESE = ["HTF bias agrees", "Liquidity swept", "Inversion FVG", "SMT with ES", "PO3 / manipulation", "Key open", "In the killzone", "5m / 15m FVG entry", "Clear draw on liquidity"];
+const RISK_PRESETS = [["1:2", 0, 2], ["1:3 (Reese)", 0, 3], ["1:4", 0, 4], ["10 pt stop · 1:2", 10, 2], ["15 pt stop · 1:3", 15, 3], ["25 pt stop · 1:4", 25, 4]];
+function applyRisk(d, [nm, stopPts, rr]) { const risk = stopPts || Math.abs(d.entry - d.sl) || 10; d.sl = rnd(d.entry - d.side * risk); d.tp = rnd(d.entry + d.side * risk * rr); syncTool(d); repaintAll(); toast(nm + " applied"); }
+function confDlg(d) { const tags = prefs.tagset && prefs.tagset.length ? prefs.tagset : CONF_REESE, on = new Set(d.tags || []);
+  dlg(`<h3>Confluences</h3><p class="tiny muted">Tick what's there before you arm it. The ticks are saved with the trade, and Stats shows which ones actually pay.</p><div class="cks">${tags.map((t, i) => `<label class="ck"><input type="checkbox" data-t="${i}" ${on.has(t) ? "checked" : ""}> ${t}</label>`).join("")}</div>
+    <label>Add your own (comma separated)<input id="cfX" placeholder="e.g. NWOG, CISD"></label><div class="score" id="cfS"></div>`,
+  () => { const pick = [...document.querySelectorAll("#dlgbox [data-t]")].filter((x) => x.checked).map((x) => tags[+x.dataset.t]); const extra = $("cfX").value.split(",").map((x) => x.trim()).filter(Boolean);
+    if (extra.length) { prefs.tagset = [...new Set([...tags, ...extra])]; savePrefs(); } d.tags = [...pick, ...extra]; repaintAll(); toast(d.tags.length + " confluence" + (d.tags.length === 1 ? "" : "s") + " saved"); });
+  const sc = () => { const n = [...document.querySelectorAll("#dlgbox [data-t]")].filter((x) => x.checked).length; $("cfS").innerHTML = `Score <b>${n}/${tags.length}</b>`; }; document.querySelectorAll("#dlgbox [data-t]").forEach((x) => (x.onchange = sc)); sc(); }
+
+/* ---------------- stats ---------------- */
+let stC = null;
+async function renderStats() {
+  $("st-acct").innerHTML = `<option value="">All accounts</option><option value="none">Replay (no account)</option>` + accts.map((a) => `<option value="${a.id}">${a.name}</option>`).join(""); $("st-acct").value = prefs.stAcct || "";
+  let tr = (await db.allTrades()).slice().sort((a, b) => a.t_exit - b.t_exit); const A = $("st-acct").value, S = $("st-sym").value, D = +$("st-range").value;
+  if (A === "none") tr = tr.filter((t) => !t.account_id); else if (A) tr = tr.filter((t) => t.account_id === A); if (S) tr = tr.filter((t) => t.symbol === S);
+  if (D && tr.length) { const end = tr[tr.length - 1].t_exit; tr = tr.filter((t) => t.t_exit >= end - D * 86400); }
+  const n = tr.length, W = tr.filter((t) => t.pnl > 0), L = tr.filter((t) => t.pnl <= 0), sum = (a) => a.reduce((s, t) => s + (+t.pnl || 0), 0), gw = sum(W), gl = -sum(L);
+  let run = 0, pk = 0, dd = 0, cw = 0, cl = 0, bw = 0, bl = 0; const eq = [];
+  for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); dd = Math.max(dd, pk - run); if (t.pnl > 0) { cw++; cl = 0; } else { cl++; cw = 0; } bw = Math.max(bw, cw); bl = Math.max(bl, cl); eq.push({ time: t.t_exit, value: +run.toFixed(2) }); }
+  const rs = tr.filter((t) => t.r != null), K = [["Trades", n], ["Win rate", n ? Math.round((100 * W.length) / n) + "%" : "—"], ["Net", money(run)], ["Expectancy / trade", n ? money(run / n) : "—"], ["Avg R", rs.length ? (rs.reduce((s, t) => s + +t.r, 0) / rs.length).toFixed(2) + "R" : "—"],
+    ["Profit factor", gl ? (gw / gl).toFixed(2) : n ? "∞" : "—"], ["Avg win", W.length ? money(gw / W.length) : "—"], ["Avg loss", L.length ? money(-gl / L.length) : "—"], ["Worst drop", money(-dd)], ["Best streak", bw + " wins"], ["Worst streak", bl + " losses"]];
+  $("st-kpi").innerHTML = K.map(([k, v]) => `<div><span class="muted small">${k}</span><b>${v}</b></div>`).join("");
+  const grp = (key) => { const g = {}; for (const t of tr) for (const k of [].concat(key(t))) { (g[k] = g[k] || []).push(t); } return g; };
+  const table = (g, order) => { const ks = order ? order.filter((k) => g[k]) : Object.keys(g).sort((a, b) => sum(g[b]) - sum(g[a])); if (!ks.length) return '<div class="empty">No trades yet</div>'; const mx = Math.max(...ks.map((k) => Math.abs(sum(g[k])))) || 1;
+    return `<table class="bt"><tr><th></th><th>Trades</th><th>Win</th><th>Net</th><th></th></tr>${ks.map((k) => { const v = sum(g[k]), w = g[k].filter((t) => t.pnl > 0).length; return `<tr><td>${k}</td><td>${g[k].length}</td><td>${Math.round((100 * w) / g[k].length)}%</td><td class="${v >= 0 ? "pos-up" : "pos-dn"}">${money(v)}</td><td><i class="hbar ${v >= 0 ? "up" : "dn"}" style="width:${Math.round((60 * Math.abs(v)) / mx)}px"></i></td></tr>`; }).join("")}</table>`; };
+  $("st-hour").innerHTML = table(grp((t) => lhm(loc(t.t_entry)).slice(0, 2) + ":00"), [...Array(24).keys()].map((h) => String(h).padStart(2, "0") + ":00"));
+  $("st-wd").innerHTML = table(grp((t) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(loc(t.t_entry) * 1000).getUTCDay()]), ["Mon", "Tue", "Wed", "Thu", "Fri", "Sun"]);
+  $("st-tag").innerHTML = table(grp((t) => (t.tags && t.tags.length ? t.tags : ["(no tags)"])));
+  if (!stC) { stC = LightweightCharts.createChart($("st-eq"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontFamily: "Geist Mono, monospace" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } }); stC.s = stC.addAreaSeries({ lineColor: "#5ee6b8", topColor: "rgba(94,230,184,.25)", bottomColor: "rgba(94,230,184,0)", lineWidth: 2 }); }
+  const seen = new Set(); stC.s.setData(eq.filter((p) => (seen.has(p.time) ? false : seen.add(p.time)))); stC.timeScale().fitContent();
 }
 
 /* ---------------- journal ---------------- */
@@ -590,10 +729,11 @@ async function notionUI() {
 const nmsg = (m) => ($("n-msg").textContent = m);
 
 /* ---------------- prefs / settings / admin ---------------- */
-async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; } }
+async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) }; } }
 function savePrefs() { if (!DEMO && user) sb.from("prefs").upsert({ user_id: user.id, data: prefs, updated_at: new Date().toISOString() }).then(() => {}); }
 const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", joinask: "Join ask", reverse: "Reverse", flatten: "Flatten all", cancel: "Cancel all", close: "Close all", trend: "Trend line", hline: "Horizontal line", vline: "Vertical line", rect: "Zone", long: "Long position", short: "Short position", measure: "Measure" };
 function fillSettings() {
+  if ($("s-sound")) { $("s-sound").checked = prefs.sound !== false; $("s-vol").value = prefs.vol ?? 60; $("s-hap").checked = prefs.haptics !== false; $("s-splash").checked = prefs.splash !== false; }
   $("s-bal").value = prefs.bal; $("s-dll").value = prefs.dll; $("s-ptg").value = prefs.ptg; $("s-act").value = prefs.act; $("s-mdd").value = prefs.mdd; $("s-fee").value = prefs.fee; $("s-mfee").value = prefs.mfee;
   $("s-opens").checked = !!prefs.opens; $("s-sess").checked = !!prefs.sess; $("s-up").value = prefs.up; $("s-dn").value = prefs.dn; $("sym").value = prefs.sym; $("o-sl").value = prefs.slPts; $("o-tp").value = prefs.tpPts;
   $("s-keys").innerHTML = Object.entries(KEYNAMES).map(([k, n]) => `<div><span>${n}</span><input data-key="${k}" maxlength="1" value="${prefs.keys[k] || ""}"></div>`).join("");
@@ -602,6 +742,8 @@ function fillSettings() {
 function saveSettings() {
   Object.assign(prefs, { bal: +$("s-bal").value, dll: +$("s-dll").value, ptg: +$("s-ptg").value, act: $("s-act").value, mdd: +$("s-mdd").value, fee: +$("s-fee").value, mfee: +$("s-mfee").value, opens: $("s-opens").checked, sess: $("s-sess").checked, up: $("s-up").value, dn: $("s-dn").value });
   document.querySelectorAll("[data-key]").forEach((i) => (prefs.keys[i.dataset.key] = i.value.toLowerCase()));
+  Object.assign(prefs, { sound: $("s-sound").checked, vol: +$("s-vol").value, haptics: $("s-hap").checked, splash: $("s-splash").checked }); sfx("fill");
+  if (acct) { acct.rules = { ...(acct.rules || {}), mdd: prefs.mdd, dll: prefs.dll, ptg: prefs.ptg }; db.updAccount(acct.id, { rules: acct.rules }).catch(() => {}); }
   panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: prefs.up, wickDownColor: prefs.dn })); savePrefs(); drawOpens(); repaintAll(); refresh(); $("s-msg").textContent = "Saved";
 }
 async function loadAdmin() {
@@ -614,8 +756,10 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "admin") loadAdmin(); if (v === "settings") notionUI(); }
+function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "accounts") renderAccts(); if (v === "admin") loadAdmin(); if (v === "settings") notionUI(); }
 function layMenu() { $("laymenu").innerHTML = Object.entries(LAYOUTS).map(([k, [c, r]]) => `<button class="lay ${k === prefs.layout ? "on" : ""}" data-lay="${k}"><i style="grid-template-columns:repeat(${c},1fr);grid-template-rows:repeat(${r},1fr)">${"<b></b>".repeat(c * r)}</i>${c * r} chart${c * r > 1 ? "s" : ""}${k === "2h" ? " ↕" : ""}</button>`).join(""); }
+function splash() { const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><span class="sp-logo">⟲</span><span class="sp-name">Rewind</span></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 900); setTimeout(() => s.remove(), 1400); }
+if (prefs.splash !== false) splash();
 async function boot() {
   if (DEMO) { user = { id: "demo", email: "demo" }; const d = document.createElement("div"); d.className = "demo"; d.textContent = "DEMO · made-up prices · nothing is saved"; document.body.appendChild(d); }
   else {
@@ -630,7 +774,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales);
+  await loadAccts().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales);
   if (!$("start").value) $("start").value = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) notionUI().catch(() => {});
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
@@ -665,6 +809,10 @@ $("clr").onclick = () => { drawings.filter((d) => d.state === "armed").forEach(d
 document.querySelectorAll(".mode").forEach((b) => (b.onclick = () => { document.querySelectorAll(".mode").forEach((x) => x.classList.toggle("on", x === b)); ["scalp", "dom", "order"].forEach((m) => $("md-" + m).classList.toggle("hidden", m !== b.dataset.mode)); if (b.dataset.mode === "scalp" && !prefs.pad.show) { prefs.pad.show = true; padUI(); } refresh(); }));
 document.querySelectorAll(".btab").forEach((b) => (b.onclick = () => { if (b.classList.contains("on") && !prefs.dockClosed) { prefs.dockClosed = true; savePrefs(); return dockUI(); } prefs.dockClosed = false; savePrefs(); dockUI();
   document.querySelectorAll(".btab").forEach((x) => x.classList.toggle("on", x === b)); ["acct", "pos", "ord", "hist"].forEach((k) => $("b-" + k).classList.toggle("hidden", k !== b.dataset.b)); }));
+$("acctpill").onclick = acctMenu; $("ac-new").onclick = () => acctDlg(null);
+$("ac-list").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const id = b.dataset.use || b.dataset.edit || b.dataset.arch, a = accts.find((x) => x.id === id); if (!a) return;
+  if (b.dataset.use) { pickAcct(id); renderAccts(); } else if (b.dataset.edit) acctDlg(a); else if (confirm("Archive " + a.name + "? Its trades stay in your journal.")) db.updAccount(id, { archived: true }).then(() => { accts = accts.filter((x) => x.id !== id); if (acct && acct.id === id) pickAcct(null); renderAccts(); }); };
+["st-acct", "st-sym", "st-range"].forEach((k) => ($(k).onchange = () => { if (k === "st-acct") { prefs.stAcct = $(k).value; savePrefs(); } renderStats(); }));
 $("dockbtn").onclick = () => { prefs.dockClosed = !prefs.dockClosed; savePrefs(); dockUI(); };
 $("tfbar").onclick = (e) => { const b = e.target.closest(".tf"); if (b) setPaneTf(active, b.dataset.tf); };
 $("ranges").onclick = (e) => { const b = e.target.closest("[data-r]"); if (b) showRange(+b.dataset.r); };
