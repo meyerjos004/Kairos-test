@@ -39,7 +39,7 @@ async def main():
             await E(f"setLayout('{k}')"); await pg.wait_for_timeout(600); n = await E("panes.length"); want={"1":1,"2":2,"2h":2,"3":3,"4":4,"6":6,"8":8}[k]; check(f"layout {k} -> {want} charts", n == want, n)
         # drawings via mouse
         box = await pg.locator("#charts .pane").first.bounding_box(); cx, cy = box["x"]+box["width"]*0.5, box["y"]+box["height"]*0.5
-        for t in ["trend","rect","fib","measure"]:
+        for t in ["trend","rect","fib","measure","fibext","channel","arrow","prange","drange","ellipse"]:
             n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.move(cx-80, cy-40); await pg.mouse.down(); await pg.mouse.move(cx+60, cy+50, steps=6); await pg.mouse.up(); await pg.wait_for_timeout(100)
             check(f"draw {t}", await E("drawings.length") == n0 + 1)
         for t in ["hline","vline","long","short","text"]:
@@ -146,6 +146,11 @@ async def main():
         r0 = await E(rng); await E("stepFwd(); stepFwd(); setScale('log'); setScale('log')"); await pg.wait_for_timeout(300)
         check("dragged price scale stays squashed (steps + log toggle)", await E("panes[0].chart.priceScale('right').options().autoScale===false"), [r0, await E(rng)])
         await E("setScale('auto')"); check("A button turns auto-fit back on", await E("panes[0].chart.priceScale('right').options().autoScale===true"))
+        # channel width handle + hide/lock all
+        await E("view('trade')"); ch = await E("(()=>{const c=panes[0].candles, n=c.length; const d=newDrawing('channel', panes[0], {t:c[n-20].time,p:c[n-20].close}, {t:c[n-5].time,p:c[n-5].close+5}); repaintAll(); return d.off})()")
+        check("channel has a width", ch is not None and ch != 0, ch)
+        await E("prefs.hideDraw=true; repaintAll()"); check("hide all drawings", await E("prefs.hideDraw===true")); await E("prefs.hideDraw=false; repaintAll()")
+        await E("drawings.forEach(d=>d.locked=true)"); check("lock all drawings", await E("drawings.length>0 && drawings.every(d=>d.locked)")); await E("drawings.forEach(d=>d.locked=false)")
         # media dock: Reese library + Spotify/YouTube sign-in panels
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))
