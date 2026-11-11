@@ -795,12 +795,12 @@ function acctDlg(a) { const r = (a && a.rules) || {}; dlg(`<h3>${a ? "Edit accou
 }
 
 /* ---------------- themes (original palettes; candle colours stay yours) ---------------- */
-const THEMES = { midnight: ["Midnight", { "--bg": "#08090c", "--panel": "#0e1116", "--acc": "#5ee6b8", "--acc2": "#7aa7ff", "--txt": "#e6eaf0", "--mut": "#8590a2", "--line": "rgba(255,255,255,.07)" }],
+const THEMES = { kairos: ["Kairos", { "--bg": "#0a0a0d", "--panel": "#111116", "--acc": "#a78bfa", "--acc2": "#7c3aed", "--txt": "#ecebf3", "--mut": "#8b8a99", "--line": "rgba(167,139,250,.10)" }], midnight: ["Midnight", { "--bg": "#08090c", "--panel": "#0e1116", "--acc": "#5ee6b8", "--acc2": "#7aa7ff", "--txt": "#e6eaf0", "--mut": "#8590a2", "--line": "rgba(255,255,255,.07)" }],
   grid: ["Neon grid", { "--bg": "#05070d", "--panel": "#0a0f1a", "--acc": "#38e8ff", "--acc2": "#ff3dce", "--txt": "#e9f4ff", "--mut": "#7f93ad", "--line": "rgba(56,232,255,.12)" }],
   ember: ["Ember", { "--bg": "#0d0907", "--panel": "#15100c", "--acc": "#ffb23d", "--acc2": "#ff6b4a", "--txt": "#f5ece4", "--mut": "#a8968a", "--line": "rgba(255,178,61,.10)" }],
   glacier: ["Glacier", { "--bg": "#070b10", "--panel": "#0d141c", "--acc": "#9fd8ff", "--acc2": "#c3b5ff", "--txt": "#e8f2fb", "--mut": "#8aa0b5", "--line": "rgba(159,216,255,.10)" }],
   mono: ["Mono", { "--bg": "#0a0a0a", "--panel": "#121212", "--acc": "#f2f2f2", "--acc2": "#9a9a9a", "--txt": "#ededed", "--mut": "#8a8a8a", "--line": "rgba(255,255,255,.08)" }] };
-function applyTheme(k) { for (const [id, v] of Object.entries(prefs.myThemes || {})) THEMES[id] = v; const t = THEMES[k] || THEMES.midnight; for (const [v, c] of Object.entries(t[1])) document.documentElement.style.setProperty(v, c); prefs.theme = k in THEMES ? k : "midnight";
+function applyTheme(k) { for (const [id, v] of Object.entries(prefs.myThemes || {})) THEMES[id] = v; const t = THEMES[k] || THEMES.kairos; for (const [v, c] of Object.entries(t[1])) document.documentElement.style.setProperty(v, c); prefs.theme = k in THEMES ? k : "kairos";
   if ($("s-themes")) $("s-themes").innerHTML = Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="th ${id === prefs.theme ? "on" : ""}" data-th="${id}"><i style="background:${c["--bg"]};box-shadow:inset 0 0 0 1px ${c["--line"]}"><b style="background:${c["--acc"]}"></b><b style="background:${c["--acc2"]}"></b></i>${esc(nm)}</button>`).join(""); }
 
 /* ---------------- quick trade review (rules followed? mistakes) ---------------- */
@@ -1154,7 +1154,7 @@ function saveSettings() {
 }
 async function loadAdmin() {
   const { data: al } = await sb.from("allowlist").select("*").order("added_at");
-  $("ad-list").innerHTML = (al || []).map((a) => `<div class="row"><span style="flex:3">${a.email} <span class="muted">(${a.role})</span></span>${a.role === "admin" ? "<span></span>" : `<button class="ghost small" data-del="${a.email}">Remove</button>`}</div>`).join("");
+  $("ad-list").innerHTML = (al || []).map((a) => `<div class="row"><span style="flex:3">${a.email} <span class="muted">(${a.role})</span></span>${a.role === "admin" ? "<span></span>" : `<button class="small ${a.role === "waitlist" ? "primary" : "ghost"}" data-role="${a.email}" data-to="${a.role === "waitlist" ? "member" : "waitlist"}">${a.role === "waitlist" ? "Let in" : "Back to waitlist"}</button><button class="ghost small" data-del="${a.email}">Remove</button>`}</div>`).join("") + ((al || []).some((a) => a.role === "waitlist") ? '<button class="primary small" id="ad-launch">🚀 Let everyone on the waitlist in</button>' : "");
   const { data: fs } = await sb.from("features").select("*").order("key"); $("ad-feat").innerHTML = (fs || []).map((f) => `<label class="ck"><input type="checkbox" data-feat="${f.key}" ${f.enabled ? "checked" : ""}> ${f.label}</label>`).join("");
   const { data: bf } = await sb.from("bar_files").select("symbol,tf,day").order("day"); const g = {}; (bf || []).forEach((r) => (g[r.symbol + " " + r.tf] = g[r.symbol + " " + r.tf] || []).push(r.day));
   $("ad-data").innerHTML = Object.entries(g).map(([k, d]) => `${k}: ${d.length} months (${d[0].slice(0, 7)} → ${d[d.length - 1].slice(0, 7)})`).join("<br>") || "No data yet";
@@ -1164,14 +1164,14 @@ async function loadAdmin() {
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
 function view(v) { const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); } }
 function layMenu() { $("laymenu").innerHTML = Object.entries(LAYOUTS).map(([k, [c, r]]) => `<button class="lay ${k === prefs.layout ? "on" : ""}" data-lay="${k}"><i style="grid-template-columns:repeat(${c},1fr);grid-template-rows:repeat(${r},1fr)">${"<b></b>".repeat(c * r)}</i>${c * r} chart${c * r > 1 ? "s" : ""}${k === "2h" ? " ↕" : ""}</button>`).join(""); }
-function splash() { const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><span class="sp-logo">⟲</span><span class="sp-name">Rewind</span></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 900); setTimeout(() => s.remove(), 1400); }
+function splash() { const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><img class="sp-logo" src="icon.svg" alt=""><span class="sp-name">KAIROS<i>OS</i></span></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 900); setTimeout(() => s.remove(), 1400); }
 if (prefs.splash !== false) splash();
 async function boot() {
   if (DEMO) { user = { id: "demo", email: "demo" }; const d = document.createElement("div"); d.className = "demo"; d.textContent = "DEMO · made-up prices · nothing is saved"; document.body.appendChild(d); }
   else {
     const { data: { session } } = await sb.auth.getSession(); if (!session) { $("auth").classList.remove("hidden"); $("app").classList.add("hidden"); return; }
     user = session.user; const { data: okm } = await sb.rpc("is_member");
-    if (!okm) { $("auth").classList.remove("hidden"); $("a-msg").textContent = "Signed in as " + user.email + ", but this email isn't on the invite list yet. Ask King to add you."; return; }
+    if (!okm) { const { data: wl } = await sb.rpc("waitlisted"); if (wl) { location.href = "invite.html?in=1"; return; } $("auth").classList.remove("hidden"); $("a-msg").textContent = "Signed in as " + user.email + ", but this email isn't on the invite list yet. Ask King to add you."; return; }
     isAdmin = !!(await sb.rpc("is_admin")).data; $("vt-admin").classList.toggle("hidden", !isAdmin);
     const { data: fs } = await sb.from("features").select("key,enabled"); (fs || []).forEach((f) => (features[f.key] = f.enabled)); await loadPrefs();
   }
@@ -1489,8 +1489,9 @@ $("n-create").onclick = async () => { const id = $("n-pages").value; if (!id) re
 $("n-sync").onclick = async () => { nmsg("Syncing…"); try { const r = await notion("sync"); nmsg("Sent " + r.synced + " trades"); } catch (e) { nmsg(e.message); } };
 $("n-auto").onchange = async () => { notionAuto = $("n-auto").checked; await notion("auto", { on: notionAuto }).catch(() => {}); };
 $("n-off").onclick = async () => { if (!confirm("Disconnect Notion? Your Notion journal stays in Notion.")) return; await notion("disconnect").catch(() => {}); notionUI(); };
-$("ad-add").onclick = async () => { const e = $("ad-email").value.trim().toLowerCase(); if (!e) return; const { error } = await sb.from("allowlist").insert({ email: e }); if (error) alert(error.message); $("ad-email").value = ""; loadAdmin(); };
-$("ad-list").addEventListener("click", async (e) => { const em = e.target.dataset.del; if (!em || !confirm("Remove " + em + "? Their saved data stays, they just can't get in.")) return; await sb.from("allowlist").delete().eq("email", em); loadAdmin(); });
+$("ad-add").onclick = async () => { const e = $("ad-email").value.trim().toLowerCase(); if (!e) return; const { error } = await sb.from("allowlist").insert({ email: e, role: "waitlist" }); if (error) alert(error.message); $("ad-email").value = ""; loadAdmin(); };
+$("ad-list").addEventListener("click", async (e) => { if (e.target.id === "ad-launch") { if (!confirm("Open KAIROS to everyone on the waitlist?")) return; await sb.from("allowlist").update({ role: "member" }).eq("role", "waitlist"); return loadAdmin(); }
+  if (e.target.dataset.role) { await sb.from("allowlist").update({ role: e.target.dataset.to }).eq("email", e.target.dataset.role); return loadAdmin(); } const em = e.target.dataset.del; if (!em || !confirm("Remove " + em + "? Their saved data stays, they just can't get in.")) return; await sb.from("allowlist").delete().eq("email", em); loadAdmin(); });
 $("ad-feat").addEventListener("change", async (e) => { const k = e.target.dataset.feat; if (k) await sb.from("features").update({ enabled: e.target.checked, updated_at: new Date().toISOString() }).eq("key", k); });
 document.addEventListener("keydown", (e) => {
   if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || $("v-trade").classList.contains("hidden") || !$("dlg").classList.contains("hidden")) return; const k = e.key.toLowerCase(), K = prefs.keys;

@@ -1,1 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0e1116"/><path d="M20 22a16 16 0 1 1-2 18" fill="none" stroke="#38d39f" stroke-width="5" stroke-linecap="round"/><path d="M12 16l8 6-8 6z" fill="#38d39f"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#16161b"/><stop offset="1" stop-color="#08080a"/></linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3b44"/><stop offset=".5" stop-color="#1c1d22"/><stop offset="1" stop-color="#2b2c33"/></linearGradient>
+    <linearGradient id="v" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#b98cff"/></linearGradient>
+    <radialGradient id="uv" cx=".62" cy=".38" r=".6"><stop offset="0" stop-color="#8b5cf6" stop-opacity=".30"/><stop offset="1" stop-color="#8b5cf6" stop-opacity="0"/></radialGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="9" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="url(#bg)"/>
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="url(#uv)"/>
+  <rect x="9.5" y="9.5" width="493" height="493" rx="110.5" fill="none" stroke="url(#rim)" stroke-width="3"/>
+  <!-- dial: the right moment -->
+  <circle cx="256" cy="256" r="168" fill="none" stroke="#2a2b33" stroke-width="6"/>
+  <path d="M256 88 A168 168 0 0 1 401.5 172" fill="none" stroke="url(#v)" stroke-width="6" stroke-linecap="round" opacity=".85"/>
+  <g stroke="#3a3b44" stroke-width="5" stroke-linecap="square"><path d="M256 104v14M408 256h-14M256 408v-14M104 256h14"/></g>
+  <!-- K: stem + two sharp arms; the upper arm is the clock hand -->
+  <g fill="none" stroke-linejoin="miter" stroke-miterlimit="10">
+    <path d="M196 150V362" stroke="#e9e7f2" stroke-width="34"/>
+    <path d="M212 262L334 362" stroke="#e9e7f2" stroke-width="34"/>
+    <path d="M212 262L380 132" stroke="url(#v)" stroke-width="34" filter="url(#glow)"/>
+  </g>
+  <circle cx="389" cy="125" r="13" fill="#d6c2ff" filter="url(#glow)"/>
+</svg>

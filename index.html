@@ -3,9 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Rewind · futures replay</title>
-<link rel="icon" href="icon.svg">
-<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#08090c"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Rewind"><link rel="apple-touch-icon" href="icon.svg">
+<title>KAIROS OS · futures replay</title>
+<link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="icon-32.png" sizes="32x32"><link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0a0a0d"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Rewind"><link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Inter:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
@@ -17,8 +17,31 @@
 <body>
 <div id="auth" class="screen hidden">
   <div class="glass authcard pop">
-    <div class="brand big"><span class="logo">⟲</span> Rewind</div>
-    <p class="muted">Bar-by-bar futures replay. Invite only.</p>
+    <div class="kbrand"><img src="icon.svg" alt="" class="kmark"><svg class="kwm" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 120">
+  <defs>
+    <linearGradient id="v" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#7c3aed"/><stop offset="1" stop-color="#b98cff"/></linearGradient>
+    <filter id="glow" filterUnits="userSpaceOnUse" x="0" y="0" width="700" height="120"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <g fill="none" stroke="#ecebf3" stroke-width="10" stroke-linejoin="miter" stroke-miterlimit="10" stroke-linecap="butt">
+    <!-- K -->
+    <path d="M12 20V100"/><path d="M18 62L66 100"/>
+    <path d="M18 62L72 18" stroke="url(#v)" filter="url(#glow)"/>
+    <!-- A without the bar: a sharp peak -->
+    <path d="M104 100L142 18L180 100"/>
+    <!-- I -->
+    <path d="M218 20V100"/>
+    <!-- R: angled bowl + leg -->
+    <path d="M258 100V20H302L318 38V48L302 62H258"/><path d="M294 62L322 100"/>
+    <!-- O: geometric ring -->
+    <circle cx="398" cy="60" r="40"/>
+    <!-- S: cut from straight lines -->
+    <path d="M532 26L520 20H478L462 34V46L478 60H514L530 74V86L514 100H470L458 94"/>
+  </g>
+  <circle cx="76" cy="15" r="5" fill="#d6c2ff" filter="url(#glow)"/>
+  <text x="566" y="100" font-family="Inter, Segoe UI, sans-serif" font-weight="600" font-size="22" letter-spacing="3" fill="#8b5cf6">OS</text>
+</svg>
+<span class="kver">v0.5</span></div>
+    <p class="muted">The right moment, on repeat. Bar-by-bar futures replay · invite only.</p>
     <input id="a-email" type="email" placeholder="email" autocomplete="email">
     <input id="a-pass" type="password" placeholder="password (8+ chars)" autocomplete="current-password">
     <div class="row"><button id="a-in" class="primary">Sign in</button><button id="a-up">Create account</button></div>
@@ -28,7 +51,7 @@
 
 <div id="app" class="hidden">
   <aside class="rail">
-    <div class="rlogo" title="Rewind">⟲</div>
+    <div class="rlogo" title="KAIROS OS"><img src="icon.svg" alt="KAIROS"></div>
     <button data-view="trade" class="ri vtab on" title="Trade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M9 20V5M14 20v-8M19 20V8"/><path d="M3 20h18"/></svg></button>
     <button data-view="journal" class="ri vtab" title="Journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M5 16a4 4 0 0 1 4-4h10"/></svg></button>
     <button data-view="stats" class="ri vtab" title="Stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M6 15l4-5 3 3 5-7"/><circle cx="18" cy="6" r="1.2"/></svg></button>
@@ -44,7 +67,7 @@
   </aside>
   <div class="main">
   <header class="top">
-    <div class="acct" id="acctpill" title="Switch account"><span class="logo">⟲</span><span id="acctname">Replay</span></div>
+    <div class="acct" id="acctpill" title="Switch account"><img class="logo" src="icon.svg" alt=""><span id="acctname">Replay</span></div>
     <div class="kv"><label>Bal</label><b id="bal">—</b></div>
     <div class="kv"><label>RP&amp;L</label><b id="rpl">—</b></div>
     <div class="kv"><label>UP&amp;L</label><b id="upl">—</b></div>
