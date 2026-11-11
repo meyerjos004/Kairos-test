@@ -22,79 +22,139 @@
 </div>
 
 <div id="app" class="hidden">
-  <header>
+  <!-- top bar: instrument + replay + account panel -->
+  <header class="top">
     <div class="brand"><span class="logo">⟲</span> Rewind</div>
-    <nav>
-      <button data-tab="replay" class="tab on">Replay</button>
-      <button data-tab="journal" class="tab">Journal</button>
-      <button data-tab="settings" class="tab">Settings</button>
-      <button data-tab="admin" class="tab hidden" id="tab-admin">Admin</button>
-    </nav>
-    <div class="who"><span id="who"></span> <button id="logout" class="ghost small">Sign out</button></div>
-  </header>
-
-  <section id="v-replay" class="view">
-    <div class="toolbar">
-      <select id="sym"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select>
-      <select id="tf"></select>
+    <div class="grp">
+      <select id="sym" title="Instrument"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select>
+      <div id="tfchips" class="chips"></div>
+    </div>
+    <div class="grp replay">
       <input id="start" type="datetime-local" title="Start (New York time)">
-      <button id="go" class="primary">Load</button>
-      <span class="sep"></span>
-      <button id="back" title="Step back">⏮</button>
-      <button id="play" title="Play / pause (space)">▶</button>
-      <button id="step" title="Step one bar (→)">⏭</button>
-      <select id="speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option><option value="10">100×</option></select>
+      <button id="go" class="primary small">Load</button>
+      <button id="back" class="icon" title="Step back (←)">⏮</button>
+      <button id="play" class="icon" title="Play / pause (space)">▶</button>
+      <button id="step" class="icon" title="Step one bar (→)">⏭</button>
+      <select id="speed" title="Speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option><option value="10">100×</option></select>
       <span id="clock" class="clock">—</span>
     </div>
-    <div class="main">
-      <div id="chart"></div>
-      <aside class="panel">
-        <div class="acct">
-          <div><label>Balance</label><b id="bal">—</b></div>
-          <div><label>Today</label><b id="dayp">—</b></div>
-          <div><label>Drawdown left</label><b id="ddl">—</b></div>
+    <div class="acctbar" id="acctbar">
+      <div><label>Balance</label><b id="bal">—</b></div>
+      <div><label>Open P&amp;L</label><b id="openp">—</b></div>
+      <div><label>Day P&amp;L</label><b id="dayp">—</b></div>
+      <div><label>Loss limit left</label><b id="dll">—</b></div>
+      <div><label>Drawdown left</label><b id="ddl">—</b></div>
+      <div id="lockchip" class="lockchip hidden">🔒 Locked</div>
+    </div>
+    <nav class="views">
+      <button data-view="trade" class="vtab on">Trade</button>
+      <button data-view="journal" class="vtab">Journal</button>
+      <button data-view="settings" class="vtab">Settings</button>
+      <button data-view="admin" class="vtab hidden" id="vt-admin">Admin</button>
+      <button id="logout" class="ghost small" title="Sign out">⎋</button>
+    </nav>
+  </header>
+
+  <!-- TRADE workspace -->
+  <section id="v-trade" class="view">
+    <div class="work">
+      <div class="tools" id="tools">
+        <button data-tool="cursor" class="tool on" title="Cursor (Esc)">↖</button>
+        <button data-tool="hline" class="tool" title="Horizontal line (H)">―</button>
+        <button data-tool="trend" class="tool" title="Trend line (T)">╱</button>
+        <button data-tool="fib" class="tool" title="Fib retracement (F): click high, then low">ƒ</button>
+        <button data-tool="measure" class="tool" title="Measure (M): points and R">⇕</button>
+        <span class="tsep"></span>
+        <button id="clr" class="tool" title="Clear drawings">⌫</button>
+        <span class="tsep"></span>
+        <button data-layout="1" class="tool lay on" title="One chart">▢</button>
+        <button data-layout="2" class="tool lay" title="Two charts">◫</button>
+      </div>
+      <div class="charts" id="charts">
+        <div class="pane" id="pane0"><div class="ptitle"><span id="p0t"></span>
+          <div class="qt"><button class="qsell" id="qsell">SELL <span id="qbid">—</span></button><input id="qqty" type="number" min="1" value="1" title="Lots"><button class="qbuy" id="qbuy">BUY <span id="qask">—</span></button></div></div>
+          <div class="chart" id="chart0"></div></div>
+        <div class="pane hidden" id="pane1"><div class="ptitle"><select id="tf1" class="mini"></select><span id="p1t"></span></div><div class="chart" id="chart1"></div></div>
+      </div>
+      <aside class="side">
+        <div class="modes"><button data-mode="scalp" class="mode on">Scalp</button><button data-mode="dom" class="mode" id="m-dom">DOM</button><button data-mode="order" class="mode">Order</button></div>
+        <div id="md-scalp" class="mpanel">
+          <label>Lots</label>
+          <div class="lots" id="lots"></div>
+          <div class="row2"><label>Stop (pts)<input id="b-sl" type="number" step="0.25" value="15"></label><label>Target (pts)<input id="b-tp" type="number" step="0.25" value="45"></label></div>
+          <label class="ck"><input id="b-on" type="checkbox" checked> Auto bracket on every entry</label>
+          <label class="ck"><input id="b-risk" type="checkbox"> Size from risk <input id="riskp" type="number" step="0.1" value="1" class="inl">% of balance</label>
+          <div class="row"><button id="sbuy" class="buy">Buy Mkt</button><button id="ssell" class="sell">Sell Mkt</button></div>
+          <div class="row"><button id="sclose" class="ghost">Close</button><button id="srev" class="ghost">Reverse</button><button id="sbe" class="ghost">Stop→BE</button></div>
+          <div class="row"><button id="scancel" class="ghost">Cancel all</button><button id="sflat" class="warnbtn">Flatten all</button></div>
+          <div class="row"><button id="slock" class="ghost small">Lock me out for today</button></div>
         </div>
-        <div id="locked" class="warn hidden">🔒 Prop rule hit. Session locked.</div>
-        <div class="ticket">
-          <div class="row2">
-            <label>Risk %<input id="riskp" type="number" step="0.1" value="1"></label>
-            <label>Qty<input id="qty" type="number" step="1" value="0" title="0 = size from risk %"></label>
-          </div>
-          <div class="row2">
-            <label>Stop (pts)<input id="stoppts" type="number" step="0.25" value="15"></label>
-            <label>Target (R)<input id="tgtr" type="number" step="0.5" value="3"></label>
-          </div>
-          <div class="row"><button id="buy" class="buy">Buy</button><button id="sell" class="sell">Sell</button></div>
-          <div class="row"><button id="flat" class="ghost">Close position</button><button id="be" class="ghost">Stop → BE</button></div>
-          <div id="pos" class="pos muted small">Flat</div>
+        <div id="md-dom" class="mpanel hidden">
+          <div class="domhead"><span>Buy</span><span>Price</span><span>Sell</span></div>
+          <div id="dom" class="dom"></div>
+          <p class="tiny muted">Click Buy or Sell beside a price: below the market = limit, above = stop (and the reverse for sells). Replay data has no order book, so the ladder shows prices, your orders and your position.</p>
         </div>
-        <div class="recent"><h4>This session</h4><div id="recent" class="small"></div></div>
+        <div id="md-order" class="mpanel hidden">
+          <div class="row"><button id="o-buy" class="side-b on">Buy</button><button id="o-sell" class="side-s">Sell</button></div>
+          <label>Type<select id="o-type"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option></select></label>
+          <label>Price<input id="o-px" type="number" step="0.25"></label>
+          <label>Lots<input id="o-qty" type="number" min="1" value="1"></label>
+          <div class="row2"><label>Stop (pts)<input id="o-sl" type="number" step="0.25" value="15"></label><label>Target (pts)<input id="o-tp" type="number" step="0.25" value="45"></label></div>
+          <div id="o-risk" class="tiny muted"></div>
+          <button id="o-send" class="primary wide">Place order</button>
+        </div>
       </aside>
     </div>
-  </section>
-
-  <section id="v-journal" class="view hidden">
-    <div class="stats" id="stats"></div>
-    <div id="eqchart"></div>
-    <div class="toolbar"><select id="j-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select><button id="j-csv" class="ghost">Export CSV</button></div>
-    <table class="tbl"><thead><tr><th>Date (NY)</th><th>Sym</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>R</th><th>P&L</th><th>Notes</th><th></th></tr></thead><tbody id="jrows"></tbody></table>
-  </section>
-
-  <section id="v-settings" class="view hidden">
-    <div class="card form">
-      <h3>Account & prop rules</h3>
-      <label>Starting balance<input id="s-bal" type="number" value="50000"></label>
-      <label>Daily loss limit ($, 0 = off)<input id="s-dll" type="number" value="1000"></label>
-      <label>Max drawdown ($, trailing from high, 0 = off)<input id="s-mdd" type="number" value="2000"></label>
-      <label>Commission per contract, round trip ($)<input id="s-fee" type="number" step="0.01" value="4.50"></label>
-      <label>Micro commission per contract ($)<input id="s-mfee" type="number" step="0.01" value="1.50"></label>
-      <h3>Chart</h3>
-      <label><input id="s-opens" type="checkbox" checked> Show key opens (midnight, 9:30, 10:00)</label>
-      <button id="s-save" class="primary">Save</button> <span id="s-msg" class="muted small"></span>
+    <div class="bottom">
+      <div class="btabs"><button data-b="pos" class="btab on">Positions</button><button data-b="ord" class="btab">Orders <span id="ordn"></span></button><button data-b="hist" class="btab">History</button><span class="bstat" id="bstat"></span></div>
+      <div id="b-pos" class="bpanel"></div><div id="b-ord" class="bpanel hidden"></div><div id="b-hist" class="bpanel hidden"></div>
     </div>
   </section>
 
-  <section id="v-admin" class="view hidden">
+  <section id="v-journal" class="view hidden scroll">
+    <div class="stats" id="stats"></div>
+    <div id="eqchart"></div>
+    <div class="toolbar"><select id="j-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select><button id="j-csv" class="ghost">Export CSV</button><button id="j-notion" class="ghost">Sync to Notion</button><span id="j-msg" class="muted small"></span></div>
+    <table class="tbl"><thead><tr><th>Date (NY)</th><th>Sym</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>R</th><th>P&amp;L</th><th>Notes</th><th></th></tr></thead><tbody id="jrows"></tbody></table>
+  </section>
+
+  <section id="v-settings" class="view hidden scroll">
+    <div class="cols">
+      <div class="card form">
+        <h3>Account &amp; risk controls</h3>
+        <label>Starting balance<input id="s-bal" type="number" value="50000"></label>
+        <label>Daily loss limit ($, 0 = off)<input id="s-dll" type="number" value="1000"></label>
+        <label>Profit target guard: stop trading for the day at +$ (0 = off)<input id="s-ptg" type="number" value="0"></label>
+        <label>Max drawdown ($, trailing from the high, 0 = off)<input id="s-mdd" type="number" value="2000"></label>
+        <label>Commission per contract, round trip ($)<input id="s-fee" type="number" step="0.01" value="4.50"></label>
+        <label>Micro commission per contract ($)<input id="s-mfee" type="number" step="0.01" value="1.50"></label>
+        <h3>Chart</h3>
+        <label class="ck"><input id="s-opens" type="checkbox" checked> Show key opens (18:00, midnight, 9:30, 10:00)</label>
+        <button id="s-save" class="primary">Save</button> <span id="s-msg" class="muted small"></span>
+      </div>
+      <div class="card form" id="notioncard">
+        <h3>Notion</h3>
+        <p class="muted small">Send every closed trade to your own Notion journal. Your Notion stays yours: nobody else's trades go in, and nobody else can see yours.</p>
+        <div id="n-state" class="small">Checking…</div>
+        <div id="n-connect" class="hidden">
+          <button id="n-oauth" class="primary wide hidden">Connect with Notion</button>
+          <details id="n-tokenbox"><summary class="small">Or connect with an integration token</summary>
+            <ol class="tiny muted"><li>Go to notion.so/profile/integrations → New integration (Internal) → copy the secret.</li><li>Open the Notion page you want the journal in → ••• → Connections → add your integration.</li><li>Paste the secret here.</li></ol>
+            <div class="row"><input id="n-token" type="password" placeholder="ntn_…"><button id="n-save">Connect</button></div>
+          </details>
+        </div>
+        <div id="n-setup" class="hidden"><label>Put the "Rewind Journal" database in<select id="n-pages"></select></label><button id="n-create" class="primary">Create journal</button></div>
+        <div id="n-ready" class="hidden">
+          <label class="ck"><input id="n-auto" type="checkbox" checked> Sync each trade automatically</label>
+          <div class="row"><a id="n-open" target="_blank" rel="noopener">Open my Notion journal ↗</a></div>
+          <div class="row"><button id="n-sync" class="ghost">Sync now</button><button id="n-off" class="ghost">Disconnect</button></div>
+        </div>
+        <p id="n-msg" class="small muted"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-admin" class="view hidden scroll">
     <div class="card form">
       <h3>Invite list</h3>
       <div class="row"><input id="ad-email" type="email" placeholder="friend@email.com"><button id="ad-add" class="primary">Invite</button></div>
@@ -106,7 +166,8 @@
     </div>
   </section>
 </div>
-<footer class="tiny muted">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a>. Practice tool, not financial advice.</footer>
+<div id="toast" class="toast hidden"></div>
+<footer class="tiny muted">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> · practice tool, not financial advice</footer>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>
