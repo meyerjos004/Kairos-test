@@ -12,7 +12,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
-<div class="aurora"></div>
 <div id="auth" class="screen hidden">
   <div class="glass authcard pop">
     <div class="brand big"><span class="logo">⟲</span> Rewind</div>
@@ -25,32 +24,48 @@
 </div>
 
 <div id="app" class="hidden">
-  <header class="top glass">
-    <div class="brand"><span class="logo">⟲</span> Rewind</div>
-    <div class="grp"><select id="sym" title="Instrument"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select></div>
+  <aside class="rail">
+    <div class="rlogo" title="Rewind">⟲</div>
+    <button data-view="trade" class="ri vtab on" title="Trade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M9 20V5M14 20v-8M19 20V8"/><path d="M3 20h18"/></svg></button>
+    <button data-view="journal" class="ri vtab" title="Journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M5 16a4 4 0 0 1 4-4h10"/></svg></button>
+    <button data-view="settings" class="ri vtab" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
+    <button data-view="admin" class="ri vtab hidden" id="vt-admin" title="Admin: invites, features, data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg></button>
+    <div class="rsp"></div>
+    <div class="avatar" id="avatar" title="">·</div>
+    <button id="logout" class="ri" title="Sign out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 16l-4-4 4-4M6 12h10"/></svg></button>
+  </aside>
+  <div class="main">
+  <header class="top">
+    <div class="acct" title="Replay account"><span class="logo">⟲</span><span id="acctname">Replay</span></div>
+    <div class="kv"><label>Bal</label><b id="bal">—</b></div>
+    <div class="kv"><label>RP&amp;L</label><b id="rpl">—</b></div>
+    <div class="kv"><label>UP&amp;L</label><b id="upl">—</b></div>
+    <div class="kv"><label>DD left</label><b id="ddl">—</b></div>
+    <div class="status" id="status">Active</div>
     <div class="grp replay">
       <input id="start" type="datetime-local" title="Start (New York time)">
       <button id="go" class="primary small">Load</button>
       <div class="seg"><button id="back" title="Step back (←)">⏮</button><button id="play" title="Play / pause (space)">▶</button><button id="step" title="Step one bar (→)">⏭</button></div>
       <select id="speed" title="Replay speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option><option value="10">100×</option></select>
-      <span id="clock" class="clock">—</span>
     </div>
-    <div class="acctbar" id="acctbar">
-      <div class="kv"><label>Bal</label><b id="bal">—</b></div>
-      <div class="kv"><label>RPL</label><b id="rpl">—</b></div>
-      <div class="kv"><label>UPL</label><b id="upl">—</b></div>
-      <div class="kv"><label>Drawdown left</label><b id="ddl">—</b></div>
-      <div class="status" id="status">Active</div>
-    </div>
-    <nav class="views">
-      <button data-view="trade" class="vtab on">Trade</button><button data-view="journal" class="vtab">Journal</button><button data-view="settings" class="vtab">Settings</button><button data-view="admin" class="vtab hidden" id="vt-admin">Admin</button>
-      <button id="lockbtn" class="vtab" title="Personal lockout">🔒</button><button id="logout" class="vtab" title="Sign out">⎋</button>
-    </nav>
+    <button id="lockbtn" class="ib" title="Personal lockout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
+    <span class="conn" title="Replay data">●</span>
   </header>
 
   <section id="v-trade" class="view">
+    <div class="tbar">
+      <label class="symsearch" title="Instrument"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><select id="sym"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select></label>
+      <div class="tfs" id="tfbar"></div>
+      <span class="vsep"></span>
+      <div class="laywrap"><button id="indbtn" class="tb" title="Indicators"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c3 0 3-14 6-14M7 11h5"/><path d="M14 11l6 8M20 11l-6 8"/></svg> Indicators</button><div id="indmenu" class="menu hidden"></div></div>
+      <div class="laywrap"><button id="laybtn" class="ib" title="Chart layout (1 to 8 charts)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button><div id="laymenu" class="menu hidden"></div></div>
+      <div class="tsp"></div>
+      <button id="sidebtn" class="ib" title="DOM / order ticket panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M15 4.5v15"/></svg></button>
+      <button id="shotbtn" class="ib" title="Save a picture of the active chart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+      <button id="fullbtn" class="ib" title="Full screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+    </div>
     <div class="work">
-      <div class="tools glass" id="tools">
+      <div class="tools" id="tools">
         <button data-tool="cursor" class="tool on" title="Cursor (Esc)">↖</button>
         <button data-tool="cross" class="tool" title="Crosshair">✛</button>
         <span class="tsep"></span>
@@ -68,12 +83,9 @@
         <span class="tsep"></span>
         <button id="magnet" class="tool" title="Magnet: snap to candle highs/lows/closes">🧲</button>
         <button id="clr" class="tool" title="Remove all drawings">⌫</button>
-        <span class="tsep"></span>
-        <div class="laywrap"><button id="laybtn" class="tool" title="Chart layout">⊞</button>
-          <div id="laymenu" class="menu glass hidden"></div></div>
       </div>
       <div class="charts" id="charts"></div>
-      <aside class="side glass">
+      <aside class="side hidden" id="side">
         <div class="modes"><button data-mode="scalp" class="mode on">Scalp</button><button data-mode="dom" class="mode" id="m-dom">DOM</button><button data-mode="order" class="mode">Order</button></div>
         <div id="md-scalp" class="mpanel">
           <p class="muted small">The Scalp Pad floats over the chart. Drag it anywhere, and right-click it for settings.</p>
@@ -107,9 +119,16 @@
         </div>
       </aside>
     </div>
-    <div class="bottom glass">
-      <div class="btabs"><button data-b="pos" class="btab on">Positions</button><button data-b="ord" class="btab">Orders <span id="ordn"></span></button><button data-b="hist" class="btab">History</button><span class="bstat" id="bstat"></span></div>
-      <div id="b-pos" class="bpanel"></div><div id="b-ord" class="bpanel hidden"></div><div id="b-hist" class="bpanel hidden"></div>
+    <div class="cfoot">
+      <div class="ranges" id="ranges"><button data-r="1825">5y</button><button data-r="365">1y</button><button data-r="182">6m</button><button data-r="91">3m</button><button data-r="30">1m</button><button data-r="5">5d</button><button data-r="1">1d</button></div>
+      <button id="gotobtn" class="ib sm" title="Go to a date"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg></button>
+      <div class="tsp"></div>
+      <span id="clock" class="clock">—</span><span class="ftag">NY</span><span class="ftag">ETH</span>
+      <button id="sc-pct" class="ftag b" title="Percent scale">%</button><button id="sc-log" class="ftag b" title="Log scale">log</button><button id="sc-auto" class="ftag b on" title="Auto-fit prices">auto</button>
+    </div>
+    <div class="bottom" id="dock">
+      <div class="btabs"><button data-b="acct" class="btab">Accounts</button><button data-b="ord" class="btab">Orders <span id="ordn"></span></button><button data-b="pos" class="btab on">Positions</button><button data-b="hist" class="btab">History</button><span class="bstat" id="bstat"></span><button id="dockbtn" class="ib sm" title="Show / hide"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button></div>
+      <div class="bbody"><div id="b-acct" class="bpanel hidden"></div><div id="b-pos" class="bpanel"></div><div id="b-ord" class="bpanel hidden"></div><div id="b-hist" class="bpanel hidden"></div></div>
     </div>
   </section>
 
@@ -171,24 +190,26 @@
       <h3>Data on file</h3><div id="ad-data" class="small muted"></div>
     </div>
   </section>
+  </div>
 </div>
-
 <!-- floating scalp pad -->
-<div id="pad" class="pad glass hidden">
-  <div class="padbar" id="padbar"><span>Scalp</span><span class="muted tiny" id="padsym"></span><button id="padx" class="x" title="Dock">×</button></div>
+<div id="pad" class="pad hidden">
+  <div class="padbar" id="padbar"><span class="pt">Scalp</span><b id="padsym"></b><button id="padmore" class="pb" title="More: bid/ask, presets, close, reverse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button><button id="padx" class="pb" title="Dock (hide)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 15h16"/></svg></button></div>
   <div class="padbody">
-    <div class="pxrow"><div><label>Bid</label><b id="pbid">—</b></div><div><label>Ask</label><b id="pask">—</b></div></div>
-    <div class="row"><button id="pbuy" class="buy">Buy <kbd>B</kbd></button><button id="psell" class="sell">Sell <kbd>S</kbd></button></div>
-    <div class="row"><button id="pjb" class="ghost">Join bid <kbd>J</kbd></button><button id="pja" class="ghost">Join ask <kbd>A</kbd></button></div>
-    <div class="lots" id="lots"></div>
-    <div class="row"><button id="pclose" class="ghost">Close <kbd>X</kbd></button><button id="prev" class="ghost">Reverse <kbd>R</kbd></button></div>
+    <div class="prow"><button id="pbuy" class="buy" title="Buy market (B)">Buy</button><div class="qstep"><button id="qdn">−</button><b id="qn">1</b><span>lots</span><button id="qup">+</button></div><button id="psell" class="sell" title="Sell market (S)">Sell</button></div>
+    <div class="prow2"><button id="pjb" title="Join bid (J)">Join Bid</button><button id="pja" title="Join ask (A)">Join Ask</button></div>
+    <div id="padx2" class="padx2 hidden">
+      <div class="pxrow"><div><label>Bid</label><b id="pbid">—</b></div><div><label>Ask</label><b id="pask">—</b></div></div>
+      <div class="lots" id="lots"></div>
+      <div class="prow2"><button id="pclose">Close <kbd>X</kbd></button><button id="prev">Reverse <kbd>R</kbd></button></div>
+    </div>
     <div id="padpos" class="padpos">Flat</div>
   </div>
 </div>
 <div id="ctx" class="menu glass hidden"></div>
 <div id="dlg" class="dlgwrap hidden"><div class="glass dlg pop" id="dlgbox"></div></div>
 <div id="toast" class="toast glass hidden"></div>
-<footer class="tiny muted">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> · practice tool, not financial advice</footer>
+<footer class="tiny muted hidden-trade" id="foot">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> · practice tool, not financial advice</footer>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>

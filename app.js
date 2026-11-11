@@ -1,4 +1,4 @@
-/* Rewind v0.3: bar-by-bar futures replay that works like a prop-firm trading station.
+/* Rewind v0.4: bar-by-bar futures replay that works like a prop-firm trading station.
    - 1 to 8 synced charts (any timeframe each), canvas drawing layer (trend, ray, h-line, h-ray, v-line, zone, fib, long/short position, measure, text)
    - Long/Short position tool can be ARMED: it places the entry order with its own stop + target and fills automatically (FX Replay style)
    - Floating Scalp Pad (drag it anywhere, right-click for settings), DOM ladder with My Bid/My Ask, Order mode with draft order lines
@@ -18,7 +18,7 @@ const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
 const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
-  lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false };
+  lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false };
 
 /* ---------------- time (shown in New York time) ---------------- */
 const offCache = new Map();
@@ -145,34 +145,44 @@ function pushBar(p, b) {
   const c = { time: k, open: b.o, high: b.h, low: b.l, close: b.c }; p.candles.push(c); return c;
 }
 function makePane(i) {
-  const el = document.createElement("div"); el.className = "pane"; el.innerHTML = `<div class="ptitle"><select class="ptf"></select><span class="psym"></span>
-    <div class="qt"><button class="qsell">SELL <span class="qb">—</span></button><button class="qbuy">BUY <span class="qa">—</span></button></div></div><div class="chart"></div><canvas class="overlay"></canvas>`;
+  const el = document.createElement("div"); el.className = "pane"; el.innerHTML = `<div class="wmark"></div><div class="legend"><span class="lname"></span><i></i><span class="ohlc"></span></div><div class="chart"></div><canvas class="overlay"></canvas>`;
   $("charts").appendChild(el);
   const chart = LightweightCharts.createChart(el.querySelector(".chart"), { layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontSize: 11, fontFamily: "Geist Mono, ui-monospace, monospace" },
     grid: { vertLines: { color: "rgba(255,255,255,.035)" }, horzLines: { color: "rgba(255,255,255,.035)" } }, rightPriceScale: { borderColor: "rgba(255,255,255,.06)" },
     timeScale: { borderColor: "rgba(255,255,255,.06)", timeVisible: true, secondsVisible: true, rightOffset: 12 }, crosshair: { mode: 1, vertLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" }, horzLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" } }, autoSize: true });
   const series = chart.addCandlestickSeries({ upColor: prefs.up, downColor: prefs.dn, borderVisible: false, wickUpColor: prefs.up, wickDownColor: prefs.dn, priceFormat: { type: "price", precision: 2, minMove: TICK } });
   const p = { i, el, chart, series, sec: paneSec(i), candles: [], lines: [], opens: [], cv: el.querySelector("canvas.overlay") };
-  const sl = el.querySelector(".ptf"); sl.innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<option ${n === prefs.tfs[i] ? "selected" : ""}>${n}</option>`).join("");
-  sl.onchange = async () => { prefs.tfs[i] = sl.value; savePrefs(); const n15 = panes.some((q) => paneSec(q.i) < 60); if (n15) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); };
-  el.querySelector(".qbuy").onclick = () => market(1); el.querySelector(".qsell").onclick = () => market(-1);
+  p.mode = 0; p.auto = true;
   el.addEventListener("pointerdown", () => setActive(i), true);
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => paint(p)); new ResizeObserver(() => paint(p)).observe(el);
-  chart.subscribeCrosshairMove((pr) => { if (pr.point) p.hover = { point: pr.point }; });
+  chart.subscribeCrosshairMove((pr) => { if (pr.point) p.hover = { point: pr.point }; const d = pr.seriesData && pr.seriesData.get(series);
+    el.querySelector(".ohlc").innerHTML = d ? `O <b>${px2(d.open)}</b> H <b>${px2(d.high)}</b> L <b>${px2(d.low)}</b> C <b class="${d.close >= d.open ? "pos-up" : "pos-dn"}">${px2(d.close)}</b>` : ""; });
   initPointer(p);
   return p;
 }
-function setActive(i) { active = i; panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); }
+function setActive(i) { active = i; panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
+function label(p) { const tf = prefs.tfs[p.i] || "5m"; p.el.querySelector(".lname").textContent = `${sym} · ${tf} · CME`; p.el.querySelector(".wmark").textContent = `CME ${sym} ${tf}`; }
+function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}">${n === "1D" ? "D" : n}</button>`).join(""); }
+async function setPaneTf(i, tf) { const p = panes[i]; if (!p) return; prefs.tfs[i] = tf; savePrefs(); tfUI(); label(p); if (panes.some((q) => paneSec(q.i) < 60)) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); }
+function scaleUI() { const p = panes[active]; if (!p) return; $("sc-pct").classList.toggle("on", p.mode === 2); $("sc-log").classList.toggle("on", p.mode === 1); $("sc-auto").classList.toggle("on", p.auto); }
+function setScale(k) { const p = panes[active]; if (!p) return; if (k === "auto") p.auto = !p.auto; else { const m = k === "pct" ? 2 : 1; p.mode = p.mode === m ? 0 : m; } p.chart.priceScale("right").applyOptions({ mode: p.mode, autoScale: p.auto }); scaleUI(); paint(p); }
+function showRange(days) { const p = panes[active]; if (!p || !p.candles.length) return; const to = p.candles[p.candles.length - 1].time, from = Math.max(p.candles[0].time, to - days * 86400); p.chart.timeScale().setVisibleRange({ from, to: to + p.sec * 6 }); }
+function saveShot() { const p = panes[active]; if (!p) return; const c = p.chart.takeScreenshot(), g = c.getContext("2d"); try { g.drawImage(p.cv, 0, 0, c.width, c.height); } catch (e) {}
+  const a = document.createElement("a"); a.download = `rewind-${sym}-${prefs.tfs[active]}-${nowT() ? fmt(loc(nowT())).replace(/[: ]/g, "-") : "chart"}.png`; a.href = c.toDataURL("image/png"); a.click(); }
+function indMenu() { const r = $("indbtn").getBoundingClientRect(); menu([{ h: "Indicators" }, { t: (prefs.opens ? "✓ " : "  ") + "Key opens (18:00, midnight, 9:30, 10:00)", f: () => { prefs.opens = !prefs.opens; savePrefs(); fillSettings(); drawOpens(); } },
+  { t: (prefs.sess ? "✓ " : "  ") + "Shade the NY session", f: () => { prefs.sess = !prefs.sess; savePrefs(); fillSettings(); repaintAll(); } }], r.left, r.bottom + 6); }
+function sideUI() { $("side").classList.toggle("hidden", !prefs.side); $("sidebtn").classList.toggle("on", !!prefs.side); }
+function dockUI() { $("dock").classList.toggle("closed", !!prefs.dockClosed); }
 function buildPanes() {
   panes.forEach((p) => p.chart.remove()); $("charts").innerHTML = ""; panes = [];
   const [c, r] = LAYOUTS[prefs.layout] || [1, 1], n = c * r; $("charts").style.gridTemplateColumns = `repeat(${c},minmax(0,1fr))`; $("charts").style.gridTemplateRows = `repeat(${r},minmax(0,1fr))`;
   while (prefs.tfs.length < 8) prefs.tfs.push(DEF_TFS[prefs.tfs.length]);
-  for (let i = 0; i < n; i++) panes.push(makePane(i)); setActive(Math.min(active, n - 1)); need15 = panes.some((p) => paneSec(p.i) < 60);
+  for (let i = 0; i < n; i++) { const p = makePane(i); panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = panes.some((p) => paneSec(p.i) < 60);
 }
 function rebuildPane(p) {
   p.sec = paneSec(p.i); p.candles = []; const src = p.sec < 60 ? B["15s"] : B["1m"];
   for (let j = 0; j <= src.i && j < src.bars.length; j++) pushBar(p, src.bars[j]);
-  p.series.setData(p.candles); p.el.querySelector(".psym").textContent = sym; paint(p);
+  p.series.setData(p.candles); label(p); paint(p);
 }
 function rebuildAll() { panes.forEach(rebuildPane); drawOpens(); drawOrders(); refresh(); }
 function setLayout(k) {
@@ -471,15 +481,17 @@ function toggleMagnet() { prefs.magnet = !prefs.magnet; $("magnet").classList.to
 /* ---------------- scalp pad (floating) ---------------- */
 function padUI() {
   const pd = $("pad"); pd.classList.toggle("hidden", !prefs.pad.show); $("padshow").textContent = prefs.pad.show ? "Hide Scalp Pad" : "Show Scalp Pad";
-  if (prefs.pad.x != null) { pd.style.left = Math.max(0, Math.min(prefs.pad.x, innerWidth - 240)) + "px"; pd.style.top = Math.max(0, Math.min(prefs.pad.y, innerHeight - 200)) + "px"; }
+  $("padx2").classList.toggle("hidden", !prefs.pad.more); $("padmore").classList.toggle("on", !!prefs.pad.more);
+  if (prefs.pad.x != null) { pd.style.bottom = "auto"; pd.style.left = Math.max(0, Math.min(prefs.pad.x, innerWidth - 300)) + "px"; pd.style.top = Math.max(0, Math.min(prefs.pad.y, innerHeight - 130)) + "px"; }
+  else { const r = $("charts").getBoundingClientRect(); if (r.width) { pd.style.top = "auto"; pd.style.left = Math.round(r.left + r.width / 2 - 150) + "px"; pd.style.bottom = Math.round(innerHeight - r.bottom + 40) + "px"; } }   // default: bottom-centre of the charts
 }
 (() => { const bar = $("padbar"), pd = $("pad"); let d0 = null;
-  bar.addEventListener("pointerdown", (e) => { if (e.target.id === "padx") return; const r = pd.getBoundingClientRect(); d0 = { dx: e.clientX - r.left, dy: e.clientY - r.top }; bar.setPointerCapture(e.pointerId); bar.style.cursor = "grabbing"; });
-  bar.addEventListener("pointermove", (e) => { if (!d0) return; pd.style.left = Math.max(0, Math.min(innerWidth - 240, e.clientX - d0.dx)) + "px"; pd.style.top = Math.max(0, Math.min(innerHeight - 120, e.clientY - d0.dy)) + "px"; });
+  bar.addEventListener("pointerdown", (e) => { if (e.target.closest(".pb")) return; const r = pd.getBoundingClientRect(); d0 = { dx: e.clientX - r.left, dy: e.clientY - r.top }; bar.setPointerCapture(e.pointerId); bar.style.cursor = "grabbing"; });
+  bar.addEventListener("pointermove", (e) => { if (!d0) return; pd.style.left = Math.max(0, Math.min(innerWidth - 300, e.clientX - d0.dx)) + "px"; pd.style.top = Math.max(0, Math.min(innerHeight - 120, e.clientY - d0.dy)) + "px"; });
   bar.addEventListener("pointerup", () => { if (!d0) return; d0 = null; bar.style.cursor = ""; const r = pd.getBoundingClientRect(); prefs.pad.x = r.left; prefs.pad.y = r.top; savePrefs(); });
   pd.addEventListener("contextmenu", (e) => { e.preventDefault(); menu([{ h: "Scalp Pad" }, { t: "Pad settings…", f: padDlg }, { t: "Auto bracket: " + (prefs.autoBr ? "on" : "off"), f: () => { prefs.autoBr = !prefs.autoBr; savePrefs(); refresh(); } }, { t: "Dock (hide)", f: () => { prefs.pad.show = false; savePrefs(); padUI(); } }], e.clientX, e.clientY); });
 })();
-function lotsUI() { $("lots").innerHTML = prefs.lotset.map((n) => `<button data-lot="${n}" class="${n === prefs.lots ? "on" : ""}">${n}</button>`).join(""); }
+function lotsUI() { $("qn").textContent = prefs.lots; $("lots").innerHTML = prefs.lotset.map((n) => `<button data-lot="${n}" class="${n === prefs.lots ? "on" : ""}">${n}</button>`).join(""); }
 
 /* ---------------- DOM ladder ---------------- */
 let domDrag = null;
@@ -505,7 +517,8 @@ function refresh() {
   let peak = sess ? +sess.account_start : prefs.bal, run = peak; for (const t of hist) { run += +t.pnl || 0; peak = Math.max(peak, run); }
   $("ddl").textContent = prefs.mdd ? money(prefs.mdd - (peak - (bal + op))) : "off";
   const L = lockedNow(); $("status").textContent = L ? (lock.until === Infinity ? "Locked" : "Locked · " + Math.max(0, Math.ceil((lock.until - nowT()) / 60)) + "m") : "Active"; $("status").classList.toggle("locked", L); $("status").title = L ? lock.why : "";
-  const lp = last(); document.querySelectorAll(".qb").forEach((x) => (x.textContent = lp != null ? px2(lp) : "—")); document.querySelectorAll(".qa").forEach((x) => (x.textContent = lp != null ? px2(lp + TICK) : "—"));
+  const lp = last(); $("acctname").textContent = `Replay ${sym} · ${money(sess ? +sess.account_start : prefs.bal).replace(/\.00$/, "")}`;
+  $("b-acct").innerHTML = `<table class="bt"><tr><th>Account</th><th>Start</th><th>Balance</th><th>RP&amp;L today</th><th>UP&amp;L</th><th>Drawdown left</th><th>Daily loss limit</th><th>Status</th></tr><tr><td>${$("acctname").textContent}</td><td>${money(sess ? +sess.account_start : prefs.bal)}</td><td>${money(bal)}</td><td class="${cls(rp)}">${money(rp)}</td><td class="${cls(op)}">${money(op)}</td><td>${$("ddl").textContent}</td><td>${prefs.dll ? money(prefs.dll) : "off"}</td><td>${$("status").textContent}</td></tr></table>`;
   $("pbid").textContent = lp != null ? px2(lp) : "—"; $("pask").textContent = lp != null ? px2(lp + TICK) : "—"; $("padsym").textContent = sym;
   $("padpos").innerHTML = pos.qty ? `<span class="${cls(pos.qty)}">${pos.qty > 0 ? "LONG" : "SHORT"} ${Math.abs(pos.qty)}</span> @ ${px2(pos.avg)} · <span class="${cls(op)}">${money(op)}</span>` : "Flat";
   $("clock").textContent = nowT() ? fmt(loc(nowT())) + " NY" : "—";
@@ -574,7 +587,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = v === "trade" ? "" : "hidden"; if (v === "journal") loadJournal(); if (v === "admin") loadAdmin(); if (v === "settings") notionUI(); }
+function view(v) { document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "admin") loadAdmin(); if (v === "settings") notionUI(); }
 function layMenu() { $("laymenu").innerHTML = Object.entries(LAYOUTS).map(([k, [c, r]]) => `<button class="lay ${k === prefs.layout ? "on" : ""}" data-lay="${k}"><i style="grid-template-columns:repeat(${c},1fr);grid-template-rows:repeat(${r},1fr)">${"<b></b>".repeat(c * r)}</i>${c * r} chart${c * r > 1 ? "s" : ""}${k === "2h" ? " ↕" : ""}</button>`).join(""); }
 async function boot() {
   if (DEMO) { user = { id: "demo", email: "demo" }; const d = document.createElement("div"); d.className = "demo"; d.textContent = "DEMO · made-up prices · nothing is saved"; document.body.appendChild(d); }
@@ -589,7 +602,8 @@ async function boot() {
   if (features.journal === false) document.querySelector('[data-view="journal"]').classList.add("hidden"); if (features.dom === false) $("m-dom").classList.add("hidden");
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
-  fillSettings(); lotsUI(); layMenu(); padUI(); buildPanes();
+  $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
+  fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); buildPanes(); tfUI(); requestAnimationFrame(padUI);
   if (!$("start").value) $("start").value = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) notionUI().catch(() => {});
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
@@ -605,7 +619,17 @@ $("laybtn").onclick = () => $("laymenu").classList.toggle("hidden"); $("laymenu"
 document.querySelectorAll("[data-tool]").forEach((b) => (b.onclick = () => setTool(b.dataset.tool)));
 $("clr").onclick = () => { drawings.filter((d) => d.state === "armed").forEach(disarmTool); drawings = []; sel = null; repaintAll(); }; $("magnet").onclick = toggleMagnet;
 document.querySelectorAll(".mode").forEach((b) => (b.onclick = () => { document.querySelectorAll(".mode").forEach((x) => x.classList.toggle("on", x === b)); ["scalp", "dom", "order"].forEach((m) => $("md-" + m).classList.toggle("hidden", m !== b.dataset.mode)); if (b.dataset.mode === "scalp" && !prefs.pad.show) { prefs.pad.show = true; padUI(); } refresh(); }));
-document.querySelectorAll(".btab").forEach((b) => (b.onclick = () => { document.querySelectorAll(".btab").forEach((x) => x.classList.toggle("on", x === b)); ["pos", "ord", "hist"].forEach((k) => $("b-" + k).classList.toggle("hidden", k !== b.dataset.b)); }));
+document.querySelectorAll(".btab").forEach((b) => (b.onclick = () => { if (b.classList.contains("on") && !prefs.dockClosed) { prefs.dockClosed = true; savePrefs(); return dockUI(); } prefs.dockClosed = false; savePrefs(); dockUI();
+  document.querySelectorAll(".btab").forEach((x) => x.classList.toggle("on", x === b)); ["acct", "pos", "ord", "hist"].forEach((k) => $("b-" + k).classList.toggle("hidden", k !== b.dataset.b)); }));
+$("dockbtn").onclick = () => { prefs.dockClosed = !prefs.dockClosed; savePrefs(); dockUI(); };
+$("tfbar").onclick = (e) => { const b = e.target.closest(".tf"); if (b) setPaneTf(active, b.dataset.tf); };
+$("ranges").onclick = (e) => { const b = e.target.closest("[data-r]"); if (b) showRange(+b.dataset.r); };
+$("gotobtn").onclick = () => { const s = $("start"); s.focus(); try { s.showPicker(); } catch (e) {} };
+$("sc-pct").onclick = () => setScale("pct"); $("sc-log").onclick = () => setScale("log"); $("sc-auto").onclick = () => setScale("auto");
+$("indbtn").onclick = indMenu; $("shotbtn").onclick = saveShot; $("sidebtn").onclick = () => { prefs.side = !prefs.side; savePrefs(); sideUI(); };
+$("fullbtn").onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
+$("qdn").onclick = () => { prefs.lots = Math.max(1, prefs.lots - 1); lotsUI(); savePrefs(); refresh(); }; $("qup").onclick = () => { prefs.lots = prefs.lots + 1; lotsUI(); savePrefs(); refresh(); };
+$("padmore").onclick = () => { prefs.pad.more = !prefs.pad.more; savePrefs(); padUI(); };
 $("padshow").onclick = () => { prefs.pad.show = !prefs.pad.show; savePrefs(); padUI(); }; $("padx").onclick = () => { prefs.pad.show = false; savePrefs(); padUI(); };
 $("lots").onclick = (e) => { const n = +e.target.dataset.lot; if (!n) return; prefs.lots = n; lotsUI(); savePrefs(); refresh(); };
 $("pbuy").onclick = () => market(1); $("psell").onclick = () => market(-1); $("pjb").onclick = joinBid; $("pja").onclick = joinAsk; $("pclose").onclick = () => closeAll(); $("prev").onclick = reverse;
