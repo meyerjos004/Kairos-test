@@ -281,6 +281,7 @@ function newDrawing(type, p, a, b) {
   if (type === "long" || type === "short") { const s = type === "long" ? 1 : -1; d.b = { t: a.t + p.sec * 30, p: a.p }; d.entry = a.p; d.sl = rnd(a.p - s * prefs.slPts); d.tp = rnd(a.p + s * prefs.tpPts); d.side = s; d.state = "idle"; d.qty = null; }
   if (type === "text") d.text = prompt("Note text") || "Note";
   if (type === "channel") d.off = chOff(d);
+  const pd = (prefs.presetDef || {})[type]; if (pd != null && prefs.presets && prefs.presets[type] && prefs.presets[type][pd]) applyPreset(d, prefs.presets[type][pd]);
   drawings.push(d); sel = d; return d;
 }
 /* ---------------- indicators (session highs/lows, previous day, HTF gaps, 4H candles, daily PO3) ---------------- */
@@ -1496,9 +1497,21 @@ function dtbShow(p) { const d = hov || sel, el = $("dtb"); clearTimeout(dtbT); i
   el.innerHTML = (pos ? "" : DCOL.map((c) => `<button class="dc ${d.color === c ? "on" : ""}" data-c="${c}" style="background:${c}" title="Color"></button>`).join("") + '<i class="dsep"></i>' +
     [1, 2, 3].map((w) => `<button data-w="${w}" class="${(d.w || 1.4) === w ? "on" : ""}" title="Thickness ${w}"><b style="height:${w}px"></b></button>`).join("") + '<i class="dsep"></i>' +
     [["solid", "—"], ["dash", "– –"], ["dot", "···"]].map(([k, s]) => `<button data-dash="${k}" class="${(d.dash || "solid") === k ? "on" : ""}" title="Line style">${s}</button>`).join("") + '<i class="dsep"></i>') +
-    `<button data-act="set" title="Settings">⚙</button><button data-act="lock" title="${d.locked ? "Unlock" : "Lock"}">${d.locked ? "🔒" : "🔓"}</button><button data-act="del" title="Delete">🗑</button>`;
+    (pos ? "" : `<button data-act="preset" title="Presets (PDH, FVG, OB…)">★</button>`) + `<button data-act="set" title="Settings">⚙</button><button data-act="lock" title="${d.locked ? "Unlock" : "Lock"}">${d.locked ? "🔒" : "🔓"}</button><button data-act="del" title="Delete">🗑</button>`;
   el.classList.remove("hidden"); const tw = el.offsetWidth, cx = r.left + ((x1 ?? 0) + (x2 ?? x1 ?? 0)) / 2, ty = r.top + (y < 1e8 ? y : 40) - 46;
   el.style.left = Math.max(r.left + 4, Math.min(r.right - tw - 70, cx - tw / 2)) + "px"; el.style.top = Math.max(r.top + 4, ty) + "px"; }
+/* confluence presets: named styles per tool (color, width, dash, fill, label), one tap to apply, optional default for new drawings */
+const PRESET_SEED = { hline: [{ name: "PDH / PDL", color: "#f5c542", w: 1, dash: "dash", label: "PDH" }, { name: "Data high / low", color: "#f0abfc", w: 1, dash: "dot", label: "Data H" }, { name: "Key level", color: "#e5e7eb", w: 2, dash: "solid", label: "" }],
+  rect: [{ name: "FVG", color: "#8b5cf6", fill: 18, label: "FVG" }, { name: "IFVG", color: "#7aa7ff", fill: 18, label: "IFVG" }, { name: "Order block", color: "#2bd4a0", fill: 14, label: "OB" }, { name: "Liquidity zone", color: "#ff6b7a", fill: 10, label: "Liq" }],
+  fib: [{ name: "OTE", color: "#7aa7ff", w: 1, dash: "dash", label: "OTE" }], trend: [{ name: "Trendline liquidity", color: "#f5c542", w: 2, dash: "solid", label: "TL liq" }] };
+const PRESET_KEYS = ["color", "w", "dash", "fill", "label"];
+const presetsOf = (type) => { prefs.presets = prefs.presets || {}; if (!prefs.presets[type]) prefs.presets[type] = (PRESET_SEED[type] || []).map((x) => ({ ...x })); return prefs.presets[type]; };
+function applyPreset(d, pr) { for (const k of PRESET_KEYS) if (pr[k] !== undefined) d[k] = pr[k]; }
+function presetMenu(d, cx, cy) { const L = presetsOf(d.type), def = (prefs.presetDef || {})[d.type];
+  menu([{ h: `${TOOLNAMES[d.type] || d.type} presets` }, ...L.map((pr, i) => ({ t: `${def === i ? "★ " : "\u2003 "}${pr.name}`, f: () => { applyPreset(d, pr); repaintAll(); } })),
+    "-", { t: "Save this style as a preset…", f: () => { const name = (prompt("Preset name (e.g. PDH, FVG, OB)", d.label || "") || "").trim().slice(0, 24); if (!name) return; const pr = { name }; for (const k of PRESET_KEYS) if (d[k] !== undefined) pr[k] = d[k]; L.push(pr); savePrefs(); toast(`Preset "${name}" saved`); } },
+    L.length ? { t: def != null ? "Stop using a default for new ones" : "Use a preset for every new one…", f: () => { prefs.presetDef = prefs.presetDef || {}; if (def != null) { delete prefs.presetDef[d.type]; savePrefs(); return toast("No default preset"); } const n = prompt(`Which preset? ${L.map((p, i) => `${i + 1}=${p.name}`).join(", ")}`); const i = (+n || 0) - 1; if (L[i]) { prefs.presetDef[d.type] = i; savePrefs(); toast(`New ${TOOLNAMES[d.type] || d.type}s use "${L[i].name}"`); } } } : null,
+    L.length ? { t: "Delete a preset…", f: () => { const n = prompt(`Delete which? ${L.map((p, i) => `${i + 1}=${p.name}`).join(", ")}`); const i = (+n || 0) - 1; if (L[i]) { L.splice(i, 1); if (prefs.presetDef && prefs.presetDef[d.type] != null) delete prefs.presetDef[d.type]; savePrefs(); } } } : null], cx, cy); }
 function toolSettings(d) { if (d.type === "long" || d.type === "short") return toolDlg(d);
   dlg(`<h3>${({ trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Zone", fib: "Fib retracement", text: "Note", measure: "Measure" })[d.type] || d.type} settings</h3>
     <label>${d.type === "text" ? "Text" : "Label (shows on the chart)"}<input id="ts-l" value="${esc(d.type === "text" ? d.text : d.label || "")}" maxlength="60"></label>
@@ -1650,7 +1663,7 @@ $("s-speed").onclick = (e) => { const b = e.target.closest("[data-sp]"); if (!b)
 $("pbe").onclick = beNow; $("pcan").onclick = () => { cancelAll(); snd("cancel"); }; $("pflat").onclick = flatten; $("pclose2").onclick = () => closeAll(); $("prev2").onclick = reverse;
 $("dtb").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const d = drawings.find((z) => z.id === +$("dtb").dataset.id); if (!d) return;
   if (b.dataset.c) d.color = b.dataset.c; else if (b.dataset.w) d.w = +b.dataset.w; else if (b.dataset.dash) d.dash = b.dataset.dash;
-  else if (b.dataset.act === "set") { $("dtb").classList.add("hidden"); return toolSettings(d); } else if (b.dataset.act === "lock") d.locked = !d.locked;
+  else if (b.dataset.act === "set") { $("dtb").classList.add("hidden"); return toolSettings(d); } else if (b.dataset.act === "preset") { const r = b.getBoundingClientRect(); return presetMenu(d, r.left, r.bottom + 4); } else if (b.dataset.act === "lock") d.locked = !d.locked;
   else if (b.dataset.act === "del") { disarmTool(d); drawings = drawings.filter((z) => z !== d); if (sel === d) sel = null; if (hov === d) hov = null; $("dtb").classList.add("hidden"); repaintAll(); return; }
   repaintAll(); sel = d; dtbShow(dtbP); };
 $("dtb").onmouseleave = () => dtbShow(dtbP);

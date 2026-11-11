@@ -183,6 +183,11 @@ async def main():
         check("Fix my mistakes shows the biggest leak", await E("$('l-mx').innerText.includes('Chased') && document.querySelectorAll('#l-mx .mxt').length===3"), await E("$('l-mx').innerText.slice(0,200)"))
         check("daily tasks track progress", await E("/\\d+ \\/ 3/.test($('l-mx').innerText)"))
         await pg.screenshot(path="/home/claude/shot/mx.png"); await E("view('trade')")
+        # confluence presets
+        await E("view('trade'); drawings=[]; (()=>{const c=panes[0].candles,n=c.length; window.__z=newDrawing('rect',panes[0],{t:c[n-20].time,p:c[n-20].close},{t:c[n-5].time,p:c[n-5].close+8}); repaintAll()})()")
+        await E("applyPreset(__z, presetsOf('rect')[0]); repaintAll()"); check("FVG preset applies (color, fill, label)", await E("__z.label==='FVG' && __z.fill===18 && __z.color==='#8b5cf6'"))
+        await E("prefs.presetDef={rect:2}"); await E("(()=>{const c=panes[0].candles,n=c.length; window.__z2=newDrawing('rect',panes[0],{t:c[n-9].time,p:c[n-9].close},{t:c[n-3].time,p:c[n-3].close+4})})()")
+        check("default preset used for new drawings", await E("__z2.label==='OB'")); await E("prefs.presetDef={}; drawings=[]; repaintAll()")
         # media dock: Reese library + Spotify/YouTube sign-in panels
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))
