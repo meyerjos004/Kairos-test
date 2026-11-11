@@ -53,7 +53,7 @@
       <div class="seg"><button id="back" title="Step back (←)">⏮</button><button id="play" title="Play / pause (space)">▶</button><button id="step" title="Step one bar (→)">⏭</button></div>
       <div class="seg skips"><button id="skipny" title="Skip to the next NY open (9:30 New York)">NY open</button><button id="skipasia" title="Skip to the next Asia open (20:00 New York)">Asia open</button></div>
       <button id="blindbtn" class="small" title="Mystery day: a random day with the date hidden until you finish (no cherry-picking)">🎲</button>
-      <select id="stepsz" title="What one step moves"><option value="bar">Step: 1 bar</option><option value="candle">Step: 1 candle</option></select>
+      <select id="stepsz" title="What one step moves"><option value="bar">1 bar</option><option value="candle">1 candle</option></select>
       <select id="speed" title="Replay speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option><option value="10">100×</option></select>
     </div>
     <button id="lockbtn" class="ib" title="Personal lockout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
@@ -175,6 +175,7 @@
         <label class="ck"><input id="s-sound" type="checkbox" checked> Sounds (fills, wins, losses)</label>
         <label>Sound volume<input id="s-vol" type="range" min="0" max="100" value="60"></label>
         <label class="ck"><input id="s-hap" type="checkbox" checked> Vibrate on fills (phones that support it)</label>
+        <label class="ck"><input id="s-review" type="checkbox" checked> Ask me to rate each trade when it closes</label>
         <label class="ck"><input id="s-splash" type="checkbox" checked> Short intro animation when the app opens</label>
         <h3>Hot keys</h3>
         <div id="s-keys" class="keys"></div>
@@ -207,6 +208,7 @@
     <div class="stats" id="st-kpi"></div>
     <div id="st-eq" class="card chartcard"></div>
     <div class="grid3"><div class="card"><h4>By hour (New York)</h4><div id="st-hour"></div></div><div class="card"><h4>By weekday</h4><div id="st-wd"></div></div><div class="card"><h4>By confluence tag</h4><div id="st-tag"></div></div></div>
+    <div class="grid3"><div class="card"><h4>R per trade (spread)</h4><div id="st-rd" class="rdist"></div></div><div class="card"><h4>Rules followed vs broken</h4><div id="st-rule"></div></div><div class="card"><h4>Mistakes and tilt</h4><div id="st-tilt"></div></div></div>
   </section>
 
   <section id="v-accounts" class="view hidden scroll">
@@ -278,6 +280,7 @@
 <div id="favbar" class="favbar hidden"><div class="fgrip" id="favgrip" title="Drag to move">⋮⋮</div><div class="fbtools"></div></div>
 <div id="qzbar" class="qzbar hidden"><div class="qzq">Taking dis? or fade it?</div><div class="qzd" id="qz-desc"></div><div class="row"><button id="qz-take" class="buy">Take it</button><button id="qz-fade" class="sell">Fade it</button></div><div class="qzr hidden" id="qz-res"></div><div class="row hidden" id="qz-next"><button id="qz-more" class="primary">Next setup</button><button id="qz-stop" class="ghost">Stop</button></div></div>
 <div id="tour" class="tour hidden"><div class="tour-hole" id="tourhole"></div><div class="tour-card" id="tourcard"></div></div>
+<div id="review" class="review hidden"></div>
 <div id="ctx" class="menu glass hidden"></div>
 <div id="dlg" class="dlgwrap hidden"><div class="glass dlg pop" id="dlgbox"></div></div>
 <div id="toast" class="toast glass hidden"></div>
