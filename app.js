@@ -97,10 +97,20 @@ async function notion(action, extra = {}) {
 const B = { "1m": { bars: [], i: -1 }, "15s": { bars: [], i: -1 } };
 /* each chart can show its own symbol. Chart 1 is the symbol you trade (top bar); other charts can watch the other symbol (SMT) in lockstep */
 const X = {};
-const paneSym = (p) => { const i = typeof p === "number" ? p : p ? p.i : 0; return i === 0 || (prefs.sync && prefs.sync.sym) ? sym : (prefs.syms || [])[i] || sym; };
+const paneSym = (p) => { const i = typeof p === "number" ? p : p ? p.i : 0; return prefs.sync && prefs.sync.sym ? sym : (prefs.syms || [])[i] || sym; };
+/* every chart is tradable: each symbol keeps its own position + orders. The chart you click becomes the active symbol (its data swaps into B);
+   the others keep filling, stopping and targeting in the background via withSym() */
+const CTX = {};
+function swapTo(s) { if (!s || s === sym || !INST[s] || !X[s]) return false;
+  CTX[sym] = { pos, orders, ST, SBC, draft }; X[sym] = { "1m": B["1m"], "15s": B["15s"] }; B["1m"] = X[s]["1m"]; B["15s"] = X[s]["15s"]; delete X[s];
+  const c = CTX[s] || {}; delete CTX[s]; pos = c.pos || flat(); orders = c.orders || []; ST = c.ST || { key: null }; SBC = c.SBC || { key: null }; draft = c.draft || null; sym = s; inst = INST[s]; return true; }
+function withSym(s, fn) { const prev = sym; if (s === prev) return fn(); if (!swapTo(s)) return undefined; try { return fn(); } finally { swapTo(prev); } }
+const otherSyms = () => Object.keys(CTX);
+const busyElsewhere = () => otherSyms().some((s) => CTX[s].pos.qty || CTX[s].orders.length);
+const openPnlAll = () => { let v = openPnl(); for (const s of otherSyms()) v += withSym(s, openPnl) || 0; return v; };
 const storeOf = (s) => (s === sym ? B : X[s] || B);
 async function loadOthers() { for (const k of Object.keys(X)) delete X[k]; if (!months || !months.size) return;
-  for (const s of [...new Set(panes.map(paneSym))].filter((s) => s !== sym && INST[s])) { const st = (X[s] = { "1m": { bars: [], i: -1 }, "15s": { bars: [], i: -1 } });
+  for (const s of [...new Set([...panes.map(paneSym), ...otherSyms().filter((k) => CTX[k].pos.qty || CTX[k].orders.length), ...(smtOn() ? [smtPartner(sym)] : [])])].filter((s) => s && s !== sym && INST[s])) { const st = (X[s] = { "1m": { bars: [], i: -1 }, "15s": { bars: [], i: -1 } });
     for (const tf of ["1m", "15s"]) { if (tf === "15s" && !need15) continue; st[tf].bars = (await Promise.all([...months].sort().map((m) => loadMonth(INST[s].data, tf, m)))).flat().sort((a, b) => a.t - b.t); } }
   advOthers(); }
 function advOthers() { const out = {}; for (const s of Object.keys(X)) { out[s] = { "1m": [], "15s": [] }; for (const tf of ["1m", "15s"]) { const b = X[s][tf]; while (b.bars[b.i + 1] && b.bars[b.i + 1].t <= cursorT) { b.i++; out[s][tf].push(b.bars[b.i]); } while (b.i >= 0 && b.bars[b.i].t > cursorT) b.i--; } } return out; }
@@ -110,8 +120,9 @@ function lastBar() { const a = B["1m"].bars[B["1m"].i], b = need15 ? B["15s"].ba
 const last = () => (lastBar() ? lastBar().c : null);
 const nowT = () => cursorT;
 async function loadReplay() {
-  pause(); if (pos.qty || orders.length) return toast("Close positions and cancel orders first");
-  sym = $("sym").value; inst = INST[sym]; need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
+  pause(); if (pos.qty || orders.length || busyElsewhere()) return toast("Close positions and cancel orders first (on every chart)");
+  for (const k of Object.keys(CTX)) delete CTX[k];
+  sym = $("sym").value; prefs.syms = prefs.syms || []; if (!(prefs.sync && prefs.sync.sym)) { prefs.syms[active] = sym; panes.forEach((p) => { if (!prefs.syms[p.i]) prefs.syms[p.i] = sym; }); } inst = INST[sym]; need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
   const s = $("start").value; if (!s) return toast("Pick a start date and time"); if (!DEMO && !blind) { prefs.lastStart = s; prefs.lastSym = $("sym").value; savePrefs(); } const t0 = nyToUtc(s), ym = ymOf(t0);
   toast("Loading " + sym + "…"); months = new Set([addM(ym, -1), ym, addM(ym, 1)]);
   for (const tf of ["1m", "15s"]) { B[tf].bars = []; B[tf].i = -1; if (tf === "15s" && !need15) continue; B[tf].bars = (await Promise.all([...months].sort().map((m) => loadMonth(inst.data, tf, m)))).flat().sort((a, b) => a.t - b.t); }
@@ -151,6 +162,7 @@ async function stepFwd(ui = true) {
     const src = paneSec(p.i) < 60 ? F["15s"] : need15 ? [...F["1m"].filter((x) => !hasFine(x.t, S)), ...F["15s"]].sort((u, v) => u.t - v.t) : F["1m"]; for (const x of src) p.series.update(pushBar(p, x)); if (src.length) indTick(p); });
   for (const x of fresh["15s"]) engineBar(x);                                   // fills use the finest bars available
   for (const x of fresh["1m"]) if (!(need15 && hasFine(x.t))) engineBar(x);
+  for (const s of otherSyms()) { const c = CTX[s]; if (!c || !(c.pos.qty || c.orders.length) || !fx[s]) continue; withSym(s, () => { for (const x of fx[s]["15s"]) engineBar(x); for (const x of fx[s]["1m"]) if (!(need15 && hasFine(x.t))) engineBar(x); }); }
   checkAlerts();
   if (B["1m"].i % 500 === 0) await ensureAhead(); if (B["1m"].i % 60 === 0 && sess) db.saveCursor(sess.id, cursorT);
   if (!ui) return fresh["1m"];
@@ -195,8 +207,8 @@ function makePane(i) {
   initPointer(p);
   return p;
 }
-function setActive(i) { active = i; panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
-function label(p) { const tf = prefs.tfs[p.i] || "5m", s = paneSym(p); p.el.querySelector(".lname").textContent = `${s} · ${tf} · CME${s !== sym ? " · watch" : ""}`; p.el.querySelector(".wmark").textContent = `CME ${s} ${tf}`; }
+function setActive(i) { active = i; const ps = paneSym(i); if (ps !== sym && X[ps] && swapTo(ps)) { $("sym").value = sym; drawOrders(); try { refresh(); } catch (e) {} panes.forEach(label); } panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
+function label(p) { const tf = prefs.tfs[p.i] || "5m", s = paneSym(p); p.el.querySelector(".lname").textContent = `${s} · ${tf} · CME`; p.el.classList.toggle("tradesym", s === sym && panes.length > 1 && new Set(panes.map(paneSym)).size > 1); p.el.querySelector(".wmark").textContent = `CME ${s} ${tf}`; }
 function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}">${n === "1D" ? "D" : n}</button>`).join(""); }
 async function setPaneTf(i, tf, noSync) { const p = panes[i]; if (!p) return; prefs.tfs[i] = tf; if (!noSync && prefs.sync && prefs.sync.int) for (const q of panes) if (q.i !== i) { prefs.tfs[q.i] = tf; label(q); rebuildPane(q); } savePrefs(); tfUI(); label(p); if (lock15 || panes.some((q) => paneSec(q.i) < 60)) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); }
 const livAuto = (p) => { try { return p.chart.priceScale("right").options().autoScale !== false; } catch (e) { return p.auto !== false; } };   // a manual drag on the price axis turns auto-fit off; respect it
@@ -211,6 +223,7 @@ function indMenu(re) { if (re !== true && ctxJust === "ind") { ctxJust = null; r
   { t: ck(I.sbox) + "Trading sessions (Tokyo / London / New York boxes)", f: flip("sbox") }, { t: "\u2003 Sessions settings…", f: sessDlg }, { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session high / low lines only (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") }, { t: ck(I.pw) + "Week + previous week high / low", f: flip("pw") }, { t: ck(I.eq) + "Equal highs / lows (resting liquidity)", f: flip("eq") },
   { t: ck(I.fvg) + "Fair value gaps (FVG)", f: flip("fvg") }, { t: ck(I.ob) + "Order blocks (OB) on the same timeframes", f: flip("ob") }, ...(I.fvg || I.ob ? ["5m", "15m", "1h", "4h", "1D"].map((tf) => ({ t: "\u2003 " + ck((I.fvgTfs || []).includes(tf)) + tf + " gaps", f: () => { const s = new Set(I.fvgTfs || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.fvgTfs = [...s]; savePrefs(); repaintAll(); } })).concat([{ t: "\u2003 " + ck(I.ifvg) + "Show inversions (IFVG)", f: flip("ifvg") }]) : []),
   { t: ck(I.econ !== false) + "News events (CPI 8:30, FOMC 2:00)", f: () => { I.econ = I.econ === false; savePrefs(); repaintAll(); } },
+  { h: "SMT divergence (NQ vs ES)" }, ...SMT_TFS.map(([tf]) => ({ t: ck(smtCfg()[tf]) + `SMT on ${tf} swings`, f: () => { const C = smtCfg(), was = smtOn(); C[tf] = !C[tf]; savePrefs(); if (!was && smtOn() && B["1m"].bars.length) loadOthers().then(repaintAll); else repaintAll(); } })),
   { h: "Library" }, ...indCfg().ma.map((m) => ({ t: ck(m.on) + `${m.type.toUpperCase()} ${m.len}`, f: () => { m.on = !m.on; savePrefs(); panes.forEach(indFull); } })),
   { t: ck(indCfg().bb.on) + `Bollinger Bands ${indCfg().bb.len}, ${indCfg().bb.mult}`, f: () => { indCfg().bb.on = !indCfg().bb.on; savePrefs(); panes.forEach(indFull); } },
   { t: ck(indCfg().rsi.on) + `RSI ${indCfg().rsi.len} (in the chart legend)`, f: () => { indCfg().rsi.on = !indCfg().rsi.on; savePrefs(); panes.forEach(indFull); } },
@@ -377,7 +390,7 @@ function sessBoxes() { const b1 = B["1m"], C = sbCfg(), key = b1.i + JSON.string
       let tH = false, tL = false; const endT = ys[ys.length - 1].t; for (let k = bars.indexOf(ys[ys.length - 1]) + 1; k > 0 && k <= i; k++) { if (bars[k].h > hi) tH = true; if (bars[k].l < lo) tL = true; if (tH && tL) break; }
       out.push({ ...s, day: d, t0: loc(ys[0].t), t1: loc(endT) + 60, open: ys[0].o, close: ys[ys.length - 1].c, hi, lo, avg: (hi + lo) / 2, live, tH, tL }); } }
   return out; }
-function paintSessBoxes(p, g, W, H) { if (paneSym(p) !== sym || !prefs.ind || !prefs.ind.sbox || p.sec >= 14400) return; const C = sbCfg(), tick = TICK || 0.25, X = (lt) => xOf(p, lt);
+function paintSessBoxes(p, g, W, H) { if (!prefs.ind || !prefs.ind.sbox || p.sec >= 14400) return; const C = sbCfg(), tick = TICK || 0.25, X = (lt) => xOf(p, lt);
   for (const s of sessBoxes()) { const x1 = X(s.t0), x2 = X(s.t1), yh = yOf(p, s.hi), yl = yOf(p, s.lo); if (x1 == null || x2 == null || yh == null || yl == null || x2 < 0 || x1 > W) continue;
     const a = Math.max(0, x1), b = Math.min(W, x2), col = s.color; g.fillStyle = col + "14"; g.fillRect(a, yh, b - a, yl - yh); if (C.border) { g.strokeStyle = col + "99"; g.lineWidth = 1; g.strokeRect(a, yh, b - a, yl - yh); }
     const ln = (price, dash, lab) => { const y = yOf(p, price); if (y == null) return; g.strokeStyle = col + "aa"; g.setLineDash(dash); g.beginPath(); g.moveTo(a, y); g.lineTo(b, y); g.stroke(); g.setLineDash([]); if (C.labels) { g.fillStyle = col; g.fillText(lab + (C.values ? " " + px2(price) : ""), a + 3, y - 3); } };
@@ -396,14 +409,42 @@ function sessDlg() { const C = sbCfg();
 const ECON_CPI = new Set(["2020-10-13", "2020-11-12", "2020-12-10", "2021-01-13", "2021-02-10", "2021-03-10", "2021-04-13", "2021-05-12", "2021-06-10", "2021-07-13", "2021-08-11", "2021-09-14", "2021-10-13", "2021-11-10", "2021-12-10", "2022-01-12", "2022-02-10", "2022-03-10", "2022-04-12", "2022-05-11", "2022-06-10", "2022-07-13", "2022-08-10", "2022-09-13", "2022-10-13", "2022-11-10", "2022-12-13", "2023-01-12", "2023-02-14", "2023-03-14", "2023-04-12", "2023-05-10", "2023-06-13", "2023-07-12", "2023-08-10", "2023-09-13", "2023-10-12", "2023-11-14", "2023-12-12", "2024-01-11", "2024-02-13", "2024-03-12", "2024-04-10", "2024-05-15", "2024-06-12", "2024-07-11", "2024-08-14", "2024-09-11", "2024-10-10", "2024-11-13", "2024-12-11", "2025-01-15", "2025-02-12", "2025-03-12", "2025-04-10", "2025-05-13", "2025-06-11", "2025-07-15", "2025-08-12", "2025-09-11", "2025-10-24", "2025-12-18", "2026-01-13", "2026-02-13", "2026-03-11", "2026-04-10", "2026-05-12", "2026-06-10", "2026-07-14", "2026-08-12", "2026-09-11", "2026-10-14", "2026-11-10"]);
 const ECON_FOMC = new Set(["2021-01-27", "2021-03-17", "2021-04-28", "2021-06-16", "2021-07-28", "2021-09-22", "2021-11-03", "2021-12-15", "2022-01-26", "2022-03-16", "2022-05-04", "2022-06-15", "2022-07-27", "2022-09-21", "2022-11-02", "2022-12-14", "2023-02-01", "2023-03-22", "2023-05-03", "2023-06-14", "2023-07-26", "2023-09-20", "2023-11-01", "2023-12-13", "2024-01-31", "2024-03-20", "2024-05-01", "2024-06-12", "2024-07-31", "2024-09-18", "2024-11-07", "2024-12-18", "2025-01-29", "2025-03-19", "2025-05-07", "2025-06-18", "2025-07-30", "2025-09-17", "2025-10-29", "2025-12-10", "2026-01-28", "2026-03-18", "2026-04-29", "2026-06-17", "2026-07-29", "2026-09-16", "2026-10-28", "2026-12-09"]);
 function econOn(dayStr) { const out = []; if (ECON_CPI.has(dayStr)) out.push({ hm: "08:30", name: "CPI" }); if (ECON_FOMC.has(dayStr)) out.push({ hm: "14:00", name: "FOMC" }); return out; }
+/* ---------------- SMT divergence (NQ vs ES), each timeframe on its own toggle ----------------
+   Swing highs/lows on closed candles only (2 left, 2 right). Bearish SMT: one symbol makes a higher high while the other makes a lower/equal high.
+   Bullish SMT: one makes a lower low while the other holds a higher/equal low. Drawn on each chart in its own prices. */
+const SMT_TFS = [["1m", 60], ["5m", 300], ["15m", 900], ["1h", 3600], ["4h", 14400], ["1D", 86400]];
+const smtCfg = () => { const I = prefs.ind || (prefs.ind = {}); if (!I.smt) I.smt = { "1m": false, "5m": false, "15m": false, "1h": false, "4h": false, "1D": false }; return I.smt; };
+const smtOn = () => Object.values(smtCfg()).some(Boolean);
+const smtPartner = (s) => ((INST[s] || INST.NQ).data === "NQ" ? "ES" : "NQ");
+function smtAgg(S, sec, tEnd) { const b = S["1m"], N = sec >= 86400 ? 45 : 140, from = tEnd - N * sec * (sec >= 86400 ? 1.6 : 1.5); let lo = 0, hi = b.i;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (b.bars[m].t < from) lo = m + 1; else hi = m; }
+  const out = []; let cur = null; for (let j = lo; j <= b.i; j++) { const x = b.bars[j], k = bucket(loc(x.t), sec); if (!cur || cur.time !== k) { cur = { time: k, h: x.h, l: x.l }; out.push(cur); } else { cur.h = Math.max(cur.h, x.h); cur.l = Math.min(cur.l, x.l); } }
+  out.pop(); return out; }   // drop the forming candle: no lookahead
+const SMTC = {};
+function smtFind(tf, sec) { const P = X[smtPartner(sym)]; if (!P || B["1m"].i < 0) return []; const key = sym + tf + B["1m"].i + ":" + P["1m"].i; if (SMTC[sym + tf] && SMTC[sym + tf].key === key) return SMTC[sym + tf].out;
+  const tEnd = B["1m"].bars[B["1m"].i].t, A = smtAgg(B, sec, tEnd), Q = smtAgg(P, sec, tEnd), qm = new Map(Q.map((c, k) => [c.time, k])), out = [];
+  const near = (t, f) => { const k = qm.get(t); if (k == null) return null; let v = Q[k][f]; for (const d of [-1, 1]) { const z = Q[k + d]; if (z) v = f === "h" ? Math.max(v, z.h) : Math.min(v, z.l); } return v; };
+  for (const [f, cmp] of [["h", (a, b) => a > b], ["l", (a, b) => a < b]]) { const piv = [];
+    for (let k = 2; k < A.length - 2; k++) { const v = A[k][f]; if (cmp(v, A[k - 1][f]) && cmp(v, A[k - 2][f]) && !cmp(A[k + 1][f], v) && !cmp(A[k + 2][f], v)) piv.push(k); }
+    for (let n = Math.max(1, piv.length - 6); n < piv.length; n++) { const k1 = piv[n - 1], k2 = piv[n]; if (k2 - k1 > 40) continue;
+      const a1 = A[k1][f], a2 = A[k2][f], p1 = near(A[k1].time, f), p2 = near(A[k2].time, f); if (p1 == null || p2 == null) continue;
+      const aExt = cmp(a2, a1), pExt = cmp(p2, p1); if (aExt !== pExt) out.push({ f, t1: A[k1].time, v1: a1, t2: A[k2].time, v2: a2, bear: f === "h", leader: aExt ? sym : smtPartner(sym) }); } }
+  SMTC[sym + tf] = { key, out }; return out; }
+function paintSmt(p, g, W, H) { if (!smtOn()) return; const C = smtCfg();
+  for (const [tf, sec] of SMT_TFS) { if (!C[tf] || sec < p.sec) continue;
+    for (const z of smtFind(tf, sec)) { const x1 = xOf(p, z.t1), x2 = xOf(p, z.t2 + Math.max(0, sec - p.sec)), y1 = yOf(p, z.v1), y2 = yOf(p, z.v2); if (x1 == null || x2 == null || y1 == null || y2 == null || x2 < 0) continue;
+      const col = z.bear ? "#ff6b7a" : "#2bd4a0"; g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 1.6; g.setLineDash([]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+      for (const [x, y] of [[x1, y1], [x2, y2]]) { g.beginPath(); g.arc(x, y, 2.6, 0, 7); g.fill(); }
+      g.font = "600 10.5px Inter, sans-serif"; const tx = `SMT ${tf}`, tw = g.measureText(tx).width, lx = (x1 + x2) / 2 - tw / 2 - 5, ly = (y1 + y2) / 2 + (z.bear ? -18 : 6);
+      g.fillStyle = "rgba(11,11,16,.85)"; g.fillRect(lx, ly, tw + 10, 15); g.fillStyle = col; g.fillText(tx, lx + 5, ly + 11); g.restore(); } } }
 function paintEcon(p, g, W, H) { if (prefs.ind && prefs.ind.econ === false) return; const c = p.candles; if (c.length < 2 || p.sec >= 86400) return; const ts = p.chart.timeScale();
   const d0 = Math.floor(c[0].time / 86400), d1 = Math.floor(c[c.length - 1].time / 86400) + 1, last = c[c.length - 1].time;
   for (let d = d0; d <= d1; d++) { const ds = new Date(d * 86400000).toISOString().slice(0, 10); for (const e of econOn(ds)) { const [h, m] = e.hm.split(":").map(Number), lt = d * 86400 + h * 3600 + m * 60;
       let x = xOf(p, lt); if (x == null && lt > last) x = ts.logicalToCoordinate(c.length - 1 + (lt - last) / p.sec); if (x == null || x < 0 || x > W) continue;
       const col = e.name === "FOMC" ? "rgba(248,113,113,.75)" : "rgba(245,197,66,.8)"; g.save(); g.strokeStyle = col; g.setLineDash([3, 4]); g.lineWidth = 1; g.beginPath(); g.moveTo(x, 18); g.lineTo(x, H); g.stroke(); g.setLineDash([]);
       g.font = "600 10.5px Inter, sans-serif"; const tw = g.measureText(e.name).width; g.fillStyle = col; g.beginPath(); g.roundRect(x - tw / 2 - 6, 2, tw + 12, 16, 4); g.fill(); g.fillStyle = "#0b0b10"; g.fillText(e.name, x - tw / 2, 14); g.restore(); } } }
-function paintStudies(p, g, W, H) { try { if (paneSym(p) === sym) paintEcon(p, g, W, H); } catch (e) {}
-  if (paneSym(p) !== sym || !prefs.ind || p.sec >= 86400 || !p.candles.length) return; const S = studies(), ts = p.chart.timeScale();
+function paintStudies(p, g, W, H) { const ps = paneSym(p); if (ps !== sym) return withSym(ps, () => paintStudies(p, g, W, H)); try { paintEcon(p, g, W, H); } catch (e) {} try { paintSmt(p, g, W, H); } catch (e) {}
+  if (!prefs.ind || p.sec >= 86400 || !p.candles.length) return; const S = studies(), ts = p.chart.timeScale();
   const X = (lt) => { const x = xOf(p, lt); return x == null ? 0 : Math.max(0, x); };
   g.save(); g.font = "500 10.5px Inter, sans-serif"; paintSessBoxes(p, g, W, H);
   for (const z of S.h4) { if (p.sec >= 14400) break; const x1 = X(z.t), x2 = Math.min(W, X(z.t + 14400) || W), y1 = yOf(p, z.h), y2 = yOf(p, z.l); if (y1 == null || y2 == null || x2 <= x1) continue;
@@ -628,10 +669,10 @@ function maDlg() { const I = indCfg();
 
 /* ---------------- price alerts: fire once when the replay crosses the price ---------------- */
 let alerts = [];
-function addAlert(price) { const a = { id: Date.now(), price: rnd(price), sym, last: last() }; alerts.push(a); drawAlerts(); toast(`🔔 Alert set at ${px2(a.price)}`); }
-function drawAlerts() { for (const p of panes) { (p.alines || []).forEach((l) => { try { p.series.removePriceLine(l); } catch (e) {} }); p.alines = []; if (paneSym(p) !== sym) continue;
-  for (const a of alerts) if (a.sym === sym) p.alines.push(p.series.createPriceLine({ price: a.price, color: "#f5c542", lineWidth: 1, lineStyle: 1, title: "🔔", axisLabelVisible: true })); } }
-function checkAlerts() { if (!alerts.length) return; const b = lastBar(); if (!b) return; const hit = alerts.filter((a) => a.sym === sym && b.l <= a.price && b.h >= a.price);
+function addAlert(price, s = sym) { const a = { id: Date.now(), price: rnd(price), sym: s }; alerts.push(a); drawAlerts(); toast(`🔔 Alert set at ${px2(a.price)}`); }
+function drawAlerts() { for (const p of panes) { (p.alines || []).forEach((l) => { try { p.series.removePriceLine(l); } catch (e) {} }); p.alines = [];
+  for (const a of alerts) if (a.sym === paneSym(p)) p.alines.push(p.series.createPriceLine({ price: a.price, color: "#f5c542", lineWidth: 1, lineStyle: 1, title: "🔔", axisLabelVisible: true })); } }
+function checkAlerts() { if (!alerts.length) return; const hit = alerts.filter((a) => { const S = storeOf(a.sym), b = S && S["1m"].bars[S["1m"].i], f = S && need15 ? S["15s"].bars[S["15s"].i] : null, x = f && (!b || f.t >= b.t) ? f : b; return x && x.l <= a.price && x.h >= a.price; });
   if (!hit.length) return; alerts = alerts.filter((a) => !hit.includes(a)); drawAlerts(); for (const a of hit) { toast(`🔔 Price hit ${px2(a.price)}`); try { tone("alert"); } catch (e) {} } if (prefs.alertPause !== false) pause(); }
 
 /* ---------------- order engine ---------------- */
@@ -644,11 +685,11 @@ const openPnl = () => (pos.qty && last() != null ? (last() - pos.avg) * pos.qty 
 const dayRpl = () => { const d = sessDay(nowT()); return hist.filter((t) => sessDay(t.t_exit) === d).reduce((s, t) => s + (+t.pnl || 0), 0); };
 function lockedNow() { if (!lock) return false; if (nowT() >= lock.until) { lock = null; return false; } return true; }
 function guard() {
-  if (features.prop_rules === false || lockedNow() || !nowT()) return; const dp = dayRpl() + openPnl();
+  if (features.prop_rules === false || lockedNow() || !nowT()) return; if (guard.busy) return; const dp = dayRpl() + openPnlAll();
   let peak = sess ? +sess.account_start : prefs.bal, run = peak; for (const t of hist) { run += +t.pnl || 0; peak = Math.max(peak, run); }
-  const hit = (why) => { const blk = prefs.act === "block" || why.startsWith("Max"); lock = { why, until: blk ? (why.startsWith("Max") ? Infinity : endOfTradingDay(nowT())) : nowT() + 1 }; if (pos.qty) closeAll(why); orders = []; drawOrders(); if (!blk) lock = null; toast("🔒 " + why); refresh(); };
+  const hit = (why) => { const blk = prefs.act === "block" || why.startsWith("Max"); lock = { why, until: blk ? (why.startsWith("Max") ? Infinity : endOfTradingDay(nowT())) : nowT() + 1 }; guard.busy = true; try { if (pos.qty) closeAll(why); orders = []; for (const s of otherSyms()) withSym(s, () => { if (pos.qty) closeAll(why); orders = []; }); } finally { guard.busy = false; } drawOrders(); if (!blk) lock = null; toast("🔒 " + why); refresh(); };
   if (prefs.dll && dp <= -prefs.dll) hit("Personal daily loss limit hit"); else if (prefs.ptg && dp >= prefs.ptg) hit("Personal daily profit target reached");
-  else if (prefs.mdd && peak - (balance() + openPnl()) >= prefs.mdd) hit("Max drawdown hit");
+  else if (prefs.mdd && peak - (balance() + openPnlAll()) >= prefs.mdd) hit("Max drawdown hit");
 }
 function canTrade() { if (prefs.lockUntil && Date.now() < prefs.lockUntil) { toast("🔒 Personal lockout until " + new Date(prefs.lockUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); return false; } if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } return true; }
 const lotsNow = () => Math.max(1, +prefs.lots || 1);
@@ -721,7 +762,7 @@ async function shot(id) {
     const up = await sb.storage.from("shots").upload(path, blob, { contentType: "image/png", upsert: true }); if (!up.error) await sb.from("trades").update({ shots: [path] }).eq("id", id); } catch (e) {}
 }
 /* position tool → working order (FX Replay-style auto-entry) */
-function armTool(d) { if (paneSym(d.pane) !== sym) return toast(`That chart is ${paneSym(d.pane)} (watch only). Trade ${sym} on chart 1.`);
+function armTool(d) { if (paneSym(d.pane) !== sym) { setActive(d.pane); if (paneSym(d.pane) !== sym) return toast("Load that chart's data first"); }
   if (!canTrade()) return; const lp = last(), s = d.side, q = posQty(d);
   if ((d.sl - d.entry) * s >= 0 || (d.tp - d.entry) * s <= 0) return toast("For a long the stop goes below entry and the target above it. A short is the reverse.");
   const br = { slPx: d.sl, tpPx: d.tp }; d.qty = q;
@@ -737,8 +778,11 @@ function syncTool(d) {
 
 /* ---------------- price lines (orders, position, draft) on every pane ---------------- */
 function drawOrders() {
-  for (const p of panes) {
-    p.lines.forEach((l) => p.series.removePriceLine(l.ref)); p.lines = []; if (paneSym(p) !== sym) continue;
+  for (const p of panes) { p.lines.forEach((l) => p.series.removePriceLine(l.ref)); p.lines = []; }
+  for (const s of new Set(panes.map(paneSym))) withSym(s, () => { for (const p of panes) if (paneSym(p) === sym) linesFor(p); });
+}
+function linesFor(p) {
+  {
     const L = (price, color, title, kind, obj, style = 2) => p.lines.push({ ref: p.series.createPriceLine({ price, color, lineWidth: 2, lineStyle: style, title, axisLabelVisible: true }), kind, price, obj });
     if (pos.qty) { L(pos.avg, "#c9d2df", `${pos.qty > 0 ? "LONG" : "SHORT"} ${Math.abs(pos.qty)}  ${money(openPnl())}`, "pos", null, 0);
       if (pos.sl != null) L(pos.sl, "#ff6b7a", (pos.trail ? "TRAIL " : "SL ") + money((pos.sl - pos.avg) * pos.qty * inst.pt), "sl");
@@ -748,8 +792,11 @@ function drawOrders() {
   }
 }
 function drawOpens() {
-  for (const p of panes) {
-    p.opens.forEach((l) => p.series.removePriceLine(l)); p.opens = []; if (!prefs.opens || !nowT() || paneSym(p) !== sym) continue;
+  for (const p of panes) { p.opens.forEach((l) => p.series.removePriceLine(l)); p.opens = []; }
+  for (const s of new Set(panes.map(paneSym))) withSym(s, () => { for (const p of panes) if (paneSym(p) === sym) opensFor(p); });
+}
+function opensFor(p) {
+  { if (!prefs.opens || !nowT()) return;
     const day = sessDay(nowT()), marks = { "18:00": "Key open 18:00", "00:00": "Key open midnight", "09:30": "Key open 9:30", "10:00": "Key open 10:00" }, b1 = B["1m"];
     for (let i = b1.i; i >= 0 && i > b1.i - 1500; i--) { const b = b1.bars[i]; if (sessDay(b.t) !== day) break; const k = lhm(loc(b.t)); if (marks[k]) { p.opens.push(p.series.createPriceLine({ price: b.o, color: "rgba(140,155,180,.55)", lineWidth: 1, lineStyle: 1, axisLabelVisible: false, title: marks[k] })); delete marks[k]; } }
   }
@@ -791,7 +838,7 @@ function chartMenu(p, x, y, cx, cy) {
       { t: "Clone", f: () => { const c = JSON.parse(JSON.stringify(d)); c.id = did++; drawings.push(c); repaintAll(); } }, { t: "Delete", c: "s", k: "Del", f: () => { drawings = drawings.filter((z) => z !== d); sel = null; repaintAll(); } }], cx, cy); }
   if (pr == null || lp == null) return menu([{ h: "Chart" }, { t: "Load a replay first", f: () => {} }], cx, cy);
   const above = pr > lp, q = lotsNow(), br = autoBr(), t = tOf(p, x);
-  (paneSym(p) !== sym ? (a, x2, y2) => menu([{ h: `${paneSym(p)} @ ${px2(pr)} · watch only (trade ${sym} on chart 1)` }, ...a.slice(1).filter((it) => it === "-" || (it && !it.c && !/^Start the replay/.test(it.t || "")))], x2, y2) : menu)([{ h: `${sym} @ ${px2(pr)} · ${q} lot${q > 1 ? "s" : ""}` },
+  menu([{ h: `${sym} @ ${px2(pr)} · ${q} lot${q > 1 ? "s" : ""}` },
     { t: above ? `Sell limit @ ${px2(pr)}` : `Buy limit @ ${px2(pr)}`, c: above ? "s" : "b", f: () => place(above ? -1 : 1, "limit", pr, q, br) },
     { t: above ? `Buy stop @ ${px2(pr)}` : `Sell stop @ ${px2(pr)}`, c: above ? "b" : "s", f: () => place(above ? 1 : -1, "stop", pr, q, br) },
     { t: "Start the replay from this candle", f: () => { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); $("start").value = fmt(t + 60).replace(" ", "T"); loadReplay(); } },
@@ -855,7 +902,7 @@ $("dom").addEventListener("pointerup", (e) => {
 
 /* ---------------- panels ---------------- */
 function refresh() {
-  const bal = balance(), op = openPnl(), rp = dayRpl(), cls = (v) => (v >= 0 ? "pos-up" : "pos-dn");
+  const bal = balance(), op = openPnlAll(), rp = dayRpl(), cls = (v) => (v >= 0 ? "pos-up" : "pos-dn");
   flashNum("bal", Math.round(bal)); flashNum("rpl", Math.round(rp)); $("bal").textContent = money(bal); $("rpl").textContent = money(rp); $("rpl").className = cls(rp); $("upl").textContent = money(op); $("upl").className = cls(op);
   let run = sess ? +sess.account_start : prefs.bal, peak = Math.max(run, acctPeak || 0); for (const t of hist) { run += +t.pnl || 0; peak = Math.max(peak, run); }
   $("ddl").textContent = prefs.mdd ? money(prefs.mdd - (peak - (bal + op))) : "off";
@@ -863,13 +910,15 @@ function refresh() {
   const lp = last(); $("acctname").textContent = acct ? acct.name : `Replay · ${money(sess ? +sess.account_start : prefs.bal).replace(/\.00$/, "")}`;
   $("b-acct").innerHTML = `<table class="bt"><tr><th>Account</th><th>Start</th><th>Balance</th><th>RP&amp;L today</th><th>UP&amp;L</th><th>Drawdown left</th><th>Daily loss limit</th><th>Status</th></tr><tr><td>${$("acctname").textContent}</td><td>${money(sess ? +sess.account_start : prefs.bal)}</td><td>${money(bal)}</td><td class="${cls(rp)}">${money(rp)}</td><td class="${cls(op)}">${money(op)}</td><td>${$("ddl").textContent}</td><td>${prefs.dll ? money(prefs.dll) : "off"}</td><td>${$("status").textContent}</td></tr></table>`;
   $("pbid").textContent = lp != null ? px2(lp) : "—"; $("pask").textContent = lp != null ? px2(lp + TICK) : "—"; $("padsym").textContent = sym;
-  $("padpos").innerHTML = pos.qty ? `<span class="${cls(pos.qty)}">${pos.qty > 0 ? "LONG" : "SHORT"} ${Math.abs(pos.qty)}</span> @ ${px2(pos.avg)} · <span class="${cls(op)}">${money(op)}</span>` : "Flat";
+  $("padpos").innerHTML = pos.qty ? `<span class="${cls(pos.qty)}">${pos.qty > 0 ? "LONG" : "SHORT"} ${Math.abs(pos.qty)}</span> @ ${px2(pos.avg)} · <span class="${cls(openPnl())}">${money(openPnl())}</span>` : "Flat";
   $("clock").textContent = nowT() ? (blind ? "Mystery day · " + fmt(loc(nowT())).slice(11) : fmt(loc(nowT()))) + " NY" : "—";
   $("sb-br").textContent = prefs.autoBr ? `SL ${prefs.slPts} / TP ${prefs.tpPts} pts` : "off"; $("sb-sz").textContent = prefs.byRisk ? prefs.riskp + "% risk" : prefs.lots + " lot(s)"; $("sb-tr").textContent = prefs.trail ? prefs.trail + " pts" : "off";
-  $("b-pos").innerHTML = pos.qty ? `<table class="bt"><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Avg</th><th>Last</th><th>Stop</th><th>Target</th><th>UPL</th><th></th></tr><tr><td>${sym}</td><td class="${cls(pos.qty)}">${pos.qty > 0 ? "Long" : "Short"}</td><td>${Math.abs(pos.qty)}</td><td>${px2(pos.avg)}</td><td>${px2(lp)}</td><td>${px2(pos.sl)}</td><td>${px2(pos.tp)}</td><td class="${cls(op)}">${money(op)}</td><td><button data-a="close">Close</button> <button data-a="rev">Reverse</button> <button data-a="be">BE</button></td></tr></table>` : '<div class="empty">Flat</div>';
+  const bgPos = otherSyms().filter((k) => CTX[k].pos.qty).map((k) => withSym(k, () => `<tr><td>${sym}</td><td class="${cls(pos.qty)}">${pos.qty > 0 ? "Long" : "Short"}</td><td>${Math.abs(pos.qty)}</td><td>${px2(pos.avg)}</td><td>${px2(last())}</td><td>${px2(pos.sl)}</td><td>${px2(pos.tp)}</td><td class="${cls(openPnl())}">${money(openPnl())}</td><td class="tiny muted">click its chart to manage</td></tr>`)).join("");
+  const opA = openPnl();
+  $("b-pos").innerHTML = pos.qty || bgPos ? `<table class="bt"><tr><th>Symbol</th><th>Side</th><th>Qty</th><th>Avg</th><th>Last</th><th>Stop</th><th>Target</th><th>UPL</th><th></th></tr>${pos.qty ? `<tr><td>${sym}</td><td class="${cls(pos.qty)}">${pos.qty > 0 ? "Long" : "Short"}</td><td>${Math.abs(pos.qty)}</td><td>${px2(pos.avg)}</td><td>${px2(lp)}</td><td>${px2(pos.sl)}</td><td>${px2(pos.tp)}</td><td class="${cls(opA)}">${money(opA)}</td><td><button data-a="close">Close</button> <button data-a="rev">Reverse</button> <button data-a="be">BE</button></td></tr>` : ""}${bgPos}</table>` : '<div class="empty">Flat</div>';
   $("b-ord").innerHTML = orders.length ? `<table class="bt"><tr><th>Side</th><th>Type</th><th>Qty</th><th>Price</th><th>Bracket</th><th></th></tr>${orders.map((o) => `<tr><td class="${cls(o.side)}">${o.side > 0 ? "Buy" : "Sell"}</td><td>${o.type}${o.tool ? " (position tool)" : ""}</td><td>${o.qty}</td><td>${px2(o.price)}</td><td>${o.br ? (o.br.slPx != null ? `SL ${px2(o.br.slPx)} / TP ${px2(o.br.tpPx)}` : `SL ${o.br.slPts} / TP ${o.br.tpPts} pts`) : "—"}</td><td><button data-c="${o.id}">Cancel</button></td></tr>`).join("")}</table>` : '<div class="empty">No working orders</div>';
   $("ordn").textContent = orders.length ? "(" + orders.length + ")" : "";
-  $("b-hist").innerHTML = hist.length ? `<table class="bt"><tr><th>Time (NY)</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>Result</th><th>R</th><th>P&L</th></tr>${hist.slice().reverse().map((t) => `<tr><td>${fmt(loc(t.t_entry)).slice(5)}</td><td>${t.dir > 0 ? "Long" : "Short"}</td><td>${t.qty}</td><td>${px2(t.entry)}</td><td>${px2(t.exit)}</td><td>${t.outcome}</td><td>${t.r ?? "—"}</td><td class="${cls(t.pnl)}">${money(t.pnl)}</td></tr>`).join("")}</table>` : '<div class="empty">No trades this session</div>';
+  $("b-hist").innerHTML = hist.length ? `<table class="bt"><tr><th>Time (NY)</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>Result</th><th>R</th><th>P&L</th></tr>${hist.slice().reverse().map((t) => `<tr><td>${fmt(loc(t.t_entry)).slice(5)}</td><td>${t.symbol || ""}</td><td>${t.dir > 0 ? "Long" : "Short"}</td><td>${t.qty}</td><td>${px2(t.entry)}</td><td>${px2(t.exit)}</td><td>${t.outcome}</td><td>${t.r ?? "—"}</td><td class="${cls(t.pnl)}">${money(t.pnl)}</td></tr>`).join("")}</table>` : '<div class="empty">No trades this session</div>';
   const w = hist.filter((t) => t.pnl > 0).length; $("bstat").textContent = hist.length ? `${hist.length} trades · ${Math.round((100 * w) / hist.length)}% win · net ${money(hist.reduce((s, t) => s + t.pnl, 0))}` : "";
   const sl = +$("o-sl").value, q = +$("o-qty").value, tp = +$("o-tp").value || 0; $("o-risk").innerHTML = sl && q ? `Risk <b>${money(sl * q * inst.pt + fee(q))}</b> · reward <b>${money(tp * q * inst.pt)}</b> · <b>${(tp / sl).toFixed(2)}R</b>` : "";
   renderDom();
@@ -1589,10 +1638,11 @@ function syncTime(p) { const S = prefs.sync || {}; if (syncing || S.time === fal
   try { for (const q of panes) if (q !== p && !q.dead && q.candles.length) q.chart.timeScale().setVisibleRange(vr); } catch (e) {} syncing = false; }
 function chartSetUI() { const S = prefs.sync || {}; $("cs-ssym").checked = !!S.sym; $("cs-sint").checked = !!S.int; $("cs-scross").checked = S.cross !== false; $("cs-stime").checked = S.time !== false; $("cs-srange").checked = S.range !== false;
   document.querySelectorAll("#cs-sym [data-s]").forEach((b) => b.classList.toggle("on", b.dataset.s === sym)); }
-function symMenu(e) { const r = e.target.getBoundingClientRect(), pe = e.target.closest(".pane"), p = panes.find((q) => q.el === pe) || panes[active], own = p && p.i > 0 && !(prefs.sync && prefs.sync.sym), cur = own ? paneSym(p) : sym;
-  menu([{ h: own ? `Chart ${p.i + 1} symbol` : "Symbol you trade (chart 1)" }, ...["NQ", "ES"].map((s) => ({ t: (s === cur ? "✓ " : "\u2003 ") + s + (s === "NQ" ? " · Nasdaq-100 E-mini" : " · S&P 500 E-mini"), f: () => { if (s === cur) return; if (own) return setPaneSym(p.i, s); $("sym").value = s; $("sym").onchange(); } }))], r.left, r.bottom + 4); }
-async function setPaneSym(i, s) { prefs.syms = prefs.syms || []; prefs.syms[i] = s === sym ? null : s; savePrefs(); const p = panes[i]; if (!p) return; label(p);
-  if (B["1m"].bars.length) { if (s !== sym && !X[s]) { toast("Loading " + s + "…"); await loadOthers(); toast(""); } rebuildPane(p); drawOpens(); drawOrders(); p.chart.timeScale().scrollToRealTime(); } }
+function symMenu(e) { const r = e.target.getBoundingClientRect(), pe = e.target.closest(".pane"), p = panes.find((q) => q.el === pe) || panes[active], own = p && !(prefs.sync && prefs.sync.sym), cur = own ? paneSym(p) : sym;
+  menu([{ h: own ? `Chart ${p.i + 1} symbol` : "Symbol (all charts)" }, ...["NQ", "ES"].map((s) => ({ t: (s === cur ? "✓ " : "\u2003 ") + s + (s === "NQ" ? " · Nasdaq-100 E-mini" : " · S&P 500 E-mini"), f: () => { if (s === cur) return; if (own) return setPaneSym(p.i, s); $("sym").value = s; $("sym").onchange(); } }))], r.left, r.bottom + 4); }
+async function setPaneSym(i, s) { prefs.syms = prefs.syms || []; panes.forEach((q) => { if (!prefs.syms[q.i]) prefs.syms[q.i] = paneSym(q); }); prefs.syms[i] = s; savePrefs(); const p = panes[i]; if (!p) return;
+  if (B["1m"].bars.length) { if (s !== sym && !X[s]) { toast("Loading " + s + "…"); await loadOthers(); toast(""); } if (i === active) setActive(i); rebuildPane(p); drawOpens(); drawOrders(); refresh(); p.chart.timeScale().scrollToRealTime(); }
+  panes.forEach(label); }
 
 /* fix 15: journal as a trading calendar. Each day shows net P&L, trade count and win rate (by the market date you replayed); weekly totals on the right; click a day to see its trades. */
 let jMonth = null, jDay = null;
@@ -1674,7 +1724,9 @@ $("toolgrip").ondblclick = () => { prefs.toolsPos = null; savePrefs(); toolsUI()
 grip($("dockgrip"), (e, st) => { if (st.h == null) { st.h = prefs.dockClosed ? 0 : prefs.dockH || 150; prefs.dockClosed = false; $("dock").classList.remove("closed"); } prefs.dockH = Math.max(60, Math.min(Math.round(innerHeight * 0.6), st.h + st.y - e.clientY)); dockH(); },
   () => { if (prefs.dockH < 70) { prefs.dockClosed = true; prefs.dockH = 150; } savePrefs(); dockUI(); });
 $("sym").onchange = () => {   // switch instrument right away, at the same replay time
-  if (!B["1m"].bars.length) return; if (pos.qty || orders.length) { $("sym").value = sym; return toast("Close positions and cancel orders before switching instrument"); }
+  if (!B["1m"].bars.length) return; const v = $("sym").value;
+  if (panes.length > 1 && !(prefs.sync && prefs.sync.sym)) return setPaneSym(active, v);   // multi-chart: just this chart changes, positions on the others keep running
+  if (pos.qty || orders.length || busyElsewhere()) { $("sym").value = sym; return toast("Close positions and cancel orders before switching instrument"); }
   $("start").value = fmt(loc(cursorT + 61)).replace(" ", "T"); loadReplay();
 };
 $("skipny").onclick = () => skipTo("09:30", "NY open"); $("skipasia").onclick = () => skipTo("20:00", "Asia open");

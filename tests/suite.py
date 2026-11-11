@@ -209,6 +209,32 @@ async def main():
         await E("view('trade'); prefs.ind.econ=true; $('start').value='2024-06-12T09:20'; loadReplay()"); await pg.wait_for_timeout(1500)
         await pg.screenshot(path="/home/claude/shot/econ.png")
         check("news toast on an event day", await E("document.body.innerText.includes('News today: CPI')"))
+        # both charts tradable: NQ + ES positions side by side
+        await E("view('trade'); flatten(); setLayout('2')"); await pg.wait_for_timeout(700); await E("setActive(0); setPaneSym(0,'NQ'); setPaneSym(1,'ES')"); await pg.wait_for_timeout(800)
+        await E("setActive(1)"); check("clicking the ES chart makes ES the traded symbol", await E("sym==='ES' && $('sym').value==='ES'"))
+        await pg.keyboard.press("b"); await pg.wait_for_timeout(150); check("buy on ES", await E("pos.qty===1 && sym==='ES'"))
+        await E("setActive(0)"); check("back on NQ: NQ is flat, ES position kept", await E("sym==='NQ' && pos.qty===0 && CTX.ES && CTX.ES.pos.qty===1"))
+        await pg.keyboard.press("s"); await pg.wait_for_timeout(150); check("sell on NQ while long ES", await E("pos.qty===-1 && CTX.ES.pos.qty===1"))
+        check("each chart shows its own position line", await E("panes[0].lines.some(l=>l.kind==='pos') && panes[1].lines.some(l=>l.kind==='pos')"))
+        await E("refresh()"); check("Positions tab lists NQ and ES", await E("(()=>{const h=$('b-pos').innerText; return h.includes('NQ') && h.includes('ES')})()"), await E("$('b-pos').innerText.slice(0,200)"))
+        check("pad shows only the active symbol's P&L", await E("$('padpos').innerText.includes(money(openPnl()))"))
+        check("UPL counts both", await E("Math.abs(openPnlAll() - (openPnl() + withSym('ES', openPnl))) < 1e-6"))
+        n0 = await E("hist.length"); await E("CTX.ES.pos.sl = withSym('ES', () => last()) + 0.01*0 ; CTX.ES.pos.sl = withSym('ES', () => lastBar().h) + 0.25")
+        await E("(()=>{const e=CTX.ES.pos; e.sl = withSym('ES', () => lastBar().c) - 0.25; e.tp=null})()")
+        for k in range(60):
+            if await E("!CTX.ES || CTX.ES.pos.qty===0"): break
+            await E("stepFwd()")
+        check("ES stop fills in the background while trading NQ", await E("(!CTX.ES || CTX.ES.pos.qty===0) && hist.some(t=>t.symbol==='ES')"), await E("[CTX.ES && CTX.ES.pos.qty, hist.map(t=>t.symbol)]"))
+        await E("flatten(); setActive(1)"); await E("flatten(); setActive(0)")
+        # SMT indicator
+        await E("Object.keys(smtCfg()).forEach(k=>smtCfg()[k]=false); smtCfg()['5m']=true; smtCfg()['15m']=true; setPaneSym(1,'NQ'); setLayout('1')"); await pg.wait_for_timeout(900)
+        await E("loadOthers()"); await pg.wait_for_timeout(800)
+        check("SMT loads the partner symbol", await E("!!X['ES']"))
+        n = await E("(()=>{let n=0; for(const [tf,sec] of SMT_TFS) if(smtCfg()[tf]) n+=smtFind(tf,sec).length; return n})()")
+        check("SMT divergences found (5m/15m)", n > 0, n)
+        check("SMT only uses closed candles", await E("(()=>{const z=smtFind('5m',300); const now=bucket(loc(nowT()),300); return z.every(s=>s.t2<now)})()"))
+        await pg.screenshot(path="/home/claude/shot/smt.png")
+        await E("Object.keys(smtCfg()).forEach(k=>smtCfg()[k]=false); repaintAll()")
         # media dock: Reese library + Spotify/YouTube sign-in panels
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))
