@@ -15,7 +15,7 @@ const SEC = Object.fromEntries(TFS);
 const TICK = 0.25;
 const LAYOUTS = { "1": [1, 1], "2": [2, 1], "2h": [1, 2], "3": [3, 1], "4": [2, 2], "6": [3, 2], "8": [4, 2] };
 const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
-const IND_DEF = { data: true, sess: true, pd: true, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: true, h4: false, po3: false };
+const IND_DEF = { sbox: true, data: true, sess: false, pd: true, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: true, h4: false, po3: false };
 const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", be: "e", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
@@ -187,7 +187,7 @@ function saveShot() { const p = panes[active]; if (!p) return; const c = p.chart
 function indMenu() { const r = $("indbtn").getBoundingClientRect(), I = prefs.ind, ck = (v) => (v ? "✓ " : "\u2003 "), flip = (k) => () => { I[k] = !I[k]; savePrefs(); repaintAll(); };
   menu([{ h: "Indicators" }, { t: ck(prefs.opens) + "Key opens (18:00, midnight, 9:30, 10:00)", f: () => { prefs.opens = !prefs.opens; savePrefs(); fillSettings(); drawOpens(); } },
   { t: ck(prefs.sess) + "Shade the NY session", f: () => { prefs.sess = !prefs.sess; savePrefs(); fillSettings(); repaintAll(); } },
-  { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session highs / lows (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") }, { t: ck(I.pw) + "Previous week high / low", f: flip("pw") }, { t: ck(I.eq) + "Equal highs / lows (resting liquidity)", f: flip("eq") },
+  { t: ck(I.sbox) + "Trading sessions (Tokyo / London / New York boxes)", f: flip("sbox") }, { t: "\u2003 Sessions settings…", f: sessDlg }, { t: ck(I.data) + "Data highs / lows (news candles: 8:30, 10:00, 2:00)", f: flip("data") }, { t: ck(I.sess) + "Session high / low lines only (Asia, London, NY AM)", f: flip("sess") }, { t: ck(I.pd) + "Previous day high / low", f: flip("pd") }, { t: ck(I.pw) + "Week + previous week high / low", f: flip("pw") }, { t: ck(I.eq) + "Equal highs / lows (resting liquidity)", f: flip("eq") },
   { t: ck(I.fvg) + "Fair value gaps (FVG)", f: flip("fvg") }, ...(I.fvg ? ["5m", "15m", "1h", "4h", "1D"].map((tf) => ({ t: "\u2003 " + ck((I.fvgTfs || []).includes(tf)) + tf + " gaps", f: () => { const s = new Set(I.fvgTfs || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.fvgTfs = [...s]; savePrefs(); repaintAll(); } })).concat([{ t: "\u2003 " + ck(I.ifvg) + "Show inversions (IFVG)", f: flip("ifvg") }]) : []),
   { t: ck(I.h4) + "4H candle outlines", f: flip("h4") }, { t: ck(I.po3) + "Daily candle (PO3) on the right", f: flip("po3") }], r.left, r.bottom + 6); }
 const TOOLNAMES = { cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
@@ -264,7 +264,9 @@ function studies() {
   if (I.pw) {   // previous week high/low (week opens Sunday 18:00 New York)
     const wk = (lt) => { const d = new Date((lt + 6 * 3600) * 1000); return Math.floor((lt + 6 * 3600) / 86400) - d.getUTCDay(); }, cw = wk(loc(t)); let hi = null, lo = null;
     for (let k = i; k >= Math.max(0, i - 15 * 1440); k--) { const x = bars[k], w = wk(loc(x.t)); if (w === cw) continue; if (w < cw - 7) break; if (!hi || x.h > hi.h) hi = x; if (!lo || x.l < lo.l) lo = x; }
-    if (hi) out.levels.push({ price: hi.h, t0: loc(hi.t), label: "PWH", col: "rgba(196,181,253,.8)" }, { price: lo.l, t0: loc(lo.t), label: "PWL", col: "rgba(196,181,253,.8)" }); }
+    if (hi) out.levels.push({ price: hi.h, t0: loc(hi.t), label: "PWH", col: "rgba(196,181,253,.8)" }, { price: lo.l, t0: loc(lo.t), label: "PWL", col: "rgba(196,181,253,.8)" });
+    let wh = null, wl = null; for (let k = i; k >= Math.max(0, i - 8 * 1440); k--) { const x = bars[k]; if (wk(loc(x.t)) !== cw) break; if (!wh || x.h > wh.h) wh = x; if (!wl || x.l < wl.l) wl = x; }
+    if (wh) out.levels.push({ price: wh.h, t0: loc(wh.t), label: "Week H", col: "rgba(196,181,253,.55)" }, { price: wl.l, t0: loc(wl.t), label: "Week L", col: "rgba(196,181,253,.55)" }); }
   if (I.eq) {   // equal highs / lows: two 15m swing points within a hair of each other that price hasn't run yet = resting liquidity
     const cs = []; for (let k = Math.max(0, i - 3 * 1440); k <= i; k++) { const x = bars[k], bt = bucket(loc(x.t), 900), c = cs[cs.length - 1];
       if (c && c.t === bt) { c.h = Math.max(c.h, x.h); c.l = Math.min(c.l, x.l); c.c = x.c; } else cs.push({ t: bt, o: x.o, h: x.h, l: x.l, c: x.c }); }
@@ -312,10 +314,41 @@ function studies() {
   if (I.po3 && cur.length) { const xs = cur.slice().reverse(); out.po3 = { o: xs[0].o, h: Math.max(...xs.map((x) => x.h)), l: Math.min(...xs.map((x) => x.l)), c: bars[i].c }; }
   return out;
 }
+
+/* ---------------- Trading sessions (TradeSea-style): a box per session with open/high/low/close/avg, range in points + ticks, project high/low forward ---------------- */
+const SB_DEF = { sessions: [{ name: "Tokyo", start: "20:00", end: "00:00", color: "#ffc65c", on: true }, { name: "London", start: "02:00", end: "05:00", color: "#7aa7ff", on: true }, { name: "New York", start: "09:30", end: "16:00", color: "#5ee6b8", on: true }],
+  lookback: 2, border: true, labels: true, values: true, ticks: true, project: true, lOpen: false, lClose: false, lAvg: true, stats: true };
+const sbCfg = () => ({ ...SB_DEF, ...(prefs.sbCfg || {}), sessions: (prefs.sbCfg && prefs.sbCfg.sessions) || SB_DEF.sessions });
+let SBC = { key: null };
+function sessBoxes() { const b1 = B["1m"], C = sbCfg(), key = b1.i + JSON.stringify(C); if (SBC.key === key) return SBC.out; const out = []; SBC = { key, out }; if (b1.i < 0) return out;
+  const bars = b1.bars, i = b1.i, groups = {}, order = [];
+  for (let k = i; k >= Math.max(0, i - (C.lookback + 2) * 1440); k--) { const d = sessDay(bars[k].t); if (!groups[d]) { if (order.length > C.lookback) break; groups[d] = []; order.push(d); } groups[d].push(bars[k]); }
+  for (const d of order.slice(0, C.lookback + 1)) { const xs = groups[d].slice().reverse();
+    for (const s of C.sessions) { if (!s.on) continue; const cross = s.start > s.end && s.end !== "00:00", inS = (h) => (s.end === "00:00" ? h >= s.start : cross ? h >= s.start || h < s.end : h >= s.start && h < s.end);
+      const ys = xs.filter((x) => inS(lhm(loc(x.t)))); if (!ys.length) continue;
+      const hi = Math.max(...ys.map((y) => y.h)), lo = Math.min(...ys.map((y) => y.l)), live = ys[ys.length - 1] === bars[i];
+      let tH = false, tL = false; const endT = ys[ys.length - 1].t; for (let k = bars.indexOf(ys[ys.length - 1]) + 1; k > 0 && k <= i; k++) { if (bars[k].h > hi) tH = true; if (bars[k].l < lo) tL = true; if (tH && tL) break; }
+      out.push({ ...s, day: d, t0: loc(ys[0].t), t1: loc(endT) + 60, open: ys[0].o, close: ys[ys.length - 1].c, hi, lo, avg: (hi + lo) / 2, live, tH, tL }); } }
+  return out; }
+function paintSessBoxes(p, g, W, H) { if (!prefs.ind || !prefs.ind.sbox || p.sec >= 14400) return; const C = sbCfg(), tick = TICK || 0.25, X = (lt) => xOf(p, lt);
+  for (const s of sessBoxes()) { const x1 = X(s.t0), x2 = X(s.t1), yh = yOf(p, s.hi), yl = yOf(p, s.lo); if (x1 == null || x2 == null || yh == null || yl == null || x2 < 0 || x1 > W) continue;
+    const a = Math.max(0, x1), b = Math.min(W, x2), col = s.color; g.fillStyle = col + "14"; g.fillRect(a, yh, b - a, yl - yh); if (C.border) { g.strokeStyle = col + "99"; g.lineWidth = 1; g.strokeRect(a, yh, b - a, yl - yh); }
+    const ln = (price, dash, lab) => { const y = yOf(p, price); if (y == null) return; g.strokeStyle = col + "aa"; g.setLineDash(dash); g.beginPath(); g.moveTo(a, y); g.lineTo(b, y); g.stroke(); g.setLineDash([]); if (C.labels) { g.fillStyle = col; g.fillText(lab + (C.values ? " " + px2(price) : ""), a + 3, y - 3); } };
+    if (C.lOpen) ln(s.open, [2, 3], "O"); if (C.lClose && !s.live) ln(s.close, [2, 3], "C"); if (C.lAvg) ln(s.avg, [6, 4], "Avg");
+    if (C.project && !s.live) for (const [pr, taken, lab] of [[s.hi, s.tH, "H"], [s.lo, s.tL, "L"]]) { const y = yOf(p, pr); if (y == null || x2 > W) continue; g.strokeStyle = col + (taken ? "40" : "b0"); g.setLineDash([5, 4]); g.beginPath(); g.moveTo(x2, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]);
+      if (C.labels) { const t = s.name + " " + lab + (taken ? " ✓" : "") + (C.values ? " " + px2(pr) : ""); g.fillStyle = col + (taken ? "70" : "ee"); g.fillText(t, W - g.measureText(t).width - 6, y - 4); } }
+    if (C.stats) { const r = s.hi - s.lo, t = s.name + "  " + r.toFixed(2) + " pts" + (C.ticks ? " · " + Math.round(r / tick) + " ticks" : ""); g.fillStyle = col; g.fillText(t, Math.max(2, Math.min(a + 3, W - g.measureText(t).width - 4)), yh - 4); } } }
+function sessDlg() { const C = sbCfg();
+  dlg(`<h3>Trading sessions</h3><div class="tiny muted">Times are New York time. A session ending at 00:00 runs to midnight; start after end crosses midnight.</div>
+    ${C.sessions.map((s, k) => `<div class="row2 sbrow"><label class="ck"><input type="checkbox" id="sb-on${k}" ${s.on ? "checked" : ""}> <input id="sb-n${k}" value="${esc(s.name)}" maxlength="14" style="width:90px"></label><label>From<input id="sb-a${k}" type="time" value="${s.start}"></label><label>To<input id="sb-z${k}" type="time" value="${s.end}"></label><label>Color<input id="sb-c${k}" type="color" value="${s.color}"></label></div>`).join("")}
+    <div class="chips">${[["border", "Box border"], ["stats", "Stats label (range)"], ["ticks", "Range in ticks"], ["project", "Project high / low forward"], ["lOpen", "Open line"], ["lClose", "Close line"], ["lAvg", "Average line"], ["labels", "Level labels"], ["values", "Level values"]].map(([k, n]) => `<label class="ck"><input type="checkbox" id="sb-${k}" ${C[k] ? "checked" : ""}> ${n}</label>`).join("")}</div>
+    <label>Lookback (days)<input id="sb-lb" type="number" min="0" max="10" value="${C.lookback}"></label>`, () => {
+    const n = { sessions: C.sessions.map((s, k) => ({ name: $("sb-n" + k).value || s.name, start: $("sb-a" + k).value, end: $("sb-z" + k).value, color: $("sb-c" + k).value, on: $("sb-on" + k).checked })), lookback: Math.max(0, Math.min(10, +$("sb-lb").value || 0)) };
+    for (const k of ["border", "stats", "ticks", "project", "lOpen", "lClose", "lAvg", "labels", "values"]) n[k] = $("sb-" + k).checked; prefs.sbCfg = n; prefs.ind.sbox = true; savePrefs(); repaintAll(); }); }
 function paintStudies(p, g, W, H) {
   if (!prefs.ind || p.sec >= 86400 || !p.candles.length) return; const S = studies(), ts = p.chart.timeScale();
   const X = (lt) => { const x = xOf(p, lt); return x == null ? 0 : Math.max(0, x); };
-  g.save(); g.font = "500 10px Geist Mono, monospace";
+  g.save(); g.font = "500 10px Geist Mono, monospace"; paintSessBoxes(p, g, W, H);
   for (const z of S.h4) { if (p.sec >= 14400) break; const x1 = X(z.t), x2 = Math.min(W, X(z.t + 14400) || W), y1 = yOf(p, z.h), y2 = yOf(p, z.l); if (y1 == null || y2 == null || x2 <= x1) continue;
     g.strokeStyle = z.c >= z.o ? "rgba(43,212,160,.35)" : "rgba(255,107,122,.35)"; g.lineWidth = 1; g.setLineDash([]); g.strokeRect(x1, y1, x2 - x1, y2 - y1);
     const yo = yOf(p, z.o), yc = yOf(p, z.c); if (yo != null && yc != null) { g.fillStyle = z.c >= z.o ? "rgba(43,212,160,.06)" : "rgba(255,107,122,.06)"; g.fillRect(x1, Math.min(yo, yc), x2 - x1, Math.abs(yo - yc)); } }
