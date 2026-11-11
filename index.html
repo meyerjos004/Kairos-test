@@ -5,13 +5,16 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Rewind · futures replay</title>
 <link rel="icon" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
+<div class="aurora"></div>
 <div id="auth" class="screen hidden">
-  <div class="card authcard">
+  <div class="glass authcard pop">
     <div class="brand big"><span class="logo">⟲</span> Rewind</div>
     <p class="muted">Bar-by-bar futures replay. Invite only.</p>
     <input id="a-email" type="email" placeholder="email" autocomplete="email">
@@ -22,90 +25,89 @@
 </div>
 
 <div id="app" class="hidden">
-  <!-- top bar: instrument + replay + account panel -->
-  <header class="top">
+  <header class="top glass">
     <div class="brand"><span class="logo">⟲</span> Rewind</div>
-    <div class="grp">
-      <select id="sym" title="Instrument"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select>
-      <div id="tfchips" class="chips"></div>
-    </div>
+    <div class="grp"><select id="sym" title="Instrument"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select></div>
     <div class="grp replay">
       <input id="start" type="datetime-local" title="Start (New York time)">
       <button id="go" class="primary small">Load</button>
-      <button id="back" class="icon" title="Step back (←)">⏮</button>
-      <button id="play" class="icon" title="Play / pause (space)">▶</button>
-      <button id="step" class="icon" title="Step one bar (→)">⏭</button>
-      <select id="speed" title="Speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option><option value="10">100×</option></select>
+      <div class="seg"><button id="back" title="Step back (←)">⏮</button><button id="play" title="Play / pause (space)">▶</button><button id="step" title="Step one bar (→)">⏭</button></div>
+      <select id="speed" title="Replay speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option><option value="10">100×</option></select>
       <span id="clock" class="clock">—</span>
     </div>
     <div class="acctbar" id="acctbar">
-      <div><label>Balance</label><b id="bal">—</b></div>
-      <div><label>Open P&amp;L</label><b id="openp">—</b></div>
-      <div><label>Day P&amp;L</label><b id="dayp">—</b></div>
-      <div><label>Loss limit left</label><b id="dll">—</b></div>
-      <div><label>Drawdown left</label><b id="ddl">—</b></div>
-      <div id="lockchip" class="lockchip hidden">🔒 Locked</div>
+      <div class="kv"><label>Bal</label><b id="bal">—</b></div>
+      <div class="kv"><label>RPL</label><b id="rpl">—</b></div>
+      <div class="kv"><label>UPL</label><b id="upl">—</b></div>
+      <div class="kv"><label>Drawdown left</label><b id="ddl">—</b></div>
+      <div class="status" id="status">Active</div>
     </div>
     <nav class="views">
-      <button data-view="trade" class="vtab on">Trade</button>
-      <button data-view="journal" class="vtab">Journal</button>
-      <button data-view="settings" class="vtab">Settings</button>
-      <button data-view="admin" class="vtab hidden" id="vt-admin">Admin</button>
-      <button id="logout" class="ghost small" title="Sign out">⎋</button>
+      <button data-view="trade" class="vtab on">Trade</button><button data-view="journal" class="vtab">Journal</button><button data-view="settings" class="vtab">Settings</button><button data-view="admin" class="vtab hidden" id="vt-admin">Admin</button>
+      <button id="lockbtn" class="vtab" title="Personal lockout">🔒</button><button id="logout" class="vtab" title="Sign out">⎋</button>
     </nav>
   </header>
 
-  <!-- TRADE workspace -->
   <section id="v-trade" class="view">
     <div class="work">
-      <div class="tools" id="tools">
+      <div class="tools glass" id="tools">
         <button data-tool="cursor" class="tool on" title="Cursor (Esc)">↖</button>
-        <button data-tool="hline" class="tool" title="Horizontal line (H)">―</button>
+        <button data-tool="cross" class="tool" title="Crosshair">✛</button>
+        <span class="tsep"></span>
         <button data-tool="trend" class="tool" title="Trend line (T)">╱</button>
-        <button data-tool="fib" class="tool" title="Fib retracement (F): click high, then low">ƒ</button>
-        <button data-tool="measure" class="tool" title="Measure (M): points and R">⇕</button>
+        <button data-tool="ray" class="tool" title="Ray">↗</button>
+        <button data-tool="hline" class="tool" title="Horizontal line (H)">―</button>
+        <button data-tool="hray" class="tool" title="Horizontal ray">⟶</button>
+        <button data-tool="vline" class="tool" title="Vertical line (V)">│</button>
+        <button data-tool="rect" class="tool" title="Rectangle / zone (Z)">▭</button>
+        <button data-tool="fib" class="tool" title="Fib retracement (F)">ƒ</button>
+        <button data-tool="long" class="tool lp" title="Long position (L): place it, then arm it to auto-enter">⬆</button>
+        <button data-tool="short" class="tool sp" title="Short position (K): place it, then arm it to auto-enter">⬇</button>
+        <button data-tool="measure" class="tool" title="Measure (M)">⇕</button>
+        <button data-tool="text" class="tool" title="Text note">T</button>
         <span class="tsep"></span>
-        <button id="clr" class="tool" title="Clear drawings">⌫</button>
+        <button id="magnet" class="tool" title="Magnet: snap to candle highs/lows/closes">🧲</button>
+        <button id="clr" class="tool" title="Remove all drawings">⌫</button>
         <span class="tsep"></span>
-        <button data-layout="1" class="tool lay on" title="One chart">▢</button>
-        <button data-layout="2" class="tool lay" title="Two charts">◫</button>
+        <div class="laywrap"><button id="laybtn" class="tool" title="Chart layout">⊞</button>
+          <div id="laymenu" class="menu glass hidden"></div></div>
       </div>
-      <div class="charts" id="charts">
-        <div class="pane" id="pane0"><div class="ptitle"><span id="p0t"></span>
-          <div class="qt"><button class="qsell" id="qsell">SELL <span id="qbid">—</span></button><input id="qqty" type="number" min="1" value="1" title="Lots"><button class="qbuy" id="qbuy">BUY <span id="qask">—</span></button></div></div>
-          <div class="chart" id="chart0"></div></div>
-        <div class="pane hidden" id="pane1"><div class="ptitle"><select id="tf1" class="mini"></select><span id="p1t"></span></div><div class="chart" id="chart1"></div></div>
-      </div>
-      <aside class="side">
+      <div class="charts" id="charts"></div>
+      <aside class="side glass">
         <div class="modes"><button data-mode="scalp" class="mode on">Scalp</button><button data-mode="dom" class="mode" id="m-dom">DOM</button><button data-mode="order" class="mode">Order</button></div>
         <div id="md-scalp" class="mpanel">
-          <label>Lots</label>
-          <div class="lots" id="lots"></div>
-          <div class="row2"><label>Stop (pts)<input id="b-sl" type="number" step="0.25" value="15"></label><label>Target (pts)<input id="b-tp" type="number" step="0.25" value="45"></label></div>
-          <label class="ck"><input id="b-on" type="checkbox" checked> Auto bracket on every entry</label>
-          <label class="ck"><input id="b-risk" type="checkbox"> Size from risk <input id="riskp" type="number" step="0.1" value="1" class="inl">% of balance</label>
-          <div class="row"><button id="sbuy" class="buy">Buy Mkt</button><button id="ssell" class="sell">Sell Mkt</button></div>
-          <div class="row"><button id="sclose" class="ghost">Close</button><button id="srev" class="ghost">Reverse</button><button id="sbe" class="ghost">Stop→BE</button></div>
-          <div class="row"><button id="scancel" class="ghost">Cancel all</button><button id="sflat" class="warnbtn">Flatten all</button></div>
-          <div class="row"><button id="slock" class="ghost small">Lock me out for today</button></div>
+          <p class="muted small">The Scalp Pad floats over the chart. Drag it anywhere, and right-click it for settings.</p>
+          <button id="padshow" class="wide">Show Scalp Pad</button>
+          <div class="hr"></div>
+          <div class="kvs">
+            <div><span>Auto bracket</span><b id="sb-br">—</b></div>
+            <div><span>Sizing</span><b id="sb-sz">—</b></div>
+            <div><span>Trail</span><b id="sb-tr">—</b></div>
+          </div>
+          <div class="hr"></div>
+          <div class="row"><button id="scancel" class="ghost">Cancel all <kbd>C</kbd></button><button id="sflat" class="danger">Flatten all <kbd>F</kbd></button></div>
         </div>
         <div id="md-dom" class="mpanel hidden">
-          <div class="domhead"><span>Buy</span><span>Price</span><span>Sell</span></div>
+          <div class="domhead"><span>My bid</span><span>Buy</span><span>Price</span><span>Sell</span><span>My ask</span></div>
           <div id="dom" class="dom"></div>
-          <p class="tiny muted">Click Buy or Sell beside a price: below the market = limit, above = stop (and the reverse for sells). Replay data has no order book, so the ladder shows prices, your orders and your position.</p>
+          <div class="row"><button id="d-buy" class="buy">Buy</button><button id="d-sell" class="sell">Sell</button></div>
+          <div class="row"><button id="d-jb" class="ghost">Join bid</button><button id="d-ja" class="ghost">Join ask</button></div>
+          <div class="row"><button id="d-close" class="ghost">Close</button><button id="d-rev" class="ghost">Reverse</button></div>
+          <p class="tiny muted">Click a price to place an order: limit on the near side of the market, stop past it. Drag a working order on the ladder to move it. Replay data is Level 1 only, so there are no size columns.</p>
         </div>
         <div id="md-order" class="mpanel hidden">
-          <div class="row"><button id="o-buy" class="side-b on">Buy</button><button id="o-sell" class="side-s">Sell</button></div>
-          <label>Type<select id="o-type"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option></select></label>
-          <label>Price<input id="o-px" type="number" step="0.25"></label>
-          <label>Lots<input id="o-qty" type="number" min="1" value="1"></label>
-          <div class="row2"><label>Stop (pts)<input id="o-sl" type="number" step="0.25" value="15"></label><label>Target (pts)<input id="o-tp" type="number" step="0.25" value="45"></label></div>
-          <div id="o-risk" class="tiny muted"></div>
-          <button id="o-send" class="primary wide">Place order</button>
+          <div class="seg wide2"><button id="o-buy" class="on b">Buy</button><button id="o-sell" class="s">Sell</button></div>
+          <label>Type<select id="o-type"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option><option value="stoplimit">Stop limit</option></select></label>
+          <div id="o-pxrow" class="hidden"><label>Price (drag the draft line on the chart)<input id="o-px" type="number" step="0.25"></label></div>
+          <label>Quantity<div class="stepper"><button data-q="-1">−</button><input id="o-qty" type="number" min="1" value="1"><button data-q="1">+</button></div></label>
+          <div class="row2"><label>Stop loss (pts)<input id="o-sl" type="number" step="0.25" value="15"></label><label>Take profit (pts)<input id="o-tp" type="number" step="0.25" value="45"></label></div>
+          <label class="ck"><input id="o-trail" type="checkbox"> Trailing stop</label>
+          <div id="o-risk" class="riskcard"></div>
+          <button id="o-send" class="primary wide">Submit order</button>
         </div>
       </aside>
     </div>
-    <div class="bottom">
+    <div class="bottom glass">
       <div class="btabs"><button data-b="pos" class="btab on">Positions</button><button data-b="ord" class="btab">Orders <span id="ordn"></span></button><button data-b="hist" class="btab">History</button><span class="bstat" id="bstat"></span></div>
       <div id="b-pos" class="bpanel"></div><div id="b-ord" class="bpanel hidden"></div><div id="b-hist" class="bpanel hidden"></div>
     </div>
@@ -113,32 +115,38 @@
 
   <section id="v-journal" class="view hidden scroll">
     <div class="stats" id="stats"></div>
-    <div id="eqchart"></div>
+    <div id="eqchart" class="glass"></div>
     <div class="toolbar"><select id="j-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select><button id="j-csv" class="ghost">Export CSV</button><button id="j-notion" class="ghost">Sync to Notion</button><span id="j-msg" class="muted small"></span></div>
-    <table class="tbl"><thead><tr><th>Date (NY)</th><th>Sym</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>R</th><th>P&amp;L</th><th>Notes</th><th></th></tr></thead><tbody id="jrows"></tbody></table>
+    <div class="glass tblwrap"><table class="tbl"><thead><tr><th>Date (NY)</th><th>Sym</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>R</th><th>P&amp;L</th><th>Notes</th><th></th></tr></thead><tbody id="jrows"></tbody></table></div>
   </section>
 
   <section id="v-settings" class="view hidden scroll">
     <div class="cols">
-      <div class="card form">
-        <h3>Account &amp; risk controls</h3>
+      <div class="glass form">
+        <h3>Account</h3>
         <label>Starting balance<input id="s-bal" type="number" value="50000"></label>
-        <label>Daily loss limit ($, 0 = off)<input id="s-dll" type="number" value="1000"></label>
-        <label>Profit target guard: stop trading for the day at +$ (0 = off)<input id="s-ptg" type="number" value="0"></label>
-        <label>Max drawdown ($, trailing from the high, 0 = off)<input id="s-mdd" type="number" value="2000"></label>
+        <label>Max drawdown, trailing from the high ($, 0 = off)<input id="s-mdd" type="number" value="2000"></label>
         <label>Commission per contract, round trip ($)<input id="s-fee" type="number" step="0.01" value="4.50"></label>
         <label>Micro commission per contract ($)<input id="s-mfee" type="number" step="0.01" value="1.50"></label>
+        <h3>Personal risk limits</h3>
+        <label>Personal daily loss limit, PDLL ($, 0 = off)<input id="s-dll" type="number" value="1000"></label>
+        <label>Personal daily profit target, PDPT ($, 0 = off)<input id="s-ptg" type="number" value="0"></label>
+        <label>When a limit is hit<select id="s-act"><option value="block">Liquidate and block for the day</option><option value="liq">Liquidate only</option></select></label>
         <h3>Chart</h3>
-        <label class="ck"><input id="s-opens" type="checkbox" checked> Show key opens (18:00, midnight, 9:30, 10:00)</label>
+        <label class="ck"><input id="s-opens" type="checkbox" checked> Key opens (18:00, midnight, 9:30, 10:00)</label>
+        <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label>
+        <div class="row2"><label>Up candle<input id="s-up" type="color" value="#2bd4a0"></label><label>Down candle<input id="s-dn" type="color" value="#ff6b7a"></label></div>
+        <h3>Hot keys</h3>
+        <div id="s-keys" class="keys"></div>
         <button id="s-save" class="primary">Save</button> <span id="s-msg" class="muted small"></span>
       </div>
-      <div class="card form" id="notioncard">
+      <div class="glass form" id="notioncard">
         <h3>Notion</h3>
         <p class="muted small">Send every closed trade to your own Notion journal. Your Notion stays yours: nobody else's trades go in, and nobody else can see yours.</p>
         <div id="n-state" class="small">Checking…</div>
         <div id="n-connect" class="hidden">
           <button id="n-oauth" class="primary wide hidden">Connect with Notion</button>
-          <details id="n-tokenbox"><summary class="small">Or connect with an integration token</summary>
+          <details id="n-tokenbox"><summary class="small">Connect with an integration token</summary>
             <ol class="tiny muted"><li>Go to notion.so/profile/integrations → New integration (Internal) → copy the secret.</li><li>Open the Notion page you want the journal in → ••• → Connections → add your integration.</li><li>Paste the secret here.</li></ol>
             <div class="row"><input id="n-token" type="password" placeholder="ntn_…"><button id="n-save">Connect</button></div>
           </details>
@@ -155,18 +163,31 @@
   </section>
 
   <section id="v-admin" class="view hidden scroll">
-    <div class="card form">
+    <div class="glass form" style="margin:16px auto">
       <h3>Invite list</h3>
       <div class="row"><input id="ad-email" type="email" placeholder="friend@email.com"><button id="ad-add" class="primary">Invite</button></div>
       <div id="ad-list" class="small"></div>
-      <h3>Features (everyone)</h3>
-      <div id="ad-feat"></div>
-      <h3>Data on file</h3>
-      <div id="ad-data" class="small muted"></div>
+      <h3>Features (everyone)</h3><div id="ad-feat"></div>
+      <h3>Data on file</h3><div id="ad-data" class="small muted"></div>
     </div>
   </section>
 </div>
-<div id="toast" class="toast hidden"></div>
+
+<!-- floating scalp pad -->
+<div id="pad" class="pad glass hidden">
+  <div class="padbar" id="padbar"><span>Scalp</span><span class="muted tiny" id="padsym"></span><button id="padx" class="x" title="Dock">×</button></div>
+  <div class="padbody">
+    <div class="pxrow"><div><label>Bid</label><b id="pbid">—</b></div><div><label>Ask</label><b id="pask">—</b></div></div>
+    <div class="row"><button id="pbuy" class="buy">Buy <kbd>B</kbd></button><button id="psell" class="sell">Sell <kbd>S</kbd></button></div>
+    <div class="row"><button id="pjb" class="ghost">Join bid <kbd>J</kbd></button><button id="pja" class="ghost">Join ask <kbd>A</kbd></button></div>
+    <div class="lots" id="lots"></div>
+    <div class="row"><button id="pclose" class="ghost">Close <kbd>X</kbd></button><button id="prev" class="ghost">Reverse <kbd>R</kbd></button></div>
+    <div id="padpos" class="padpos">Flat</div>
+  </div>
+</div>
+<div id="ctx" class="menu glass hidden"></div>
+<div id="dlg" class="dlgwrap hidden"><div class="glass dlg pop" id="dlgbox"></div></div>
+<div id="toast" class="toast glass hidden"></div>
 <footer class="tiny muted">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> · practice tool, not financial advice</footer>
 <script src="config.js"></script>
 <script src="app.js"></script>
