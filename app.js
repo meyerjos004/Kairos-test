@@ -950,19 +950,30 @@ async function rateShare(id, n) { const note = prompt("Leave a note with your " 
   renderSh(); }
 async function renderSg() { let list = []; if (DEMO) list = mem.sg || []; else { const { data } = await sb.from("suggestions").select("*").limit(200); list = data || []; }
   list.sort((a, b) => (b.votes || []).length - (a.votes || []).length || Date.parse(b.created_at) - Date.parse(a.created_at)); const uid = me && me.user_id;
-  $("sg-list").innerHTML = list.map((x) => `<div class="card sgc"><button class="vote ${(x.votes || []).includes(uid) ? "on" : ""}" data-vote="${x.id}">▲ ${(x.votes || []).length}</button><div class="sgb"><div>${esc(x.body)}</div><div class="tiny muted">${esc(names[x.user_id] || "")} · ${ago(x.created_at)} · <span class="pill ${x.status === "done" ? "up" : ""}">${x.status}</span></div></div>
-    ${isAdmin ? `<select data-st="${x.id}">${["new", "planned", "building", "done", "no"].map((s) => `<option ${s === x.status ? "selected" : ""}>${s}</option>`).join("")}</select>` : ""}</div>`).join("") || '<div class="empty">No ideas yet. Be the first.</div>'; }
-async function addSg() { const b = $("sg-text").value.trim(); if (b.length < 3) return; if (DEMO) (mem.sg = mem.sg || []).push({ id: "g" + Date.now(), user_id: "demo", body: b, status: "new", votes: [], created_at: new Date().toISOString() }); else { const { error } = await sb.from("suggestions").insert({ body: b }); if (error) return toast(error.message); } $("sg-text").value = ""; renderSg(); }
+  const ST = { new: "📨 sent to Claude", planning: "🧠 Claude planning", waiting: "⏳ waiting on King", approved: "✅ approved", building: "🔨 building", done: "🚀 shipped", no: "✖ not doing", planned: "📋 planned" };
+  $("sg-list").innerHTML = list.map((x) => `<div class="card sgc"><button class="vote ${(x.votes || []).includes(uid) ? "on" : ""}" data-vote="${x.id}">▲ ${(x.votes || []).length}</button><div class="sgb"><div>${x.kind === "fix" ? "🔧 " : "💡 "}${esc(x.body)}</div>${x.plan ? `<details class="tiny"><summary>Claude's plan</summary><div class="muted">${esc(x.plan)}</div></details>` : ""}${x.result ? `<div class="tiny up">${esc(x.result)}</div>` : ""}<div class="tiny muted">${esc(names[x.user_id] || "")} · ${ago(x.created_at)} · <span class="pill ${x.status === "done" ? "up" : ""}">${ST[x.status] || x.status}</span></div></div>
+    ${isAdmin ? `<select data-st="${x.id}">${Object.keys(ST).map((s) => `<option value="${s}" ${s === x.status ? "selected" : ""}>${ST[s]}</option>`).join("")}</select>` : ""}</div>`).join("") || '<div class="empty">Nothing yet. Spot a bug or want something? Send it.</div>'; }
+async function addSg() { const b = $("sg-text").value.trim(); if (b.length < 3) return; const kind = $("sg-kind").value; if (DEMO) (mem.sg = mem.sg || []).push({ id: "g" + Date.now(), user_id: "demo", body: b, kind, status: "new", votes: [], created_at: new Date().toISOString() }); else { const { error } = await sb.from("suggestions").insert({ body: b, kind }); if (error) return toast(error.message); } $("sg-text").value = ""; renderSg(); }
 function chatRow(m) { const mine = me && m.user_id === me.user_id; return `<div class="cm ${mine ? "mine" : ""}"><span class="cn">${esc(names[m.user_id] || "trader")}</span><span class="cb">${esc(m.body)}</span><span class="ct">${new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span></div>`; }
 async function initChat() { let list = [];
   if (DEMO) list = mem.msgs || (mem.msgs = [{ id: 1, user_id: "b", body: "who's backtesting tonight", created_at: new Date(Date.now() - 6e5).toISOString() }]);
-  else { const { data } = await sb.from("messages").select("*").eq("room", "lobby").order("created_at", { ascending: false }).limit(100); list = (data || []).reverse();
-    if (!chatSub) chatSub = sb.channel("lobby").on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter: "room=eq.lobby" }, (pl) => addChat(pl.new)).subscribe(); }
-  $("chat").innerHTML = list.map(chatRow).join(""); $("chat").scrollTop = 1e9; const lastT = list.length ? Date.parse(list[list.length - 1].created_at) : 0; $("chatdot").classList.toggle("hidden", !(lastT > chatSeen && list[list.length - 1].user_id !== (me && me.user_id))); }
-function addChat(m) { if ($("chat").querySelector(`[data-mid="${m.id}"]`)) return; const d = document.createElement("div"); d.innerHTML = chatRow(m); d.firstChild.dataset.mid = m.id; $("chat").appendChild(d.firstChild); $("chat").scrollTop = 1e9;
-  if (!me || m.user_id !== me.user_id) { if ($("v-friends").classList.contains("hidden")) $("chatdot").classList.remove("hidden"); sfx("click"); } }
-async function sendChat() { const b = $("chat-in").value.trim(); if (!b) return; $("chat-in").value = "";
-  if (DEMO) { const m = { id: Date.now(), user_id: "demo", body: b, created_at: new Date().toISOString() }; mem.msgs.push(m); addChat(m); return; } const { data, error } = await sb.from("messages").insert({ body: b }).select().single(); if (error) return toast(error.message); addChat(data); }
+  else { const { data } = await sb.from("messages").select("id,cid,user_id,body,created_at").eq("room", "lobby").order("created_at", { ascending: false }).limit(150); list = (data || []).reverse();
+    /* live chat rides Realtime broadcast: instant, no database round trip, nothing to clog */
+    if (!chatSub) { chatSub = sb.channel("lobby-bc", { config: { broadcast: { self: false } } }).on("broadcast", { event: "msg" }, ({ payload }) => addChat(payload)).subscribe(); } }
+  const box = $("chat"), f = document.createDocumentFragment(); box.innerHTML = "";
+  list.forEach((m) => { const d = document.createElement("div"); d.innerHTML = chatRow(m); d.firstChild.dataset.mid = m.cid || m.id; f.appendChild(d.firstChild); });
+  box.appendChild(f); box.scrollTop = 1e9; const lastT = list.length ? Date.parse(list[list.length - 1].created_at) : 0; $("chatdot").classList.toggle("hidden", !(lastT > chatSeen && list[list.length - 1].user_id !== (me && me.user_id))); }
+let chatQ = [], chatT = 0;
+function flushChat() { chatT = 0; const box = $("chat"), f = document.createDocumentFragment(); let other = false;
+  chatQ.splice(0).forEach((m) => { const k = m.cid || m.id; if (box.querySelector(`[data-mid="${k}"]`)) return; const d = document.createElement("div"); d.innerHTML = chatRow(m); d.firstChild.dataset.mid = k; f.appendChild(d.firstChild); if (!me || m.user_id !== me.user_id) other = true; });
+  const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 80; box.appendChild(f); while (box.children.length > 400) box.firstChild.remove(); if (stick) box.scrollTop = 1e9;
+  if (other) { if ($("v-friends").classList.contains("hidden")) $("chatdot").classList.remove("hidden"); sfx("click"); } }
+function addChat(m) { chatQ.push(m); if (!chatT) chatT = requestAnimationFrame(flushChat); }
+async function sendChat() { const b = $("chat-in").value.trim().slice(0, 2000); if (!b) return; $("chat-in").value = "";
+  const m = { cid: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()), user_id: DEMO ? "demo" : me && me.user_id, body: b, created_at: new Date().toISOString() };
+  addChat(m); if (DEMO) { mem.msgs.push(m); return; }
+  chatSub && chatSub.send({ type: "broadcast", event: "msg", payload: m });
+  sb.from("messages").insert({ body: b, cid: m.cid }).then(({ error }) => { if (error) console.warn("chat history save", error.message); }); }
 
 /* ---------------- journal ---------------- */
 let eqC, eqS, jT = [];

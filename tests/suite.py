@@ -75,6 +75,13 @@ async def main():
         await pg.click('[data-view="trade"]')
         async with pg.expect_download() as dl2: await pg.click("#shotbtn")
         d2 = await dl2.value; check("chart screenshot downloads", d2.suggested_filename.endswith(".png"))
+        # v0.5: chat + fix box
+        await E("showView && showView('friends')") if await E("typeof showView==='function'") else await pg.click('[data-view="friends"]')
+        await pg.wait_for_timeout(300); n0 = await E("document.querySelectorAll('#chat .cm').length")
+        for i in range(30): await E(f"$('chat-in').value='spam {i}'; sendChat()")
+        await pg.wait_for_timeout(200); n1 = await E("document.querySelectorAll('#chat .cm').length"); check("chat: 30 fast msgs all show, no limit", n1 - n0 == 30, (n0, n1))
+        await E("$('sg-kind').value='fix'; $('sg-text').value='Make the buy button bigger'; addSg()"); await pg.wait_for_timeout(200)
+        check("fix box: sends + shows status", await E("document.getElementById('sg-list').innerText.includes('sent to Claude')"))
         check("no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
