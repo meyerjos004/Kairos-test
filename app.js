@@ -797,7 +797,7 @@ async function renderStats() {
 
 /* ---------------- learn: Reese log, quiz, course, earn an eval, time tracking ---------------- */
 let reese = [], quizBank = [], QZ = null;
-const RSES = { NY: ["08:30", "16:00", 0], Asia: ["19:30", "24:00", 0], Evening: ["17:30", "24:00", 0] };
+const RSES = { NY: ["08:30", "16:00", 0], Asia: ["19:30", "24:00", 0], London: ["02:00", "08:30", 0], Evening: ["17:30", "24:00", 0] };
 async function loadReese() { if (DEMO) { reese = [{ id: "r1", day: "2026-10-15", session: "NY", symbol: "NQ", dir: 1, entry: 21420, exit: 21470, result: "win", summary: "Demo entry: 15s long after the 9:30 sweep, out at the 1h level.", quotes: ["ltf beating htf"] }]; return; }
   const { data } = await sb.from("reese_trades").select("*").order("day"); reese = data || []; }
 const seen = () => new Set(prefs.seenSess || []);
@@ -818,9 +818,10 @@ function reesePop(r) {
   const st = sessEnd(r) - (r.session === "NY" ? 7.5 * 3600 : 4.5 * 3600), mine = hist.filter((t) => loc(t.t_entry) >= st && loc(t.t_entry) < sessEnd(r) && (t.symbol === r.symbol || t.symbol.replace("M", "") === r.symbol.replace("M", "")));
   let verdict = "", xp = 0; if (r.dir) { const same = mine.filter((t) => t.dir === r.dir), opp = mine.filter((t) => t.dir === -r.dir);
     if (same.length) { verdict = "✅ You took the same side as Reese."; xp = 50; } else if (opp.length) { verdict = "↔️ You traded the other way."; xp = 10; } else { verdict = r.result === "win" ? "👀 You sat out a session he won. Look at what he saw." : "🧘 You sat out. He " + (r.result === "loss" ? "took a loss here." : "didn't make much."); xp = r.result === "loss" ? 25 : 0; } }
+  else if (r.result === "journal") verdict = "📸 Here's what Reese posted live this session. Compare it to what you saw.";
   else verdict = "📋 No trade from him here, just his plan. Did yours match?";
   if (xp) addXp(xp);
-  dlg(`<h3>Reese ${r.dir ? "traded" : "planned"} this session</h3><div class="muted small">${r.day} · ${r.session} · ${r.symbol}</div>
+  dlg(`<h3>Reese ${r.dir ? "traded" : r.result === "journal" ? "posted" : "planned"} this session</h3><div class="muted small">${r.day} · ${r.session} · ${r.symbol}</div>
     ${r.dir ? `<div class="shrow"><span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · <b>${r.result}</b></div>` : ""}
     <p class="small">${esc(r.summary)}</p>${(r.quotes || []).length ? `<div class="quotes">${r.quotes.slice(0, 4).map((q) => `<div>“${esc(q)}”</div>`).join("")}</div>` : ""}
     ${reeseMedia(r, true)}${r.video_url ? `<p><a href="${esc(r.video_url)}" target="_blank" rel="noopener">Watch his recap ↗</a></p>` : ""}
@@ -831,7 +832,7 @@ function addXp(n) { prefs.xp = (prefs.xp || 0) + n; prefs.credits = (prefs.credi
 function xpUI() { const x = prefs.xp || 0, lv = Math.floor(Math.sqrt(x / 50)) + 1, nx = 50 * lv * lv, pv = 50 * (lv - 1) * (lv - 1); $("xpbar").innerHTML = `Level <b>${lv}</b> <i class="xpb"><i style="width:${Math.round((100 * (x - pv)) / (nx - pv))}%"></i></i> ${x} XP · ${prefs.credits || 0} credits`; }
 function ltab(k) { document.querySelectorAll("#ltabs button").forEach((b) => b.classList.toggle("on", b.dataset.l === k)); ["rl", "qz", "co", "ev"].forEach((x) => $("l-" + x).classList.toggle("hidden", x !== k)); xpUI(); ({ rl: renderRL, qz: qzStats, co: renderCourse, ev: renderEv })[k](); }
 async function renderRL() { if (!reese.length) await loadReese(); const sn = seen(), hide = $("rl-spoil").checked;
-  $("rl-list").innerHTML = reese.slice().reverse().map((r) => { const done = sn.has(r.day + "|" + r.session), sp = hide && !done && r.dir;
+  $("rl-list").innerHTML = reese.slice().reverse().map((r) => { const done = sn.has(r.day + "|" + r.session), sp = hide && !done;   // everything (trades, plans, his screenshots) unlocks after you replay that session
     return `<div class="card rc"><div class="ah"><b>${r.day} · ${r.session}</b><span class="pill ${sp ? "" : r.result === "win" ? "up" : r.result === "loss" ? "dn" : ""}">${sp ? "hidden" : r.result}</span></div>
       ${sp ? '<p class="small muted">Replay this session first. The result unlocks when you finish it.</p>' : `${r.dir ? `<div class="shrow"><span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"} ${r.symbol}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""}</div>` : ""}<p class="small">${esc(r.summary)}</p>${(r.quotes || []).slice(0, 2).map((q) => `<div class="small rnote">“${esc(q)}”</div>`).join("")}${reeseMedia(r)}`}
       <div class="row" style="justify-content:flex-start"><button class="small primary" data-rday="${r.id}">Replay this session</button></div></div>`; }).join("") || '<div class="empty">No Reese trades loaded</div>'; $("rl-list").querySelectorAll("details.rmedia").forEach((d) => (d.ontoggle = () => d.open && fillReeseShots(d))); }
