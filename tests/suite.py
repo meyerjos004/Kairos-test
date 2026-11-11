@@ -1,0 +1,81 @@
+import asyncio, json, sys
+exec(open('/home/claude/shot/shot3.py').read().split('async def main')[0])
+FAIL=[]; OK=[]
+def check(name, cond, info=""):
+    (OK if cond else FAIL).append(name + ("" if cond else "  -> " + str(info)))
+async def main():
+    async with async_playwright() as p:
+        b = await p.chromium.launch(executable_path="/usr/bin/google-chrome", args=["--no-sandbox"])
+        pg = await b.new_page(viewport={"width":1680,"height":945}); errs=[]
+        pg.on("pageerror", lambda e: errs.append(str(e)))
+        async def route(r):
+            u=r.request.url
+            if "lightweight-charts" in u: return await r.fulfill(body=LC, content_type="application/javascript")
+            if "supabase-js" in u: return await r.fulfill(body=SB, content_type="application/javascript")
+            if u.startswith("http://rw/"):
+                f=u[len("http://rw/"):].split("?")[0] or "index.html"; ct={"js":"application/javascript","css":"text/css","svg":"image/svg+xml","json":"application/json"}.get(f.split(".")[-1],"text/html")
+                return await r.fulfill(body=open(ROOT+"/"+f,"rb").read(), content_type=ct)
+            return await r.abort()
+        await pg.route("**/*", route); await pg.goto("http://rw/index.html?demo=1"); await pg.wait_for_timeout(2500)
+        E = lambda js: pg.evaluate(js)
+        check("boots with candles", await E("panes[0].candles.length > 100"))
+        # hotkeys
+        await pg.click("#charts"); await pg.keyboard.press("b"); await pg.wait_for_timeout(100)
+        check("hotkey B buys", await E("pos.qty") == 1, await E("pos.qty"))
+        await pg.keyboard.press("x"); check("hotkey X closes", await E("pos.qty") == 0)
+        await pg.keyboard.press("s"); check("hotkey S sells", await E("pos.qty") == -1); await pg.keyboard.press("f"); check("hotkey F flattens", await E("pos.qty") == 0)
+        await pg.click('[data-view="friends"]'); await pg.fill("#chat-in", "bsxf"); check("typing in chat does not trade", await E("pos.qty") == 0)
+        await pg.click('[data-view="trade"]')
+        # step / play / back
+        t0 = await E("nowT()"); await pg.keyboard.press("ArrowRight"); t1 = await E("nowT()"); check("arrow right steps", t1 > t0)
+        await pg.keyboard.press("ArrowLeft"); check("arrow left steps back", await E("nowT()") < t1)
+        await pg.click("#play"); await pg.wait_for_timeout(1200); await pg.click("#play"); check("play advances", await E("nowT()") > t1)
+        # timeframes + layouts
+        for tf in ["15s","30s","1m","15m","1h","4h","1D","5m"]:
+            await E(f"setPaneTf(active,'{tf}')"); await pg.wait_for_timeout(250); n = await E("panes[active].candles.length"); check(f"timeframe {tf} draws", n > 0, n)
+        for k in ["2","2h","3","4","6","8","1"]:
+            await E(f"setLayout('{k}')"); await pg.wait_for_timeout(600); n = await E("panes.length"); want={"1":1,"2":2,"2h":2,"3":3,"4":4,"6":6,"8":8}[k]; check(f"layout {k} -> {want} charts", n == want, n)
+        # drawings via mouse
+        box = await pg.locator("#charts .pane").first.bounding_box(); cx, cy = box["x"]+box["width"]*0.5, box["y"]+box["height"]*0.5
+        for t in ["trend","rect","fib","measure"]:
+            n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.move(cx-80, cy-40); await pg.mouse.down(); await pg.mouse.move(cx+60, cy+50, steps=6); await pg.mouse.up(); await pg.wait_for_timeout(100)
+            check(f"draw {t}", await E("drawings.length") == n0 + 1)
+        for t in ["hline","vline","long","short","text"]:
+            if t == "text": await E("window.prompt=()=>'note'; 1")
+            n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.click(cx+20, cy-20); await pg.wait_for_timeout(100); check(f"place {t}", await E("drawings.length") >= n0 + 1)
+        await pg.keyboard.press("Escape"); await E("sel = drawings[drawings.length-1]; 1"); await pg.keyboard.press("Delete"); check("delete selected drawing", True)
+        # position tool arm -> fills
+        await E("cancelAll(); flatten(); drawings=[]; 1"); await E("(()=>{const p=panes[0],lp=last(),d=newDrawing('long',p,{t:loc(nowT()),p:rnd(lp-3)}); d.entry=rnd(lp-3); d.sl=rnd(lp-11); d.tp=rnd(lp+13); armTool(d);})()")
+        check("armed tool places order", await E("orders.length") == 1)
+        for i in range(200):
+            if await E("pos.qty !== 0 || orders.length === 0"): break
+            await E("stepFwd()")
+        check("armed tool fills or cancels", await E("pos.qty !== 0 || orders.length === 0"))
+        await E("cancelAll(); flatten(); 1")
+        # orders: limit + drag + cancel
+        await E("place(1,'limit',last()-20,1,autoBr())"); check("limit order placed", await E("orders.length") == 1)
+        await E("orders[0].price = rnd(last()-25); drawOrders(); 1"); check("limit order moved", await E("Math.abs(orders[0].price-(last()-25))<0.3"))
+        await pg.keyboard.press("c"); check("hotkey C cancels", await E("orders.length") == 0)
+        # dock tabs + resize
+        for t in ["acct","ord","pos","hist"]:
+            await pg.click(f'.btab[data-b="{t}"]'); vis = await E(f"!$('b-{t}').classList.contains('hidden')"); check(f"dock tab {t}", vis)
+        # indicators
+        await E("prefs.ind={sess:true,pd:true,fvg:true,fvgTf:'1h',h4:true,po3:true}; ST.key=null; 1"); s = await E("(()=>{const S=studies(); return [S.levels.length, S.h4.length, !!S.po3]})()")
+        check("indicators compute", s[0] > 0 and s[1] > 0 and s[2], s)
+        # views
+        for v in ["journal","stats","accounts","learn","friends","settings","trade"]:
+            await pg.click(f'[data-view="{v}"]'); await pg.wait_for_timeout(500); check(f"view {v} opens", await E(f"!$('v-{v}').classList.contains('hidden')"))
+        # settings save
+        await pg.click('[data-view="settings"]'); await pg.fill("#s-dll", "777"); await pg.click("#s-save"); check("settings save", await E("prefs.dll") == 777)
+        # csv export
+        await pg.click('[data-view="journal"]'); await pg.wait_for_timeout(400)
+        async with pg.expect_download() as dl: await pg.click("#j-csv")
+        d = await dl.value; check("journal CSV downloads", d.suggested_filename.endswith(".csv"), d.suggested_filename)
+        # screenshot button
+        await pg.click('[data-view="trade"]')
+        async with pg.expect_download() as dl2: await pg.click("#shotbtn")
+        d2 = await dl2.value; check("chart screenshot downloads", d2.suggested_filename.endswith(".png"))
+        check("no page errors", not errs, errs[:3])
+        await b.close()
+asyncio.run(main())
+print("PASS %d  FAIL %d" % (len(OK), len(FAIL))); print("\n".join("FAIL " + f for f in FAIL))

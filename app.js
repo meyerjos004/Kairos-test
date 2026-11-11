@@ -289,6 +289,10 @@ function paintStudies(p, g, W, H) {
     g.fillStyle = z.dir > 0 ? "rgba(43,212,160,.09)" : "rgba(255,107,122,.09)"; g.fillRect(x1, y1, W - x1, y2 - y1); g.fillStyle = "rgba(200,210,225,.55)"; g.fillText(z.label, x1 + 4, Math.min(y1, y2) + 11); }
   for (const l of S.levels) { const y = yOf(p, l.price); if (y == null || y < 0 || y > H) continue; const x1 = X(l.t0);
     g.strokeStyle = l.col; g.lineWidth = 1; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(x1, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.col; g.fillText(l.label, W - g.measureText(l.label).width - 6, y - 4); }
+  // contract roll marker: data switches contracts on the session after quarterly expiry (3rd Friday of Mar/Jun/Sep/Dec), so a price gap there is the roll, not a move
+  if (p.sec < 86400) { const vr = ts.getVisibleLogicalRange(); if (vr && p.candles.length) { const a0 = p.candles[Math.max(0, Math.floor(vr.from))], a1 = p.candles[Math.min(p.candles.length - 1, Math.ceil(vr.to))];
+    if (a0 && a1) for (let y = new Date(a0.time * 1000).getUTCFullYear(); y <= new Date(a1.time * 1000).getUTCFullYear(); y++) for (const m of [2, 5, 8, 11]) { const f = new Date(Date.UTC(y, m, 1)), fri = 1 + ((5 - f.getUTCDay() + 7) % 7) + 14, rt = Date.UTC(y, m, fri) / 1000 + 2 * 86400 + 18 * 3600;
+      if (rt < a0.time || rt > a1.time + p.sec) continue; const x = xOf(p, rt); if (x == null) continue; g.strokeStyle = "rgba(255,198,92,.45)"; g.setLineDash([2, 4]); g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); g.setLineDash([]); g.fillStyle = "rgba(255,198,92,.8)"; g.fillText("contract roll", x + 4, 14); g.fillText("expiry (thin data)", X(rt - 2 * 86400 - 18 * 3600 + 9.5 * 3600) + 4, 26); } } }
   if (S.po3) { const P = S.po3, x = W - 26, yh = yOf(p, P.h), yl = yOf(p, P.l), yo = yOf(p, P.o), yc = yOf(p, P.c); if ([yh, yl, yo, yc].every((v) => v != null)) {
       const up = P.c >= P.o; g.strokeStyle = up ? "rgba(43,212,160,.8)" : "rgba(255,107,122,.8)"; g.fillStyle = up ? "rgba(43,212,160,.22)" : "rgba(255,107,122,.22)";
       g.beginPath(); g.moveTo(x, yh); g.lineTo(x, yl); g.stroke(); g.fillRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc))); g.strokeRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc)));
@@ -684,6 +688,25 @@ const THEMES = { midnight: ["Midnight", { "--bg": "#08090c", "--panel": "#0e1116
 function applyTheme(k) { const t = THEMES[k] || THEMES.midnight; for (const [v, c] of Object.entries(t[1])) document.documentElement.style.setProperty(v, c); prefs.theme = k in THEMES ? k : "midnight";
   if ($("s-themes")) $("s-themes").innerHTML = Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="th ${id === prefs.theme ? "on" : ""}" data-th="${id}"><i style="background:${c["--bg"]};box-shadow:inset 0 0 0 1px ${c["--line"]}"><b style="background:${c["--acc"]}"></b><b style="background:${c["--acc2"]}"></b></i>${nm}</button>`).join(""); }
 
+/* ---------------- first-run tour + help ---------------- */
+const TOUR = [["#start", "Pick a date and time (New York), then hit Load. Or press NY open / Asia open to jump there."], ["#tfbar", "Timeframes for the selected chart. Click a chart to select it; the grid button next to Indicators gives you 1 to 8 charts."],
+  ["#tools", "Drawing tools. The long/short box is the star: place it, right-click, Arm, and it enters on its own with its stop and target. Right-click any tool to add it to your favorites bar."],
+  ["#pad", "The Scalp Pad: buy, sell, join bid/ask. Drag it anywhere; right-click it for settings. Hot keys: B buy, S sell, X close, F flatten, C cancel, space play, ← → step."],
+  ["#acctpill", "Accounts: make an eval or funded account with its own rules. Your trades, Stats, Learn (Reese log + quiz) and Friends live in the bar on the left."]];
+let tourI = 0;
+function tour(i = 0) { tourI = i; const t = TOUR[i]; if (!t) { $("tour").classList.add("hidden"); prefs.tourDone = true; savePrefs(); return; } view("trade");
+  const el = document.querySelector(t[0]), r = el && el.getBoundingClientRect(); $("tour").classList.remove("hidden"); const hole = $("tourhole"), card = $("tourcard");
+  if (r && r.width) { Object.assign(hole.style, { left: r.left - 6 + "px", top: r.top - 6 + "px", width: r.width + 12 + "px", height: r.height + 12 + "px" }); } else Object.assign(hole.style, { left: "50%", top: "50%", width: "0px", height: "0px" });
+  const tall = r && r.height > 260, below = r && r.bottom + 180 < innerHeight;
+  card.style.left = (tall ? Math.min(r.right + 14, innerWidth - 360) : Math.max(12, Math.min(r ? r.left : innerWidth / 2, innerWidth - 360))) + "px";
+  card.style.top = (r ? (tall ? r.top + 40 : below ? r.bottom + 14 : Math.max(12, r.top - 170)) : innerHeight / 2) + "px";
+  card.innerHTML = `<div class="tiny muted">${i + 1} of ${TOUR.length}</div><p>${t[1]}</p><div class="row"><button class="ghost small" id="tour-x">Skip</button><button class="primary small" id="tour-n">${i === TOUR.length - 1 ? "Done" : "Next"}</button></div>`;
+  $("tour-n").onclick = () => tour(i + 1); $("tour-x").onclick = () => tour(99); }
+function helpDlg() { const K = prefs.keys, rows = [["Play / pause", "Space"], ["Step forward / back", "→ / ←"], ["Buy / sell market", (K.buy + " / " + K.sell).toUpperCase()], ["Join bid / ask", (K.joinbid + " / " + K.joinask).toUpperCase()], ["Close / reverse", (K.close + " / " + K.reverse).toUpperCase()], ["Flatten / cancel all", (K.flatten + " / " + K.cancel).toUpperCase()],
+    ["Trend / h-line / v-line / zone", (K.trend + " / " + K.hline + " / " + K.vline + " / " + K.rect).toUpperCase()], ["Long / short box", (K.long + " / " + K.short).toUpperCase()], ["Measure", K.measure.toUpperCase()], ["Cancel tool / deselect", "Esc"], ["Delete drawing", "Del"]];
+  dlg(`<h3>Help</h3><table class="bt">${rows.map(([a, b]) => `<tr><td>${a}</td><td><kbd>${b}</kbd></td></tr>`).join("")}</table><p class="tiny muted">Change hot keys in Settings. Right-click the chart, an order line, a drawing or the Scalp Pad for more options.</p>`, () => tour(0));
+  const ok = $("dl-ok"); if (ok) ok.textContent = "Show the tour"; }
+
 /* ---------------- Utah prop firm tax estimate (2026 figures; estimate only) ---------------- */
 const TAX26 = { s: { sd: 16100, br: [[12400, .10], [50400, .12], [105700, .22], [201775, .24], [256225, .32], [640600, .35], [Infinity, .37]] }, mfj: { sd: 32200, br: [[24800, .10], [100800, .12], [211400, .22], [403550, .24], [512450, .32], [768700, .35], [Infinity, .37]] }, ssBase: 184500, ut: 0.0445 };
 function fedTax(ti, st) { let t = 0, lo = 0; for (const [hi, r] of TAX26[st].br) { if (ti > lo) t += (Math.min(ti, hi) - lo) * r; lo = hi; } return t; }
@@ -984,7 +1007,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI();
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); if (!prefs.tourDone && !DEMO) setTimeout(() => tour(0), prefs.splash !== false ? 1500 : 400);
   if (!$("start").value) $("start").value = new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) notionUI().catch(() => {});
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
@@ -1047,6 +1070,7 @@ $("lib-list").onclick = (e) => { const p = e.target.closest("[data-yt]"); if (p)
 grip($("mgrip"), (e, st) => { if (e.target.closest("button,input")) return; const m = $("media"); if (!st.r) st.r = m.getBoundingClientRect(); m.style.left = Math.max(0, Math.min(innerWidth - 120, st.r.left + e.clientX - st.x)) + "px"; m.style.top = Math.max(0, Math.min(innerHeight - 60, st.r.top + e.clientY - st.y)) + "px"; },
   () => { const r = $("media").getBoundingClientRect(); prefs.media.x = r.left; prefs.media.y = r.top; savePrefs(); });
 $("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
+$("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("tour").classList.contains("hidden")) tour(99); });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
 $("ltabs").onclick = (e) => { const b = e.target.closest("[data-l]"); if (b) ltab(b.dataset.l); }; $("rl-spoil").onchange = renderRL;
 $("rl-list").onclick = (e) => { const b = e.target.closest("[data-rday]"); if (b) replayReese(reese.find((r) => r.id === b.dataset.rday)); };
