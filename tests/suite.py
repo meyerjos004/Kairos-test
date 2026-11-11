@@ -197,6 +197,13 @@ async def main():
         check("checklist resets after the trade", await E("chk.size===0"))
         await E("view('stats')"); await pg.wait_for_timeout(900); check("Stats shows by-strategy table", await E("$('st-strat').innerText.includes('Reese IFVG')"))
         await E("prefs.chkShow=false; prefs.stratOn=null; chkUI(); view('trade')")
+        # Monte Carlo
+        r = await E("(()=>{const r=mcRun([300,-150,300,-150,250,-150], {ptg:3000, mdd:2000, max:200, paths:2000}); return [r.passPct, r.blownPct, r.openPct]})()")
+        check("Monte Carlo odds add up and a winning edge mostly passes", abs(sum(r)-100) < 1e-6 and r[0] > 60, r)
+        await E("""mem.trades.push(...Array.from({length:14},(_,k)=>({id:'mc'+k, symbol:'NQ', dir:1, qty:1, pnl:k%3? 220 : -180, r:1, t_entry:nowT()-k*900, t_exit:nowT()-k*800, created_at:new Date().toISOString()})))""")
+        await E("view('stats')"); await pg.wait_for_timeout(1000)
+        check("Stats shows the Monte Carlo card", await E("!!$('mc-cv') && /Pass/.test($('st-mc').innerText)"), await E("$('st-mc').innerText.slice(0,120)"))
+        await pg.screenshot(path="/home/claude/shot/mc.png"); await E("view('trade')")
         # media dock: Reese library + Spotify/YouTube sign-in panels
         await E("view('trade'); prefs.media={show:true,tab:'lib'}; mediaUI()"); await pg.wait_for_timeout(500)
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))

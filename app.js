@@ -998,6 +998,29 @@ function confDlg(d) { const tags = prefs.tagset && prefs.tagset.length ? prefs.t
 
 /* ---------------- stats ---------------- */
 let stC = null;
+/* ---------------- Monte Carlo: reshuffle your own trades thousands of times → odds of passing an eval vs blowing it ---------------- */
+function mcRun(pnls, o) { const N = o.paths || 2000, T = o.max || 200, pass = [], fan = [], ends = []; let blown = 0, passed = 0, open = 0;
+  let seed = 12345; const rr = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  for (let k = 0; k < N; k++) { let eq = 0, pk = 0, path = k < 60 ? [0] : null, res = null;
+    for (let i = 0; i < T; i++) { eq += pnls[(rr() * pnls.length) | 0]; pk = Math.max(pk, eq); if (path) path.push(eq);
+      if (o.mdd && pk - eq >= o.mdd) { res = "blown"; break; } if (o.ptg && eq >= o.ptg) { res = "pass"; pass.push(i + 1); break; } }
+    if (res === "blown") blown++; else if (res === "pass") passed++; else open++; ends.push(eq); if (path) { path.res = res; fan.push(path); } }
+  pass.sort((a, b) => a - b); ends.sort((a, b) => a - b);
+  return { N, passPct: (100 * passed) / N, blownPct: (100 * blown) / N, openPct: (100 * open) / N, medTrades: pass.length ? pass[pass.length >> 1] : null, p10: ends[(N * 0.1) | 0], p50: ends[N >> 1], p90: ends[(N * 0.9) | 0], fan }; }
+function mcDraw(cv, r, o) { const W = (cv.width = cv.clientWidth * 2), H = (cv.height = cv.clientHeight * 2), g = cv.getContext("2d"); g.clearRect(0, 0, W, H);
+  let lo = -(o.mdd || 1000), hi = o.ptg || 1000, len = 1; for (const p of r.fan) { len = Math.max(len, p.length); for (const v of p) { lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+  const X = (i) => 8 + (i / (len - 1 || 1)) * (W - 16), Y = (v) => H - 10 - ((v - lo) / (hi - lo || 1)) * (H - 20);
+  const ln = (v, c) => { g.strokeStyle = c; g.setLineDash([8, 6]); g.lineWidth = 2; g.beginPath(); g.moveTo(0, Y(v)); g.lineTo(W, Y(v)); g.stroke(); g.setLineDash([]); };
+  ln(0, "rgba(255,255,255,.18)"); if (o.ptg) ln(o.ptg, "rgba(74,222,128,.7)"); if (o.mdd) ln(-o.mdd, "rgba(248,113,113,.7)");
+  for (const p of r.fan) { g.strokeStyle = p.res === "pass" ? "rgba(74,222,128,.28)" : p.res === "blown" ? "rgba(248,113,113,.38)" : "rgba(185,140,255,.25)"; g.lineWidth = 2; g.beginPath(); p.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.stroke(); } }
+function mcUI(tr) { const el = $("st-mc"); if (!el) return; const pnls = tr.map((t) => +t.pnl || 0); const a = accts.find((x) => x.id === $("st-acct").value), R = (a && a.rules) || {};
+  const o = { ptg: +($("mc-ptg") && $("mc-ptg").value) || R.ptg || prefs.ptg || 3000, mdd: +($("mc-mdd") && $("mc-mdd").value) || R.mdd || prefs.mdd || 2000, max: 200, paths: 2000 };
+  if (pnls.length < 10) { el.innerHTML = `<div class="small muted">Needs at least 10 trades in this filter (you have ${pnls.length}). It reshuffles your real results to estimate your odds.</div>`; return; }
+  const r = mcRun(pnls, o);
+  el.innerHTML = `<div class="mcin"><label>Profit target<input id="mc-ptg" type="number" value="${o.ptg}"></label><label>Max drawdown (trailing)<input id="mc-mdd" type="number" value="${o.mdd}"></label><button class="small" id="mc-go">Run again</button></div>
+    <div class="mck"><div><span class="muted small">Pass</span><b class="pos-up">${r.passPct.toFixed(0)}%</b></div><div><span class="muted small">Blow the account</span><b class="pos-dn">${r.blownPct.toFixed(0)}%</b></div><div><span class="muted small">Still going after 200 trades</span><b>${r.openPct.toFixed(0)}%</b></div><div><span class="muted small">Trades to pass (median)</span><b>${r.medTrades ?? "—"}</b></div></div>
+    <canvas id="mc-cv" class="mccv"></canvas><div class="tiny muted">${r.N.toLocaleString()} reshuffles of your ${pnls.length} trades in this filter. Green = hit the target, red = hit the drawdown. Past replay results, not a promise.</div>`;
+  mcDraw($("mc-cv"), r, o); $("mc-go").onclick = () => mcUI(tr); }
 async function renderStats() {
   $("st-acct").innerHTML = `<option value="">All accounts</option><option value="none">Replay (no account)</option>` + accts.map((a) => `<option value="${a.id}">${a.name}</option>`).join(""); $("st-acct").value = prefs.stAcct || "";
   let tr = (await db.allTrades()).slice().sort((a, b) => a.t_exit - b.t_exit); const A = $("st-acct").value, S = $("st-sym").value, D = +$("st-range").value;
@@ -1020,6 +1043,7 @@ async function renderStats() {
   const rs2 = tr.filter((t) => t.r != null).map((t) => +t.r), bins = [[-9, -1.5], [-1.5, -0.75], [-0.75, -0.25], [-0.25, 0.25], [0.25, 1], [1, 2], [2, 3], [3, 99]], lab = ["≤-1.5R", "-1R", "-0.5R", "~0", "+0.5R", "+1.5R", "+2.5R", "3R+"];
   const cnt = bins.map(([a, b]) => rs2.filter((r) => r > a && r <= b).length), mxc = Math.max(1, ...cnt);
   $("st-rd").innerHTML = rs2.length ? `<div class="rbars">${cnt.map((c, i) => `<div><i style="height:${Math.round((80 * c) / mxc)}px" class="${i < 3 ? "dn" : i > 3 ? "up" : ""}"></i><b>${c}</b><span>${lab[i]}</span></div>`).join("")}</div>` : '<div class="empty">No trades with R yet</div>';
+  mcUI(tr);
   $("st-rule").innerHTML = table(grp((t) => (t.rules_ok === true ? "Followed rules" : t.rules_ok === false ? "Broke rules" : "Not rated")), ["Followed rules", "Broke rules", "Not rated"]);
   const after = []; for (let i = 1; i < tr.length; i++) { const a = tr[i - 1], b = tr[i]; if (a.pnl < 0 && b.t_entry - a.t_exit < 600) after.push(b); }
   const sizeUp = tr.filter((t, i) => i && tr[i - 1].pnl < 0 && t.qty > tr[i - 1].qty).length, aw = after.filter((t) => t.pnl > 0).length;
