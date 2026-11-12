@@ -2321,3 +2321,20 @@ async function adFx() { const box = $("ad-fx"); if (!box || DEMO || !isAdmin) re
   box.innerHTML = (data || []).map((p) => `<div class="row"><span style="flex:3">${nmFx(p.name, p.user_id)} <span class="muted">${p.username ? "@" + esc(p.username) : "(no username yet)"}</span></span><select data-fx="${p.user_id}" style="flex:2">${opts.map((o) => `<option value="${o}" ${(p.name_fx || "") === o ? "selected" : ""}>${o === "" ? "Auto (keywords)" : o === "none" ? "No effect" : o}</option>`).join("")}</select></div>`).join("") || "No profiles yet";
   box.querySelectorAll("[data-fx]").forEach((s) => (s.onchange = async () => { const { error } = await sb.from("profiles").update({ name_fx: s.value || null }).eq("user_id", s.dataset.fx); toast(error ? "Couldn't save: " + error.message : "Effect saved"); if (!error && profs[s.dataset.fx]) profs[s.dataset.fx].name_fx = s.value || null; })); }
 document.addEventListener("click", (e) => { if (e.target.closest('[data-view="admin"]')) setTimeout(adFx, 300); });
+
+/* KING_GETAPP (Nov 12): "Get the app" on the sign-in card and in Settings → App. Picks the right way for the device:
+   Windows → the latest installer from GitHub Releases; iPhone → Share → Add to Home Screen; Android / desktop Chrome → install prompt. */
+let _bip = null; addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); _bip = e; });
+async function latestExe() { try { const r = await fetch("https://api.github.com/repos/meyerjos004/rewind/releases/latest", { cache: "no-store" }); const j = await r.json(); const a = (j.assets || []).find((x) => /\.exe$/i.test(x.name)); if (a) return { url: a.browser_download_url, ver: j.tag_name }; } catch (e) {} return { url: "https://github.com/meyerjos004/rewind/releases/latest", ver: "" }; }
+async function getApp() { const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1), android = /Android/.test(ua), win = /Windows/.test(ua);
+  const stand = matchMedia("(display-mode: standalone)").matches || navigator.standalone; const ex = win ? await latestExe() : null;
+  const step = (n, t) => `<div class="gstep"><b>${n}</b><span>${t}</span></div>`;
+  const ios_ = `<h4>iPhone / iPad</h4>${step(1, "Open this page in <b>Safari</b>")}${step(2, "Tap <b>Share</b> (the square with the arrow)")}${step(3, "Tap <b>Add to Home Screen</b> → Add")}`;
+  const and_ = `<h4>Android</h4>${_bip ? '<button class="primary" id="ga-pwa">Install KAIROS</button>' : step(1, "Chrome menu <b>⋮</b> → <b>Install app</b> (or Add to Home screen)")}`;
+  const win_ = `<h4>Windows</h4><a class="primary gdl" href="${ex ? ex.url : "https://github.com/meyerjos004/rewind/releases/latest"}">Download KAIROS for Windows${ex && ex.ver ? " (" + esc(ex.ver) + ")" : ""}</a><div class="tiny muted">Run the installer. If Windows says "protected your PC": More info → Run anyway. It updates itself.</div>`;
+  const pc_ = `<h4>Mac / other computers</h4>${_bip ? '<button class="primary" id="ga-pwa">Install KAIROS</button>' : step(1, "Chrome or Edge: the install icon in the address bar")}`;
+  dlg(`<h3>Get the app</h3>${stand ? `<p class="small muted">You're already using the installed app ✓</p>` : ""}${ios ? ios_ : android ? and_ : win ? win_ + `<details class="gmore"><summary>Phone</summary>${ios_}${and_}</details>` : pc_ + `<details class="gmore"><summary>Phone / Windows</summary>${ios_}${and_}${win_}</details>`}
+    <p class="tiny muted" style="margin-top:10px">Link for friends: <b>meyerjos004.github.io/rewind/go</b> (everyone signs in and lands in their own KAIROS)</p>`, () => {});
+  setTimeout(() => { const ok = $("dl-ok"); if (ok) ok.textContent = "Done"; const x = $("dl-x"); if (x) x.style.display = "none"; const b = $("ga-pwa"); if (b) b.onclick = async () => { _bip.prompt(); await _bip.userChoice; _bip = null; }; }, 0); }
+$("a-get") && ($("a-get").onclick = getApp); $("s-get") && ($("s-get").onclick = getApp);
+if (new URLSearchParams(location.search).has("get")) setTimeout(getApp, 1200);

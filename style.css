@@ -538,3 +538,9 @@ header.top{position:relative}
 #psetup{z-index:190}
 .setnav a{white-space:nowrap}
 @media (max-width:600px){.csr{flex-wrap:wrap;gap:6px}.csl{width:100%}.csv{flex-wrap:wrap}.csv .dd,.csv select{min-width:0;flex:1}.cstabs{width:96vw!important}.csw{height:min(620px,78vh)}.csfoot{flex-wrap:wrap}}
+/* KING_GETAPP */
+.getapp{margin-top:12px;width:100%;background:transparent;border:1px solid rgba(185,140,255,.35);color:#cdb6ff}.getapp:hover{background:rgba(139,92,246,.12)}
+#dlgbox h4{font:700 11px Inter,sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#7d8696;margin:14px 0 8px}
+.gstep{display:flex;gap:10px;align-items:baseline;margin:6px 0;font-size:13.5px}.gstep>b{width:20px;height:20px;border-radius:50%;background:rgba(139,92,246,.2);color:#cdb6ff;display:inline-grid;place-items:center;font-size:11px;flex:none}
+.gdl{display:block;text-align:center;padding:11px 14px;border-radius:10px;text-decoration:none;margin-bottom:6px}.gmore{margin-top:12px}.gmore summary{cursor:pointer;color:var(--mut);font-size:13px}
+a.gdl{background:linear-gradient(180deg,#a78bfa,#8b5cf6);color:#0b0614!important;font-weight:700}a.gdl:hover{filter:brightness(1.08)}
