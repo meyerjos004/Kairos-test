@@ -2133,3 +2133,18 @@ function lfUI(tr) { const el = $("st-lf"); if (!el) return; const plan = prefs.l
     const r = lfSim(tr.slice().sort((a, b) => a.t_exit - b.t_exit), plan), col = r.out === "pass" ? "pos-up" : r.out === "fail" ? "pos-dn" : "";
     el.innerHTML = `<div class="mcin">${sel}</div><div class="lfres"><b class="${col}">${{ pass: "✅ Passed", fail: "❌ Failed", cons: "⚠️ Consistency", open: "⏳ Not done yet" }[r.out]}</b> on trading day ${r.n} (${r.day})</div><div class="small">${esc(r.why)}</div><div class="tiny muted">Uses the eval rules built into KAIROS (end-of-day trailing drawdown that stops at your starting balance, target, consistency). Replay results, not a promise.</div>`; }
   $("lf-plan").onchange = () => { prefs.lfPlan = $("lf-plan").value; savePrefs(); lfUI(tr); }; }
+
+/* KING_PLAYLIST (Nov 12, night ideas): queue 10 sessions by filter and step through them with Next */
+function plDays(kind, n = 10) { const a = Date.UTC(2021, 1, 1), z = Date.UTC(2026, 9, 30), out = new Set(); let guard = 0;
+  while (out.size < n && guard++ < 20000) { const d = new Date(a + Math.random() * (z - a)), wd = d.getUTCDay(), s = d.toISOString().slice(0, 10);
+    if (wd < 1 || wd > 5 || (d.getUTCMonth() === 11 && d.getUTCDate() >= 24) || (d.getUTCMonth() === 0 && d.getUTCDate() <= 2)) continue;
+    if (kind === "news" && !econOn(s).length) continue; if (kind === "mon" && wd !== 1) continue; if (kind === "fri" && wd !== 5) continue; out.add(s); }
+  return [...out].sort(); }
+function plUI() { const P = prefs.pl, el = $("plpill"); if (!el) return; if (!P || !P.days || !P.days.length) { el.classList.add("hidden"); return; }
+  el.classList.remove("hidden"); el.title = P.name + " playlist"; el.innerHTML = `${P.i + 1}/${P.days.length}<button class="pb" id="pl-next" title="Next session" ${P.i + 1 >= P.days.length ? "disabled" : ""}>▶</button><button class="pb" id="pl-x" title="End playlist">×</button>`;
+  $("pl-next").onclick = () => plGo(P.i + 1); $("pl-x").onclick = () => { prefs.pl = null; savePrefs(); plUI(); }; }
+async function plGo(i) { const P = prefs.pl; if (!P || i >= P.days.length) return; if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); P.i = i; savePrefs(); plUI();
+  $("start").value = P.days[i] + "T08:30"; await loadReplay(); toast(`▤ ${P.name}: session ${i + 1} of ${P.days.length}`); }
+$("plbtn") && ($("plbtn").onclick = (e) => { const r = e.target.getBoundingClientRect(), mk = (name, kind) => ({ t: name, f: () => { prefs.pl = { name, days: plDays(kind), i: 0 }; savePrefs(); plGo(0); } });
+  menu([{ h: "Session playlist (10 days)" }, mk("Random days", "any"), mk("News days (CPI, jobs, FOMC)", "news"), mk("Mondays", "mon"), mk("Fridays", "fri"), prefs.pl ? "-" : null, prefs.pl ? { t: "End playlist", f: () => { prefs.pl = null; savePrefs(); plUI(); } } : null].filter(Boolean), r.left, r.bottom + 4); });
+setTimeout(() => { try { plUI(); } catch (e) {} }, 0);
