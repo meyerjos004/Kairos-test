@@ -420,3 +420,16 @@ body.fxshake #app{animation:shk .45s cubic-bezier(.36,.07,.19,.97)}@keyframes sh
 .media.popped{position:fixed;inset:0!important;width:100%!important;height:100%!important;border-radius:0;border:0;opacity:1!important;animation:none}
 .media.popped .mres,.media.popped #m-big,.media.popped #m-ct,.media.popped .mgrab{display:none}
 .media{animation-fill-mode:backwards}
+#v-stats .grid3{grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}
+/* KING_IPHONE (Nov 12): phone layout pass */
+@media (max-width:900px){
+ .rail{position:fixed;left:0;right:0;bottom:0;top:auto;height:58px;width:auto!important;z-index:90;flex-direction:row;justify-content:space-around;align-items:center;padding:0 4px env(safe-area-inset-bottom);border-right:0;border-top:1px solid var(--line);background:rgba(10,12,18,.96);backdrop-filter:blur(14px);overflow-x:auto}
+ .rail .rlogo,.rail .rsp,.rail #railx,.rail .rgrip,.rail .avatar,.rail #logout,.rail .rl{display:none!important}
+ .rail .ri{flex:none;width:42px;height:42px}
+ #app{padding-bottom:62px}
+ #fxb{bottom:68px;right:12px}
+ .fxb-card,.fxb-tip{max-width:calc(100vw - 24px)}
+ body:not(.v-trade) header.top .replay,body:not(.v-trade) header.top #lockbtn,body:not(.v-trade) header.top .status{display:none}
+ .demo{bottom:72px}
+ .toast{bottom:76px}
+}
