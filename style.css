@@ -180,7 +180,7 @@ button,.tool,.tf,.ri{transition:background .16s var(--ease),color .16s var(--eas
 @keyframes pulse{50%{opacity:.35}}.ldot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--mut2);margin-right:4px}.ldot.on{background:var(--up);box-shadow:0 0 8px var(--up);animation:pulse 1.6s infinite}
 #lv-room{margin:6px 14px 12px}.roomnotes{max-height:220px;border:1px solid var(--line);border-radius:10px}.lvc button{flex:none}
 
-.media{position:fixed;z-index:33;right:18px;top:110px;width:380px;border-radius:12px;background:rgba(18,22,29,.94);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.09);box-shadow:0 14px 40px rgba(0,0,0,.45);overflow:hidden;animation:pop .35s var(--spring) both;transition:opacity .2s}
+.media{position:fixed;z-index:37;right:18px;top:110px;width:380px;border-radius:12px;background:rgba(18,22,29,.94);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.09);box-shadow:0 14px 40px rgba(0,0,0,.45);overflow:hidden;animation:pop .35s var(--spring) both;transition:opacity .2s}
 .mbar{display:flex;align-items:center;gap:6px;padding:6px 8px;cursor:grab;border-bottom:1px solid var(--line)}.mbar input[type=range]{width:70px;vertical-align:middle;margin:0 0 0 4px;padding:0}.mbar label{margin:0;display:flex;align-items:center}
 .mt button{font-size:11.5px;padding:4px 8px;color:var(--mut)}.mt button.on{color:var(--txt);background:rgba(255,255,255,.08)}.mbody{padding:8px}.mp .row input{flex:3}.mp iframe{border-radius:10px;display:block;margin-top:6px}
 .media.thru .mbody{pointer-events:none}.media.thru{border-style:dashed}.pb.on{color:var(--acc)}
