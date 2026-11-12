@@ -2101,3 +2101,14 @@ function mfeStats(t) { try { const bars = B["1m"].bars, lo = t.t_entry - 60, hi 
 function mfeLine(t) { const m = mfeStats(t); if (!m) return ""; const R = (x) => (m.risk ? ` (${(x / m.risk).toFixed(1)}R)` : "");
   const left = t.exit != null ? Math.max(0, m.mfe - Math.abs(t.exit - t.entry) * (Math.sign((t.exit - t.entry) * t.dir) || 0)) : 0;
   return `<div class="mfe"><span title="Most it went your way between entry and exit">▲ ${m.mfe.toFixed(2)} pts${R(m.mfe)}</span><span title="Most it went against you">▼ ${m.mae.toFixed(2)} pts${R(m.mae)}</span>${left > 0.01 ? `<span title="How much of the best move you gave back">left ${left.toFixed(2)} pts</span>` : ""}</div>`; }
+
+/* KING_SPEED (Nov 12, night ideas): speed run = 10 take-or-fade setups in 5 minutes, scored, best kept */
+let SPD = null, spdT = null;
+function speedUI() { const b = (prefs.quiz || {}).speedBest; if ($("qz-best")) $("qz-best").textContent = b ? `Best speed run: ${b.right}/10 in ${Math.floor(b.secs / 60)}:${String(b.secs % 60).padStart(2, "0")}` : ""; }
+function speedTick() { if (!SPD) return; const left = Math.max(0, Math.round((SPD.end - Date.now()) / 1000)); $("qz-clock").textContent = `⚡ ${SPD.n}/10 · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`; if (!left) speedEnd(); }
+function speedEnd() { if (!SPD) return; clearInterval(spdT); const secs = Math.round((Math.min(Date.now(), SPD.end) - SPD.t0) / 1000), r = SPD.right; SPD = null; $("qz-clock").classList.add("hidden");
+  const q = prefs.quiz || (prefs.quiz = { n: 0, right: 0, streak: 0, best: 0 }), b = q.speedBest; const better = !b || r > b.right || (r === b.right && secs < b.secs); if (better) q.speedBest = { right: r, secs }; savePrefs(); speedUI();
+  quizStop(); view("learn"); toast(`⚡ Speed run: ${r}/10 right in ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}${better ? " · new best!" : ""}`); if (better && r >= 7) addXp(20); }
+$("qz-speed") && ($("qz-speed").onclick = async () => { SPD = { n: 0, right: 0, t0: Date.now(), end: Date.now() + 5 * 60 * 1000 }; $("qz-clock").classList.remove("hidden"); clearInterval(spdT); spdT = setInterval(speedTick, 500); speedTick(); await quizNext(); });
+(() => { const qa = quizAnswer; window.quizAnswer = quizAnswer = async function (take) { const it = QZ && QZ.it; await qa(take); if (!SPD || !it) return; SPD.n++; if ((it.outcome === "win") === take) SPD.right++; speedTick(); if (SPD.n >= 10) return setTimeout(speedEnd, 900); setTimeout(() => SPD && quizNext(), 1100); }; })();
+setTimeout(() => { try { speedUI(); } catch (e) {} }, 0);
