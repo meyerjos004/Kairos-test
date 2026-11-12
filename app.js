@@ -1014,7 +1014,7 @@ let revQ = [];
 function reviewCard(t) { if (prefs.review === false || !t || !t.id) return; revQ.push(t); if (revQ.length === 1) showReview(); }
 function showReview() { const t = revQ[0], el = $("review"); if (!t) return el.classList.add("hidden");
   el.innerHTML = `<div class="ah"><b>Rate that ${t.dir > 0 ? "long" : "short"} <span class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</span></b><button class="pb" id="rv-x" title="Skip">×</button></div>
-    <div class="small">Did you follow your rules?</div><div class="row"><button data-ok="1" class="small">✅ Yes</button><button data-ok="0" class="small">❌ No</button></div>
+    ${mfeLine(t)}<div class="small">Did you follow your rules?</div><div class="row"><button data-ok="1" class="small">✅ Yes</button><button data-ok="0" class="small">❌ No</button></div>
     <div class="chips">${MISTAKES.map((m) => `<button class="chip" data-mk="${m}">${m}</button>`).join("")}</div><div class="row"><button id="rv-save" class="primary small">Save</button><button id="rv-card" class="small ghost" title="Make a share card image of this trade">🖼 Card</button></div>`;
   el.classList.remove("hidden"); el.dataset.ok = ""; el.onclick = (e) => { const b = e.target.closest("button"); if (!b) return;
     if (b.id === "rv-x") { revQ.shift(); return showReview(); } if (b.id === "rv-card") return shareCard(t, true); if (b.dataset.ok != null) { el.dataset.ok = b.dataset.ok; el.querySelectorAll("[data-ok]").forEach((x) => x.classList.toggle("on", x === b)); }
@@ -2092,3 +2092,12 @@ document.addEventListener("pointerdown", (e) => { if (!sel || !sel._addAt || e.b
 
 /* KING_CSTABS (Nov 12, King's Tradesea shots): Chart settings as tabs on the left */
 document.querySelectorAll(".csnav [data-cst]").forEach((b) => (b.onclick = () => { document.querySelectorAll(".csnav [data-cst]").forEach((x) => x.classList.toggle("on", x === b)); document.querySelectorAll(".csp [data-csp]").forEach((s) => s.classList.toggle("hidden", s.dataset.csp !== b.dataset.cst)); }));
+
+/* KING_MFE (Nov 12, night ideas): the trade review shows how far price went for you (MFE) and against you (MAE) between entry and exit, in points and R.
+   Only bars you already replayed are used, so it never spoils what comes next. */
+function mfeStats(t) { try { const bars = B["1m"].bars, lo = t.t_entry - 60, hi = t.t_exit; let up = 0, dn = 0;
+    for (let k = 0; k < bars.length; k++) { const b = bars[k]; if (b.t < lo) continue; if (b.t > hi) break; const fav = t.dir > 0 ? b.h - t.entry : t.entry - b.l, adv = t.dir > 0 ? t.entry - b.l : b.h - t.entry; up = Math.max(up, fav); dn = Math.max(dn, adv); }
+    const risk = t.stop != null ? Math.abs(t.entry - t.stop) : null; return { mfe: up, mae: dn, risk }; } catch (e) { return null; } }
+function mfeLine(t) { const m = mfeStats(t); if (!m) return ""; const R = (x) => (m.risk ? ` (${(x / m.risk).toFixed(1)}R)` : "");
+  const left = t.exit != null ? Math.max(0, m.mfe - Math.abs(t.exit - t.entry) * (Math.sign((t.exit - t.entry) * t.dir) || 0)) : 0;
+  return `<div class="mfe"><span title="Most it went your way between entry and exit">▲ ${m.mfe.toFixed(2)} pts${R(m.mfe)}</span><span title="Most it went against you">▼ ${m.mae.toFixed(2)} pts${R(m.mae)}</span>${left > 0.01 ? `<span title="How much of the best move you gave back">left ${left.toFixed(2)} pts</span>` : ""}</div>`; }
