@@ -195,7 +195,7 @@ function makePane(i) {
   $("charts").appendChild(el);
   const chart = LightweightCharts.createChart(el.querySelector(".chart"), { layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontSize: 11, fontFamily: "Inter, -apple-system, Segoe UI, sans-serif" },
     localization: { timeFormatter: hoverDate },
-    grid: { vertLines: { color: "rgba(255,255,255,.035)" }, horzLines: { color: "rgba(255,255,255,.035)" } }, rightPriceScale: { borderColor: "rgba(255,255,255,.06)" },
+    grid: gridOpts(), rightPriceScale: { borderColor: "rgba(255,255,255,.06)" },
     timeScale: { borderColor: "rgba(255,255,255,.06)", timeVisible: true, secondsVisible: true, rightOffset: 12 }, crosshair: { mode: 0, vertLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" }, horzLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" } }, autoSize: true });
   const series = chart.addCandlestickSeries({ upColor: prefs.up, downColor: prefs.dn, borderVisible: false, wickUpColor: prefs.up, wickDownColor: prefs.dn, priceFormat: { type: "price", precision: 2, minMove: TICK } });
   const p = { i, el, chart, series, sec: paneSec(i), candles: [], lines: [], opens: [], cv: el.querySelector("canvas.overlay") };
@@ -280,7 +280,7 @@ const yOf = (p, pr) => p.series.priceToCoordinate(pr);
 function tOf(p, x) { const l = p.chart.timeScale().coordinateToLogical(x), c = p.candles; if (l == null || !c.length) return null; const n = c.length - 1;
   if (l >= n) return c[n].time + (l - n) * p.sec; if (l <= 0) return c[0].time + l * p.sec; const k = Math.floor(l); return c[k].time + (l - k) * p.sec; }
 function pOf(p, y, x) { let pr = p.series.coordinateToPrice(y); if (pr == null) return null;
-  if (prefs.magnet && x != null) { const l = Math.round(p.chart.timeScale().coordinateToLogical(x)), c = p.candles[l]; if (c) { const best = [c.open, c.high, c.low, c.close].reduce((a, b) => (Math.abs(yOf(p, b) - y) < Math.abs(yOf(p, a) - y) ? b : a)); if (Math.abs(yOf(p, best) - y) < 14) pr = best; } }
+  if (prefs.magnet && x != null) { const l = Math.round(p.chart.timeScale().coordinateToLogical(x)), c = p.candles[l]; if (c) { const best = [c.open, c.high, c.low, c.close].reduce((a, b) => (Math.abs(yOf(p, b) - y) < Math.abs(yOf(p, a) - y) ? b : a)); if (prefs.magMode === "strong" || Math.abs(yOf(p, best) - y) < 14) pr = best; } }   // KING_MAGNET: weak = only when close, strong = always snap
   return rnd(pr); }
 
 /* ---------------- drawings (canvas layer) ---------------- */
@@ -486,7 +486,8 @@ function drawOverlay(p, g, W, H) {
     try { paintStudies(p, g, W, H); } catch (e) {}
     const all = prefs.hideDraw ? [] : drawings.filter((d) => d.pane === p.i || (SHARED.includes(d.type) && paneSym(d.pane) === paneSym(p)));
     if (pend && pend.pane === p.i && pend.b) all.push({ ...pend.d, b: pend.b, preview: true });
-    for (const d of all) { try { drawOne(p, g, d, W, H); } catch (e) {} }
+    p._ax = null; for (const d of all) { try { drawOne(p, g, d, W, H); } catch (e) {} }
+    const k = p._ax ? p._ax.join(",") : ""; if (k !== (p._axK || "")) { p._axK = k; setTimeout(() => axisSync(p), 0); }
 }
 class OverlayPrim {
   constructor(p) { const view = (z, fn) => ({ zOrder: () => z, renderer: () => ({ draw: (t) => t.useMediaCoordinateSpace(({ context, mediaSize }) => { try { context.save(); fn(p, context, mediaSize.width, mediaSize.height); context.restore(); } catch (e) {} }) }) });
@@ -504,6 +505,9 @@ function drawOne(p, g, d, W, H) {
   const DASH = { dash: [7, 5], dot: [2, 4] }; if (DASH[d.dash] && !["long", "short", "measure"].includes(d.type)) g.setLineDash(DASH[d.dash]);
   if (d.label && !["long", "short", "measure", "text"].includes(d.type)) { const lx = d.type === "hline" ? 8 : Math.min(xOf(p, d.a.t) ?? 0, xOf(p, d.b.t) ?? W), ly = Math.min(yOf(p, d.a.p) ?? 0, yOf(p, d.b.p) ?? yOf(p, d.a.p) ?? 0); g.save(); g.setLineDash([]); g.font = "600 11px Inter, sans-serif"; const lw = g.measureText(d.label).width + 12, bx = lx + 4, by = ly - 22; g.fillStyle = gold; g.globalAlpha = 0.92; g.beginPath(); (g.roundRect ? g.roundRect(bx, by, lw, 17, 4) : g.rect(bx, by, lw, 17)); g.fill(); g.globalAlpha = 1; g.fillStyle = "#fff"; g.fillText(d.label, bx + 6, by + 12.5); g.restore(); }   // KING_TOOLRAIL: label as a pill
   const x1 = xOf(p, d.a.t), y1 = yOf(p, d.a.p), x2 = xOf(p, d.b.t), y2 = yOf(p, d.b.p); if (y1 == null) return;
+  if (on && !d.preview && !["long", "short", "measure", "text", "vline"].includes(d.type)) p._ax = d.type === "hline" || d.type === "hray" ? [d.a.p] : [d.a.p, d.b.p];   // KING_AXISLBL
+  if (sel && sel.id === d.id && !d.label && ["trend", "ray", "arrow"].includes(d.type) && x2 != null && y2 != null && Math.hypot(x2 - x1, y2 - y1) > 60) { const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; let an = Math.atan2(y2 - y1, x2 - x1); if (an > Math.PI / 2) an -= Math.PI; if (an < -Math.PI / 2) an += Math.PI;
+    g.save(); g.translate(mx, my); g.rotate(an); g.font = "500 11.5px Inter, sans-serif"; g.fillStyle = /^#|^rgb/.test(d.color || "") ? d.color : "#2962ff"; g.globalAlpha = 0.85; g.textAlign = "center"; g.fillText("+ Add text", 0, -7); g.restore(); d._addAt = [mx, my]; } else d._addAt = null;   // KING_ADDTEXT
   const dot = (x, y) => { if (on && x != null && y != null) { g.save(); g.setLineDash([]); g.beginPath(); g.arc(x, y, 5, 0, 7); g.fillStyle = "#ffffff"; g.fill(); g.strokeStyle = /^#|^rgb/.test(gold) ? gold : "#2962ff"; g.lineWidth = 1.6; g.stroke(); g.restore(); g.strokeStyle = gold; g.fillStyle = gold; } };
   if (d.type === "measure") { if (x1 == null || x2 == null || y2 == null) return; const up = d.b.p >= d.a.p; g.fillStyle = up ? "rgba(43,212,160,.13)" : "rgba(255,107,122,.13)";
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); const pts = d.b.p - d.a.p, bars = Math.round((d.b.t - d.a.t) / p.sec);
@@ -1647,7 +1651,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { railUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { railUI(); gridApply(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().catch(() => {}); }   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
@@ -2049,3 +2053,28 @@ async function mediaPop() { const m = $("media"); if (mediaWin) { try { mediaWin
   const back = () => { if (!mediaWin) return; mediaWin = null; document.body.appendChild(m); m.classList.remove("popped"); prefs.media.pop = false; mediaLook(); mediaUI(); $("m-pop").title = "Pop out into its own window (drag it to a side screen)"; };
   mediaWin.addEventListener("pagehide", back); mediaWin.addEventListener("beforeunload", back); }
 $("m-pop").onclick = mediaPop;
+
+/* KING_GRIDLINES (Nov 11, King's "grid in background toggle"): Chart settings → Canvas → Grid lines (None / Both / Vertical / Horizontal) + strength, like Tradesea's Canvas tab */
+function gridOpts() { const g = (prefs && prefs.gridl) || "both", a = Math.max(0, Math.min(30, prefs && prefs.gridA != null ? prefs.gridA : 4)) / 100, c = `rgba(255,255,255,${a})`;
+  return { vertLines: { visible: g === "both" || g === "vert", color: c }, horzLines: { visible: g === "both" || g === "horz", color: c } }; }
+function gridApply() { panes.forEach((p) => { try { p.chart.applyOptions({ grid: gridOpts() }); } catch (e) {} }); if ($("cs-grid")) { $("cs-grid").value = prefs.gridl || "both"; $("cs-grida").value = prefs.gridA != null ? prefs.gridA : 4; } }
+$("cs-grid") && ($("cs-grid").onchange = () => { prefs.gridl = $("cs-grid").value; gridApply(); savePrefs(); });
+$("cs-grida") && ($("cs-grida").oninput = () => { prefs.gridA = +$("cs-grida").value; gridApply(); }); $("cs-grida") && ($("cs-grida").onchange = savePrefs);
+
+/* KING_RAILX (Nov 11, from King's Tradesea shots): magnet with Weak / Strong (flyout), lock all drawings, hide all drawings */
+(() => { const m = $("magnet"), g = $("magg"); g.appendChild(m); m.classList.add("tgm");
+  g.insertAdjacentHTML("beforeend", `<button class="tgx" data-g="mag" title="Magnet mode"><svg viewBox="0 0 6 6"><path d="M6 0v6H0z" fill="currentColor"/></svg></button><div class="tfly hidden" data-g="mag"><div class="tfh">Magnet</div>
+    <button class="tool fi" data-mag="weak"><span class="ti">${m.innerHTML}</span><span class="tn">Weak magnet</span><kbd>near</kbd></button><button class="tool fi" data-mag="strong"><span class="ti">${m.innerHTML}</span><span class="tn">Strong magnet</span><kbd>always</kbd></button><button class="tool fi" data-mag="off"><span class="ti"></span><span class="tn">Off</span></button></div>`);
+  window.magUI = () => { g.querySelectorAll("[data-mag]").forEach((b) => b.classList.toggle("on", prefs.magnet ? b.dataset.mag === (prefs.magMode || "weak") : b.dataset.mag === "off")); m.title = prefs.magnet ? `Magnet: ${prefs.magMode === "strong" ? "strong (always snaps)" : "weak (snaps when close)"}` : "Magnet: off";
+    $("lockall").classList.toggle("on", !!(drawings.length && drawings.every((d) => d.locked))); $("hideall").classList.toggle("on", !!prefs.hideDraw); $("hideall").title = prefs.hideDraw ? "Show drawings" : "Hide all drawings"; };
+  g.querySelectorAll("[data-mag]").forEach((b) => (b.onclick = () => { const k = b.dataset.mag; prefs.magnet = k !== "off"; if (k !== "off") prefs.magMode = k; m.classList.toggle("on", prefs.magnet); savePrefs(); magUI(); tgClose(); toast(k === "off" ? "Magnet off" : k === "strong" ? "Strong magnet" : "Weak magnet"); }));
+  $("lockall").onclick = () => { const all = drawings.length && drawings.every((d) => d.locked); drawings.forEach((d) => (d.locked = !all)); repaintAll(); magUI(); toast(all ? "Drawings unlocked" : "All drawings locked"); };
+  $("hideall").onclick = () => { prefs.hideDraw = !prefs.hideDraw; savePrefs(); repaintAll(); magUI(); toast(prefs.hideDraw ? "Drawings hidden" : "Drawings showing"); };
+  const tm = toggleMagnet; window.toggleMagnet = function () { tm(); magUI(); }; m.onclick = () => window.toggleMagnet(); setTimeout(() => { try { magUI(); } catch (e) {} }, 0); })();
+
+/* KING_AXISLBL + KING_ADDTEXT (Nov 11, from King's Tradesea shots): a selected drawing shows its prices as blue labels on the price axis; a selected line shows "+ Add text" along it (click it to label the line) */
+function axisSync(p) { try { (p._axL || []).forEach((l) => p.series.removePriceLine(l)); } catch (e) {} p._axL = [];
+  if (!p._ax) return; for (const v of p._ax) { try { p._axL.push(p.series.createPriceLine({ price: v, color: "#2962ff", lineVisible: false, axisLabelVisible: true, title: "", axisLabelColor: "#2962ff", axisLabelTextColor: "#fff" })); } catch (e) {} } }
+document.addEventListener("pointerdown", (e) => { if (!sel || !sel._addAt || e.button !== 0) return; const pe = e.target.closest && e.target.closest(".pane"); if (!pe) return; const p = panes.find((q) => q.el === pe); if (!p || sel.pane !== p.i) return;
+  const r = pe.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; if (Math.hypot(x - sel._addAt[0], y - sel._addAt[1]) > 26) return;
+  e.stopPropagation(); e.preventDefault(); labelPop(sel, { left: e.clientX - 20, bottom: e.clientY + 6 }); }, true);

@@ -94,7 +94,7 @@
         <div class="tg" data-g="text"><button data-tool="text" class="tool tgm" title="Text note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h12M12 6v13M9.5 19h5"/></svg></button></div>
         <span class="tsep"></span>
         <button id="magnet" class="tool" title="Magnet: snap to candle highs/lows/closes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4v8a6 6 0 0012 0V4h-4v8a2 2 0 01-4 0V4z"/><path d="M6 8h4M14 8h4"/></svg></button>
-        <button id="clr" class="tool" title="Remove all drawings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V4.5h6V7M7 7l1 13h8l1-13M10.5 11v5M13.5 11v5"/></svg></button>
+        <div class="tg" data-g="mag" id="magg"></div><button id="lockall" class="tool" title="Lock all drawings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg></button><button id="hideall" class="tool" title="Hide all drawings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="2.8"/></svg></button><button id="clr" class="tool" title="Remove all drawings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 7h14M9 7V4.5h6V7M7 7l1 13h8l1-13M10.5 11v5M13.5 11v5"/></svg></button>
       </div>
 
       <div class="charts" id="charts"></div>
@@ -316,6 +316,8 @@
         <label class="ck"><input id="s-opens" type="checkbox" checked> Key opens (18:00, midnight, 9:30, 10:00)</label>
         <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label>
         <div class="row2"><label>Up candle<input id="s-up" type="color" value="#2bd4a0"></label><label>Down candle<input id="s-dn" type="color" value="#ff6b7a"></label></div>
+  <h3>Canvas</h3>
+  <div class="row2"><label>Grid lines<select id="cs-grid"><option value="both">Vertical + horizontal</option><option value="vert">Vertical only</option><option value="horz">Horizontal only</option><option value="none">None</option></select></label><label>Grid strength<input id="cs-grida" type="range" min="1" max="20" value="4"></label></div>
   <h3>Sync across charts (multi-chart layouts)</h3>
   <div class="chips"><label class="ck" title="On: every chart shows the symbol you trade. Off: charts 2+ can each show their own symbol (click the symbol name on a chart)."><input type="checkbox" id="cs-ssym"> Symbol</label><label class="ck"><input type="checkbox" id="cs-sint"> Interval</label><label class="ck"><input type="checkbox" id="cs-scross" checked> Crosshair</label><label class="ck"><input type="checkbox" id="cs-stime" checked> Time (scroll together)</label><label class="ck"><input type="checkbox" id="cs-srange" checked> Date range buttons</label></div>
   <button id="cs-save" class="primary small">Save</button></div></div>
