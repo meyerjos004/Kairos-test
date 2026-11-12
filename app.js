@@ -391,7 +391,7 @@ function sessBoxes() { const b1 = B["1m"], C = sbCfg(), key = b1.i + JSON.string
       let tH = false, tL = false; const endT = ys[ys.length - 1].t; for (let k = bars.indexOf(ys[ys.length - 1]) + 1; k > 0 && k <= i; k++) { if (bars[k].h > hi) tH = true; if (bars[k].l < lo) tL = true; if (tH && tL) break; }
       out.push({ ...s, day: d, t0: loc(ys[0].t), t1: loc(endT) + 60, open: ys[0].o, close: ys[ys.length - 1].c, hi, lo, avg: (hi + lo) / 2, live, tH, tL }); } }
   return out; }
-function paintSessBoxes(p, g, W, H) { if (!prefs.ind || !prefs.ind.sbox || p.sec >= 14400) return; const C = sbCfg(), tick = TICK || 0.25, X = (lt) => xOf(p, lt);
+function paintSessBoxes(p, g, W0, H) { if (!prefs.ind || !prefs.ind.sbox || p.sec >= 14400) return; const hN = ((prefs.ind && prefs.ind.htfc) || []).length, W = hN ? W0 - (43 + (hN - 1) * 34) : W0; /* KING_SESSLBL: labels stop before the 4h / 1D candles on the right */ const C = sbCfg(), tick = TICK || 0.25, X = (lt) => xOf(p, lt);
   for (const s of sessBoxes()) { const x1 = X(s.t0), x2 = X(s.t1), yh = yOf(p, s.hi), yl = yOf(p, s.lo); if (x1 == null || x2 == null || yh == null || yl == null || x2 < 0 || x1 > W) continue;
     const a = Math.max(0, x1), b = Math.min(W, x2), col = s.color; g.fillStyle = col + "14"; g.fillRect(a, yh, b - a, yl - yh); if (C.border) { g.strokeStyle = col + "99"; g.lineWidth = 1; g.strokeRect(a, yh, b - a, yl - yh); }
     const ln = (price, dash, lab) => { const y = yOf(p, price); if (y == null) return; g.strokeStyle = col + "aa"; g.setLineDash(dash); g.beginPath(); g.moveTo(a, y); g.lineTo(b, y); g.stroke(); g.setLineDash([]); if (C.labels) { g.fillStyle = col; g.fillText(lab + (C.values ? " " + px2(price) : ""), a + 3, y - 3); } };
