@@ -2150,3 +2150,6 @@ $("plbtn") && ($("plbtn").onclick = (e) => { const r = e.target.getBoundingClien
 setTimeout(() => { try { plUI(); } catch (e) {} }, 0);
 // KING_IPHONE: the Trade view is the start view, so the replay controls show before any tab is tapped
 if (![...document.body.classList].some((c) => c.startsWith("v-"))) document.body.classList.add("v-trade");
+
+// KING_A11Y (Nov 12): Esc closes Chart settings too
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("chartset").classList.contains("hidden")) $("chartset").classList.add("hidden"); });

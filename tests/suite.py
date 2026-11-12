@@ -342,6 +342,10 @@ async def main():
         await E("prefs.tips=true; kTipNow()"); check("tip shows", await E("!$('fxb-tip').classList.contains('hidden') && $('fxb-tt').textContent.length>10"))
         await E("$('fxb-toff').click()"); check("tips switch off", await E("prefs.tips===false && $('fxb-tip').classList.contains('hidden')"))
         check("no page errors", not errs, errs[:3])
+        # a11y (Nov 12): Esc closes Chart settings; key icon buttons have a name
+        await pg.click("#chartsetbtn"); await pg.wait_for_timeout(150); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(100)
+        check("Esc closes chart settings", await E("document.getElementById('chartset').classList.contains('hidden')"))
+        check("icon buttons named", await E("['qdn','qup','cs-x','jc-prev','jc-next','plbtn','blindbtn'].every(i=>{const b=document.getElementById(i);return b&&(b.getAttribute('aria-label')||b.title)})"))
         # upgrade path (Nov 12): a friend's prefs saved by the live build (main 0e919b0) have none of tonight's fields
         errs.clear()
         OLD = """{ bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),

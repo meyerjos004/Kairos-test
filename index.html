@@ -148,7 +148,7 @@
   </section>
 
   <section id="v-journal" class="view hidden scroll">
-    <div class="glass jcal"><div class="ah"><button id="jc-prev" class="pb">‹</button><b id="jc-title"></b><button id="jc-next" class="pb">›</button><span class="tsp"></span><span id="jc-sum" class="small muted"></span><button id="jc-all" class="small ghost">Show all trades</button></div>
+    <div class="glass jcal"><div class="ah"><button id="jc-prev" class="pb" aria-label="Previous month">‹</button><b id="jc-title"></b><button id="jc-next" class="pb" aria-label="Next month">›</button><span class="tsp"></span><span id="jc-sum" class="small muted"></span><button id="jc-all" class="small ghost">Show all trades</button></div>
       <div class="jcgrid" id="jc-grid"></div></div>
     <div class="stats" id="stats"></div>
     <div id="eqchart" class="glass"></div>
@@ -295,7 +295,7 @@
 <div id="pad" class="pad hidden">
   <div class="padbar" id="padbar"><span class="pt">Scalp</span><b id="padsym"></b><button id="padmore" class="pb" title="More: bid/ask, presets, close, reverse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button><button id="padx" class="pb" title="Dock (hide)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 15h16"/></svg></button></div>
   <div class="padbody">
-    <div class="prow" data-pg="buysell"><button id="pbuy" class="buy" title="Buy market (B)">Buy</button><div class="qstep"><button id="qdn">−</button><b id="qn">1</b><span>lots</span><button id="qup">+</button></div><button id="psell" class="sell" title="Sell market (S)">Sell</button></div>
+    <div class="prow" data-pg="buysell"><button id="pbuy" class="buy" title="Buy market (B)">Buy</button><div class="qstep"><button id="qdn" aria-label="Fewer contracts">−</button><b id="qn">1</b><span>lots</span><button id="qup" aria-label="More contracts">+</button></div><button id="psell" class="sell" title="Sell market (S)">Sell</button></div>
     <div class="prow2" data-pg="joinba"><button id="pjb" title="Join bid (J)">Join Bid</button><button id="pja" title="Join ask (A)">Join Ask</button></div>
     <div class="prow3" id="padextra"><button id="pclose2" data-pg="close">Close</button><button id="prev2" data-pg="reverse">Reverse</button><button id="pbe" data-pg="be">B/E</button><button id="pcan" data-pg="cancel">Cancel</button><button id="pflat" data-pg="flatten">Flatten</button></div>
     <div id="padx2" class="padx2 hidden">
@@ -310,7 +310,7 @@
   <div class="mbody"><div id="m-vid" class="mvid hidden"></div><div id="m-lib" class="mp"></div><div id="m-yt" class="mp hidden"></div><div id="m-sp" class="mp hidden"></div></div><div class="mres" id="mres" title="Drag to resize"></div></div>
 <div id="chk" class="chk glass hidden"></div>
 <div id="dtb" class="dtb hidden"></div>
-<div id="chartset" class="chartset hidden"><div class="csbox glass form cstabs"><div class="ah"><b>Chart settings</b><button id="cs-x" class="pb">×</button></div>
+<div id="chartset" class="chartset hidden"><div class="csbox glass form cstabs"><div class="ah"><b>Chart settings</b><button id="cs-x" class="pb" aria-label="Close chart settings">×</button></div>
   <div class="csw"><nav class="csnav"><button data-cst="sym" class="on">Symbol</button><button data-cst="scales">Scales and lines</button><button data-cst="canvas">Canvas</button><button data-cst="sync">Multi-chart</button></nav>
   <div class="csp">
    <section data-csp="sym"><h4>Symbol</h4><div class="seg" id="cs-sym"><button data-s="NQ">NQ</button><button data-s="ES">ES</button></div>
