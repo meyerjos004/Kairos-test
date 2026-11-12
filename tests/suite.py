@@ -346,6 +346,13 @@ async def main():
         await pg.click("#chartsetbtn"); await pg.wait_for_timeout(150); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(100)
         check("Esc closes chart settings", await E("document.getElementById('chartset').classList.contains('hidden')"))
         check("icon buttons named", await E("['qdn','qup','cs-x','jc-prev','jc-next','plbtn','blindbtn'].every(i=>{const b=document.getElementById(i);return b&&(b.getAttribute('aria-label')||b.title)})"))
+        # Nov 12 walkthrough fixes
+        check("name effects: keyword gets an effect", await E("nmFx('Juicy Ben','x').includes('nfx-juicy') && !nmFx('Ben','y').includes('nfx')"))
+        check("fib levels come from settings", await E("(prefs.fibLv=[0,0.5,1], fibList().length===3) && (prefs.fibLv=null, fibList().length===8)"))
+        check("chart settings: session breaks + prev close apply", await E("(prefs.cs=Object.assign({},prefs.cs||{},{brk:true,pdc:'l'}), csApplyAll(), true) && !!panes[0].csl && 'pdc' in panes[0].csl"))
+        await E("prefs.cs=Object.assign({},prefs.cs,{brk:false,pdc:'h'}); csApplyAll()")
+        check("replay controls sit on the favorites bar (desktop)", await E("!!document.querySelector('#favbar .fbreplay #play') && $('go').classList.contains('hidden')"))
+        check("fix button is in the top bar", await E("!!document.querySelector('header.top #fxtop')"))
         # upgrade path (Nov 12): a friend's prefs saved by the live build (main 0e919b0) have none of tonight's fields
         errs.clear()
         OLD = """{ bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),

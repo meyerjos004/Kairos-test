@@ -536,3 +536,5 @@ header.top{position:relative}
 @media (prefers-reduced-motion:reduce){.nfx,.nfx::after{animation:none!important}}
 .psbox{width:min(420px,92vw)}.psu{display:flex;align-items:center;gap:6px}.psu span{color:var(--mut);font-weight:700}.psu input{flex:1}.psprev{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.04)}
 #psetup{z-index:190}
+.setnav a{white-space:nowrap}
+@media (max-width:600px){.csr{flex-wrap:wrap;gap:6px}.csl{width:100%}.csv{flex-wrap:wrap}.csv .dd,.csv select{min-width:0;flex:1}.cstabs{width:96vw!important}.csw{height:min(620px,78vh)}.csfoot{flex-wrap:wrap}}
