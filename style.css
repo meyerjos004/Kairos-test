@@ -459,3 +459,9 @@ body.fxshake #app{animation:shk .45s cubic-bezier(.36,.07,.19,.97)}@keyframes sh
 .lfres{font-size:15px;margin:8px 0 4px}
 .plpill{display:inline-flex;align-items:center;gap:6px;padding:2px 4px 2px 10px;border-radius:999px;background:rgba(124,107,255,.14);color:#d6cfff;font:600 12px Inter,sans-serif}.plpill.hidden{display:none}
 .plpill{white-space:nowrap;padding:0 2px 0 8px;gap:2px}.plpill .pb{min-width:22px;height:22px}
+
+/* KING_MEDIAFIT + click-through (Nov 12 walkthrough) */
+.media.sized .mbody{max-height:none}.media .vfr{margin:0 auto}
+.mpop .media{position:static!important;width:100%!important;height:100vh!important;border-radius:0;border:0}
+/* "Clicks go through": the whole window lets clicks reach the chart, except its title bar (so you can turn it off / move it) */
+.media.thru{pointer-events:none}.media.thru .mbar,.media.thru .mtabs,.media.thru .mres{pointer-events:auto}

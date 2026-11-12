@@ -643,7 +643,9 @@ function initPointer(p) {
 function repaintAll() { panes.forEach(htfRoom); panes.forEach(paint); }
 function htfRoom(p) {   // keep empty space on the right for the HTF candles so they never sit on top of live candles
   if (p.dead || p.sec >= 86400) return; const n = prefs.ind && !p.noHtf ? (prefs.ind.htfc || []).length : 0, ts = p.chart.timeScale(), sp = ts.options().barSpacing || 6, want = n ? Math.ceil((n * 34 + 26) / sp) + 3 : 12;
-  if (p.rOff !== want) { p.rOff = want; ts.applyOptions({ rightOffset: want }); } }
+  // KING_NOSNAP (Nov 12): rightOffset only applies while you're parked at the live edge. Setting it scrolls the chart,
+  // so after a mouse-anchored zoom (barSpacing changed -> new want) it used to snap the newest price back to the right.
+  if (p.rOff !== want) { const sp0 = ts.scrollPosition(); if (p.rOff == null || Math.abs(sp0 - p.rOff) < 1.5) { p.rOff = want; ts.applyOptions({ rightOffset: want }); } } }
 
 /* ---------------- indicator library (price-only: our data has no volume, so no VWAP) ---------------- */
 const MA_DEF = [{ k: "e9", type: "ema", len: 9, color: "#f5c542" }, { k: "e21", type: "ema", len: 21, color: "#7aa7ff" }, { k: "e50", type: "ema", len: 50, color: "#c084fc" }, { k: "s200", type: "sma", len: 200, color: "#e5e7eb" }];
@@ -1208,11 +1210,20 @@ async function quizNext() {
   const rr = Math.abs(it.target - it.entry) / Math.abs(it.entry - it.stop);
   $("qz-desc").innerHTML = `${it.dir > 0 ? "Long" : "Short"} ${it.symbol} @ <b>${px2(+it.entry)}</b> · stop ${px2(+it.stop)} · target ${px2(+it.target)} · ${rr.toFixed(1)}R`; $("qzbar").classList.remove("hidden"); $("qz-res").classList.add("hidden"); $("qz-next").classList.add("hidden"); ["qz-take", "qz-fade"].forEach((k) => ($(k).disabled = false));
   panes.forEach((p) => { p.chart.timeScale().applyOptions({ barSpacing: 9 }); p.chart.timeScale().scrollToRealTime(); }); repaintAll(); }
-async function quizAnswer(take) { if (!QZ || QZ.answered) return; QZ.answered = true; ["qz-take", "qz-fade"].forEach((k) => ($(k).disabled = true)); const it = QZ.it, right = (it.outcome === "win") === take;
+async function quizAnswer(take) { if (!QZ || QZ.answered) return; QZ.answered = true; ["qz-take", "qz-fade"].forEach((k) => ($(k).disabled = true)); const it = QZ.it; let right = (it.outcome === "win") === take;
   mxQuizTick(); const q = prefs.quiz || { n: 0, right: 0, streak: 0, best: 0 }; q.n++; if (right) { q.right++; q.streak++; q.best = Math.max(q.best, q.streak); } else q.streak = 0; prefs.quiz = q; addXp(right ? 10 : 2); if (right) prefs.credits = (prefs.credits || 0) + 8; savePrefs();
   const end = it.t_exit || it.t_entry + 3600; for (let n = 0; n < 900 && nowT() < end + 600; n++) { const g = await stepFwd(false); if (g === false) break; } rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime());
-  sfx(right ? "win" : "loss"); $("qz-res").innerHTML = `<b class="${right ? "pos-up" : "pos-dn"}">${right ? "Right!" : "Not this time."}</b> It ${it.outcome === "win" ? "hit the target" : "hit the stop"}${it.r != null ? " (" + it.r + "R)" : ""}.<div class="tiny muted">Why it set up: ${(it.why || []).map(esc).join(" · ")}</div>${right ? '<div class="tiny">+10 XP, +8 credits</div>' : ""}`;
+  // KING_QZTRUTH (Nov 12 walkthrough): grade on what actually played out on screen. In the demo (made-up prices) the bank's
+  // stored result could say "hit the target" while the bars on screen hit the stop. Scan the replayed 1m bars for the first touch.
+  { const seen = qzSeen(it); if (seen && seen !== it.outcome) { const was = right; it.outcome = seen; right = (seen === "win") === take;
+      if (was !== right) { const q2 = prefs.quiz; if (was) { q2.right--; q2.streak = 0; } else { q2.right++; q2.streak++; q2.best = Math.max(q2.best, q2.streak); } savePrefs(); } } }
+  // KING_QZDATE: show when the drill happened
+  const qd = new Date(loc(it.t_entry) * 1000).toISOString().slice(0, 10);
+  sfx(right ? "win" : "loss"); $("qz-res").innerHTML = `<b class="${right ? "pos-up" : "pos-dn"}">${right ? "Right!" : "Not this time."}</b> It ${it.outcome === "win" ? "hit the target" : "hit the stop"}${it.r != null ? " (" + it.r + "R)" : ""}.<div class="tiny muted">${qd} · ${esc(it.symbol || "")} · Why it set up: ${(it.why || []).map(esc).join(" · ")}</div>${right ? '<div class="tiny">+10 XP, +8 credits</div>' : ""}`;
   $("qz-res").classList.remove("hidden"); $("qz-next").classList.remove("hidden"); }
+function qzSeen(it) { if (it.entry == null || it.stop == null || it.target == null) return null; const long = it.target > it.entry, bars = B["1m"].bars, end = B["1m"].i;
+  for (let k = 0; k <= end; k++) { const b = bars[k]; if (!b || b.t <= it.t_entry) continue; const hitS = long ? b.l <= it.stop : b.h >= it.stop, hitT = long ? b.h >= it.target : b.l <= it.target;
+    if (hitS) return "loss"; if (hitT) return "win"; } return null; }
 function quizStop() { QZ = null; lock15 = false; $("qzbar").classList.add("hidden"); drawings = drawings.filter((d) => !d.quiz); repaintAll(); }
 // ---- course
 const LESSONS = [["Sessions and times", "Which windows he trades (NY 9:30, the 10:00 open, Asia 8pm) and when he stays out."], ["Bias", "How he picks a direction from the higher timeframe range: premium vs discount, conditions, draws on liquidity."], ["Setup checklist", "His order: condition → manipulation into a level → SMT → displacement → entry gap."],
@@ -1252,7 +1263,7 @@ function mediaUI() { const M = prefs.media || (prefs.media = { show: false, tab:
 function playVid(u, title, start, end) { const e = ytEmbed(u, start, end); if (!e) return toast("Can't play that video"); prefs.media = prefs.media || {}; if (!prefs.media.show) { prefs.media.show = true; savePrefs(); mediaUI(); }
   const clipped = end > start;
   $("m-vid").innerHTML = `<div class="vh"><span>${esc(title || "")}</span>${clipped ? '<button class="pb vfb" id="m-vf" title="Watch the whole video">Full video</button>' : ""}<button class="pb" id="m-vx" title="Close video">×</button></div><div class="vfr"><iframe id="m-vif" src="${e}" frameborder="0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe></div>`;
-  $("m-vid").classList.remove("hidden"); $("m-vx").onclick = () => { $("m-vid").innerHTML = ""; $("m-vid").classList.add("hidden"); };
+  $("m-vid").classList.remove("hidden"); setTimeout(fitVideo, 0); $("m-vx").onclick = () => { $("m-vid").innerHTML = ""; $("m-vid").classList.add("hidden"); };
   if (clipped) { $("m-vf").onclick = () => playVid(u, String(title || "").replace(/ · the trade$/, "") + " · full video");
     ytIframeApi().then((Y) => { const fr = $("m-vif"); if (!Y || !fr) return; try { new Y.Player(fr, { events: { onStateChange: (ev) => { if (ev.data === 0) clipEnded(u, title); } } }); } catch (er) {} }); } }
 const setYt = (u) => playVid(u);
@@ -2054,7 +2065,15 @@ $("s-tips") && ($("s-tips").onchange = () => { prefs.tips = $("s-tips").checked;
 /* KING_MEDIAWIN (Nov 11, Brief 3): the Spotify / YouTube / Reese window: drag it by its title bar, resize it from the corner (the video grows with it),
    a bigger see-through slider with a % readout, and a pop-out into its own window you can put on a side screen. Size and spot are remembered. */
 function mediaLook() { const M = prefs.media || {}, m = $("media"), op = M.op || 100; m.style.opacity = M.pop ? 1 : op / 100; $("m-op").value = op; if ($("m-opv")) $("m-opv").textContent = op + "%";
-  if (M.w && !M.big && !M.pop) { m.style.width = Math.min(M.w, innerWidth - 20) + "px"; m.style.height = M.h ? Math.min(M.h, innerHeight - 20) + "px" : ""; } else if (!M.pop) { m.style.width = ""; m.style.height = ""; } }
+  if (M.w && !M.big && !M.pop) { m.style.width = Math.min(M.w, innerWidth - 20) + "px"; m.style.height = M.h ? Math.min(M.h, innerHeight - 20) + "px" : ""; } else if (!M.pop) { m.style.width = ""; m.style.height = ""; }
+  if (M.pop) { m.style.width = "100%"; m.style.height = "100%"; }
+  fitVideo(); }
+// KING_MEDIAFIT (Nov 12 walkthrough): a big window no longer cuts the video off at the bottom. The video keeps 16:9 and
+// takes the biggest size that fits both the width and the height left under the title bar (same in the pop-out window).
+function fitVideo() { const m = $("media"), M = prefs.media || {}, sized = !!(M.pop || (M.h && !M.big)); m.classList.toggle("sized", sized);
+  const f = m.querySelector(".vfr"); if (!f) return; if (!sized) { f.style.maxWidth = ""; return; }
+  const top = [...m.children].filter((c) => !c.classList.contains("mbody") && !c.classList.contains("mres")).reduce((a, c) => a + c.offsetHeight, 0), vh = m.querySelector(".mvid .vh");
+  const avail = m.clientHeight - top - (vh ? vh.offsetHeight + 4 : 0) - 26; f.style.maxWidth = Math.max(200, Math.floor(avail * 16 / 9)) + "px"; }
 grip($("mres"), (e, st) => { const m = $("media"); if (!st.r) st.r = m.getBoundingClientRect(); prefs.media.big = false; m.classList.remove("big");
   prefs.media.w = Math.max(300, Math.min(innerWidth - st.r.left - 8, st.r.width + e.clientX - st.x)); prefs.media.h = Math.max(220, Math.min(innerHeight - st.r.top - 8, st.r.height + e.clientY - st.y)); mediaLook(); }, () => savePrefs());
 let mediaWin = null;
@@ -2065,7 +2084,7 @@ async function mediaPop() { const m = $("media"); if (mediaWin) { try { mediaWin
   const d = mediaWin.document; [...document.querySelectorAll('link[rel="stylesheet"], style')].forEach((n) => d.head.appendChild(n.cloneNode(true)));
   d.body.style.cssText = "margin:0;background:#0b0e14;overflow:hidden"; d.body.className = "mpop"; prefs.media.pop = true; m.classList.add("popped"); d.body.appendChild(m); mediaLook(); $("m-pop").title = "Put it back in KAIROS";
   const back = () => { if (!mediaWin) return; mediaWin = null; document.body.appendChild(m); m.classList.remove("popped"); prefs.media.pop = false; mediaLook(); mediaUI(); $("m-pop").title = "Pop out into its own window (drag it to a side screen)"; };
-  mediaWin.addEventListener("pagehide", back); mediaWin.addEventListener("beforeunload", back); }
+  mediaWin.addEventListener("pagehide", back); mediaWin.addEventListener("beforeunload", back); mediaWin.addEventListener("resize", fitVideo); }
 $("m-pop").onclick = mediaPop;
 
 /* KING_GRIDLINES (Nov 11, King's "grid in background toggle"): Chart settings → Canvas → Grid lines (None / Both / Vertical / Horizontal) + strength, like Tradesea's Canvas tab */
@@ -2156,3 +2175,5 @@ if (![...document.body.classList].some((c) => c.startsWith("v-"))) document.body
 
 // KING_A11Y (Nov 12): Esc closes Chart settings too
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("chartset").classList.contains("hidden")) $("chartset").classList.add("hidden"); });
+
+addEventListener("resize", () => { try { fitVideo(); } catch (e) {} });
