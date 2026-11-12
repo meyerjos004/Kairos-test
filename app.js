@@ -1318,7 +1318,16 @@ async function ytUI() { const el = $("m-yt"); if (!MCFG().google) { el.innerHTML
 addEventListener("message", async (e) => { if (e.origin !== location.origin || !e.data || e.data.type !== "kz-oauth") return; const q = new URLSearchParams(e.data.search || "");
   if ((q.get("state") || "").startsWith("sp.")) { if (q.get("error")) return toast("Spotify: " + q.get("error")); if (q.get("state") !== "sp." + spConnect.st || !spV) return toast("Spotify sign-in expired, try again");
     try { await spToken({ grant_type: "authorization_code", code: q.get("code"), redirect_uri: REDIR, code_verifier: spV }); spV = null; spMe = spPls = null; toast("✅ Spotify connected"); spUI(); } catch (er) { toast(er.message); } } });
-$("media").addEventListener("click", (e) => { const v = e.target.closest("[data-vid]"); if (v) playVid("https://youtu.be/" + v.dataset.vid, v.dataset.title, +v.dataset.s || 0, +v.dataset.e || 0); });
+$("media").addEventListener("click", (e) => { const v = e.target.closest("[data-vid]"); if (!v) return; const u = "https://youtu.be/" + v.dataset.vid, s = +v.dataset.s || 0, en = +v.dataset.e || 0;
+  if (s && en > s) return askClip(v, u, v.dataset.title, s, en); playVid(u, v.dataset.title, s, en); });
+// KING_ASKCLIP (Nov 11): a video with a trade cut asks "just the trade or the whole video?"
+function askClip(anchor, u, title, s, en) { document.getElementById("askclip")?.remove(); const m = (x) => Math.floor(x / 60) + ":" + String(Math.floor(x % 60)).padStart(2, "0");
+  const el = document.createElement("div"); el.id = "askclip"; el.className = "askclip";
+  el.innerHTML = `<b>${esc(String(title || "Video").replace(/ · the trade$/, ""))}</b><button class="primary" id="ac-cut">✂ Just the trade <span>${m(s)}–${m(en)} · ${Math.max(1, Math.round((en - s) / 60))} min</span></button><button id="ac-full">▶ Whole video</button>`;
+  document.body.appendChild(el); const r = anchor.getBoundingClientRect(); el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.left)) + "px"; el.style.top = Math.max(8, Math.min(innerHeight - el.offsetHeight - 8, r.bottom + 6)) + "px";
+  const close = () => { el.remove(); removeEventListener("pointerdown", out, true); }, out = (ev) => { if (!el.contains(ev.target)) close(); };
+  setTimeout(() => addEventListener("pointerdown", out, true), 0);
+  $("ac-cut").onclick = () => { close(); playVid(u, title, s, en); }; $("ac-full").onclick = () => { close(); playVid(u, String(title || "").replace(/ · the trade$/, "") + " · full video"); }; }
 
 
 /* ---------------- friends: leaderboard, challenges, shared trades, suggestions, chat ---------------- */
@@ -1564,7 +1573,7 @@ const TOUR = [
   { sel: "#chkbtn", t: "Checklist", d: "Pick a strategy and tick the rules you actually see before you enter. Stats shows whether your A+ setups really pay." },
   { sel: "#mediabtn", t: "Media dock", d: "Reese's whole video library, plus your own Spotify and YouTube, floating next to the chart." },
   { sel: '[data-view="journal"]', t: "Journal", d: "Every trade lands here on a calendar. Tag mistakes after each one." },
-  { sel: '[data-view="learn"]', t: "Learn", d: "Reese's real trades unlock after you replay that day, plus take-or-fade drills and daily practice built from your mistakes." },
+  { sel: '[data-view="learn"]', t: "Learn", d: "Reese's real trades (every one, from day one), plus take-or-fade drills and daily practice built from your mistakes." },
   { sel: '[data-view="friends"]', t: "The group", d: "Leaderboard, challenges, shared trades and chat with the crew." },
   { sel: '[data-view="settings"]', t: "Make it yours", d: "Themes, hotkeys, and your own sounds for take profits and stop-outs. Found a bug? The fix box goes straight to the build queue." }];
 function tour(i = 0) { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); if (i >= TOUR.length) { prefs.toured = APP_VERSION; savePrefs(); return toast("🎉 You're set. Have fun."); }
