@@ -21,6 +21,13 @@ let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
   lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false, ind: { ...IND_DEF }, dockH: 150, favs: ["trend", "hline", "rect", "long", "short"], favShow: true, favPos: null, toolsPos: null };
 
+// KING_CS2 settings defaults (see the Chart settings block near the end)
+const CS_DEF = { prevClr: false, body: true, bord: false, bu: "#2bd4a0", bd: "#ff6b7a", wick: true, wu: "", wd: "", prec: "def", title: true, titleK: "full", mstat: true, vals: true, chg: false, lbg: false, lbga: 40,
+  cd: false, last: "vl", pdc: "h", pdcc: "#9aa4b2", hl: "h", hlc: "#c4b5fd", ba: "h", bidc: "#3b82f6", askc: "#ff6b7a", dow: false, df: "tv", hf: "24", keepL: false,
+  bgk: "none", bg1: "#0b0e14", bg2: "#151a24", gridc: "#ffffff", brk: false, brkc: "#7f8a9c", xc: "#ffffff", xs: "2", wm: true, txc: "#7f8a9c", txs: "11", lnc: "#1c212b", mt: 10, mb: 10, mr: 12,
+  oneClick: true, pos: true, rev: true, pnl: true, pnlp: "money", pnlb: "money", exm: true, exl: false, ext: true };
+let csTmp = null, csSnap = null; const execs = [];
+const csG = () => Object.assign({}, CS_DEF, (prefs && prefs.cs) || {}, csTmp || {});
 /* ---------------- time (shown in New York time) ---------------- */
 const offCache = new Map();
 function nyOffset(t) {
@@ -122,7 +129,7 @@ const paneSec = (i) => SEC[prefs.tfs[i] || "5m"];
 function lastBar() { const a = B["1m"].bars[B["1m"].i], b = need15 ? B["15s"].bars[B["15s"].i] : null; if (!a) return b; if (!b) return a; return b.t >= a.t ? b : a; }
 const last = () => (lastBar() ? lastBar().c : null);
 const nowT = () => cursorT;
-async function loadReplay() {
+async function loadReplay() { try { execs.length = 0; } catch (e) {}
   pause(); if (pos.qty || orders.length || busyElsewhere()) return toast("Close positions and cancel orders first (on every chart)");
   for (const k of Object.keys(CTX)) delete CTX[k];
   sym = $("sym").value; prefs.syms = prefs.syms || []; if (!(prefs.sync && prefs.sync.sym)) { prefs.syms[active] = sym; panes.forEach((p) => { if (!prefs.syms[p.i]) prefs.syms[p.i] = sym; }); } inst = INST[sym]; need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
@@ -191,7 +198,7 @@ let panes = [], active = 0;
 function pushBar(p, b) {
   const k = bucket(loc(b.t), p.sec), lc = p.candles[p.candles.length - 1];
   if (lc && lc.time === k) { lc.high = Math.max(lc.high, b.h); lc.low = Math.min(lc.low, b.l); lc.close = b.c; return lc; }
-  const c = { time: k, open: b.o, high: b.h, low: b.l, close: b.c }; p.candles.push(c); return c;
+  const c = { time: k, open: b.o, high: b.h, low: b.l, close: b.c }; if (lc && prefs.cs && prefs.cs.prevClr) { const u = c.close >= lc.close; c.color = u ? prefs.up : prefs.dn; c.wickColor = c.color; c.borderColor = c.color; } p.candles.push(c); return c;
 }
 function makePane(i) {
   const el = document.createElement("div"); el.className = "pane"; el.innerHTML = `<div class="wmark"></div><div class="legend"><span class="lname"></span><i></i><span class="ohlc"></span><span class="ivals"></span></div><div class="chart"></div><canvas class="overlay"></canvas>`;
@@ -207,13 +214,13 @@ function makePane(i) {
   chart.timeScale().subscribeVisibleLogicalRangeChange(() => { syncTime(p); paint(p); clearTimeout(p.hrT); p.hrT = setTimeout(() => htfRoom(p), 120); }); new ResizeObserver(() => paint(p)).observe(el);
   chart.subscribeCrosshairMove((pr) => { syncCross(p, pr); if (pr.point) p.hover = { point: pr.point }; const d = pr.seriesData && pr.seriesData.get(series);
     el.querySelector(".ohlc").innerHTML = d ? `O <b>${px2(d.open)}</b> H <b>${px2(d.high)}</b> L <b>${px2(d.low)}</b> C <b class="${d.close >= d.open ? "pos-up" : "pos-dn"}">${px2(d.close)}</b>` : ""; });
-  initPointer(p);
+  initPointer(p); setTimeout(() => { try { csApply(p); } catch (e) {} }, 0);
   return p;
 }
 function setActive(i) { active = i; const ps = paneSym(i); if (ps !== sym && X[ps] && swapTo(ps)) { $("sym").value = sym; drawOrders(); try { refresh(); } catch (e) {} panes.forEach(label); } panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
 function label(p) { const tf = prefs.tfs[p.i] || "5m", s = paneSym(p); p.el.querySelector(".lname").textContent = `${s} · ${tf} · CME`; p.el.classList.toggle("tradesym", s === sym && panes.length > 1 && new Set(panes.map(paneSym)).size > 1); p.el.querySelector(".wmark").textContent = `CME ${s} ${tf}`; }
 function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}">${n === "1D" ? "D" : n}</button>`).join(""); }
-async function setPaneTf(i, tf, noSync) { const p = panes[i]; if (!p) return; prefs.tfs[i] = tf; if (!noSync && prefs.sync && prefs.sync.int) for (const q of panes) if (q.i !== i) { prefs.tfs[q.i] = tf; label(q); rebuildPane(q); } savePrefs(); tfUI(); label(p); if (lock15 || panes.some((q) => paneSec(q.i) < 60)) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); }
+async function setPaneTf(i, tf, noSync) { const p = panes[i]; if (!p) return; let keepT = null; try { if (csG().keepL) { const vr = p.chart.timeScale().getVisibleRange(); keepT = vr && vr.from; } } catch (e) {} prefs.tfs[i] = tf; if (!noSync && prefs.sync && prefs.sync.int) for (const q of panes) if (q.i !== i) { prefs.tfs[q.i] = tf; label(q); rebuildPane(q); } savePrefs(); tfUI(); label(p); if (lock15 || panes.some((q) => paneSec(q.i) < 60)) await ensure15(); else need15 = false; rebuildPane(p); drawOrders(); drawOpens(); csApply(p); if (keepT != null) setTimeout(() => { try { const ts = p.chart.timeScale(), k = p.candles.findIndex((c) => c.time >= keepT), n = ts.getVisibleLogicalRange(); if (k >= 0 && n) ts.setVisibleLogicalRange({ from: k, to: k + (n.to - n.from) }); } catch (e) {} }, 30); }
 const livAuto = (p) => { try { return p.chart.priceScale("right").options().autoScale !== false; } catch (e) { return p.auto !== false; } };   // a manual drag on the price axis turns auto-fit off; respect it
 function scaleUI() { const p = panes[active]; if (!p) return; p.auto = livAuto(p); $("sc-pct").classList.toggle("on", p.mode === 2); $("sc-log").classList.toggle("on", p.mode === 1); $("sc-auto").classList.toggle("on", p.auto); }
 function setScale(k) { const p = panes[active]; if (!p) return; p.auto = livAuto(p); if (k === "auto") p.auto = !p.auto; else { const m = k === "pct" ? 2 : 1; p.mode = p.mode === m ? 0 : m; } p.chart.priceScale("right").applyOptions({ mode: p.mode, autoScale: p.auto }); scaleUI(); paint(p); }
@@ -488,6 +495,10 @@ function paintStudies(p, g, W, H) { const ps = paneSym(p); if (ps !== sym) retur
 }
 /* fix 6: everything we draw lives INSIDE the chart's own render pass (series primitives), so shading, studies and drawings move with the candles on every drag/zoom frame instead of trailing behind. */
 function drawShade(p, g, W, H) {
+    { const C = csG(); if (C.brk && p.sec < 86400 && p.candles.length) { const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (vr) { g.save(); g.strokeStyle = _rgba(C.brkc, 0.55); g.setLineDash([4, 4]); g.lineWidth = 1;   // KING_CS2: session breaks at 18:00 NY
+      const from = Math.max(1, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to)), dn = (t) => Math.floor((t - 18 * 3600) / 86400);
+      for (let k = from; k <= to; k++) if (dn(p.candles[k].time) !== dn(p.candles[k - 1].time)) { const x = ts.logicalToCoordinate(k); if (x != null) { g.beginPath(); g.moveTo(Math.round(x - (ts.options().barSpacing || 6) / 2) + 0.5, 0); g.lineTo(Math.round(x - (ts.options().barSpacing || 6) / 2) + 0.5, H); g.stroke(); } }
+      g.restore(); } } }
     if (prefs.sess && p.sec < 14400 && p.candles.length) {
       const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (vr) { let s0 = null; const from = Math.max(0, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to));
         g.fillStyle = "rgba(122,167,255,.04)";
@@ -507,6 +518,7 @@ class OverlayPrim {
   attached({ requestUpdate }) { this.req = requestUpdate; } detached() { this.req = null; } paneViews() { return this.views; } updateAllViews() {}
 }
 function paint(p) {   // data speed: Fast = every frame, Balanced ~30 fps, Lite ~10 fps
+  if (p && !p.dead && !p._csT) p._csT = setTimeout(() => { p._csT = 0; try { csLines(p); } catch (e) {} }, 250);
   if (!p || p.dead) return; const gap = { balanced: 33, lite: 100 }[prefs.speed] || 0; if (gap) { const w = gap - (performance.now() - (p.lastPaint || 0)); if (w > 0) { if (!p.pt) p.pt = setTimeout(() => { p.pt = 0; paint(p); }, w); return; } p.lastPaint = performance.now(); }
   if (!p.prim) { p.prim = new OverlayPrim(p); p.series.attachPrimitive(p.prim); if (p.cv) { const g = p.cv.getContext("2d"); g.clearRect(0, 0, p.cv.width, p.cv.height); } }
   if (p.dead) return; try { p.prim.req && p.prim.req(); } catch (e) {}
@@ -652,7 +664,7 @@ function initPointer(p) {
 }
 function repaintAll() { panes.forEach(htfRoom); panes.forEach(paint); }
 function htfRoom(p) {   // keep empty space on the right for the HTF candles so they never sit on top of live candles
-  if (p.dead || p.sec >= 86400) return; const n = prefs.ind && !p.noHtf ? (prefs.ind.htfc || []).length : 0, ts = p.chart.timeScale(), sp = ts.options().barSpacing || 6, want = n ? Math.ceil((n * 34 + 26) / sp) + 3 : 12;
+  if (p.dead || p.sec >= 86400) return; const n = prefs.ind && !p.noHtf ? (prefs.ind.htfc || []).length : 0, ts = p.chart.timeScale(), sp = ts.options().barSpacing || 6, want = n ? Math.ceil((n * 34 + 26) / sp) + 3 : +((prefs.cs && prefs.cs.mr) ?? 12);
   // KING_NOSNAP (Nov 12): rightOffset only applies while you're parked at the live edge. Setting it scrolls the chart,
   // so after a mouse-anchored zoom (barSpacing changed -> new want) it used to snap the newest price back to the right.
   if (p.rOff !== want) { const sp0 = ts.scrollPosition(); if (p.rOff == null || Math.abs(sp0 - p.rOff) < 1.5) { p.rOff = want; ts.applyOptions({ rightOffset: want }); } } }
@@ -726,7 +738,7 @@ function guard() {
 function canTrade() { if (prefs.lockUntil && Date.now() < prefs.lockUntil) { toast("🔒 Personal lockout until " + new Date(prefs.lockUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); return false; } if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } if (prefs.aplus && !pos.qty && !aplusOk()) return false; return true; }
 const lotsNow = () => Math.max(1, +prefs.lots || 1);
 const autoBr = () => (prefs.autoBr ? { slPts: prefs.slPts, tpPts: prefs.tpPts } : null);
-function market(side, qty) { if (!canTrade()) return; qty = qty || (prefs.byRisk ? Math.max(1, Math.floor((balance() * prefs.riskp / 100) / (prefs.slPts * inst.pt))) : lotsNow()); fill(side, qty, last(), nowT(), autoBr()); }
+function market(side, qty) { if (!canTrade()) return; if (prefs.cs && prefs.cs.oneClick === false && !confirm(`${side > 0 ? "Buy" : "Sell"} ${qty || lotsNow()} at market?`)) return; qty = qty || (prefs.byRisk ? Math.max(1, Math.floor((balance() * prefs.riskp / 100) / (prefs.slPts * inst.pt))) : lotsNow()); fill(side, qty, last(), nowT(), autoBr()); }
 function joinBid() { if (canTrade()) place(1, "limit", last() - TICK, lotsNow(), autoBr()); }
 function joinAsk() { if (canTrade()) place(-1, "limit", last() + TICK, lotsNow(), autoBr()); }
 function place(side, type, price, qty, br, extra = {}) { if (!canTrade()) return; const o = { id: oid++, side, type, price: rnd(price), qty, br, ...extra }; orders.push(o); snd("place"); drawOrders(); refresh(); return o; }
@@ -749,6 +761,7 @@ function stratDlg() { const S = strats();
     const out = []; for (let i = 0; i <= S.length; i++) { const n = $("sd-n" + i).value.trim(), r = $("sd-r" + i).value.split("\n").map((x) => x.trim()).filter(Boolean); if (n && r.length) out.push({ name: n, rules: r }); }
     prefs.strats = out; if (prefs.stratOn != null && !out[prefs.stratOn]) prefs.stratOn = null; chk = new Set(); savePrefs(); chkUI(); }); }
 function fill(side, qty, price, t, br, toolId) {
+  try { execs.push({ sym, side, qty, price, t }); } catch (e) {}
   if (!pos.qty || Math.sign(pos.qty) === side) { snd("fill"); buzz(25); }
   if (!pos.qty || Math.sign(pos.qty) === side) {
     const nq = pos.qty + side * qty; pos.avg = pos.qty ? (pos.avg * Math.abs(pos.qty) + price * qty) / Math.abs(nq) : price; if (!pos.qty) { pos.t = t; pos.hi = price; pos.tags = [...(pos.tags || []).filter((x) => !/^(strat|rules):/.test(x)), ...stratTags()]; } pos.qty = nq;
@@ -815,10 +828,13 @@ function drawOrders() {
 }
 function linesFor(p) {
   {
-    const L = (price, color, title, kind, obj, style = 2) => p.lines.push({ ref: p.series.createPriceLine({ price, color, lineWidth: 2, lineStyle: style, title, axisLabelVisible: true }), kind, price, obj });
-    if (pos.qty) { L(pos.avg, "#c9d2df", `${pos.qty > 0 ? "LONG" : "SHORT"} ${Math.abs(pos.qty)}  ${money(openPnl())}`, "pos", null, 0);
-      if (pos.sl != null) L(pos.sl, "#ff6b7a", (pos.trail ? "TRAIL " : "SL ") + money((pos.sl - pos.avg) * pos.qty * inst.pt), "sl");
-      if (pos.tp != null) L(pos.tp, "#2bd4a0", "TP " + money((pos.tp - pos.avg) * pos.qty * inst.pt), "tp"); }
+    const C = csG(); if (!C.pos) return;   // KING_CS2: Trading → positions and orders on/off, P&L as money / points / ticks / R, extended lines
+    const L = (price, color, title, kind, obj, style = 2) => p.lines.push({ ref: p.series.createPriceLine({ price, color, lineWidth: 2, lineStyle: style, title, axisLabelVisible: true, lineVisible: C.ext !== false }), kind, price, obj });
+    const pf = (pts, qty, k) => { if (!C.pnl) return ""; const mode = k === "pos" ? C.pnlp : C.pnlb; if (mode === "pts") return (pts >= 0 ? "+" : "") + pts.toFixed(2) + " pts"; if (mode === "ticks") return (pts >= 0 ? "+" : "") + Math.round(pts / TICK) + " ticks";
+      if (mode === "r") return pos.risk ? (pts / pos.risk).toFixed(2) + "R" : "—R"; return money(pts * qty * inst.pt); };
+    if (pos.qty) { const q = Math.abs(pos.qty), sd = Math.sign(pos.qty); L(pos.avg, "#c9d2df", `${pos.qty > 0 ? "LONG" : "SHORT"} ${q}  ${pf(openPnl() / (q * inst.pt), q, "pos")}`, "pos", null, 0);
+      if (pos.sl != null) L(pos.sl, "#ff6b7a", (pos.trail ? "TRAIL " : "SL ") + pf((pos.sl - pos.avg) * sd, q, "br"), "sl");
+      if (pos.tp != null) L(pos.tp, "#2bd4a0", "TP " + pf((pos.tp - pos.avg) * sd, q, "br"), "tp"); }
     for (const o of orders) L(o.price, "#7aa7ff", `${o.side > 0 ? "BUY" : "SELL"} ${o.type.toUpperCase()} ${o.qty}${o.tool ? " · auto" : ""}`, "ord", o);
     if (draft) L(draft.price, "#ffc65c", `DRAFT ${draft.side > 0 ? "BUY" : "SELL"} ${draft.type.toUpperCase()} · drag, then Submit`, "draft", draft);
   }
@@ -1542,7 +1558,7 @@ function saveSettings() {
   const nm = $("s-name").value.trim(); if (me && nm && nm !== me.name) { me.name = nm; names[me.user_id] = nm; if (!DEMO) sb.from("profiles").update({ name: nm }).eq("user_id", me.user_id).then(() => {}); }
   Object.assign(prefs, { sound: $("s-sound").checked, vol: +$("s-vol").value, haptics: $("s-hap").checked, splash: $("s-splash").checked, review: $("s-review").checked }); sfx("fill");
   if (acct) { acct.rules = { ...(acct.rules || {}), mdd: prefs.mdd, dll: prefs.dll, ptg: prefs.ptg }; db.updAccount(acct.id, { rules: acct.rules }).catch(() => {}); }
-  panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: prefs.up, wickDownColor: prefs.dn })); savePrefs(); drawOpens(); repaintAll(); refresh(); $("s-msg").textContent = "Saved";
+  panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: prefs.up, wickDownColor: prefs.dn })); try { csApplyAll(); } catch (e) {} savePrefs(); drawOpens(); repaintAll(); refresh(); $("s-msg").textContent = "Saved";
 }
 async function loadAdmin() {
   const { data: al } = await sb.from("allowlist").select("*").order("added_at");
@@ -2123,7 +2139,7 @@ async function mediaPop() { const m = $("media"); if (mediaWin) { try { mediaWin
 $("m-pop").onclick = mediaPop;
 
 /* KING_GRIDLINES (Nov 11, King's "grid in background toggle"): Chart settings → Canvas → Grid lines (None / Both / Vertical / Horizontal) + strength, like Tradesea's Canvas tab */
-function gridOpts() { const g = (prefs && prefs.gridl) || "both", a = Math.max(0, Math.min(30, prefs && prefs.gridA != null ? prefs.gridA : 4)) / 100, c = `rgba(255,255,255,${a})`;
+function gridOpts() { const g = (prefs && prefs.gridl) || "both", a = Math.max(0, Math.min(30, prefs && prefs.gridA != null ? prefs.gridA : 4)) / 100, c = _rgba(((prefs && prefs.cs && prefs.cs.gridc) || "#ffffff"), a);
   return { vertLines: { visible: g === "both" || g === "vert", color: c }, horzLines: { visible: g === "both" || g === "horz", color: c } }; }
 function gridApply() { panes.forEach((p) => { try { p.chart.applyOptions({ grid: gridOpts() }); } catch (e) {} }); if ($("cs-grid")) { $("cs-grid").value = prefs.gridl || "both"; $("cs-grida").value = prefs.gridA != null ? prefs.gridA : 4; } }
 $("cs-grid") && ($("cs-grid").onchange = () => { prefs.gridl = $("cs-grid").value; gridApply(); savePrefs(); });
@@ -2212,3 +2228,67 @@ if (![...document.body.classList].some((c) => c.startsWith("v-"))) document.body
 document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("chartset").classList.contains("hidden")) $("chartset").classList.add("hidden"); });
 
 addEventListener("resize", () => { try { fitVideo(); } catch (e) {} });
+
+/* KING_CS2 (Nov 12 walkthrough): Chart settings with everything from King's Tradesea screenshots: Symbol, Status line, Scales and lines,
+   Canvas, Trading (+ Multi-chart). Every change previews live; Ok saves, Cancel puts it back, Apply to all keeps it open, Template saves named sets.
+   Not carried over (no such thing in KAIROS): navigation / pane buttons, scale modes A and L, lock price to bar ratio, left price scale. */
+function _rgba(hex, a) { const m = /^#([0-9a-f]{6})$/i.exec(hex || ""); if (!m) return hex; const n = parseInt(m[1], 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; }
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+function csDate(d, C) { const y = d.getUTCFullYear(), m = d.getUTCMonth(), n = d.getUTCDate(), yy = String(y).slice(2);
+  return C.df === "iso" ? `${y}-${String(m + 1).padStart(2, "0")}-${String(n).padStart(2, "0")}` : C.df === "us" ? `${String(m + 1).padStart(2, "0")}/${String(n).padStart(2, "0")}/${yy}` : (C.df === "tv" ? DOW[d.getUTCDay()] + " " : "") + `${n} ${MON[m]} '${yy}`; }
+function csClock(d, C, sec) { let h = d.getUTCHours(); const mm = String(d.getUTCMinutes()).padStart(2, "0"), ss = sec && d.getUTCSeconds() ? ":" + String(d.getUTCSeconds()).padStart(2, "0") : "";
+  if (C.hf === "12") { const ap = h >= 12 ? " PM" : " AM"; h = h % 12 || 12; return `${h}:${mm}${ss}${ap}`; } return `${String(h).padStart(2, "0")}:${mm}${ss}`; }
+function csHover(t) { const C = csG(), d = new Date(t * 1000); return csDate(d, Object.assign({}, C, { df: C.df === "tv" ? "tv" : C.df })) + "  " + csClock(d, C, true); }
+function csTick(t, k) { const C = csG(), d = new Date(t * 1000); if (k === 0) return String(d.getUTCFullYear()); if (k === 1) return MON[d.getUTCMonth()];
+  if (k === 2) return (C.dow ? DOW[d.getUTCDay()] + " " : "") + d.getUTCDate(); return csClock(d, C, k === 4); }
+function csApply(p) { if (!p || p.dead) return; const C = csG(), up = prefs.up, dn = prefs.dn, clear = "rgba(0,0,0,0)";
+  try { p.series.applyOptions({ upColor: C.body ? up : clear, downColor: C.body ? dn : clear, borderVisible: !!C.bord, borderUpColor: C.bu || up, borderDownColor: C.bd || dn, wickVisible: !!C.wick, wickUpColor: C.wu || up, wickDownColor: C.wd || dn,
+      priceFormat: { type: "price", precision: C.prec === "0.01" ? 2 : C.prec === "1" ? 0 : 2, minMove: C.prec === "def" ? TICK : +C.prec }, lastValueVisible: C.last === "vl" || C.last === "v", priceLineVisible: C.last === "vl" || C.last === "l" });
+    const bg = C.bgk === "solid" ? { type: "solid", color: C.bg1 } : C.bgk === "grad" ? { type: "gradient", topColor: C.bg1, bottomColor: C.bg2 } : { type: "solid", color: "transparent" }, xc = _rgba(C.xc, 0.35);
+    p.chart.applyOptions({ layout: { background: bg, textColor: C.txc, fontSize: +C.txs }, grid: gridOpts(), rightPriceScale: { borderColor: C.lnc, scaleMargins: { top: (+C.mt || 0) / 100, bottom: (+C.mb || 0) / 100 } }, timeScale: { borderColor: C.lnc, tickMarkFormatter: blind ? undefined : csTick },
+      localization: blind ? {} : { timeFormatter: csHover }, crosshair: { vertLine: { color: xc, style: +C.xs }, horzLine: { color: xc, style: +C.xs } } });
+  } catch (e) {}
+  const L = p.el.querySelector(".legend"), nm = p.el.querySelector(".lname"), s = paneSym(p), tf = prefs.tfs[p.i] || "5m";
+  nm.style.display = C.title ? "" : "none"; nm.textContent = C.titleK === "t" ? s : C.titleK === "ti" ? `${s} · ${tf}` : `${s} · ${tf} · CME`; L.querySelector("i").style.display = C.mstat ? "" : "none";
+  p.el.querySelector(".ohlc").style.display = C.vals ? "" : "none"; L.style.background = C.lbg ? `rgba(10,13,19,${(+C.lbga || 0) / 100})` : ""; L.style.padding = C.lbg ? "3px 8px" : ""; L.style.borderRadius = C.lbg ? "8px" : "";
+  if (!L.querySelector(".cdn")) L.insertAdjacentHTML("beforeend", '<span class="cdn"></span>'); p.el.querySelector(".wmark").style.display = C.wm ? "" : "none";
+  if (C.prevClr) rebuildPane(p); csLines(p); paint(p); }
+function csApplyAll() { panes.forEach(csApply); const C = csG(); if ($("prev2")) $("prev2").style.display = C.rev ? "" : "none"; try { drawOrders(); } catch (e) {} }
+// previous day close, visible high / low, bid / ask lines + the bar countdown (cheap: existing lines are moved, not rebuilt)
+function csLines(p) { if (!p || p.dead || !p.candles.length) return; const C = csG(); p.csl = p.csl || {};
+  const set = (k, on, price, color, title) => { const L = p.csl[k]; if (!on || price == null || !isFinite(price)) { if (L) { try { p.series.removePriceLine(L); } catch (e) {} delete p.csl[k]; } return; }
+    if (L) { L.applyOptions({ price, color, title }); return; } p.csl[k] = p.series.createPriceLine({ price, color, title, lineWidth: 1, lineStyle: 2, axisLabelVisible: true }); };
+  const last = p.candles[p.candles.length - 1], start = Math.floor((last.time - 18 * 3600) / 86400) * 86400 + 18 * 3600; let pc = null; for (let k = p.candles.length - 1; k >= 0; k--) if (p.candles[k].time < start) { pc = p.candles[k].close; break; }
+  set("pdc", C.pdc === "l", pc, C.pdcc, "Prev close");
+  let hi = null, lo = null; if (C.hl === "l") { const vr = p.chart.timeScale().getVisibleLogicalRange(); if (vr) for (let k = Math.max(0, Math.floor(vr.from)); k <= Math.min(p.candles.length - 1, Math.ceil(vr.to)); k++) { const c = p.candles[k]; hi = hi == null ? c.high : Math.max(hi, c.high); lo = lo == null ? c.low : Math.min(lo, c.low); } }
+  set("hi", C.hl === "l", hi, C.hlc, "High"); set("lo", C.hl === "l", lo, C.hlc, "Low");
+  set("bid", C.ba === "l", last.close, C.bidc, "Bid"); set("ask", C.ba === "l", last.close + TICK, C.askc, "Ask");
+  const cd = p.el.querySelector(".cdn"); if (cd) { if (C.cd && p.sec >= 60 && B["1m"].bars.length) { const now = loc(nowT()), left = p.sec - (((now - (p.sec >= 14400 ? 18 * 3600 : 0)) % p.sec) + p.sec) % p.sec, h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), sx = left % 60;
+      cd.textContent = (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(sx).padStart(2, "0"); } else cd.textContent = ""; }
+  if (C.chg) { const o = p.el.querySelector(".ohlc"); if (o && !o.innerHTML && p.candles.length > 1) { const pv = p.candles[p.candles.length - 2].close, ch = last.close - pv; o.innerHTML = `<b class="${ch >= 0 ? "pos-up" : "pos-dn"}">${ch >= 0 ? "+" : ""}${px2(ch)} (${((ch / pv) * 100).toFixed(2)}%)</b>`; } }
+  csMarks(p); }
+function csMarks(p) { const C = csG(); if (!C.exm) { if (p._mk) { p.series.setMarkers([]); p._mk = 0; } return; } const s = paneSym(p), mk = execs.filter((x) => x.sym === s).map((x) => ({ time: bucket(loc(x.t), p.sec), position: x.side > 0 ? "belowBar" : "aboveBar", color: x.side > 0 ? "#2bd4a0" : "#ff6b7a", shape: x.side > 0 ? "arrowUp" : "arrowDown", text: C.exl ? `${x.side > 0 ? "B" : "S"} ${x.qty} @ ${px2(x.price)}` : "" }))
+  .filter((m) => p.candles.length && m.time <= p.candles[p.candles.length - 1].time).sort((a, b) => a.time - b.time); const key = mk.length + "|" + C.exl + "|" + p.sec; if (p._mkk === key) return; p._mkk = key; p._mk = mk.length; try { p.series.setMarkers(mk); } catch (e) {} }
+// the settings window
+const CSF = { "cs-prevclr": "prevClr", "cs-body": "body", "cs-bord": "bord", "cs-bu": "bu", "cs-bd": "bd", "cs-wick": "wick", "cs-wu": "wu", "cs-wd": "wd", "cs-prec": "prec", "cs-title": "title", "cs-titlek": "titleK", "cs-mstat": "mstat", "cs-vals": "vals", "cs-chg": "chg", "cs-lbg": "lbg", "cs-lbga": "lbga",
+  "cs-cd": "cd", "cs-last": "last", "cs-pdc": "pdc", "cs-pdcc": "pdcc", "cs-hl": "hl", "cs-hlc": "hlc", "cs-ba": "ba", "cs-bidc": "bidc", "cs-askc": "askc", "cs-dow": "dow", "cs-df": "df", "cs-hf": "hf", "cs-keepl": "keepL",
+  "cs-bgk": "bgk", "cs-bg1": "bg1", "cs-bg2": "bg2", "cs-gridc": "gridc", "cs-brk": "brk", "cs-brkc": "brkc", "cs-xc": "xc", "cs-xs": "xs", "cs-wm": "wm", "cs-txc": "txc", "cs-txs": "txs", "cs-lnc": "lnc", "cs-mt": "mt", "cs-mb": "mb", "cs-mr": "mr",
+  "cs-oneclick": "oneClick", "cs-pos": "pos", "cs-rev": "rev", "cs-pnl": "pnl", "cs-pnlp": "pnlp", "cs-pnlb": "pnlb", "cs-exm": "exm", "cs-exl": "exl", "cs-ext": "ext" };
+function csFill() { const C = csG(); for (const [id, k] of Object.entries(CSF)) { const el = $(id); if (!el) continue; if (el.type === "checkbox") el.checked = !!C[k]; else el.value = C[k] === "" && el.type === "color" ? (k[1] === "u" ? prefs.up : prefs.dn) : C[k]; }
+  const T = prefs.csT || {}; $("cs-tpl").innerHTML = '<option value="">Template</option>' + Object.keys(T).map((n) => `<option value="t:${esc(n)}">${esc(n)}</option>`).join("") + '<option value="__save">Save as template…</option><option value="__def">Reset to default</option>'; }
+function csRead() { const o = {}; for (const [id, k] of Object.entries(CSF)) { const el = $(id); if (!el) continue; o[k] = el.type === "checkbox" ? el.checked : el.type === "number" || el.type === "range" ? +el.value : el.value; } return o; }
+$("chartset").addEventListener("input", (e) => { if (!CSF[e.target.id] && !["s-up", "s-dn"].includes(e.target.id)) return; csTmp = csRead(); if (e.target.id === "s-up") prefs.up = e.target.value; if (e.target.id === "s-dn") prefs.dn = e.target.value; csApplyAll(); });
+$("chartset").addEventListener("change", (e) => { if (CSF[e.target.id]) { csTmp = csRead(); csApplyAll(); } });
+$("chartsetbtn").addEventListener("click", () => { csSnap = { cs: JSON.parse(JSON.stringify(prefs.cs || {})), up: prefs.up, dn: prefs.dn }; csTmp = null; csFill(); });
+const csCommit = () => { prefs.cs = Object.assign({}, prefs.cs || {}, csRead()); csTmp = null; savePrefs(); csApplyAll(); };
+$("cs-save").addEventListener("click", csCommit, true); $("cs-all").onclick = () => { csCommit(); toast("Applied to all charts"); };
+$("cs-cancel").onclick = () => { if (csSnap) { prefs.cs = csSnap.cs; prefs.up = csSnap.up; prefs.dn = csSnap.dn; } csTmp = null; csApplyAll(); $("chartset").classList.add("hidden"); };
+$("cs-tpl").onchange = () => { const v = $("cs-tpl").value; $("cs-tpl").value = "";
+  if (v === "__save") { const n = (prompt("Template name") || "").trim().slice(0, 30); if (!n) return; prefs.csT = Object.assign({}, prefs.csT || {}, { [n]: Object.assign(csRead(), { up: $("s-up").value, dn: $("s-dn").value }) }); savePrefs(); csFill(); toast("Template saved"); return; }
+  const src = v === "__def" ? Object.assign({}, CS_DEF, { up: "#2bd4a0", dn: "#ff6b7a" }) : v.startsWith("t:") ? (prefs.csT || {})[v.slice(2)] : null; if (!src) return;
+  csTmp = Object.assign({}, src); if (src.up) { prefs.up = src.up; prefs.dn = src.dn; $("s-up").value = src.up; $("s-dn").value = src.dn; } const keep = prefs.cs; prefs.cs = csTmp; csFill(); prefs.cs = keep; csApplyAll(); };
+// KING_SETPAGE: the group nav highlights the group you're looking at
+(() => { const v = $("v-settings"), nav = v && v.querySelector(".setnav"); if (!nav) return;
+  nav.addEventListener("click", (e) => { const a = e.target.closest("a[data-sg]"); if (!a) return; e.preventDefault(); $("sg-" + a.dataset.sg).scrollIntoView({ behavior: "smooth", block: "start" }); });
+  const mark = () => { let cur = "you"; if (v.classList.contains("hidden") || !v.offsetHeight) return nav.querySelectorAll("a").forEach((a) => a.classList.toggle("on", a.dataset.sg === "you")); v.querySelectorAll(".setg").forEach((g) => { if (g.getBoundingClientRect().top < 140) cur = g.id.slice(3); }); nav.querySelectorAll("a").forEach((a) => a.classList.toggle("on", a.dataset.sg === cur)); };
+  v.addEventListener("scroll", mark, { passive: true }); mark(); })();

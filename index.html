@@ -159,47 +159,65 @@
 
   <section id="v-settings" class="view hidden scroll">
     <div class="cols">
-      <div class="glass form">
-        <h3>Theme</h3>
+      <nav class="setnav"><a href="#sg-you" data-sg="you">You &amp; look</a><a href="#sg-trade" data-sg="trade">Trading</a><a href="#sg-sound" data-sg="sound">Sound &amp; feel</a><a href="#sg-app" data-sg="app">App</a><a href="#sg-conn" data-sg="conn">Connections</a><span class="tsp"></span><button id="s-save" class="primary">Save</button> <span id="s-msg" class="muted small"></span></nav>
+      <section class="setg" id="sg-you"><h2 class="seth">You &amp; look</h2><div class="setgrid">
+        <div class="setc"><h3>You</h3>
+        <label>Display name (friends see this)<input id="s-name" maxlength="24"></label>
+        </div>
+        <div class="setc"><h3>Theme</h3>
         <div class="themes" id="s-themes"></div>
         <div class="aith"><div class="toolbar"><input id="ai-th" maxlength="300" placeholder="✨ Describe a theme (e.g. “Tron Legacy, orange + cyan, very dark”)"><button id="ai-th-go" class="primary small">Make it</button></div><div id="ai-th-msg" class="tiny muted"></div></div>
-                <h3>You</h3>
-        <label>Display name (friends see this)<input id="s-name" maxlength="24"></label>
-        <h3>Feel</h3>
+        </div>
+      </div></section>
+      <section class="setg" id="sg-trade"><h2 class="seth">Trading</h2><div class="setgrid">
+        <div class="setc"><h3>Order pad</h3>
+        <div class="tiny muted">Pick up to 6 button groups for the Scalp pad.</div>
+        <div id="s-padbtns" class="chips"></div>
+        </div>
+        <div class="setc"><h3>Personal lockout</h3>
+        <div class="tiny muted">Blocks new trades in replay until the time is up. No way to cancel it early. That's the point.</div>
+        <div class="row2"><select id="s-lock"><option value="0">Pick…</option><option value="1">1 hour</option><option value="2">2 hours</option><option value="4">4 hours</option><option value="day">Rest of the day</option><option value="custom">Custom hours…</option></select><button id="s-lockgo" class="small">Lock me out</button></div>
+        <div id="s-lockmsg" class="tiny muted"></div>
+        </div>
+        <div class="setc"><h3>Hot keys</h3>
+        <div id="s-keys" class="keys"></div>
+        </div>
+      </div></section>
+      <section class="setg" id="sg-sound"><h2 class="seth">Sound &amp; feel</h2><div class="setgrid">
+        <div class="setc"><h3>Feel</h3>
         <label class="ck"><input id="s-sound" type="checkbox" checked> Sounds (fills, wins, losses)</label>
         <label>Sound volume<input id="s-vol" type="range" min="0" max="100" value="60"></label>
         <label class="ck"><input id="s-hap" type="checkbox" checked> Vibrate on fills (phones that support it)</label>
         <label class="ck"><input id="s-review" type="checkbox" checked> Ask me to rate each trade when it closes</label>
         <label class="ck"><input id="s-splash" type="checkbox" checked> Short intro animation when the app opens</label>
-        <h3>Order pad</h3>
-        <div class="tiny muted">Pick up to 6 button groups for the Scalp pad.</div>
-        <div id="s-padbtns" class="chips"></div>
-        <h3>Privacy</h3>
-        <div class="tiny muted">Blur numbers when you're streaming or sharing your screen.</div>
-        <div class="chips" id="s-mask"><label class="ck"><input type="checkbox" data-mask="upl"> Mask UP&amp;L</label><label class="ck"><input type="checkbox" data-mask="rpl"> Mask RP&amp;L</label><label class="ck"><input type="checkbox" data-mask="bal"> Mask balance</label><label class="ck"><input type="checkbox" data-mask="ddl"> Mask drawdown left</label><label class="ck"><input type="checkbox" data-mask="acct"> Mask account name</label><label class="ck"><input type="checkbox" data-mask="all"> Mask all</label></div>
-        <h3>Trade sounds &amp; effects</h3>
+        </div>
+        <div class="setc"><h3>Trade sounds &amp; effects</h3>
         <div class="tiny muted">Upload your own clips (mp3, wav, m4a or an mp4, up to 15 MB). They're saved on this device only. Set where each clip starts and how long it plays. Clips play when price is running toward your take profit or your stop, and when either one hits.</div>
         <div id="s-fx"></div>
         <div class="tiny muted" style="margin-top:6px">Ideas from trading TikTok: the "take loss, stop profit" clip, the vine boom for a stop-out, "I got like hella money" for a small win, the Industry trading-floor stress clip for a trade going against you. Find them in TikTok's Sounds tab or the Creative Center, save the audio, and upload it here.</div>
-        <h3>Sounds per event</h3>
+        </div>
+        <div class="setc"><h3>Sounds per event</h3>
         <div id="s-snd" class="keys"></div>
         <label>Your own sound (mp3/wav, max 300 KB, saved on this device)<input id="s-sndfile" type="file" accept="audio/*"></label>
-        <h3>KAIROS OS</h3>
+        </div>
+      </div></section>
+      <section class="setg" id="sg-app"><h2 class="seth">App</h2><div class="setgrid">
+        <div class="setc"><h3>Data speed</h3>
+        <div class="seg" id="s-speed"><button data-sp="fast">Fast</button><button data-sp="balanced">Balanced</button><button data-sp="lite">Lite</button></div>
+        <div class="tiny muted">Fast redraws every frame. Lite redraws less often for slower computers and phones.</div>
+        </div>
+        <div class="setc"><h3>Privacy</h3>
+        <div class="tiny muted">Blur numbers when you're streaming or sharing your screen.</div>
+        <div class="chips" id="s-mask"><label class="ck"><input type="checkbox" data-mask="upl"> Mask UP&amp;L</label><label class="ck"><input type="checkbox" data-mask="rpl"> Mask RP&amp;L</label><label class="ck"><input type="checkbox" data-mask="bal"> Mask balance</label><label class="ck"><input type="checkbox" data-mask="ddl"> Mask drawdown left</label><label class="ck"><input type="checkbox" data-mask="acct"> Mask account name</label><label class="ck"><input type="checkbox" data-mask="all"> Mask all</label></div>
+        </div>
+        <div class="setc"><h3>KAIROS OS</h3>
         <div class="tiny muted" id="s-ver">Beta</div>
         <div class="row2"><button class="small" id="s-intro">Replay the intro</button><button class="small" id="s-tour">Take the tour</button></div>
         <label class="ck"><input id="s-tips" type="checkbox" checked> Feature tips (next to the 🔧 bubble and on the loading screen)</label>
-        <h3>Personal lockout</h3>
-        <div class="tiny muted">Blocks new trades in replay until the time is up. No way to cancel it early. That's the point.</div>
-        <div class="row2"><select id="s-lock"><option value="0">Pick…</option><option value="1">1 hour</option><option value="2">2 hours</option><option value="4">4 hours</option><option value="day">Rest of the day</option><option value="custom">Custom hours…</option></select><button id="s-lockgo" class="small">Lock me out</button></div>
-        <div id="s-lockmsg" class="tiny muted"></div>
-        <h3>Data speed</h3>
-        <div class="seg" id="s-speed"><button data-sp="fast">Fast</button><button data-sp="balanced">Balanced</button><button data-sp="lite">Lite</button></div>
-        <div class="tiny muted">Fast redraws every frame. Lite redraws less often for slower computers and phones.</div>
-        <h3>Hot keys</h3>
-        <div id="s-keys" class="keys"></div>
-        <button id="s-save" class="primary">Save</button> <span id="s-msg" class="muted small"></span>
-      </div>
-      <div class="glass form" id="notioncard">
+        </div>
+      </div></section>
+      <section class="setg" id="sg-conn"><h2 class="seth">Connections</h2><div class="setgrid">
+      <div class="setc" id="notioncard">
         <h3>Notion</h3>
         <p class="muted small">Send every closed trade to your own Notion journal. Your Notion stays yours: nobody else's trades go in, and nobody else can see yours.</p>
         <div id="n-state" class="small">Checking…</div>
@@ -218,6 +236,7 @@
         </div>
         <p id="n-msg" class="small muted"></p>
       </div>
+      </div></section>
     </div>
   </section>
 
@@ -310,17 +329,52 @@
   <div class="mbody"><div id="m-vid" class="mvid hidden"></div><div id="m-lib" class="mp"></div><div id="m-yt" class="mp hidden"></div><div id="m-sp" class="mp hidden"></div></div><div class="mres" id="mres" title="Drag to resize"></div></div>
 <div id="chk" class="chk glass hidden"></div>
 <div id="dtb" class="dtb hidden"></div>
-<div id="chartset" class="chartset hidden"><div class="csbox glass form cstabs"><div class="ah"><b>Chart settings</b><button id="cs-x" class="pb" aria-label="Close chart settings">×</button></div>
-  <div class="csw"><nav class="csnav"><button data-cst="sym" class="on">Symbol</button><button data-cst="scales">Scales and lines</button><button data-cst="canvas">Canvas</button><button data-cst="sync">Multi-chart</button></nav>
+<div id="chartset" class="chartset hidden"><div class="csbox glass form cstabs"><div class="ah"><b>Settings</b><button id="cs-x" class="pb" aria-label="Close chart settings">×</button></div>
+  <div class="csw"><nav class="csnav"><button data-cst="sym" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4v16M16 4v16"/><rect x="6" y="8" width="4" height="7" rx="1"/><rect x="14" y="6" width="4" height="10" rx="1"/></svg>Symbol</button><button data-cst="stat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 10h11M4 14h16M4 18h8"/></svg>Status line</button><button data-cst="scales"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4v15h15"/><path d="M5 19l5-5"/><path d="M17 16l3 3-3 3M2 7l3-3 3 3"/></svg>Scales and lines</button><button data-cst="canvas"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3l5 5L9 20H4v-5z"/></svg>Canvas</button><button data-cst="trading"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-9"/><path d="M14 7h6v6"/></svg>Trading</button><button data-cst="sync"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="7" rx="1"/><rect x="13" y="4" width="8" height="7" rx="1"/><rect x="3" y="13" width="8" height="7" rx="1"/><rect x="13" y="13" width="8" height="7" rx="1"/></svg>Multi-chart</button></nav>
   <div class="csp">
    <section data-csp="sym"><h4>Symbol</h4><div class="seg" id="cs-sym"><button data-s="NQ">NQ</button><button data-s="ES">ES</button></div>
-    <h4>Candles</h4><div class="row2"><label>Up candle<input id="s-up" type="color" value="#2bd4a0"></label><label>Down candle<input id="s-dn" type="color" value="#ff6b7a"></label></div></section>
-   <section data-csp="scales" class="hidden"><h4>Lines on the chart</h4><label class="ck"><input id="s-opens" type="checkbox" checked> Key opens (18:00, midnight, 9:30, 10:00)</label>
-    <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label></section>
-   <section data-csp="canvas" class="hidden"><h4>Chart basic styles</h4><div class="row2"><label>Grid lines<select id="cs-grid"><option value="both">Vertical + horizontal</option><option value="vert">Vertical only</option><option value="horz">Horizontal only</option><option value="none">None</option></select></label><label>Grid strength<input id="cs-grida" type="range" min="1" max="20" value="4"></label></div></section>
+    <h4>Candles</h4><label class="ck"><input type="checkbox" id="cs-prevclr"> Color bars based on previous close</label>
+    <div class="csr"><div class="csl"><label class="ck"><input type="checkbox" id="cs-body"> Body</label></div><div class="csv"><input id="s-up" type="color" value="#2bd4a0" class="csc"><input id="s-dn" type="color" value="#ff6b7a" class="csc"></div></div>
+    <div class="csr"><div class="csl"><label class="ck"><input type="checkbox" id="cs-bord"> Borders</label></div><div class="csv"><input type="color" id="cs-bu" class="csc"><input type="color" id="cs-bd" class="csc"></div></div>
+    <div class="csr"><div class="csl"><label class="ck"><input type="checkbox" id="cs-wick"> Wick</label></div><div class="csv"><input type="color" id="cs-wu" class="csc"><input type="color" id="cs-wd" class="csc"></div></div>
+    <h4>Data modification</h4>
+    <div class="csr"><div class="csl">Session</div><div class="csv"><span class="muted small">Set with ETH / RTH under the chart</span></div></div>
+    <div class="csr"><div class="csl">Precision</div><div class="csv"><select id="cs-prec"><option value="def">Default (0.25)</option><option value="1">1</option><option value="0.5">0.5</option><option value="0.01">0.01</option></select></div></div>
+    <div class="csr"><div class="csl">Timezone</div><div class="csv"><select id="cs-tz" disabled><option>(UTC-5) New York</option></select></div></div></section>
+   <section data-csp="stat" class="hidden"><h4>Symbol</h4>
+    <div class="csr"><div class="csl"><label class="ck"><input type="checkbox" id="cs-title"> Title</label></div><div class="csv"><select id="cs-titlek"><option value="full">Ticker · interval · exchange</option><option value="ti">Ticker · interval</option><option value="t">Ticker</option></select></div></div>
+    <label class="ck"><input type="checkbox" id="cs-mstat"> Open market status</label><label class="ck"><input type="checkbox" id="cs-vals"> Chart values (O H L C on hover)</label><label class="ck"><input type="checkbox" id="cs-chg"> Bar change values</label>
+    <div class="csr"><div class="csl"><label class="ck"><input type="checkbox" id="cs-lbg"> Background</label></div><div class="csv"><input id="cs-lbga" type="range" min="0" max="90" value="0"></div></div></section>
+   <section data-csp="scales" class="hidden"><h4>Price labels &amp; lines</h4>
+    <label class="ck"><input type="checkbox" id="cs-cd"> Countdown to bar close</label>
+    <div class="csr"><div class="csl">Symbol</div><div class="csv"><select id="cs-last"><option value="vl">Value, line</option><option value="v">Value</option><option value="l">Line</option><option value="h">Hidden</option></select></div></div>
+    <div class="csr"><div class="csl">Previous day close</div><div class="csv"><select id="cs-pdc"><option value="h">Hidden</option><option value="l">Line</option></select><input type="color" id="cs-pdcc" class="csc"></div></div>
+    <div class="csr"><div class="csl">High and low</div><div class="csv"><select id="cs-hl"><option value="h">Hidden</option><option value="l">Lines (visible range)</option></select><input type="color" id="cs-hlc" class="csc"></div></div>
+    <div class="csr"><div class="csl">Bid and ask</div><div class="csv"><select id="cs-ba"><option value="h">Hidden</option><option value="l">Lines</option></select><input type="color" id="cs-bidc" class="csc"><input type="color" id="cs-askc" class="csc"></div></div>
+    <h4>Lines on the chart</h4><label class="ck"><input id="s-opens" type="checkbox" checked> Key opens (18:00, midnight, 9:30, 10:00)</label>
+    <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label>
+    <h4>Time scale</h4><label class="ck"><input type="checkbox" id="cs-dow"> Day of week on labels</label>
+    <div class="csr"><div class="csl">Date format</div><div class="csv"><select id="cs-df"><option value="tv">Mon 29 Sep '97</option><option value="dmy">29 Sep '97</option><option value="iso">1997-09-29</option><option value="us">09/29/97</option></select></div></div>
+    <div class="csr"><div class="csl">Time hours format</div><div class="csv"><select id="cs-hf"><option value="24">24-hours</option><option value="12">12-hours</option></select></div></div>
+    <label class="ck"><input type="checkbox" id="cs-keepl"> Save chart left edge position when changing interval</label></section>
+   <section data-csp="canvas" class="hidden"><h4>Chart basic styles</h4>
+    <div class="csr"><div class="csl">Background</div><div class="csv"><select id="cs-bgk"><option value="none">Theme (see-through)</option><option value="solid">Solid</option><option value="grad">Gradient</option></select><input type="color" id="cs-bg1" class="csc"><input type="color" id="cs-bg2" class="csc"></div></div>
+    <div class="csr"><div class="csl">Grid lines</div><div class="csv"><select id="cs-grid"><option value="both">Vertical + horizontal</option><option value="vert">Vertical only</option><option value="horz">Horizontal only</option><option value="none">None</option></select><input type="color" id="cs-gridc" class="csc"></div></div>
+    <div class="csr"><div class="csl">Grid strength</div><div class="csv"><input id="cs-grida" type="range" min="1" max="20" value="4"></div></div>
+    <div class="csr"><div class="csl"><label class="ck"><input type="checkbox" id="cs-brk"> Session breaks</label></div><div class="csv"><input type="color" id="cs-brkc" class="csc"></div></div>
+    <div class="csr"><div class="csl">Crosshair</div><div class="csv"><input type="color" id="cs-xc" class="csc"><select id="cs-xs"><option value="2">Dashed</option><option value="0">Solid</option><option value="1">Dotted</option></select></div></div>
+    <label class="ck"><input type="checkbox" id="cs-wm"> Watermark</label>
+    <h4>Scales</h4><div class="csr"><div class="csl">Text</div><div class="csv"><input type="color" id="cs-txc" class="csc"><select id="cs-txs"><option value="10">10</option><option value="11">11</option><option value="12">12</option><option value="13">13</option><option value="14">14</option></select></div></div>
+    <div class="csr"><div class="csl">Lines</div><div class="csv"><input type="color" id="cs-lnc" class="csc"></div></div>
+    <h4>Margins</h4><div class="csr"><div class="csl">Top</div><div class="csv"><input id="cs-mt" type="number" min="0" max="40" class="csn"> %</div></div><div class="csr"><div class="csl">Bottom</div><div class="csv"><input id="cs-mb" type="number" min="0" max="40" class="csn"> %</div></div><div class="csr"><div class="csl">Right</div><div class="csv"><input id="cs-mr" type="number" min="0" max="80" class="csn"> bars</div></div></section>
+   <section data-csp="trading" class="hidden"><h4>General</h4><label class="ck"><input type="checkbox" id="cs-oneclick"> One-click trading (off = confirm every Buy / Sell)</label>
+    <h4>Appearance</h4><label class="ck"><input type="checkbox" id="cs-pos"> Positions and orders</label><div class="csind"><label class="ck"><input type="checkbox" id="cs-rev"> Reverse position button</label><div class="tiny muted">Shows the Reverse button on the order pad</div></div>
+    <label class="ck"><input type="checkbox" id="cs-pnl"> Profit &amp; loss value</label><div class="csind"><div class="csr"><div class="csl">Position</div><div class="csv"><select id="cs-pnlp"><option value="money">Money</option><option value="pts">Points</option><option value="ticks">Ticks</option><option value="r">R</option></select></div></div><div class="csr"><div class="csl">Brackets</div><div class="csv"><select id="cs-pnlb"><option value="money">Money</option><option value="pts">Points</option><option value="ticks">Ticks</option></select></div></div></div>
+    <label class="ck"><input type="checkbox" id="cs-exm"> Executions marks</label><div class="csind"><label class="ck"><input type="checkbox" id="cs-exl"> Executions labels</label></div>
+    <label class="ck"><input type="checkbox" id="cs-ext"> Extended price lines across the entire chart width</label></section>
    <section data-csp="sync" class="hidden"><h4>Sync across charts</h4><div class="chips"><label class="ck" title="On: every chart shows the symbol you trade. Off: charts 2+ can each show their own symbol (click the symbol name on a chart)."><input type="checkbox" id="cs-ssym"> Symbol</label><label class="ck"><input type="checkbox" id="cs-sint"> Interval</label><label class="ck"><input type="checkbox" id="cs-scross" checked> Crosshair</label><label class="ck"><input type="checkbox" id="cs-stime" checked> Time (scroll together)</label><label class="ck"><input type="checkbox" id="cs-srange" checked> Date range buttons</label></div></section>
   </div></div>
-  <div class="csfoot"><button id="cs-save" class="primary small">Save</button></div></div></div>
+  <div class="csfoot"><span class="csfl"><select id="cs-tpl"><option value="">Template</option><option value="__save">Save as template…</option><option value="__def">Reset to default</option></select></span><button id="cs-all" class="small">Apply to all</button><button id="cs-cancel" class="small">Cancel</button><button id="cs-save" class="primary small">Ok</button></div></div></div>
 <div id="favbar" class="favbar hidden"><div class="fgrip" id="favgrip" title="Drag to move">⋮⋮</div><div class="fbreplay"></div><div class="fbtools"></div></div>
 <div id="qzbar" class="qzbar hidden"><div class="qzq">Taking dis? or fade it? <span id="qz-clock" class="qzclock hidden"></span></div><div class="qzd" id="qz-desc"></div><div class="row"><button id="qz-take" class="buy">Take it</button><button id="qz-fade" class="sell">Fade it</button></div><div class="qzr hidden" id="qz-res"></div><div class="row hidden" id="qz-next"><button id="qz-more" class="primary">Next setup</button><button id="qz-stop" class="ghost">Stop</button></div></div>
 <div id="tour" class="tour hidden"><div class="tour-hole" id="tourhole"></div><div class="tour-card" id="tourcard"></div></div>
