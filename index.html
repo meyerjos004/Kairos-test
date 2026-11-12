@@ -54,7 +54,7 @@
     <div class="status" id="status">Active</div>
     <div class="grp replay">
       <input id="start" type="datetime-local" title="Start (New York time)">
-      <button id="go" class="primary small">Load</button>
+      <button id="go" class="primary small hidden" title="Load">Load</button>
       <div class="seg"><button id="back" title="Step back (←)">⏮</button><button id="play" title="Play / pause (space)">▶</button><button id="step" title="Step one bar (→)">⏭</button></div>
       <div class="seg skips"><button id="skipny" title="Skip to the next NY open (9:30 New York)">NY open</button><button id="skipasia" title="Skip to the next Asia open (20:00 New York)">Asia open</button></div>
       <button id="blindbtn" class="small" title="Mystery day: a random day with the date hidden until you finish (no cherry-picking)">🎲</button><button id="plbtn" class="small" title="Session playlist: queue 10 days (random, news days, Mondays, Fridays)">▤</button><span id="plpill" class="plpill hidden"></span>
@@ -321,7 +321,7 @@
    <section data-csp="sync" class="hidden"><h4>Sync across charts</h4><div class="chips"><label class="ck" title="On: every chart shows the symbol you trade. Off: charts 2+ can each show their own symbol (click the symbol name on a chart)."><input type="checkbox" id="cs-ssym"> Symbol</label><label class="ck"><input type="checkbox" id="cs-sint"> Interval</label><label class="ck"><input type="checkbox" id="cs-scross" checked> Crosshair</label><label class="ck"><input type="checkbox" id="cs-stime" checked> Time (scroll together)</label><label class="ck"><input type="checkbox" id="cs-srange" checked> Date range buttons</label></div></section>
   </div></div>
   <div class="csfoot"><button id="cs-save" class="primary small">Save</button></div></div></div>
-<div id="favbar" class="favbar hidden"><div class="fgrip" id="favgrip" title="Drag to move">⋮⋮</div><div class="fbtools"></div></div>
+<div id="favbar" class="favbar hidden"><div class="fgrip" id="favgrip" title="Drag to move">⋮⋮</div><div class="fbreplay"></div><div class="fbtools"></div></div>
 <div id="qzbar" class="qzbar hidden"><div class="qzq">Taking dis? or fade it? <span id="qz-clock" class="qzclock hidden"></span></div><div class="qzd" id="qz-desc"></div><div class="row"><button id="qz-take" class="buy">Take it</button><button id="qz-fade" class="sell">Fade it</button></div><div class="qzr hidden" id="qz-res"></div><div class="row hidden" id="qz-next"><button id="qz-more" class="primary">Next setup</button><button id="qz-stop" class="ghost">Stop</button></div></div>
 <div id="tour" class="tour hidden"><div class="tour-hole" id="tourhole"></div><div class="tour-card" id="tourcard"></div></div>
 <div id="review" class="review hidden"></div>

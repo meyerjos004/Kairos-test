@@ -235,10 +235,17 @@ function indMenu(re) { if (re !== true && ctxJust === "ind") { ctxJust = null; r
   { h: "Higher-timeframe candles on the right (PO3)" }, ...["15m", "1h", "4h", "1D", "1W"].map((tf) => ({ t: ck((I.htfc || []).includes(tf)) + "Current " + tf + " candle", f: () => { const s = new Set(I.htfc || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.htfc = ["15m", "1h", "4h", "1D", "1W"].filter((x) => s.has(x)); savePrefs(); repaintAll(); } })), { t: ck(I.h4) + "Past 4H candle outlines on the chart", f: flip("h4") }], r.left, r.bottom + 6, indMenu); $("ctx").dataset.from = "ind"; }
 const TOOLNAMES = { pitchfork: "Pitchfork", arrow: "Arrow", channel: "Parallel channel", fibext: "Fib extension", prange: "Price range", drange: "Date range", ellipse: "Ellipse", cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
 function favUI() {
-  const fb = $("favbar"); fb.classList.toggle("hidden", !prefs.favShow); $("favbtn").classList.toggle("on", !!prefs.favShow);
+  const fb = $("favbar"), wide = innerWidth > 900; replayHome(); fb.classList.toggle("hidden", !(prefs.favShow || wide)); fb.classList.toggle("nofav", !prefs.favShow); $("favbtn").classList.toggle("on", !!prefs.favShow);
   fb.querySelector(".fbtools").innerHTML = prefs.favs.map((t) => { const src = document.querySelector('#tools .tfly [data-tool="' + t + '"]') || document.querySelector('#tools [data-tool="' + t + '"]'); return src ? `<button data-tool="${t}" class="tool ${src.className.replace(/\btool\b|\bon\b|\bfi\b|\btgm\b/g, "").trim()} ${t === tool ? "on" : ""}" title="${src.title}">${(src.querySelector(".ti") || src).innerHTML}</button>` : ""; }).join("") || '<span class="tiny muted" style="padding:0 8px">Right-click a tool to add it here</span>';
   if (prefs.favPos) { fb.style.left = Math.min(prefs.favPos.x, innerWidth - 80) + "px"; fb.style.top = Math.min(prefs.favPos.y, innerHeight - 40) + "px"; fb.style.transform = "none"; }
 }
+// KING_FAVREPLAY (Nov 12 walkthrough): play/pause, bar/candle and speed live on the tool favorites bar on desktop
+// (the bar stays up even with tool favorites off). On a phone they stay in the top bar, where the favorites bar is hidden.
+function replayHome() { const wide = innerWidth > 900, fr = document.querySelector("#favbar .fbreplay"), top = document.querySelector(".grp.replay"), seg = $("play").parentElement, skips = top.querySelector(".skips");
+  if (!fr || !top) return; const want = wide ? fr : top; if (seg.parentElement === want) return;
+  const box = (id) => $(id).closest(".dd") || $(id);   // selects are wrapped in the custom dropdown; move the wrapper
+  if (wide) { fr.append(seg, box("stepsz"), box("speed")); } else { top.insertBefore(seg, skips); top.appendChild(box("stepsz")); top.appendChild(box("speed")); } }
+addEventListener("resize", () => { try { const w = innerWidth > 900; if (w !== replayHome.w) { replayHome.w = w; favUI(); } } catch (e) {} });
 function toolsUI() { const t = $("tools"), f = prefs.toolsPos; t.classList.toggle("float", !!f); if (f) { t.style.left = Math.min(f.x, innerWidth - 50) + "px"; t.style.top = Math.min(f.y, innerHeight - 120) + "px"; } else { t.style.left = t.style.top = ""; } panes.forEach(paint); }
 function dockH() { const b = document.querySelector("#dock .bbody"); b.style.height = prefs.dockClosed ? "0px" : (prefs.dockH || 150) + "px"; if (prefs.pad.x == null) setTimeout(padUI, 240); }
 function grip(el, onMove, onEnd) {   // pointer drag helper
@@ -283,7 +290,7 @@ const yOf = (p, pr) => p.series.priceToCoordinate(pr);
 function tOf(p, x) { const l = p.chart.timeScale().coordinateToLogical(x), c = p.candles; if (l == null || !c.length) return null; const n = c.length - 1;
   if (l >= n) return c[n].time + (l - n) * p.sec; if (l <= 0) return c[0].time + l * p.sec; const k = Math.floor(l); return c[k].time + (l - k) * p.sec; }
 function pOf(p, y, x) { let pr = p.series.coordinateToPrice(y); if (pr == null) return null;
-  if (prefs.magnet && x != null) { const l = Math.round(p.chart.timeScale().coordinateToLogical(x)), c = p.candles[l]; if (c) { const best = [c.open, c.high, c.low, c.close].reduce((a, b) => (Math.abs(yOf(p, b) - y) < Math.abs(yOf(p, a) - y) ? b : a)); if (prefs.magMode === "strong" || Math.abs(yOf(p, best) - y) < 14) pr = best; } }   // KING_MAGNET: weak = only when close, strong = always snap
+  if (prefs.magnet && x != null) { const l = Math.round(p.chart.timeScale().coordinateToLogical(x)), c = p.candles[l]; if (c) { const best = [c.open, c.high, c.low, c.close].reduce((a, b) => (Math.abs(yOf(p, b) - y) < Math.abs(yOf(p, a) - y) ? b : a)); if (prefs.magMode === "strong" || Math.abs(yOf(p, best) - y) < 24) pr = best; } }   // KING_MAGNET: weak = within 24 px (was 14, King: a little stronger), strong = always snap
   return rnd(pr); }
 
 /* ---------------- drawings (canvas layer) ---------------- */
@@ -291,7 +298,9 @@ let tool = "cursor", drawings = [], pend = null, sel = null, hov = null, did = 1
 const FIBX = [[0, "0"], [0.618, "0.618"], [1, "1"], [1.272, "1.272"], [1.414, "1.414"], [1.618, "1.618"], [2, "2"], [2.618, "2.618"]];
 const chOff = (d) => d.off ?? (Math.abs(d.b.p - d.a.p) * 0.5 || 20 * (TICK || 0.25));
 const lineAt = (d, t) => (d.b.t === d.a.t ? d.a.p : d.a.p + ((d.b.p - d.a.p) * (t - d.a.t)) / (d.b.t - d.a.t));
-const FIB = [[1, "0"], [0.5, "0.5"], [0.62, "0.62"], [0.705, "0.705"], [0.79, "0.79"], [0, "1"], [-0.27, "-0.27"], [-0.62, "-0.62"]];
+const FIB_DEF = [0, 0.5, 0.62, 0.705, 0.79, 1, -0.27, -0.62], FIB_OPTS = [0, 0.236, 0.382, 0.5, 0.618, 0.62, 0.705, 0.786, 0.79, 1, -0.27, -0.62, -1, -2, 1.272, 1.618];
+// KING_FIBLV (Nov 12 walkthrough): pick the fib levels (Fib settings). Same placement as before: "0" sits on point A, "1" on point B.
+function fibList() { const L = (prefs && Array.isArray(prefs.fibLv) && prefs.fibLv.length ? prefs.fibLv : FIB_DEF); return L.map((l) => [l === 0 ? 1 : l === 1 ? 0 : l, String(l)]); }
 const SHARED = ["hline"];   // horizontal lines show on every chart; everything else stays on the chart it was drawn on
 function setTool(t) { tool = t; pend = null; document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === t)); try { tgSync(t); } catch (e) {} panes.forEach((p) => { p.el.style.cursor = t === "cursor" ? "" : "crosshair"; p.chart.applyOptions({ crosshair: { mode: t === "cross" ? 0 : 1 } }); paint(p); }); }
 function newDrawing(type, p, a, b) {
@@ -551,7 +560,7 @@ function drawOne(p, g, d, W, H) {
   if (d.type === "rect") { if (x1 == null || x2 == null || y2 == null) return; const rc = /^#[0-9a-f]{6}$/i.test(d.color || "") ? d.color : "#7aa7ff"; g.fillStyle = rc + Math.round(((d.fill ?? 10) / 100) * 255).toString(16).padStart(2, "0"); g.strokeStyle = d.color ? rc : blue;
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); g.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); dot(x1, y1); dot(x2, y2); return; }
   if (d.type === "fib") { if (y2 == null) return; const xa = Math.min(x1 ?? 0, x2 ?? W);
-    for (const [f, lab] of FIB) { const pr = d.b.p + (d.a.p - d.b.p) * f, y = yOf(p, pr); if (y == null) continue;
+    for (const [f, lab] of fibList()) { const pr = d.b.p + (d.a.p - d.b.p) * f, y = yOf(p, pr); if (y == null) continue;
       g.strokeStyle = [0.79, 0.62, 0.705].includes(f) ? blue : f === 0.5 ? "rgba(255,255,255,.6)" : "rgba(255,206,120,.55)"; g.setLineDash(f === 0 || f === 1 ? [] : [4, 4]);
       g.beginPath(); g.moveTo(xa, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = g.strokeStyle; g.fillText(`${lab}  ${px2(pr)}`, xa + 4, y - 3); }
     g.strokeStyle = gold; dot(x1, y1); dot(x2, y2); return; }
@@ -567,11 +576,12 @@ function drawOne(p, g, d, W, H) {
     // KING_POSSTYLE (Nov 11): position labels styled like the trade panel (Inter, rounded pills, solid green / red like the Buy / Sell buttons)
     const pill = (txt, x, y, bg, fg, bold) => { g.font = (bold ? "700" : "600") + " 11.5px Inter, sans-serif"; const w = g.measureText(txt).width + 16, h = 20; g.fillStyle = bg; g.beginPath(); (g.roundRect ? g.roundRect(x, y, w, h, 6) : g.rect(x, y, w, h)); g.fill(); g.fillStyle = fg; g.fillText(txt, x + 8, y + 14); return w; };
     const head = `${d.side > 0 ? "Long" : "Short"} ${q} @ ${px2(d.entry)}`, sub = `${rr.toFixed(2)}R · risk ${money(risk * q * inst.pt)} · ${tag}`;
+    if (!on) return;   // KING_POSHOVER (Nov 12 walkthrough): the text pills only show while you hover or select the position
     const hw = pill(head, xa + 6, ye - 24, d.side > 0 ? "#2bd4a0" : "#ff5d6c", "#06110c", true); pill(sub, xa + 10 + hw, ye - 24, "rgba(16,20,28,.92)", "#dfe5ee");
     const tpTxt = `Target ${px2(d.tp)} · +${money(Math.abs(d.tp - d.entry) * q * inst.pt)}`, slTxt = `Stop ${px2(d.sl)} · -${money(risk * q * inst.pt)}`;
     pill(tpTxt, xa + 6, d.side > 0 ? yt + 4 : yt - 24, "rgba(43,212,160,.9)", "#06110c", true);
     pill(slTxt, xa + 6, d.side > 0 ? ys - 24 : ys + 4, "rgba(255,93,108,.9)", "#1a0508", true);
-    if (on) [[xb, ye], [xb, ys], [xb, yt], [xa, ye]].forEach(([x, y]) => dot(x, y));
+    [[xb, ye], [xb, ys], [xb, yt], [xa, ye]].forEach(([x, y]) => dot(x, y));
   }
 }
 function posQty(d) { if (d.qty) return d.qty; const risk = Math.abs(d.entry - d.sl) || 1; if (prefs.byRisk) return Math.max(1, Math.floor((balance() * prefs.riskp / 100) / (risk * inst.pt))); return lotsNow(); }
@@ -592,7 +602,7 @@ function hitDrawing(p, x, y) {
     if (d.type === "fibext" && y2 != null) for (const [f] of FIBX) { const yy = yOf(p, d.a.p + (d.b.p - d.a.p) * f); if (yy != null && Math.abs(y - yy) < 5 && x >= Math.min(x1 ?? 0, x2 ?? 0)) return { d, h: "move" }; }
     if (d.type === "hray" && x1 != null && Math.abs(y - y1) < 6 && x >= x1) return { d, h: "move" };
     if ((d.type === "rect" || d.type === "measure") && x1 != null && x2 != null && x >= Math.min(x1, x2) && x <= Math.max(x1, x2) && y >= Math.min(y1, y2) && y <= Math.max(y1, y2)) return { d, h: "move" };
-    if (d.type === "fib" && y2 != null) for (const [f] of FIB) { const yy = yOf(p, d.b.p + (d.a.p - d.b.p) * f); if (yy != null && Math.abs(y - yy) < 5 && x >= Math.min(x1 ?? 0, x2 ?? 0)) return { d, h: "move" }; }
+    if (d.type === "fib" && y2 != null) for (const [f] of fibList()) { const yy = yOf(p, d.b.p + (d.a.p - d.b.p) * f); if (yy != null && Math.abs(y - yy) < 5 && x >= Math.min(x1 ?? 0, x2 ?? 0)) return { d, h: "move" }; }
     if (d.type === "text" && x1 != null && x >= x1 - 4 && x <= x1 + 140 && Math.abs(y - y1 + 4) < 10) return { d, h: "move" };
   }
   return null;
@@ -1768,9 +1778,14 @@ function toolSettings(d) { if (d.type === "long" || d.type === "short") return t
     <div class="row2"><label>Color<input id="ts-c" type="color" value="${/^#/.test(d.color || "") ? d.color : "#2962ff"}"></label><label>Thickness<select id="ts-w">${[1, 1.4, 2, 3, 4].map((w) => `<option ${(d.w || 1.4) === w ? "selected" : ""}>${w}</option>`).join("")}</select></label><label>Style<select id="ts-s">${["solid", "dash", "dot"].map((s) => `<option ${(d.dash || "solid") === s ? "selected" : ""}>${s}</option>`).join("")}</select></label></div>
     ${d.type === "rect" ? `<label>Fill strength<input id="ts-f" type="range" min="0" max="60" value="${d.fill ?? 12}"></label>` : ""}
     ${d.type !== "hline" && d.type !== "vline" && d.type !== "text" ? `<div class="row2"><label>Price A<input id="ts-pa" type="number" step="0.25" value="${d.a.p}"></label><label>Price B<input id="ts-pb" type="number" step="0.25" value="${d.b.p}"></label></div>` : `<label>Price<input id="ts-pa" type="number" step="0.25" value="${d.a.p}"></label>`}
+    ${d.type === "fib" ? `<label>Fib levels (all fibs)</label><div class="fiblv">${[...new Set([...FIB_OPTS, ...(prefs.fibLv || FIB_DEF)])].sort((x, y) => x - y).map((l) => `<label class="ck"><input type="checkbox" data-fl="${l}" ${(prefs.fibLv || FIB_DEF).includes(l) ? "checked" : ""}> ${l}</label>`).join("")}</div>
+      <label>Add your own (comma separated)<input id="ts-flx" placeholder="e.g. 0.25, 0.75, -0.5"></label><button type="button" class="small" id="ts-fld">Reset to default</button>` : ""}
     <label class="ck"><input id="ts-lk" type="checkbox" ${d.locked ? "checked" : ""}> Locked (can't be dragged)</label>`, () => {
+    if (d.type === "fib") { const L = [...document.querySelectorAll("[data-fl]")].filter((c) => c.checked).map((c) => +c.dataset.fl); ($("ts-flx").value || "").split(",").map((v) => parseFloat(v)).filter((v) => isFinite(v) && Math.abs(v) <= 10).forEach((v) => L.includes(v) || L.push(v));
+      prefs.fibLv = L.length ? L.sort((x, y) => x - y) : null; savePrefs(); }
     const l = $("ts-l").value.trim(); if (d.type === "text") d.text = l || d.text; else d.label = l; d.color = $("ts-c").value; d.w = +$("ts-w").value; d.dash = $("ts-s").value; d.locked = $("ts-lk").checked;
-    if ($("ts-f")) d.fill = +$("ts-f").value; d.a.p = rnd(+$("ts-pa").value || d.a.p); if ($("ts-pb")) d.b.p = rnd(+$("ts-pb").value || d.b.p); else d.b.p = d.a.p; repaintAll(); }); }
+    if ($("ts-f")) d.fill = +$("ts-f").value; d.a.p = rnd(+$("ts-pa").value || d.a.p); if ($("ts-pb")) d.b.p = rnd(+$("ts-pb").value || d.b.p); else d.b.p = d.a.p; repaintAll(); });
+  if ($("ts-fld")) $("ts-fld").onclick = () => document.querySelectorAll("[data-fl]").forEach((c) => (c.checked = FIB_DEF.includes(+c.dataset.fl))); }
 
 /* fix 13: chart settings + sync across charts (interval, crosshair, time, date range); click the symbol on a chart to change it */
 let syncing = false;
@@ -1863,7 +1878,10 @@ $("favbar").addEventListener("contextmenu", (e) => { const b = e.target.closest(
 grip($("favgrip"), (e, st) => { const fb = $("favbar"), r = fb.getBoundingClientRect(); if (!st.r) st.r = r; fb.style.transform = "none"; fb.style.left = Math.max(0, Math.min(innerWidth - r.width, st.r.left + e.clientX - st.x)) + "px"; fb.style.top = Math.max(0, Math.min(innerHeight - r.height, st.r.top + e.clientY - st.y)) + "px"; },
   () => { const r = $("favbar").getBoundingClientRect(); prefs.favPos = { x: r.left, y: r.top }; savePrefs(); });
 grip($("toolgrip"), (e, st) => { const t = $("tools"); if (!prefs.toolsPos) { prefs.toolsPos = { x: e.clientX - 20, y: e.clientY - 10 }; toolsUI(); } if (!st.r) st.r = t.getBoundingClientRect(); t.style.left = Math.max(0, Math.min(innerWidth - 50, st.r.left + e.clientX - st.x)) + "px"; t.style.top = Math.max(0, Math.min(innerHeight - 100, st.r.top + e.clientY - st.y)) + "px"; },
-  () => { const r = $("tools").getBoundingClientRect(); if (prefs.toolsPos) { prefs.toolsPos = { x: r.left, y: r.top }; savePrefs(); } });
+  () => { const r = $("tools").getBoundingClientRect(), home = $("tools").parentElement.getBoundingClientRect();
+    // KING_RAILSNAP (Nov 12 walkthrough): drag it back near its spot on the left and it docks again
+    if (prefs.toolsPos && r.left < home.left + 70 && Math.abs(r.top - home.top) < 160) { prefs.toolsPos = null; toolsUI(); savePrefs(); toast("Toolbar docked"); return; }
+    if (prefs.toolsPos) { prefs.toolsPos = { x: r.left, y: r.top }; savePrefs(); } });
 $("toolgrip").ondblclick = () => { prefs.toolsPos = null; savePrefs(); toolsUI(); };
 grip($("dockgrip"), (e, st) => { if (st.h == null) { st.h = prefs.dockClosed ? 0 : prefs.dockH || 150; prefs.dockClosed = false; $("dock").classList.remove("closed"); } prefs.dockH = Math.max(60, Math.min(Math.round(innerHeight * 0.6), st.h + st.y - e.clientY)); dockH(); },
   () => { if (prefs.dockH < 70) { prefs.dockClosed = true; prefs.dockH = 150; } savePrefs(); dockUI(); });
@@ -2011,11 +2029,16 @@ function tgClose() { document.querySelectorAll("#tools .tfly").forEach((f) => f.
 function tgOpen(g) { const f = document.querySelector('#tools .tfly[data-g="' + g + '"]'), x = document.querySelector('#tools .tgx[data-g="' + g + '"]'); if (!f) return; const was = !f.classList.contains("hidden"); tgClose(); if (was) return;
   const r = f.closest(".tg").getBoundingClientRect(); f.classList.remove("hidden"); x && x.classList.add("open"); f.style.left = r.right + 6 + "px"; f.style.top = Math.max(8, Math.min(innerHeight - f.offsetHeight - 8, r.top - 4)) + "px"; }
 function tgRestore() { try { const m = (prefs && prefs.tg) || {}; Object.entries(m).forEach(([g, t]) => { const it = document.querySelector('#tools .tfly[data-g="' + g + '"] [data-tool="' + t + '"]'), mb = document.querySelector('#tools .tg[data-g="' + g + '"] .tgm'); if (it && mb) { mb.dataset.tool = t; mb.title = it.title; mb.innerHTML = it.querySelector(".ti").innerHTML; mb.classList.toggle("lp", t === "long"); mb.classList.toggle("sp", t === "short"); } }); } catch (e) {} }
-document.addEventListener("click", (e) => { const x = e.target.closest("#tools .tgx"); if (x) { e.stopPropagation(); return tgOpen(x.dataset.g); } if (!e.target.closest("#tools .tfly")) tgClose(); }, true);
+document.addEventListener("click", (e) => { const x = e.target.closest("#tools .tgx"); if (x) { e.stopPropagation(); return tgOpen(x.dataset.g); } if (window.__tgHold && e.target.closest("#tools .tgm")) return; if (!e.target.closest("#tools .tfly")) tgClose(); }, true);
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") tgClose(); });
 // long-press a group button also opens its flyout (touch + mouse), like Tradesea
-(() => { let lp = null; document.addEventListener("pointerdown", (e) => { const m = e.target.closest("#tools .tgm"); if (!m) return; const g = m.closest(".tg"); if (!g.querySelector(".tfly")) return; lp = setTimeout(() => { lp = null; tgOpen(g.dataset.g); }, 420); });
-  ["pointerup", "pointerleave", "pointercancel"].forEach((k) => document.addEventListener(k, () => { if (lp) { clearTimeout(lp); lp = null; } })); })();
+// KING_HOLDPICK (Nov 12 walkthrough): hold → the flyout opens and stays open (the release no longer re-picks the old tool and
+// closes it); slide onto a tool and let go to pick it, or let go and click one.
+(() => { let lp = null, opened = false; document.addEventListener("pointerdown", (e) => { const m = e.target.closest("#tools .tgm"); if (!m) return; const g = m.closest(".tg"); if (!g.querySelector(".tfly")) return; opened = false; lp = setTimeout(() => { lp = null; opened = window.__tgHold = true; tgOpen(g.dataset.g); }, 380); });
+  document.addEventListener("pointerup", (e) => { if (lp) { clearTimeout(lp); lp = null; } if (!opened) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY), it = el && el.closest("#tools .tfly [data-tool]"); if (it) { opened = window.__tgHold = false; it.click(); } });
+  document.addEventListener("click", (e) => { if (opened && e.target.closest("#tools .tgm")) { opened = window.__tgHold = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  ["pointercancel"].forEach((k) => document.addEventListener(k, () => { if (lp) { clearTimeout(lp); lp = null; } })); })();
 
 /* KING_LABELS (Nov 11, Brief 3): every drawing gets quick labels (Entry, Stop, Target, Liquidity, FVG…) plus a free text box, on top of presets */
 const QUICK_LABELS = ["Entry", "Stop", "Target", "Liquidity", "BSL", "SSL", "FVG", "IFVG", "OB", "PDH", "PDL", "Data H", "Data L", "OTE"];

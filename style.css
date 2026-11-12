@@ -465,3 +465,15 @@ body.fxshake #app{animation:shk .45s cubic-bezier(.36,.07,.19,.97)}@keyframes sh
 .mpop .media{position:static!important;width:100%!important;height:100vh!important;border-radius:0;border:0}
 /* "Clicks go through": the whole window lets clicks reach the chart, except its title bar (so you can turn it off / move it) */
 .media.thru{pointer-events:none}.media.thru .mbar,.media.thru .mtabs,.media.thru .mres{pointer-events:auto}
+
+/* KING_FAVREPLAY */
+.fbreplay{display:flex;align-items:center;gap:4px;padding-right:6px;margin-right:4px;border-right:1px solid rgba(255,255,255,.08)}.fbreplay:empty{display:none}
+.favbar.nofav .fbtools{display:none}.favbar.nofav .fbreplay{border-right:0;margin-right:0;padding-right:0}
+.fbreplay .seg button{height:28px}.fbreplay select{height:28px;font-size:12px}
+
+/* KING_HOLDPICK: the flyout triangle's click area is the whole bottom-right corner of the button (about 40%), always faintly visible */
+.tgx{right:0!important;bottom:0!important;width:16px!important;height:16px!important;opacity:.55!important;border-radius:0 0 6px 0}
+.tgx svg{width:6px!important;height:6px!important;margin:auto 2px 2px auto!important}
+.tg:hover .tgx,.tgx.open{opacity:1!important;color:#e9edf3}.tgx:hover{background:rgba(255,255,255,.08)!important}
+
+.fiblv{display:grid;grid-template-columns:repeat(4,1fr);gap:2px 10px;margin:4px 0 8px}.fiblv .ck{font-size:12px}
