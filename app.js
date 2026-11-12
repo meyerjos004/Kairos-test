@@ -2089,3 +2089,6 @@ function axisSync(p) { try { (p._axL || []).forEach((l) => p.series.removePriceL
 document.addEventListener("pointerdown", (e) => { if (!sel || !sel._addAt || e.button !== 0) return; const pe = e.target.closest && e.target.closest(".pane"); if (!pe) return; const p = panes.find((q) => q.el === pe); if (!p || sel.pane !== p.i) return;
   const r = pe.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top; if (Math.hypot(x - sel._addAt[0], y - sel._addAt[1]) > 26) return;
   e.stopPropagation(); e.preventDefault(); labelPop(sel, { left: e.clientX - 20, bottom: e.clientY + 6 }); }, true);
+
+/* KING_CSTABS (Nov 12, King's Tradesea shots): Chart settings as tabs on the left */
+document.querySelectorAll(".csnav [data-cst]").forEach((b) => (b.onclick = () => { document.querySelectorAll(".csnav [data-cst]").forEach((x) => x.classList.toggle("on", x === b)); document.querySelectorAll(".csp [data-csp]").forEach((s) => s.classList.toggle("hidden", s.dataset.csp !== b.dataset.cst)); }));
