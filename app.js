@@ -30,8 +30,11 @@ function nyOffset(t) {
 }
 const loc = (t) => t + nyOffset(t);
 const fmt = (lt) => new Date(lt * 1000).toISOString().slice(0, 16).replace("T", " ");
-const lhm = (lt) => new Date(lt * 1000).toISOString().slice(11, 16);
-const sessDay = (t) => new Date((loc(t) + 6 * 3600) * 1000).toISOString().slice(0, 10);
+// KING_PERF (Nov 12): lhm + sessDay were ~25% of replay CPU (a Date + toISOString per call); same output, plain math + a per-day cache
+const _p2 = (n) => (n < 10 ? "0" : "") + n;
+const lhm = (lt) => { const s = ((Math.floor(lt) % 86400) + 86400) % 86400; return _p2((s / 3600) | 0) + ":" + _p2(((s % 3600) / 60) | 0); };
+const _sdC = new Map();
+const sessDay = (t) => { const d = Math.floor((loc(t) + 6 * 3600) / 86400); let v = _sdC.get(d); if (v === undefined) { v = new Date(d * 86400000).toISOString().slice(0, 10); if (_sdC.size > 5000) _sdC.clear(); _sdC.set(d, v); } return v; };
 function nyToUtc(s) { const g = Date.parse(s + ":00Z") / 1000; return g - nyOffset(g - nyOffset(g)); }
 function hoverDate(t) { const d = new Date(t * 1000), n = d.getUTCDate(), sfx = n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th";   // fix 12: "Mon, Jan 1st 2025 09:30"
   return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()] + ", " + ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()] + " " + n + sfx + " " + d.getUTCFullYear() + "  " + String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0") + (d.getUTCSeconds() ? ":" + String(d.getUTCSeconds()).padStart(2, "0") : ""); }
