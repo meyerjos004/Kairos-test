@@ -1224,7 +1224,7 @@ function ytEmbed(u, start, end) { const m = String(u).match(/(?:youtu\.be\/|v=|e
 /* KING_CLIPFULL: a clipped Reese video asks "watch the whole video?" when the clip ends; "Full video" is always one tap away */
 let ytApiP = null; const ytIframeApi = () => ytApiP || (ytApiP = new Promise((res) => { if (window.YT && YT.Player) return res(YT); const t = setTimeout(() => res(null), 8000); window.onYouTubeIframeAPIReady = () => { clearTimeout(t); res(YT); }; const sc = document.createElement("script"); sc.src = "https://www.youtube.com/iframe_api"; sc.onerror = () => res(null); document.head.appendChild(sc); }));
 function clipEnded(u, title) { const f = document.querySelector("#m-vid .vfr"); if (!f || f.querySelector(".vend")) return;
-  f.insertAdjacentHTML("beforeend", `<div class="vend"><b>That's the trade.</b><span>Want to watch the whole video?</span><div><button class="small" id="m-vfull">▶ Watch full video</button> <button class="small ghost" id="m-vdone">I'm good</button></div></div>`);
+  f.insertAdjacentHTML("beforeend", `<div class="vend"><b>That's the trade.</b><span>Want the whole video? How it played out + his full breakdown.</span><div><button class="small" id="m-vfull">▶ Watch full video</button> <button class="small ghost" id="m-vdone">I'm good</button></div></div>`);
   $("m-vfull").onclick = () => playVid(u, String(title || "").replace(/ · the trade$/, "") + " · full video"); $("m-vdone").onclick = () => $("m-vx").click(); }
 const jget = (k) => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }, jset = (k, v) => { try { v ? localStorage.setItem(k, JSON.stringify(v)) : localStorage.removeItem(k); } catch (e) {} };
 function mediaUI() { const M = prefs.media || (prefs.media = { show: false, tab: "lib", op: 100, ct: false }); if (!["sp", "yt", "lib"].includes(M.tab)) M.tab = "lib";
@@ -1248,7 +1248,7 @@ function needSetup(which) { return `<div class="mempty"><b>${which} sign-in isn'
 /* ---- Reese library ---- */
 let RV = null, rvFilter = "videos", rvQ = "";
 async function libUI() { const el = $("m-lib");
-  if (!RV) { el.innerHTML = '<div class="mempty"><span>Loading Reese\'s videos…</span></div>'; if (DEMO) RV = [{ id: "DZEVxR7slnM", title: "Backtesting My 80%+ Winrate IFVG Strategy", published: "2026-11-06", dur: 3026, kind: "videos" }, { id: "Qm1fTcyysEw", title: "How I made $11,480 In 11 Minutes", published: "2026-11-01", dur: 747, kind: "videos", clip_start: 50, clip_end: 720 }];
+  if (!RV) { el.innerHTML = '<div class="mempty"><span>Loading Reese\'s videos…</span></div>'; if (DEMO) RV = [{ id: "DZEVxR7slnM", title: "Backtesting My 80%+ Winrate IFVG Strategy", published: "2026-11-06", dur: 3026, kind: "videos" }, { id: "Qm1fTcyysEw", title: "How I made $11,480 In 11 Minutes", published: "2026-11-01", dur: 747, kind: "videos", clip_start: 520, clip_end: 575 }];
     else { const { data } = await sb.from("reese_videos").select("*").order("published", { ascending: false }).limit(1000); RV = data || []; } }
   const n = { videos: RV.filter((v) => v.kind === "videos").length, shorts: RV.filter((v) => v.kind === "shorts").length };
   const list = RV.filter((v) => v.kind === rvFilter && (!rvQ || (v.title || "").toLowerCase().includes(rvQ)));

@@ -276,7 +276,7 @@ async def main():
         check("Reese library shows his videos", await E("document.querySelectorAll('#m-lib .vc').length>=2"))
         await E("document.querySelector('#m-lib .vc').click()"); await pg.wait_for_timeout(200); check("clicking a video plays it in the dock", await E("!!$('m-vid').querySelector('iframe') && !$('m-vid').classList.contains('hidden')"))
         await E("document.querySelector('#m-lib .vc[data-s]').click()"); await pg.wait_for_timeout(200)
-        check("trade clip starts at the lesson and ends after the recap", await E("$('m-vid').querySelector('iframe').src.includes('start=50') && $('m-vid').querySelector('iframe').src.includes('end=720')"))
+        check("short trade clip (entry only)", await E("$('m-vid').querySelector('iframe').src.includes('start=520') && $('m-vid').querySelector('iframe').src.includes('end=575')"))
         check("clipped video has a Full video button", await E("!!$('m-vf')"))
         await E("clipEnded('https://youtu.be/Qm1fTcyysEw', 'Reese · test · the trade')"); check("clip end asks to watch the whole video", await E("!!document.querySelector('#m-vid .vend') && !!$('m-vfull')"))
         await pg.click('#m-vfull'); check("full video plays from the start", await E("!$('m-vid').querySelector('iframe').src.includes('start=')"))
