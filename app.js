@@ -233,7 +233,7 @@ function indMenu(re) { if (re !== true && ctxJust === "ind") { ctxJust = null; r
 const TOOLNAMES = { pitchfork: "Pitchfork", arrow: "Arrow", channel: "Parallel channel", fibext: "Fib extension", prange: "Price range", drange: "Date range", ellipse: "Ellipse", cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
 function favUI() {
   const fb = $("favbar"); fb.classList.toggle("hidden", !prefs.favShow); $("favbtn").classList.toggle("on", !!prefs.favShow);
-  fb.querySelector(".fbtools").innerHTML = prefs.favs.map((t) => { const src = document.querySelector('#tools [data-tool="' + t + '"]'); return src ? `<button data-tool="${t}" class="tool ${src.className.replace(/\btool\b|\bon\b/g, "").trim()} ${t === tool ? "on" : ""}" title="${src.title}">${src.innerHTML}</button>` : ""; }).join("") || '<span class="tiny muted" style="padding:0 8px">Right-click a tool to add it here</span>';
+  fb.querySelector(".fbtools").innerHTML = prefs.favs.map((t) => { const src = document.querySelector('#tools .tfly [data-tool="' + t + '"]') || document.querySelector('#tools [data-tool="' + t + '"]'); return src ? `<button data-tool="${t}" class="tool ${src.className.replace(/\btool\b|\bon\b|\bfi\b|\btgm\b/g, "").trim()} ${t === tool ? "on" : ""}" title="${src.title}">${(src.querySelector(".ti") || src).innerHTML}</button>` : ""; }).join("") || '<span class="tiny muted" style="padding:0 8px">Right-click a tool to add it here</span>';
   if (prefs.favPos) { fb.style.left = Math.min(prefs.favPos.x, innerWidth - 80) + "px"; fb.style.top = Math.min(prefs.favPos.y, innerHeight - 40) + "px"; fb.style.transform = "none"; }
 }
 function toolsUI() { const t = $("tools"), f = prefs.toolsPos; t.classList.toggle("float", !!f); if (f) { t.style.left = Math.min(f.x, innerWidth - 50) + "px"; t.style.top = Math.min(f.y, innerHeight - 120) + "px"; } else { t.style.left = t.style.top = ""; } panes.forEach(paint); }
@@ -290,7 +290,7 @@ const chOff = (d) => d.off ?? (Math.abs(d.b.p - d.a.p) * 0.5 || 20 * (TICK || 0.
 const lineAt = (d, t) => (d.b.t === d.a.t ? d.a.p : d.a.p + ((d.b.p - d.a.p) * (t - d.a.t)) / (d.b.t - d.a.t));
 const FIB = [[1, "0"], [0.5, "0.5"], [0.62, "0.62"], [0.705, "0.705"], [0.79, "0.79"], [0, "1"], [-0.27, "-0.27"], [-0.62, "-0.62"]];
 const SHARED = ["hline"];   // horizontal lines show on every chart; everything else stays on the chart it was drawn on
-function setTool(t) { tool = t; pend = null; document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === t)); panes.forEach((p) => { p.el.style.cursor = t === "cursor" ? "" : "crosshair"; p.chart.applyOptions({ crosshair: { mode: t === "cross" ? 0 : 1 } }); paint(p); }); }
+function setTool(t) { tool = t; pend = null; document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === t)); try { tgSync(t); } catch (e) {} panes.forEach((p) => { p.el.style.cursor = t === "cursor" ? "" : "crosshair"; p.chart.applyOptions({ crosshair: { mode: t === "cross" ? 0 : 1 } }); paint(p); }); }
 function newDrawing(type, p, a, b) {
   const d = { id: did++, type, pane: p.i, a: { ...a }, b: b ? { ...b } : { ...a } };
   if (type === "long" || type === "short") { const s = type === "long" ? 1 : -1; d.b = { t: a.t + p.sec * 30, p: a.p }; d.entry = a.p; d.sl = rnd(a.p - s * prefs.slPts); d.tp = rnd(a.p + s * prefs.tpPts); d.side = s; d.state = "idle"; d.qty = null; }
@@ -500,11 +500,11 @@ function paint(p) {   // data speed: Fast = every frame, Balanced ~30 fps, Lite 
 }
 function drawOne(p, g, d, W, H) {
   const on = (sel && sel.id === d.id) || (hov && hov.id === d.id); g.lineWidth = (d.w || 1.4) + (on ? 0.6 : 0); g.font = "11px Inter, sans-serif"; g.setLineDash([]);
-  const gold = d.color || "rgba(255,206,120,.9)", blue = "rgba(122,167,255,.95)"; g.strokeStyle = gold; g.fillStyle = gold;
+  const gold = d.color || "#2962ff", blue = "rgba(122,167,255,.95)"; g.strokeStyle = gold; g.fillStyle = gold;
   const DASH = { dash: [7, 5], dot: [2, 4] }; if (DASH[d.dash] && !["long", "short", "measure"].includes(d.type)) g.setLineDash(DASH[d.dash]);
-  if (d.label && !["long", "short", "measure", "text"].includes(d.type)) { const lx = d.type === "hline" ? 8 : Math.min(xOf(p, d.a.t) ?? 0, xOf(p, d.b.t) ?? W), ly = Math.min(yOf(p, d.a.p) ?? 0, yOf(p, d.b.p) ?? yOf(p, d.a.p) ?? 0); g.save(); g.setLineDash([]); g.font = "600 11px Inter, sans-serif"; g.fillStyle = gold; g.fillText(d.label, lx + 4, ly - 6); g.restore(); }
+  if (d.label && !["long", "short", "measure", "text"].includes(d.type)) { const lx = d.type === "hline" ? 8 : Math.min(xOf(p, d.a.t) ?? 0, xOf(p, d.b.t) ?? W), ly = Math.min(yOf(p, d.a.p) ?? 0, yOf(p, d.b.p) ?? yOf(p, d.a.p) ?? 0); g.save(); g.setLineDash([]); g.font = "600 11px Inter, sans-serif"; const lw = g.measureText(d.label).width + 12, bx = lx + 4, by = ly - 22; g.fillStyle = gold; g.globalAlpha = 0.92; g.beginPath(); (g.roundRect ? g.roundRect(bx, by, lw, 17, 4) : g.rect(bx, by, lw, 17)); g.fill(); g.globalAlpha = 1; g.fillStyle = "#fff"; g.fillText(d.label, bx + 6, by + 12.5); g.restore(); }   // KING_TOOLRAIL: label as a pill
   const x1 = xOf(p, d.a.t), y1 = yOf(p, d.a.p), x2 = xOf(p, d.b.t), y2 = yOf(p, d.b.p); if (y1 == null) return;
-  const dot = (x, y) => { if (on && x != null && y != null) { g.beginPath(); g.arc(x, y, 4.5, 0, 7); g.fillStyle = "#0c1016"; g.fill(); g.strokeStyle = "#fff"; g.lineWidth = 1.5; g.stroke(); g.strokeStyle = gold; g.fillStyle = gold; } };
+  const dot = (x, y) => { if (on && x != null && y != null) { g.save(); g.setLineDash([]); g.beginPath(); g.arc(x, y, 5, 0, 7); g.fillStyle = "#ffffff"; g.fill(); g.strokeStyle = /^#|^rgb/.test(gold) ? gold : "#2962ff"; g.lineWidth = 1.6; g.stroke(); g.restore(); g.strokeStyle = gold; g.fillStyle = gold; } };
   if (d.type === "measure") { if (x1 == null || x2 == null || y2 == null) return; const up = d.b.p >= d.a.p; g.fillStyle = up ? "rgba(43,212,160,.13)" : "rgba(255,107,122,.13)";
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); const pts = d.b.p - d.a.p, bars = Math.round((d.b.t - d.a.t) / p.sec);
     g.fillStyle = "#e6eaf0"; g.fillText(`${pts >= 0 ? "+" : ""}${pts.toFixed(2)} pts · ${money(Math.abs(pts) * inst.pt)}/lot · ${(Math.abs(pts) / (prefs.slPts || 1)).toFixed(2)}R · ${bars} bars`, Math.min(x1, x2) + 4, Math.min(y1, y2) - 6); return; }
@@ -557,9 +557,13 @@ function drawOne(p, g, d, W, H) {
     const risk = Math.abs(d.entry - d.sl), q = posQty(d), rr = Math.abs(d.tp - d.entry) / (risk || 1);
     const tag = d.state === "armed" ? "ARMED · auto-entry" : d.state === "filled" ? "IN TRADE" : d.state === "done" ? "DONE" : "right-click → Arm";
     const label = `${d.side > 0 ? "LONG" : "SHORT"} ${q} @ ${px2(d.entry)} · ${rr.toFixed(2)}R · risk ${money(risk * q * inst.pt)} · ${tag}`;
-    g.font = "600 11px Geist Mono, monospace"; const tw = g.measureText(label).width; g.fillStyle = "rgba(12,16,22,.85)"; g.fillRect(xa + 4, ye - 20, tw + 12, 16); g.fillStyle = "#e6eaf0"; g.fillText(label, xa + 10, ye - 8);
-    g.fillStyle = "#7fffd0"; g.fillText(`TP ${px2(d.tp)}  +${money(Math.abs(d.tp - d.entry) * q * inst.pt)}`, xa + 8, yt + (d.side > 0 ? 14 : -6));
-    g.fillStyle = "#ffb1b9"; g.fillText(`SL ${px2(d.sl)}  -${money(risk * q * inst.pt)}`, xa + 8, ys + (d.side > 0 ? -6 : 14));
+    // KING_POSSTYLE (Nov 11): position labels styled like the trade panel (Inter, rounded pills, solid green / red like the Buy / Sell buttons)
+    const pill = (txt, x, y, bg, fg, bold) => { g.font = (bold ? "700" : "600") + " 11.5px Inter, sans-serif"; const w = g.measureText(txt).width + 16, h = 20; g.fillStyle = bg; g.beginPath(); (g.roundRect ? g.roundRect(x, y, w, h, 6) : g.rect(x, y, w, h)); g.fill(); g.fillStyle = fg; g.fillText(txt, x + 8, y + 14); return w; };
+    const head = `${d.side > 0 ? "Long" : "Short"} ${q} @ ${px2(d.entry)}`, sub = `${rr.toFixed(2)}R · risk ${money(risk * q * inst.pt)} · ${tag}`;
+    const hw = pill(head, xa + 6, ye - 24, d.side > 0 ? "#2bd4a0" : "#ff5d6c", "#06110c", true); pill(sub, xa + 10 + hw, ye - 24, "rgba(16,20,28,.92)", "#dfe5ee");
+    const tpTxt = `Target ${px2(d.tp)} · +${money(Math.abs(d.tp - d.entry) * q * inst.pt)}`, slTxt = `Stop ${px2(d.sl)} · -${money(risk * q * inst.pt)}`;
+    pill(tpTxt, xa + 6, d.side > 0 ? yt + 4 : yt - 24, "rgba(43,212,160,.9)", "#06110c", true);
+    pill(slTxt, xa + 6, d.side > 0 ? ys - 24 : ys + 4, "rgba(255,93,108,.9)", "#1a0508", true);
     if (on) [[xb, ye], [xb, ys], [xb, yt], [xa, ye]].forEach(([x, y]) => dot(x, y));
   }
 }
@@ -1188,7 +1192,10 @@ async function quizNext() {
   // fix 16: one chart on the 1m, replay locked to 15s so any higher timeframe you flip to only shows candles up to "now" (no peeking at finished candles)
   QZ = { it, answered: false }; view("trade"); lock15 = true; if (prefs.layout !== "1") setLayout("1"); prefs.tfs[active] = "1m"; tfUI(); label(panes[active]);
   $("sym").value = it.symbol; $("start").value = fmt(loc(it.t_entry)).replace(" ", "T"); if (!DEMO || !B["1m"].bars.length) await loadReplay(); else { await ensure15(); rebuildAll(); }
-  drawings = drawings.filter((d) => !d.quiz); const d = { id: did++, type: it.dir > 0 ? "long" : "short", side: it.dir, pane: active, a: { t: loc(it.t_entry), p: +it.entry }, b: { t: loc(it.t_entry) + 90 * 60, p: +it.entry }, entry: +it.entry, sl: +it.stop, tp: +it.target, state: "idle", quiz: true }; drawings.push(d);
+  // KING_QZALIGN (Nov 11): the position starts exactly on the newest candle on screen, and every new drill re-fits the price scale (a manual drag on the last drill used to leave the axis stuck at that drill's prices, e.g. 14,000)
+  panes.forEach((p) => { p.auto = true; try { p.chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} });
+  const qc = panes[active].candles, qa = qc && qc.length ? qc[qc.length - 1].time : loc(it.t_entry);
+  drawings = drawings.filter((d) => !d.quiz); const d = { id: did++, type: it.dir > 0 ? "long" : "short", side: it.dir, pane: active, a: { t: qa, p: +it.entry }, b: { t: qa + 90 * 60, p: +it.entry }, entry: +it.entry, sl: +it.stop, tp: +it.target, state: "idle", quiz: true }; drawings.push(d);
   const rr = Math.abs(it.target - it.entry) / Math.abs(it.entry - it.stop);
   $("qz-desc").innerHTML = `${it.dir > 0 ? "Long" : "Short"} ${it.symbol} @ <b>${px2(+it.entry)}</b> · stop ${px2(+it.stop)} · target ${px2(+it.target)} · ${rr.toFixed(1)}R`; $("qzbar").classList.remove("hidden"); $("qz-res").classList.add("hidden"); $("qz-next").classList.add("hidden"); ["qz-take", "qz-fade"].forEach((k) => ($(k).disabled = false));
   panes.forEach((p) => { p.chart.timeScale().applyOptions({ barSpacing: 9 }); p.chart.timeScale().scrollToRealTime(); }); repaintAll(); }
@@ -1492,6 +1499,7 @@ function savePrefs() { if (!DEMO && user) sb.from("prefs").upsert({ user_id: use
 const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", joinask: "Join ask", reverse: "Reverse", flatten: "Flatten all", cancel: "Cancel all", close: "Close all", be: "Stop to breakeven", trend: "Trend line", hline: "Horizontal line", vline: "Vertical line", rect: "Zone", long: "Long position", short: "Short position", measure: "Measure" };
 function fillSettings() {
   if ($("s-name")) $("s-name").value = (me && me.name) || "";
+  if ($("s-tips")) $("s-tips").checked = prefs.tips !== false;
   if ($("s-sound")) { $("s-sound").checked = prefs.sound !== false; $("s-vol").value = prefs.vol ?? 60; $("s-hap").checked = prefs.haptics !== false; $("s-splash").checked = prefs.splash !== false; $("s-review").checked = prefs.review !== false; }
   $("s-bal").value = prefs.bal; $("s-dll").value = prefs.dll; $("s-ptg").value = prefs.ptg; $("s-act").value = prefs.act; $("s-mdd").value = prefs.mdd; $("s-fee").value = prefs.fee; $("s-mfee").value = prefs.mfee;
   $("s-opens").checked = !!prefs.opens; $("s-sess").checked = !!prefs.sess; $("s-up").value = prefs.up; $("s-dn").value = prefs.dn; $("sym").value = prefs.sym; $("o-sl").value = prefs.slPts; $("o-tp").value = prefs.tpPts;
@@ -1530,7 +1538,17 @@ function kChime(ac) {   // KAIROS intro: rising notes + soft low swell (matches 
   } catch (e) {} }
 function splashSound() { if (prefs.sound === false || DEMO) return; try { const ac = new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === "running") return kChime(ac);
   ac.resume().then(() => (ac.state === "running" ? kChime(ac) : null)).catch(() => {}); setTimeout(() => { if (ac.state !== "running") ac.close(); }, 600); } catch (e) {} }   // browsers only allow this on refresh once you've used the site a bit; sign-in always plays it
-function splash() { splashSound(); const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><img class="sp-lock" src="brand/kairos-intro.svg?' + Date.now() + '" alt="KAIROS OS"></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 1700); setTimeout(() => s.remove(), 2200); }
+/* KING_TIPS (Nov 11): rotating feature tips, on the loading screen and next to the fix bubble */
+const KTIPS = ["Hold the corner triangle on any tool button to see every tool in that group.", "Right-click a drawing tool to add it to your favorites bar.",
+  "Select a drawing and tap Aa to label it: Entry, Stop, FVG, Liquidity, or your own words.", "Save a drawing's style as a preset (★) and use it for every new one.",
+  "Place a long or short position, then right-click it and Arm it to auto-enter.", "B buys, S sells, X closes, F flattens. Arrow keys step the replay.",
+  "Learn → Reese's real trades are open from day one. Click a ✂ video to watch just the trade.", "Take-or-fade drills build your read on setups fast. Try 5 a day.",
+  "The Scalp Pad floats: drag it anywhere and right-click it for settings.", "Turn on SMT in Indicators to see NQ vs ES divergence, closed candles only.",
+  "News lines (CPI, jobs report, FOMC) show right on the chart.", "Settings → Trade sounds: upload your own clips for take profit and stop out.",
+  "Your journal fills itself from your replay trades. Add mistakes so the drills can target them.", "Pop out the Spotify / YouTube window onto a side screen.",
+  "Drag the bottom panel up for more room, or the sidebar edge to widen it.", "Found a bug or have an idea? Tap the 🔧 bubble in the corner. It goes straight to Claude.",
+  "Friends → Leaderboard shows who backtested the most this week.", "Double-click the toolbar grip to dock it again after floating it."];
+function splash() { splashSound(); const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><img class="sp-lock" src="brand/kairos-intro.svg?' + Date.now() + '" alt="KAIROS OS"><div class="sp-tip"><b>Tip</b> ' + esc(KTIPS[Math.floor(Math.random() * KTIPS.length)]) + '</div></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 2400); setTimeout(() => s.remove(), 2900); }
 if (prefs.splash !== false) splash();
 /* ---------------- KAIROS OS Beta: welcome cinematic (first time you're let in) + onboarding tour ---------------- */
 const APP_VERSION = "0.9.0", APP_LABEL = "Beta";
@@ -1629,7 +1647,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().catch(() => {}); }   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
@@ -1692,7 +1710,7 @@ function tsSettingsUI() { padBtnsUI(); maskUI(); sndUI(); lockUI(); speedUI(); }
   document.addEventListener("mouseout", (e) => { if (cur && !cur.contains(e.relatedTarget)) hide(); }); document.addEventListener("pointerdown", hide, true); })();
 
 /* fix 1: hover a drawing (or select it) and a small toolbar pops up: color, thickness, line style, settings, lock, delete. Every tool has its own settings. */
-const DCOL = ["#ffce78", "#7aa7ff", "#5ee6b8", "#ff6b7a", "#c4b5fd", "#e6eaf0"];
+const DCOL = ["#2962ff", "#ffce78", "#5ee6b8", "#ff6b7a", "#c4b5fd", "#e6eaf0"];
 let dtbP = null, dtbT = 0;
 function dtbShow(p) { const d = hov || sel, el = $("dtb"); clearTimeout(dtbT); if (!d) { dtbT = setTimeout(() => { if (!el.matches(":hover") && !(hov || sel)) el.classList.add("hidden"); }, 450); return; }
   dtbP = p; el.dataset.id = d.id; const r = p.el.getBoundingClientRect(), x1 = xOf(p, d.a.t), x2 = xOf(p, d.b.t), y = d.type === "long" || d.type === "short" ? yOf(p, Math.max(d.entry, d.sl, d.tp)) : Math.min(yOf(p, d.a.p) ?? 1e9, yOf(p, d.b.p) ?? 1e9);
@@ -1700,7 +1718,7 @@ function dtbShow(p) { const d = hov || sel, el = $("dtb"); clearTimeout(dtbT); i
   el.innerHTML = (pos ? "" : DCOL.map((c) => `<button class="dc ${d.color === c ? "on" : ""}" data-c="${c}" style="background:${c}" title="Color"></button>`).join("") + '<i class="dsep"></i>' +
     [1, 2, 3].map((w) => `<button data-w="${w}" class="${(d.w || 1.4) === w ? "on" : ""}" title="Thickness ${w}"><b style="height:${w}px"></b></button>`).join("") + '<i class="dsep"></i>' +
     [["solid", "—"], ["dash", "– –"], ["dot", "···"]].map(([k, s]) => `<button data-dash="${k}" class="${(d.dash || "solid") === k ? "on" : ""}" title="Line style">${s}</button>`).join("") + '<i class="dsep"></i>') +
-    (pos ? "" : `<button data-act="preset" title="Presets (PDH, FVG, OB…)">★</button>`) + `<button data-act="set" title="Settings">⚙</button><button data-act="lock" title="${d.locked ? "Unlock" : "Lock"}">${d.locked ? "🔒" : "🔓"}</button><button data-act="del" title="Delete">🗑</button>`;
+    (pos ? "" : `<button data-act="label" class="dlab" title="Label: quick tags or your own text">Aa</button><button data-act="preset" title="Presets (PDH, FVG, OB…)">★</button>`) + `<button data-act="set" title="Settings">⚙</button><button data-act="lock" title="${d.locked ? "Unlock" : "Lock"}">${d.locked ? "🔒" : "🔓"}</button><button data-act="del" title="Delete">🗑</button>`;
   el.classList.remove("hidden"); const tw = el.offsetWidth, cx = r.left + ((x1 ?? 0) + (x2 ?? x1 ?? 0)) / 2, ty = r.top + (y < 1e8 ? y : 40) - 46;
   el.style.left = Math.max(r.left + 4, Math.min(r.right - tw - 70, cx - tw / 2)) + "px"; el.style.top = Math.max(r.top + 4, ty) + "px"; }
 /* confluence presets: named styles per tool (color, width, dash, fill, label), one tap to apply, optional default for new drawings */
@@ -1718,7 +1736,7 @@ function presetMenu(d, cx, cy) { const L = presetsOf(d.type), def = (prefs.prese
 function toolSettings(d) { if (d.type === "long" || d.type === "short") return toolDlg(d);
   dlg(`<h3>${({ trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Zone", fib: "Fib retracement", text: "Note", measure: "Measure" })[d.type] || d.type} settings</h3>
     <label>${d.type === "text" ? "Text" : "Label (shows on the chart)"}<input id="ts-l" value="${esc(d.type === "text" ? d.text : d.label || "")}" maxlength="60"></label>
-    <div class="row2"><label>Color<input id="ts-c" type="color" value="${/^#/.test(d.color || "") ? d.color : "#ffce78"}"></label><label>Thickness<select id="ts-w">${[1, 1.4, 2, 3, 4].map((w) => `<option ${(d.w || 1.4) === w ? "selected" : ""}>${w}</option>`).join("")}</select></label><label>Style<select id="ts-s">${["solid", "dash", "dot"].map((s) => `<option ${(d.dash || "solid") === s ? "selected" : ""}>${s}</option>`).join("")}</select></label></div>
+    <div class="row2"><label>Color<input id="ts-c" type="color" value="${/^#/.test(d.color || "") ? d.color : "#2962ff"}"></label><label>Thickness<select id="ts-w">${[1, 1.4, 2, 3, 4].map((w) => `<option ${(d.w || 1.4) === w ? "selected" : ""}>${w}</option>`).join("")}</select></label><label>Style<select id="ts-s">${["solid", "dash", "dot"].map((s) => `<option ${(d.dash || "solid") === s ? "selected" : ""}>${s}</option>`).join("")}</select></label></div>
     ${d.type === "rect" ? `<label>Fill strength<input id="ts-f" type="range" min="0" max="60" value="${d.fill ?? 12}"></label>` : ""}
     ${d.type !== "hline" && d.type !== "vline" && d.type !== "text" ? `<div class="row2"><label>Price A<input id="ts-pa" type="number" step="0.25" value="${d.a.p}"></label><label>Price B<input id="ts-pb" type="number" step="0.25" value="${d.b.p}"></label></div>` : `<label>Price<input id="ts-pa" type="number" step="0.25" value="${d.a.p}"></label>`}
     <label class="ck"><input id="ts-lk" type="checkbox" ${d.locked ? "checked" : ""}> Locked (can't be dragged)</label>`, () => {
@@ -1878,7 +1896,7 @@ $("s-speed").onclick = (e) => { const b = e.target.closest("[data-sp]"); if (!b)
 $("pbe").onclick = beNow; $("pcan").onclick = () => { cancelAll(); snd("cancel"); }; $("pflat").onclick = flatten; $("pclose2").onclick = () => closeAll(); $("prev2").onclick = reverse;
 $("dtb").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const d = drawings.find((z) => z.id === +$("dtb").dataset.id); if (!d) return;
   if (b.dataset.c) d.color = b.dataset.c; else if (b.dataset.w) d.w = +b.dataset.w; else if (b.dataset.dash) d.dash = b.dataset.dash;
-  else if (b.dataset.act === "set") { $("dtb").classList.add("hidden"); return toolSettings(d); } else if (b.dataset.act === "preset") { const r = b.getBoundingClientRect(); return presetMenu(d, r.left, r.bottom + 4); } else if (b.dataset.act === "lock") d.locked = !d.locked;
+  else if (b.dataset.act === "set") { $("dtb").classList.add("hidden"); return toolSettings(d); } else if (b.dataset.act === "preset") { const r = b.getBoundingClientRect(); return presetMenu(d, r.left, r.bottom + 4); } else if (b.dataset.act === "label") { const r = b.getBoundingClientRect(); return labelPop(d, r); } else if (b.dataset.act === "lock") d.locked = !d.locked;
   else if (b.dataset.act === "del") { disarmTool(d); drawings = drawings.filter((z) => z !== d); if (sel === d) sel = null; if (hov === d) hov = null; $("dtb").classList.add("hidden"); repaintAll(); return; }
   repaintAll(); sel = d; dtbShow(dtbP); };
 $("dtb").onmouseleave = () => dtbShow(dtbP);
@@ -1953,3 +1971,56 @@ document.addEventListener("keydown", (e) => {
 addEventListener("resize", () => { padUI(); repaintAll(); });
 sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN" && !user) boot(); });
 boot();
+
+/* KING_TOOLRAIL (Nov 11, King's Brief 3): Tradesea / TradingView-style tool rail. Tools sit in groups; the group button shows the last tool you used
+   from it; the small corner triangle (or right-click... no, right-click stays "add to favorites") opens a flyout with every tool, its name and hot key. */
+function tgSync(t) { const it = document.querySelector('#tools .tfly [data-tool="' + t + '"]'); if (!it) { document.querySelectorAll("#tools .tg").forEach((g) => g.classList.toggle("act", !!g.querySelector('[data-tool="' + t + '"]'))); return; }
+  const g = it.closest(".tg"), m = g.querySelector(".tgm"); if (m && m.dataset.tool !== t) { m.dataset.tool = t; m.title = it.title; m.innerHTML = it.querySelector(".ti").innerHTML; m.classList.toggle("lp", t === "long"); m.classList.toggle("sp", t === "short"); m.classList.add("on"); }
+  try { prefs.tg = prefs.tg || {}; if (prefs.tg[g.dataset.g] !== t) { prefs.tg[g.dataset.g] = t; } } catch (e) {}
+  document.querySelectorAll("#tools .tg").forEach((x) => x.classList.toggle("act", x === g)); tgClose(); }
+function tgClose() { document.querySelectorAll("#tools .tfly").forEach((f) => f.classList.add("hidden")); document.querySelectorAll("#tools .tgx.open").forEach((b) => b.classList.remove("open")); }
+function tgOpen(g) { const f = document.querySelector('#tools .tfly[data-g="' + g + '"]'), x = document.querySelector('#tools .tgx[data-g="' + g + '"]'); if (!f) return; const was = !f.classList.contains("hidden"); tgClose(); if (was) return;
+  const r = f.closest(".tg").getBoundingClientRect(); f.classList.remove("hidden"); x && x.classList.add("open"); f.style.left = r.right + 6 + "px"; f.style.top = Math.max(8, Math.min(innerHeight - f.offsetHeight - 8, r.top - 4)) + "px"; }
+function tgRestore() { try { const m = (prefs && prefs.tg) || {}; Object.entries(m).forEach(([g, t]) => { const it = document.querySelector('#tools .tfly[data-g="' + g + '"] [data-tool="' + t + '"]'), mb = document.querySelector('#tools .tg[data-g="' + g + '"] .tgm'); if (it && mb) { mb.dataset.tool = t; mb.title = it.title; mb.innerHTML = it.querySelector(".ti").innerHTML; mb.classList.toggle("lp", t === "long"); mb.classList.toggle("sp", t === "short"); } }); } catch (e) {} }
+document.addEventListener("click", (e) => { const x = e.target.closest("#tools .tgx"); if (x) { e.stopPropagation(); return tgOpen(x.dataset.g); } if (!e.target.closest("#tools .tfly")) tgClose(); }, true);
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") tgClose(); });
+// long-press a group button also opens its flyout (touch + mouse), like Tradesea
+(() => { let lp = null; document.addEventListener("pointerdown", (e) => { const m = e.target.closest("#tools .tgm"); if (!m) return; const g = m.closest(".tg"); if (!g.querySelector(".tfly")) return; lp = setTimeout(() => { lp = null; tgOpen(g.dataset.g); }, 420); });
+  ["pointerup", "pointerleave", "pointercancel"].forEach((k) => document.addEventListener(k, () => { if (lp) { clearTimeout(lp); lp = null; } })); })();
+
+/* KING_LABELS (Nov 11, Brief 3): every drawing gets quick labels (Entry, Stop, Target, Liquidity, FVG…) plus a free text box, on top of presets */
+const QUICK_LABELS = ["Entry", "Stop", "Target", "Liquidity", "BSL", "SSL", "FVG", "IFVG", "OB", "PDH", "PDL", "Data H", "Data L", "OTE"];
+function labelPop(d, r) { document.getElementById("lblpop")?.remove(); const el = document.createElement("div"); el.id = "lblpop"; el.className = "lblpop";
+  const cur = d.type === "text" ? d.text || "" : d.label || "";
+  el.innerHTML = `<div class="lp-h">Label</div><div class="lp-chips">${QUICK_LABELS.map((q) => `<button class="lp-c ${cur === q ? "on" : ""}" data-q="${esc(q)}">${esc(q)}</button>`).join("")}</div>
+    <div class="lp-row"><input id="lp-in" maxlength="60" placeholder="Or type your own…" value="${esc(cur)}"><button class="primary" id="lp-ok">Set</button></div>${cur ? '<button class="lp-clr" id="lp-clr">Remove label</button>' : ""}`;
+  document.body.appendChild(el); el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.left - 40)) + "px"; el.style.top = Math.min(innerHeight - el.offsetHeight - 8, r.bottom + 6) + "px";
+  const set = (v) => { v = (v || "").trim().slice(0, 60); if (d.type === "text") { if (v) d.text = v; } else d.label = v; close(); repaintAll(); try { saveDrawings && saveDrawings(); } catch (e) {} };
+  const close = () => { el.remove(); removeEventListener("pointerdown", out, true); }, out = (ev) => { if (!el.contains(ev.target)) close(); };
+  setTimeout(() => addEventListener("pointerdown", out, true), 0);
+  el.querySelectorAll(".lp-c").forEach((b) => (b.onclick = () => set(b.dataset.q))); $("lp-ok").onclick = () => set($("lp-in").value);
+  $("lp-in").onkeydown = (e) => { e.stopPropagation(); if (e.key === "Enter") set($("lp-in").value); if (e.key === "Escape") close(); }; if ($("lp-clr")) $("lp-clr").onclick = () => set("");
+  setTimeout(() => $("lp-in") && $("lp-in").focus(), 30); }
+
+/* KING_FIXBUBBLE (Nov 11, Brief 3): a small bubble bottom-right on every screen; tap → Fix / Idea card that goes into the same fix box as Friends → Suggest.
+   Tips slide out next to it every few minutes (Settings → Feature tips, or "Don't show tips" on any tip turns them off). */
+(() => { const w = document.createElement("div"); w.id = "fxb"; w.innerHTML = `<div id="fxb-tip" class="fxb-tip hidden"><span id="fxb-tt"></span><button id="fxb-tx" title="Hide">×</button><button id="fxb-toff" class="fxb-off">Don't show tips</button></div>
+  <div id="fxb-card" class="fxb-card hidden"><div class="fxb-h"><b>Send to Claude</b><button id="fxb-x" title="Close">×</button></div><div class="seg fxb-seg"><button data-k="fix" class="on">🔧 Fix</button><button data-k="idea">💡 Idea</button></div>
+  <textarea id="fxb-in" maxlength="1000" placeholder="What should change? Where is it, and what should it do?"></textarea><div class="fxb-f"><span class="tiny muted" id="fxb-where"></span><button class="primary" id="fxb-go">Send</button></div></div>
+  <button id="fxb-b" class="fxb-b" title="Fix or idea → Claude"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 00-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 005.2-5.4l-2.5 2.5-2.3-.5-.5-2.3z"/></svg></button>`;
+  document.body.appendChild(w); let kind = "fix", tipT = null, idx = Math.floor(Math.random() * KTIPS.length);
+  const where = () => { const v = document.querySelector(".vtab.on[data-view]"); return v ? (v.title || v.dataset.view) : "app"; };
+  const open = (on) => { $("fxb-card").classList.toggle("hidden", !on); $("fxb-tip").classList.add("hidden"); if (on) { $("fxb-where").textContent = "From: " + where(); setTimeout(() => $("fxb-in").focus(), 30); } };
+  $("fxb-b").onclick = () => open($("fxb-card").classList.contains("hidden")); $("fxb-x").onclick = () => open(false);
+  w.querySelectorAll(".fxb-seg button").forEach((b) => (b.onclick = () => { kind = b.dataset.k; w.querySelectorAll(".fxb-seg button").forEach((x) => x.classList.toggle("on", x === b)); }));
+  $("fxb-in").onkeydown = (e) => e.stopPropagation();
+  $("fxb-go").onclick = async () => { const t = $("fxb-in").value.trim(); if (t.length < 3) return toast("Add a few words first"); const body = `[${where()}] ${t}`;
+    if (DEMO) (mem.sg = mem.sg || []).push({ id: "g" + Date.now(), user_id: "demo", body, kind, status: "new", votes: [], created_at: new Date().toISOString() });
+    else { const { error } = await sb.from("suggestions").insert({ body, kind }); if (error) return toast(error.message); }
+    $("fxb-in").value = ""; open(false); toast(kind === "fix" ? "🔧 Sent. Claude will look at it." : "💡 Idea sent."); try { renderSg(); } catch (e) {} };
+  const tipsOn = () => prefs.tips !== false;
+  const showTip = () => { if (!tipsOn() || !$("fxb-card").classList.contains("hidden") || document.hidden) return; idx = (idx + 1) % KTIPS.length; $("fxb-tt").textContent = KTIPS[idx]; const t = $("fxb-tip"); t.classList.remove("hidden"); clearTimeout(tipT); tipT = setTimeout(() => t.classList.add("hidden"), 12000); };
+  $("fxb-tx").onclick = () => $("fxb-tip").classList.add("hidden"); $("fxb-toff").onclick = () => { prefs.tips = false; try { savePrefs(); } catch (e) {} $("fxb-tip").classList.add("hidden"); if ($("s-tips")) $("s-tips").checked = false; toast("Tips off. Turn them back on in Settings."); };
+  setTimeout(showTip, 90 * 1000); setInterval(showTip, 5 * 60 * 1000); window.kTipNow = showTip; })();
+
+$("s-tips") && ($("s-tips").onchange = () => { prefs.tips = $("s-tips").checked; savePrefs(); if (prefs.tips) window.kTipNow && kTipNow(); });
