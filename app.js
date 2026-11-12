@@ -1255,18 +1255,18 @@ function playVid(u, title, start, end) { const e = ytEmbed(u, start, end); if (!
 const setYt = (u) => playVid(u);
 const thumb = (id) => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`, vAgo = (d) => { const s = (Date.now() - new Date(d)) / 1000; return s < 3600 ? Math.max(1, s / 60 | 0) + "m" : s < 86400 ? (s / 3600 | 0) + "h" : s < 2592e3 ? (s / 86400 | 0) + "d" : new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" }); };
 const mmss = (s) => (s ? `${(s / 60) | 0}:${String(s % 60 | 0).padStart(2, "0")}` : "");
-const vcard = (id, title, sub, extra = "", cs = 0, ce = 0) => `<button class="vc" data-vid="${id}" data-title="${esc(title)}"${cs ? ` data-s="${cs}" data-e="${ce || 0}"` : ""}><span class="vt"><img loading="lazy" src="${thumb(id)}" alt="">${extra}</span><b>${esc(title)}</b><i>${esc(sub || "")}</i></button>`;
+const vcard = (id, title, sub, extra = "", cs = 0, ce = 0, lesson = "") => `<button class="vc" data-vid="${id}" data-title="${esc(title)}"${cs ? ` data-s="${cs}" data-e="${ce || 0}"` : ""}><span class="vt"><img loading="lazy" src="${thumb(id)}" alt="">${extra}</span><b>${esc(title)}</b><i>${esc(sub || "")}</i>${lesson ? `<small class="vlesson">💡 ${esc(lesson)}</small>` : ""}</button>`;   // KING_LESSON: 1-line lesson under each trade clip
 function needSetup(which) { return `<div class="mempty"><b>${which} sign-in isn't switched on yet</b><span>King is finishing the one-time setup. It'll appear here on its own.</span></div>`; }
 
 /* ---- Reese library ---- */
 let RV = null, rvFilter = "videos", rvQ = "";
 async function libUI() { const el = $("m-lib");
-  if (!RV) { el.innerHTML = '<div class="mempty"><span>Loading Reese\'s videos…</span></div>'; if (DEMO) RV = [{ id: "DZEVxR7slnM", title: "Backtesting My 80%+ Winrate IFVG Strategy", published: "2026-11-06", dur: 3026, kind: "videos" }, { id: "Qm1fTcyysEw", title: "How I made $11,480 In 11 Minutes", published: "2026-11-01", dur: 747, kind: "videos", clip_start: 520, clip_end: 575 }];
+  if (!RV) { el.innerHTML = '<div class="mempty"><span>Loading Reese\'s videos…</span></div>'; if (DEMO) RV = [{ id: "DZEVxR7slnM", title: "Backtesting My 80%+ Winrate IFVG Strategy", published: "2026-11-06", dur: 3026, kind: "videos" }, { id: "Qm1fTcyysEw", title: "How I made $11,480 In 11 Minutes", published: "2026-11-01", dur: 747, kind: "videos", clip_start: 520, clip_end: 575, lesson: "Shorted the 10 AM reversal off NQ's 1H gap after the inversion, with ES's protected high guarding the stop." }];
     else { const { data } = await sb.from("reese_videos").select("*").order("published", { ascending: false }).limit(1000); RV = data || []; } }
   const n = { videos: RV.filter((v) => v.kind === "videos").length, shorts: RV.filter((v) => v.kind === "shorts").length };
   const list = RV.filter((v) => v.kind === rvFilter && (!rvQ || (v.title || "").toLowerCase().includes(rvQ)));
   el.innerHTML = `<div class="mtools"><span class="seg mini" id="rv-f"><button data-f="videos" class="${rvFilter === "videos" ? "on" : ""}">Videos ${n.videos}</button><button data-f="shorts" class="${rvFilter === "shorts" ? "on" : ""}">Shorts ${n.shorts}</button></span><input id="rv-q" placeholder="Search his videos" value="${esc(rvQ)}"></div>
-    <div class="vgrid">${list.slice(0, 120).map((v) => vcard(v.id, v.title, (v.published ? new Date(v.published + "T12:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" }) : ""), (v.dur ? `<em>${mmss(v.dur)}</em>` : "") + (v.clip_start ? '<em class="cl">✂ trade</em>' : ""), v.clip_start, v.clip_end)).join("") || '<div class="mempty"><span>No videos match.</span></div>'}</div>`;
+    <div class="vgrid">${list.slice(0, 120).map((v) => vcard(v.id, v.title, (v.published ? new Date(v.published + "T12:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" }) : ""), (v.dur ? `<em>${mmss(v.dur)}</em>` : "") + (v.clip_start ? '<em class="cl">✂ trade</em>' : ""), v.clip_start, v.clip_end, v.lesson)).join("") || '<div class="mempty"><span>No videos match.</span></div>'}</div>`;
   $("rv-f").onclick = (e) => { const b = e.target.closest("[data-f]"); if (b) { rvFilter = b.dataset.f; libUI(); } };
   $("rv-q").oninput = (e) => { rvQ = e.target.value.toLowerCase(); clearTimeout(libUI.t); libUI.t = setTimeout(() => { const pos = e.target.selectionStart; libUI().then(() => { const q = $("rv-q"); q.focus(); q.setSelectionRange(pos, pos); }); }, 200); }; }
 
@@ -1557,7 +1557,7 @@ const KTIPS = ["Hold the corner triangle on any tool button to see every tool in
 function splash() { splashSound(); const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><img class="sp-lock" src="brand/kairos-intro.svg?' + Date.now() + '" alt="KAIROS OS"><div class="sp-tip"><b>Tip</b> ' + esc(KTIPS[Math.floor(Math.random() * KTIPS.length)]) + '</div></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 2400); setTimeout(() => s.remove(), 2900); }
 if (prefs.splash !== false) splash();
 /* ---------------- KAIROS OS Beta: welcome cinematic (first time you're let in) + onboarding tour ---------------- */
-const APP_VERSION = "0.9.0", APP_LABEL = "Beta";
+const APP_VERSION = "0.9.1", APP_LABEL = "Beta";
 function wAudio() { try { const ac = new (window.AudioContext || window.webkitAudioContext)(), M = ac.createGain(); M.gain.value = 0.9; M.connect(ac.destination);
   const len = ac.sampleRate * 3, ir = ac.createBuffer(2, len, ac.sampleRate); for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4); }
   const V = ac.createConvolver(); V.buffer = ir; const vg = ac.createGain(); vg.gain.value = 0.5; V.connect(vg); vg.connect(M); return { ac, M, V }; } catch (e) { return null; } }
@@ -2033,11 +2033,11 @@ $("s-tips") && ($("s-tips").onchange = () => { prefs.tips = $("s-tips").checked;
 
 /* KING_RAIL (Nov 11, Brief 3): the left sidebar expands to show names (button at the bottom) and its edge drags to any width; the width is remembered per user */
 (() => { const R = $("rail"); R.querySelectorAll(".ri").forEach((b) => { if (b.querySelector(".rl")) return; const t = (b.title || "").split(/[:(]/)[0].trim(); if (!t) return; const s = document.createElement("span"); s.className = "rl"; s.textContent = b.id === "railx" ? "Collapse" : t; b.appendChild(s); });
-  const W = (w) => { w = Math.round(w); if (innerWidth <= 900) { R.style.width = ""; R.classList.remove("wide"); return; } R.style.width = w + "px"; R.classList.toggle("wide", w >= 120); $("railx").title = w >= 120 ? "Collapse the sidebar" : "Expand the sidebar (drag its edge to resize)"; try { panes.forEach((p) => p.chart && p.chart.applyOptions({})); window.dispatchEvent(new Event("resize")); } catch (e) {} };
+  const W = (w) => { w = Math.round(w); if (innerWidth <= 900) { R.style.width = ""; R.classList.remove("wide"); return; } R.style.width = w + "px"; R.classList.toggle("wide", w >= 120); $("railx").title = w >= 120 ? "Collapse the sidebar" : "Expand the sidebar (drag its edge to resize)"; };
   window.railUI = () => W(prefs.railW || 52);
   $("railx").onclick = () => { const cur = prefs.railW || 52; prefs.railW = cur >= 120 ? 52 : prefs.railWide || 200; savePrefs(); W(prefs.railW); };
-  grip($("railgrip"), (e, st) => { if (st.w == null) st.w = R.offsetWidth; let w = Math.max(52, Math.min(300, st.w + e.clientX - st.x)); if (w < 96) w = 52; prefs.railW = w; W(w); },
-    () => { if (prefs.railW >= 120) prefs.railWide = prefs.railW; savePrefs(); }); railUI(); })();
+  grip($("railgrip"), (e, st) => { if (st.w == null) { st.w = R.offsetWidth; R.style.transition = "none"; } let w = Math.max(52, Math.min(300, st.w + e.clientX - st.x)); if (w < 96) w = 52; prefs.railW = w; W(w); },
+    () => { R.style.transition = ""; if (prefs.railW >= 120) prefs.railWide = prefs.railW; savePrefs(); }); railUI(); })();
 
 /* KING_MEDIAWIN (Nov 11, Brief 3): the Spotify / YouTube / Reese window: drag it by its title bar, resize it from the corner (the video grows with it),
    a bigger see-through slider with a % readout, and a pop-out into its own window you can put on a side screen. Size and spot are remembered. */

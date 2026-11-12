@@ -433,3 +433,4 @@ body.fxshake #app{animation:shk .45s cubic-bezier(.36,.07,.19,.97)}@keyframes sh
  .demo{bottom:72px}
  .toast{bottom:76px}
 }
+.vc .vlesson{display:block;margin-top:4px;font:500 11.5px/1.35 Inter,sans-serif;color:#b9b0ff;white-space:normal;text-align:left}
