@@ -1130,7 +1130,7 @@ async function renderStats() {
   const after = []; for (let i = 1; i < tr.length; i++) { const a = tr[i - 1], b = tr[i]; if (a.pnl < 0 && b.t_entry - a.t_exit < 600) after.push(b); }
   const sizeUp = tr.filter((t, i) => i && tr[i - 1].pnl < 0 && t.qty > tr[i - 1].qty).length, aw = after.filter((t) => t.pnl > 0).length;
   $("st-tilt").innerHTML = `<div class="kvs"><div><span>Re-entries within 10 min of a loss</span><b>${after.length}${after.length ? " · " + Math.round((100 * aw) / after.length) + "% win · " + money(sum(after)) : ""}</b></div><div><span>Size went up right after a loss</span><b>${sizeUp}</b></div></div>` + table(grp((t) => (t.mistakes && t.mistakes.length ? t.mistakes : [])));
-  if (!stC) { stC = LightweightCharts.createChart($("st-eq"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontFamily: "Inter, sans-serif" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } }); stC.s = stC.addAreaSeries({ lineColor: "#5ee6b8", topColor: "rgba(94,230,184,.25)", bottomColor: "rgba(94,230,184,0)", lineWidth: 2 }); }
+  if (!stC) { stC = LightweightCharts.createChart($("st-eq"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontFamily: "Inter, sans-serif" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } }); stC.s = stC.addAreaSeries({ lineColor: "#5ee6b8", topColor: "rgba(94,230,184,.25)", bottomColor: "rgba(94,230,184,0)", lineWidth: 2, lineType: 2, pointMarkersVisible: false, crosshairMarkerRadius: 3 }); }
   const seen = new Set(); stC.s.setData(eq.filter((p) => (seen.has(p.time) ? false : seen.add(p.time)))); stC.timeScale().fitContent();
 }
 
@@ -1500,7 +1500,7 @@ async function loadJournal() {
   jT.forEach((t, i) => { run += +t.pnl; pk = Math.max(pk, run); mdd = Math.max(mdd, pk - run); eq.push({ time: i + 1, value: run }); });
   const rs = jT.filter((t) => t.r != null), avgR = rs.length ? rs.reduce((s, t) => s + +t.r, 0) / rs.length : 0; const box = (k, v) => `<div><span class="muted small">${k}</span><b>${v}</b></div>`;
   $("stats").innerHTML = box("Trades", n) + box("Win rate", n ? Math.round((100 * w.length) / n) + "%" : "—") + box("Avg R", avgR.toFixed(2)) + box("Profit factor", gl ? (gp / gl).toFixed(2) : "—") + box("Net P&L", money(gp - gl)) + box("Max drawdown", money(-mdd)) + box("Avg win", w.length ? money(gp / w.length) : "—") + box("Avg loss", l.length ? money(-gl / l.length) : "—");
-  if (!eqC) { eqC = LightweightCharts.createChart($("eqchart"), { layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, timeScale: { visible: false }, autoSize: true }); eqS = eqC.addAreaSeries({ lineColor: "#5ee6b8", topColor: "rgba(94,230,184,.25)", bottomColor: "rgba(94,230,184,0)", lineWidth: 2 }); }
+  if (!eqC) { eqC = LightweightCharts.createChart($("eqchart"), { layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, timeScale: { visible: false }, autoSize: true }); eqS = eqC.addAreaSeries({ lineColor: "#5ee6b8", topColor: "rgba(94,230,184,.25)", bottomColor: "rgba(94,230,184,0)", lineWidth: 2, lineType: 2, pointMarkersVisible: false, crosshairMarkerRadius: 3 }); }
   eqS.setData(eq); eqC.timeScale().fitContent();
   calUI(); const rowsT = jDay ? jT.filter((t) => sessDay(t.t_entry) === jDay) : jT;
   $("jrows").innerHTML = rowsT.slice().reverse().map((t) => `<tr data-id="${t.id}"><td>${fmt(loc(t.t_entry))}</td><td>${t.symbol}</td><td>${t.dir > 0 ? "Long" : "Short"}</td><td>${t.qty}</td><td>${px2(t.entry)}</td><td>${px2(t.exit)}</td><td>${t.r ?? "—"}</td><td class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</td><td><input class="note" value="${(t.notes || "").replace(/"/g, "&quot;")}" placeholder="add a note"></td><td>${t.shots && t.shots.length ? '<a href="#" class="shotlink">📷</a>' : ""}${t.notion_page ? " N" : ""} <button class="small ghost sharebtn" title="Share with friends">⤴</button><button class="small ghost cardbtn" title="Share card (image)">🖼</button></td></tr>`).join("");
@@ -1741,6 +1741,14 @@ function tsSettingsUI() { padBtnsUI(); maskUI(); sndUI(); lockUI(); speedUI(); }
 
 /* fix 1: hover a drawing (or select it) and a small toolbar pops up: color, thickness, line style, settings, lock, delete. Every tool has its own settings. */
 const DCOL = ["#2962ff", "#ffce78", "#5ee6b8", "#ff6b7a", "#c4b5fd", "#e6eaf0"];
+// KING_COLGRID (Nov 12 walkthrough): the pencil opens a full color grid (grays + 10 hues x 6 shades) and a "My colors" row
+// at the bottom that keeps the custom colors you pick (+ opens the color picker; right-click a saved one to remove it).
+const _hx = (h, s, l) => { s /= 100; l /= 100; const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return "#" + [f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, "0")).join(""); };
+const COLGRID = (() => { const rows = [[...Array(10)].map((_, i) => _hx(0, 0, 100 - i * 11))], hues = [0, 25, 45, 120, 165, 190, 215, 245, 275, 320];
+  [[90, 88], [85, 76], [80, 64], [78, 54], [70, 42], [65, 30]].forEach(([sa, li]) => rows.push(hues.map((h) => _hx(h, sa, li)))); rows[4][6] = "#2962ff"; return rows; })();
+function colGrid(cur) { const my = (prefs.myCols || []).slice(0, 10), c = (x) => `<button class="dc ${String(cur).toLowerCase() === x.toLowerCase() ? "on" : ""}" data-c="${x}" style="background:${x}" title="${x}"></button>`;
+  return `<div class="cgrid">${COLGRID.flat().map(c).join("")}</div><div class="cmy"><span>My colors</span>${my.map((x) => c(x).replace('class="dc', 'data-my="1" class="dc')).join("")}<label class="cadd" title="Add a custom color">+<input type="color" id="cpick" value="${/^#[0-9a-f]{6}$/i.test(cur || "") ? cur : "#2962ff"}"></label></div>`; }
 let dtbP = null, dtbT = 0;
 function dtbShow(p) { const d = hov || sel, el = $("dtb"); clearTimeout(dtbT); if (!d) { dtbT = setTimeout(() => { if (!el.matches(":hover") && !(hov || sel)) el.classList.add("hidden"); }, 450); return; }
   dtbP = p; el.dataset.id = d.id; const r = p.el.getBoundingClientRect(), x1 = xOf(p, d.a.t), x2 = xOf(p, d.b.t), y = d.type === "long" || d.type === "short" ? yOf(p, Math.max(d.entry, d.sl, d.tp)) : Math.min(yOf(p, d.a.p) ?? 1e9, yOf(p, d.b.p) ?? 1e9);
@@ -1757,7 +1765,7 @@ function dtbShow(p) { const d = hov || sel, el = $("dtb"); clearTimeout(dtbT); i
     `<button data-act="set" class="dico" title="Settings">${SV('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3h0a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8v0a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>')}</button>` +
     `<button data-act="lock" class="dico ${d.locked ? "on" : ""}" title="${d.locked ? "Unlock" : "Lock"}">${SV(d.locked ? '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>' : '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 017.6-1.7"/>')}</button>` +
     `<button data-act="del" class="dico" title="Delete">${SV('<path d="M5 7h14M9 7V4.5h6V7M7 7l1 13h8l1-13"/>')}</button>` +
-    (pos ? "" : `<div class="dcols hidden">${DCOL.map((c) => `<button class="dc ${d.color === c ? "on" : ""}" data-c="${c}" style="background:${c}" title="${c}"></button>`).join("")}</div>`);
+    (pos ? "" : `<div class="dcols hidden">${colGrid(d.color)}</div>`);
   el.classList.remove("hidden"); const tw = el.offsetWidth, cx = r.left + ((x1 ?? 0) + (x2 ?? x1 ?? 0)) / 2, ty = r.top + (y < 1e8 ? y : 40) - 46;
   el.style.left = Math.max(r.left + 4, Math.min(r.right - tw - 70, cx - tw / 2)) + "px"; el.style.top = Math.max(r.top + 4, ty) + "px"; }
 /* confluence presets: named styles per tool (color, width, dash, fill, label), one tap to apply, optional default for new drawings */
@@ -1946,7 +1954,10 @@ $("dtb").onclick = (e) => { const b = e.target.closest("button"); if (!b) return
   else if (b.dataset.act === "set") { $("dtb").classList.add("hidden"); return toolSettings(d); } else if (b.dataset.act === "preset") { const r = b.getBoundingClientRect(); return presetMenu(d, r.left, r.bottom + 4); } else if (b.dataset.act === "label") { const r = b.getBoundingClientRect(); return labelPop(d, r); } else if (b.dataset.act === "lock") d.locked = !d.locked;
   else if (b.dataset.act === "del") { disarmTool(d); drawings = drawings.filter((z) => z !== d); if (sel === d) sel = null; if (hov === d) hov = null; $("dtb").classList.add("hidden"); repaintAll(); return; }
   repaintAll(); sel = d; dtbShow(dtbP); };
-$("dtb").onmouseleave = () => dtbShow(dtbP);
+$("dtb").onmouseleave = () => { if (!$("dtb").querySelector(".dcols:not(.hidden)")) dtbShow(dtbP); };
+$("dtb").addEventListener("change", (e) => { if (e.target.id !== "cpick") return; const d = drawings.find((z) => z.id === +$("dtb").dataset.id), v = e.target.value; if (!d) return;
+  prefs.myCols = [v, ...(prefs.myCols || []).filter((x) => x !== v)].slice(0, 10); savePrefs(); d.color = v; repaintAll(); sel = d; dtbShow(dtbP); $("dtb").querySelector(".dcols").classList.remove("hidden"); });
+$("dtb").addEventListener("contextmenu", (e) => { const b = e.target.closest("[data-my]"); if (!b) return; e.preventDefault(); prefs.myCols = (prefs.myCols || []).filter((x) => x !== b.dataset.c); savePrefs(); dtbShow(dtbP); $("dtb").querySelector(".dcols").classList.remove("hidden"); });
 $("chartsetbtn").onclick = () => { fillSettings(); chartSetUI(); $("chartset").classList.remove("hidden"); };
 $("cs-x").onclick = () => $("chartset").classList.add("hidden"); $("chartset").onclick = (e) => { if (e.target.id === "chartset") $("chartset").classList.add("hidden"); };
 $("cs-sym").onclick = (e) => { const b = e.target.closest("[data-s]"); if (!b || b.dataset.s === sym) return; $("sym").value = b.dataset.s; $("sym").onchange(); chartSetUI(); };
@@ -2064,6 +2075,7 @@ function labelPop(d, r) { document.getElementById("lblpop")?.remove(); const el 
   const where = () => { const v = document.querySelector(".vtab.on[data-view]"); return v ? (v.title || v.dataset.view) : "app"; };
   const open = (on) => { $("fxb-card").classList.toggle("hidden", !on); $("fxb-tip").classList.add("hidden"); if (on) { $("fxb-where").textContent = "From: " + where(); setTimeout(() => $("fxb-in").focus(), 30); } };
   $("fxb-b").onclick = () => open($("fxb-card").classList.contains("hidden")); $("fxb-x").onclick = () => open(false);
+  $("fxtop").onclick = () => open($("fxb-card").classList.contains("hidden"));   // KING_FIXTOP (Nov 12 walkthrough): the top-bar button opens the same card
   w.querySelectorAll(".fxb-seg button").forEach((b) => (b.onclick = () => { kind = b.dataset.k; w.querySelectorAll(".fxb-seg button").forEach((x) => x.classList.toggle("on", x === b)); }));
   $("fxb-in").onkeydown = (e) => e.stopPropagation();
   $("fxb-go").onclick = async () => { const t = $("fxb-in").value.trim(); if (t.length < 3) return toast("Add a few words first"); const body = `[${where()}] ${t}`;
