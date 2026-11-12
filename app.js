@@ -708,7 +708,7 @@ function guard() {
   if (prefs.dll && dp <= -prefs.dll) hit("Personal daily loss limit hit"); else if (prefs.ptg && dp >= prefs.ptg) hit("Personal daily profit target reached");
   else if (prefs.mdd && peak - (balance() + openPnlAll()) >= prefs.mdd) hit("Max drawdown hit");
 }
-function canTrade() { if (prefs.lockUntil && Date.now() < prefs.lockUntil) { toast("🔒 Personal lockout until " + new Date(prefs.lockUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); return false; } if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } return true; }
+function canTrade() { if (prefs.lockUntil && Date.now() < prefs.lockUntil) { toast("🔒 Personal lockout until " + new Date(prefs.lockUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); return false; } if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } if (prefs.aplus && !pos.qty && !aplusOk()) return false; return true; }
 const lotsNow = () => Math.max(1, +prefs.lots || 1);
 const autoBr = () => (prefs.autoBr ? { slPts: prefs.slPts, tpPts: prefs.tpPts } : null);
 function market(side, qty) { if (!canTrade()) return; qty = qty || (prefs.byRisk ? Math.max(1, Math.floor((balance() * prefs.riskp / 100) / (prefs.slPts * inst.pt))) : lotsNow()); fill(side, qty, last(), nowT(), autoBr()); }
@@ -723,7 +723,7 @@ const strats = () => (prefs.strats = prefs.strats && prefs.strats.length ? prefs
 const curStrat = () => (prefs.stratOn != null ? strats()[prefs.stratOn] : null);
 function stratTags() { const s = curStrat(); if (!s) return []; return ["strat:" + s.name, `rules:${[...chk].filter((i) => i < s.rules.length).length}/${s.rules.length}`]; }
 function chkUI() { const el = $("chk"); el.classList.toggle("hidden", !prefs.chkShow); $("chkbtn").classList.toggle("on", !!prefs.chkShow); if (!prefs.chkShow) return; const S = strats(), s = curStrat(), n = s ? [...chk].filter((i) => i < s.rules.length).length : 0;
-  el.innerHTML = `<div class="ah"><select id="chk-s"><option value="">No strategy</option>${S.map((x, i) => `<option value="${i}" ${prefs.stratOn === i ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select><button class="pb" id="chk-ed" title="Edit strategies">✎</button><button class="pb" id="chk-x" title="Close">×</button></div>
+  el.innerHTML = `<div class="ah"><select id="chk-s"><option value="">No strategy</option>${S.map((x, i) => `<option value="${i}" ${prefs.stratOn === i ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select><label class="ck tiny aplus" title="A+ only: no new trade unless every rule of this strategy is ticked"><input type="checkbox" id="chk-ap" ${prefs.aplus ? "checked" : ""}> A+ only</label><button class="pb" id="chk-ed" title="Edit strategies">✎</button><button class="pb" id="chk-x" title="Close">×</button></div>
     ${s ? `<div class="chkl">${s.rules.map((r, i) => `<label class="ck ${chk.has(i) ? "on" : ""}"><input type="checkbox" data-r="${i}" ${chk.has(i) ? "checked" : ""}> ${esc(r)}</label>`).join("")}</div>
       <div class="chkf"><div class="mxbar"><i style="width:${Math.round((100 * n) / (s.rules.length || 1))}%"></i></div><span class="tiny ${n === s.rules.length ? "pos-up" : "muted"}">${n}/${s.rules.length}${n === s.rules.length ? " · good to go" : ""}</span></div>` : '<div class="tiny muted" style="padding:6px 2px">Pick a strategy to get its checklist. Each trade is tagged with it so Stats can show which rules actually pay.</div>'}`;
   $("chk-s").onchange = (e) => { prefs.stratOn = e.target.value === "" ? null : +e.target.value; chk = new Set(); savePrefs(); chkUI(); };
@@ -2112,3 +2112,8 @@ function speedEnd() { if (!SPD) return; clearInterval(spdT); const secs = Math.r
 $("qz-speed") && ($("qz-speed").onclick = async () => { SPD = { n: 0, right: 0, t0: Date.now(), end: Date.now() + 5 * 60 * 1000 }; $("qz-clock").classList.remove("hidden"); clearInterval(spdT); spdT = setInterval(speedTick, 500); speedTick(); await quizNext(); });
 (() => { const qa = quizAnswer; window.quizAnswer = quizAnswer = async function (take) { const it = QZ && QZ.it; await qa(take); if (!SPD || !it) return; SPD.n++; if ((it.outcome === "win") === take) SPD.right++; speedTick(); if (SPD.n >= 10) return setTimeout(speedEnd, 900); setTimeout(() => SPD && quizNext(), 1100); }; })();
 setTimeout(() => { try { speedUI(); } catch (e) {} }, 0);
+
+/* KING_APLUS (Nov 12, night ideas): A+ only mode — with it on, a new trade is blocked until a strategy is picked and every one of its rules is ticked */
+function aplusOk() { const s = curStrat(); if (!s) { toast("🅰️ A+ only: pick a strategy in the Checklist first"); if (!prefs.chkShow) { prefs.chkShow = true; chkUI(); } return false; }
+  const miss = s.rules.filter((_, i) => !chk.has(i)); if (miss.length) { toast(`🅰️ A+ only: ${miss.length} rule${miss.length > 1 ? "s" : ""} not ticked (${miss.slice(0, 2).join(", ")}${miss.length > 2 ? "…" : ""})`); if (!prefs.chkShow) { prefs.chkShow = true; chkUI(); } return false; } return true; }
+document.addEventListener("change", (e) => { if (e.target && e.target.id === "chk-ap") { prefs.aplus = e.target.checked; savePrefs(); toast(prefs.aplus ? "🅰️ A+ only is on: tick every rule before you enter" : "A+ only is off"); } });
