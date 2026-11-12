@@ -396,3 +396,27 @@ body.fxshake #app{animation:shk .45s cubic-bezier(.36,.07,.19,.97)}@keyframes sh
 #fxb{right:46px;bottom:5px}.fxb-b{width:34px;height:34px}.fxb-b svg{width:17px;height:17px}
 .fxb-card textarea{background:rgba(255,255,255,.04);color:#e6eaf0;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;font:14px/1.45 Inter,sans-serif;outline:none}
 .fxb-card textarea:focus{border-color:rgba(124,107,255,.6)}
+/* KING_RAIL */
+.rail{position:relative;overflow:hidden;transition:width .18s var(--ease)}
+.rgrip{position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:ew-resize;z-index:6;touch-action:none}.rgrip:hover{background:rgba(124,107,255,.35)}
+.ri .rl{display:none;font:600 13.5px Inter,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rail.wide{align-items:stretch;padding:8px 8px}
+.rail.wide .ri{width:auto;justify-content:flex-start;gap:12px;padding:0 10px;height:40px}
+.rail.wide .ri .rl{display:block}.rail.wide .ri svg{flex:none}
+.rail.wide .rlogo,.rail.wide .avatar{align-self:center}
+.rail.wide #railx svg{transform:rotate(180deg)}
+/* KING_MEDIAWIN */
+.media{display:flex;flex-direction:column;min-width:300px}
+.media .mbody{flex:1;min-height:0}
+.mbar{gap:8px;padding:7px 10px;min-height:38px}
+.mgrab{color:#5d6675;letter-spacing:-2px;font-size:13px;cursor:grab}.mtitle{font:600 12.5px Inter,sans-serif;color:#c8cfda}
+.mtabs{padding:6px 10px 4px}
+.mbar label.mop{display:flex!important;align-items:center;gap:6px;padding:3px 8px;border-radius:8px;background:rgba(255,255,255,.04);color:#9aa4b2;cursor:default}
+.mbar label.mop svg{width:15px;height:15px}
+.mbar label.mop input[type=range]{width:110px!important;height:18px;margin:0!important;accent-color:#7c6bff;cursor:pointer}
+.mbar label.mop b{font:600 11px Geist Mono,monospace;color:#c8cfda;min-width:34px;text-align:right}
+.mres{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;touch-action:none;background:linear-gradient(135deg,transparent 55%,rgba(255,255,255,.25) 56%,rgba(255,255,255,.25) 62%,transparent 63%,transparent 72%,rgba(255,255,255,.25) 73%,rgba(255,255,255,.25) 79%,transparent 80%)}
+.media .vfr{position:relative;width:100%;aspect-ratio:16/9}.media .vfr iframe{position:absolute;inset:0;width:100%;height:100%}
+.media.popped{position:fixed;inset:0!important;width:100%!important;height:100%!important;border-radius:0;border:0;opacity:1!important;animation:none}
+.media.popped .mres,.media.popped #m-big,.media.popped #m-ct,.media.popped .mgrab{display:none}
+.media{animation-fill-mode:backwards}

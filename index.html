@@ -28,7 +28,7 @@
 </div>
 
 <div id="app" class="hidden">
-  <aside class="rail">
+  <aside class="rail" id="rail"><div class="rgrip" id="railgrip" title="Drag to resize"></div>
     <div class="rlogo" title="KAIROS OS"><img src="icon.svg" alt="KAIROS"></div>
     <button data-view="trade" class="ri vtab on" title="Trade"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M9 20V5M14 20v-8M19 20V8"/><path d="M3 20h18"/></svg></button>
     <button data-view="journal" class="ri vtab" title="Journal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h10a4 4 0 0 1 4 4v12H9a4 4 0 0 1-4-4z"/><path d="M5 16a4 4 0 0 1 4-4h10"/></svg></button>
@@ -39,6 +39,7 @@
     <button data-view="settings" class="ri vtab" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <button data-view="admin" class="ri vtab hidden" id="vt-admin" title="Admin: invites, features, data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14.5a6.5 6.5 0 0 1 3.5 5.5"/></svg></button>
     <div class="rsp"></div>
+    <button id="railx" class="ri" title="Expand the sidebar (drag its edge to resize)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
     <button id="helpbtn" class="ri" title="Help + hot keys">?</button>
     <div class="avatar" id="avatar" title="">·</div>
     <button id="logout" class="ri" title="Sign out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 16l-4-4 4-4M6 12h10"/></svg></button>
@@ -304,8 +305,9 @@
     <div id="padpos" class="padpos">Flat</div>
   </div>
 </div>
-<div id="media" class="media hidden"><div class="mbar" id="mgrip"><span class="seg mt"><button data-m="lib">Reese</button><button data-m="yt">YouTube</button><button data-m="sp">Spotify</button></span><span class="tsp"></span><button id="m-big" class="pb" title="Bigger / smaller">⤢</button><label class="tiny muted" title="See-through">◐<input id="m-op" type="range" min="15" max="100" value="100"></label><button id="m-ct" class="pb" title="Click-through: clicks go to the chart underneath">⌖</button><button id="m-x" class="pb" title="Close">×</button></div>
-  <div class="mbody"><div id="m-vid" class="mvid hidden"></div><div id="m-lib" class="mp"></div><div id="m-yt" class="mp hidden"></div><div id="m-sp" class="mp hidden"></div></div></div>
+<div id="media" class="media hidden"><div class="mbar" id="mgrip"><span class="mgrab" title="Drag to move">⋮⋮</span><span class="mtitle">Media</span><span class="tsp"></span><label class="mop" title="See-through: how solid the window is"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 000 16z" fill="currentColor"/></svg><input id="m-op" type="range" min="15" max="100" value="100"><b id="m-opv">100%</b></label><button id="m-pop" class="pb" title="Pop out into its own window (drag it to a side screen)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M20 4l-8 8M18 14v5a1 1 0 01-1 1H5a1 1 0 01-1-1V7a1 1 0 011-1h5"/></svg></button><button id="m-big" class="pb" title="Bigger / smaller">⤢</button><button id="m-ct" class="pb" title="Click-through: clicks go to the chart underneath">⌖</button><button id="m-x" class="pb" title="Close">×</button></div>
+  <div class="mtabs"><span class="seg mt"><button data-m="lib">Reese</button><button data-m="yt">YouTube</button><button data-m="sp">Spotify</button></span></div>
+  <div class="mbody"><div id="m-vid" class="mvid hidden"></div><div id="m-lib" class="mp"></div><div id="m-yt" class="mp hidden"></div><div id="m-sp" class="mp hidden"></div></div><div class="mres" id="mres" title="Drag to resize"></div></div>
 <div id="chk" class="chk glass hidden"></div>
 <div id="dtb" class="dtb hidden"></div>
 <div id="chartset" class="chartset hidden"><div class="csbox glass form"><div class="ah"><b>Chart settings</b><button id="cs-x" class="pb">×</button></div>

@@ -239,7 +239,7 @@ function favUI() {
 function toolsUI() { const t = $("tools"), f = prefs.toolsPos; t.classList.toggle("float", !!f); if (f) { t.style.left = Math.min(f.x, innerWidth - 50) + "px"; t.style.top = Math.min(f.y, innerHeight - 120) + "px"; } else { t.style.left = t.style.top = ""; } panes.forEach(paint); }
 function dockH() { const b = document.querySelector("#dock .bbody"); b.style.height = prefs.dockClosed ? "0px" : (prefs.dockH || 150) + "px"; if (prefs.pad.x == null) setTimeout(padUI, 240); }
 function grip(el, onMove, onEnd) {   // pointer drag helper
-  el.addEventListener("pointerdown", (e) => { if (e.button !== 0 || (e.target !== el && e.target.closest("button,input,select,a,label,iframe,textarea"))) return; e.preventDefault(); el.setPointerCapture(e.pointerId);   // fix 5: buttons inside a drag bar stay clickable const st = { x: e.clientX, y: e.clientY };
+  el.addEventListener("pointerdown", (e) => { if (e.button !== 0 || (e.target !== el && e.target.closest("button,input,select,a,label,iframe,textarea"))) return; e.preventDefault(); el.setPointerCapture(e.pointerId); const st = { x: e.clientX, y: e.clientY };   // fix 5: buttons inside a drag bar stay clickable. KING_GRIPFIX (Nov 11): this line used to sit inside the comment, so st was undefined and EVERY drag (bottom panel, media window, toolbar, sidebar) threw
     const mv = (ev) => onMove(ev, st), up = (ev) => { el.removeEventListener("pointermove", mv); el.removeEventListener("pointerup", up); onEnd && onEnd(ev, st); };
     el.addEventListener("pointermove", mv); el.addEventListener("pointerup", up); });
 }
@@ -1237,7 +1237,7 @@ const jget = (k) => { try { return JSON.parse(localStorage.getItem(k) || "null")
 function mediaUI() { const M = prefs.media || (prefs.media = { show: false, tab: "lib", op: 100, ct: false }); if (!["sp", "yt", "lib"].includes(M.tab)) M.tab = "lib";
   $("media").classList.toggle("hidden", !M.show); $("mediabtn").classList.toggle("on", !!M.show); $("media").classList.toggle("big", !!M.big);
   document.querySelectorAll(".mt button").forEach((b) => b.classList.toggle("on", b.dataset.m === M.tab)); ["sp", "yt", "lib"].forEach((k) => $("m-" + k).classList.toggle("hidden", k !== M.tab));
-  $("media").style.opacity = (M.op || 100) / 100; $("m-op").value = M.op || 100; $("m-ct").classList.toggle("on", !!M.ct); $("media").classList.toggle("thru", !!M.ct);
+  mediaLook(); $("m-ct").classList.toggle("on", !!M.ct); $("media").classList.toggle("thru", !!M.ct);
   if (M.x != null) { $("media").style.left = Math.min(M.x, innerWidth - 120) + "px"; $("media").style.top = Math.min(M.y, innerHeight - 60) + "px"; }
   if (!M.show) return; if (M.tab === "sp") spUI(); else if (M.tab === "yt") ytUI(); else libUI(); }
 function playVid(u, title, start, end) { const e = ytEmbed(u, start, end); if (!e) return toast("Can't play that video"); prefs.media = prefs.media || {}; if (!prefs.media.show) { prefs.media.show = true; savePrefs(); mediaUI(); }
@@ -1647,7 +1647,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { railUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().catch(() => {}); }   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
@@ -1869,7 +1869,7 @@ $("lv-list").onclick = (e) => { const b = e.target.closest("[data-inv]"); if (b)
 $("chkbtn").onclick = () => { prefs.chkShow = !prefs.chkShow; savePrefs(); chkUI(); };
 $("mediabtn").onclick = () => { prefs.media = prefs.media || {}; prefs.media.show = !prefs.media.show; savePrefs(); mediaUI(); };
 document.querySelectorAll(".mt button").forEach((b) => (b.onclick = () => { prefs.media.tab = b.dataset.m; savePrefs(); mediaUI(); }));
-$("m-op").oninput = () => { prefs.media.op = +$("m-op").value; mediaUI(); }; $("m-op").onchange = savePrefs;
+$("m-op").oninput = () => { prefs.media.op = +$("m-op").value; mediaLook(); }; $("m-op").onchange = savePrefs;   // KING_MEDIAWIN: just the look, no re-render (it used to rebuild the whole library on every slider tick)
 $("m-ct").onclick = () => { prefs.media.ct = !prefs.media.ct; savePrefs(); mediaUI(); if (prefs.media.ct) toast("Click-through on: clicks go to the chart. Turn it off with the ⌖ button (it stays clickable)."); };
 $("m-big").onclick = () => { prefs.media.big = !prefs.media.big; savePrefs(); mediaUI(); };
 $("m-x").onclick = () => { prefs.media.show = false; savePrefs(); mediaUI(); };
@@ -2024,3 +2024,28 @@ function labelPop(d, r) { document.getElementById("lblpop")?.remove(); const el 
   setTimeout(showTip, 90 * 1000); setInterval(showTip, 5 * 60 * 1000); window.kTipNow = showTip; })();
 
 $("s-tips") && ($("s-tips").onchange = () => { prefs.tips = $("s-tips").checked; savePrefs(); if (prefs.tips) window.kTipNow && kTipNow(); });
+
+/* KING_RAIL (Nov 11, Brief 3): the left sidebar expands to show names (button at the bottom) and its edge drags to any width; the width is remembered per user */
+(() => { const R = $("rail"); R.querySelectorAll(".ri").forEach((b) => { if (b.querySelector(".rl")) return; const t = (b.title || "").split(/[:(]/)[0].trim(); if (!t) return; const s = document.createElement("span"); s.className = "rl"; s.textContent = b.id === "railx" ? "Collapse" : t; b.appendChild(s); });
+  const W = (w) => { w = Math.round(w); R.style.width = w + "px"; R.classList.toggle("wide", w >= 120); $("railx").title = w >= 120 ? "Collapse the sidebar" : "Expand the sidebar (drag its edge to resize)"; try { panes.forEach((p) => p.chart && p.chart.applyOptions({})); window.dispatchEvent(new Event("resize")); } catch (e) {} };
+  window.railUI = () => W(prefs.railW || 52);
+  $("railx").onclick = () => { const cur = prefs.railW || 52; prefs.railW = cur >= 120 ? 52 : prefs.railWide || 200; savePrefs(); W(prefs.railW); };
+  grip($("railgrip"), (e, st) => { if (st.w == null) st.w = R.offsetWidth; let w = Math.max(52, Math.min(300, st.w + e.clientX - st.x)); if (w < 96) w = 52; prefs.railW = w; W(w); },
+    () => { if (prefs.railW >= 120) prefs.railWide = prefs.railW; savePrefs(); }); railUI(); })();
+
+/* KING_MEDIAWIN (Nov 11, Brief 3): the Spotify / YouTube / Reese window: drag it by its title bar, resize it from the corner (the video grows with it),
+   a bigger see-through slider with a % readout, and a pop-out into its own window you can put on a side screen. Size and spot are remembered. */
+function mediaLook() { const M = prefs.media || {}, m = $("media"), op = M.op || 100; m.style.opacity = M.pop ? 1 : op / 100; $("m-op").value = op; if ($("m-opv")) $("m-opv").textContent = op + "%";
+  if (M.w && !M.big && !M.pop) { m.style.width = Math.min(M.w, innerWidth - 20) + "px"; m.style.height = M.h ? Math.min(M.h, innerHeight - 20) + "px" : ""; } else if (!M.pop) { m.style.width = ""; m.style.height = ""; } }
+grip($("mres"), (e, st) => { const m = $("media"); if (!st.r) st.r = m.getBoundingClientRect(); prefs.media.big = false; m.classList.remove("big");
+  prefs.media.w = Math.max(300, Math.min(innerWidth - st.r.left - 8, st.r.width + e.clientX - st.x)); prefs.media.h = Math.max(220, Math.min(innerHeight - st.r.top - 8, st.r.height + e.clientY - st.y)); mediaLook(); }, () => savePrefs());
+let mediaWin = null;
+async function mediaPop() { const m = $("media"); if (mediaWin) { try { mediaWin.close(); } catch (e) {} return; }
+  const w = Math.round(m.offsetWidth || 420), h = Math.round(m.offsetHeight || 560);
+  try { if (window.documentPictureInPicture) mediaWin = await documentPictureInPicture.requestWindow({ width: w, height: h }); } catch (e) { mediaWin = null; }
+  if (!mediaWin) { mediaWin = window.open("", "kairos-media", `popup=yes,width=${w},height=${h}`); if (!mediaWin) return toast("Pop-out was blocked by the browser"); mediaWin.document.title = "KAIROS · Media"; }
+  const d = mediaWin.document; [...document.querySelectorAll('link[rel="stylesheet"], style')].forEach((n) => d.head.appendChild(n.cloneNode(true)));
+  d.body.style.cssText = "margin:0;background:#0b0e14;overflow:hidden"; d.body.className = "mpop"; prefs.media.pop = true; m.classList.add("popped"); d.body.appendChild(m); mediaLook(); $("m-pop").title = "Put it back in KAIROS";
+  const back = () => { if (!mediaWin) return; mediaWin = null; document.body.appendChild(m); m.classList.remove("popped"); prefs.media.pop = false; mediaLook(); mediaUI(); $("m-pop").title = "Pop out into its own window (drag it to a side screen)"; };
+  mediaWin.addEventListener("pagehide", back); mediaWin.addEventListener("beforeunload", back); }
+$("m-pop").onclick = mediaPop;
