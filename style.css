@@ -456,3 +456,4 @@ body.fxshake #app{animation:shk .45s cubic-bezier(.36,.07,.19,.97)}@keyframes sh
 .review .mfe{display:flex;gap:10px;flex-wrap:wrap;font:600 12px var(--mono,monospace);color:#aeb6c4;margin:2px 0 8px}.review .mfe span:first-child{color:#5fe0b5}.review .mfe span:nth-child(2){color:#ff8b97}
 .qzclock{margin-left:8px;font:700 12px var(--mono,monospace);color:#ffc65c}
 .chk .aplus{margin:0 4px;white-space:nowrap;font-size:11.5px}
+.lfres{font-size:15px;margin:8px 0 4px}

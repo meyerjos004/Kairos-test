@@ -1110,7 +1110,7 @@ async function renderStats() {
   const rs2 = tr.filter((t) => t.r != null).map((t) => +t.r), bins = [[-9, -1.5], [-1.5, -0.75], [-0.75, -0.25], [-0.25, 0.25], [0.25, 1], [1, 2], [2, 3], [3, 99]], lab = ["≤-1.5R", "-1R", "-0.5R", "~0", "+0.5R", "+1.5R", "+2.5R", "3R+"];
   const cnt = bins.map(([a, b]) => rs2.filter((r) => r > a && r <= b).length), mxc = Math.max(1, ...cnt);
   $("st-rd").innerHTML = rs2.length ? `<div class="rbars">${cnt.map((c, i) => `<div><i style="height:${Math.round((80 * c) / mxc)}px" class="${i < 3 ? "dn" : i > 3 ? "up" : ""}"></i><b>${c}</b><span>${lab[i]}</span></div>`).join("")}</div>` : '<div class="empty">No trades with R yet</div>';
-  mcUI(tr);
+  mcUI(tr); try { lfUI(tr); } catch (e) {}
   $("st-rule").innerHTML = table(grp((t) => (t.rules_ok === true ? "Followed rules" : t.rules_ok === false ? "Broke rules" : "Not rated")), ["Followed rules", "Broke rules", "Not rated"]);
   const after = []; for (let i = 1; i < tr.length; i++) { const a = tr[i - 1], b = tr[i]; if (a.pnl < 0 && b.t_entry - a.t_exit < 600) after.push(b); }
   const sizeUp = tr.filter((t, i) => i && tr[i - 1].pnl < 0 && t.qty > tr[i - 1].qty).length, aw = after.filter((t) => t.pnl > 0).length;
@@ -2117,3 +2117,19 @@ setTimeout(() => { try { speedUI(); } catch (e) {} }, 0);
 function aplusOk() { const s = curStrat(); if (!s) { toast("🅰️ A+ only: pick a strategy in the Checklist first"); if (!prefs.chkShow) { prefs.chkShow = true; chkUI(); } return false; }
   const miss = s.rules.filter((_, i) => !chk.has(i)); if (miss.length) { toast(`🅰️ A+ only: ${miss.length} rule${miss.length > 1 ? "s" : ""} not ticked (${miss.slice(0, 2).join(", ")}${miss.length > 2 ? "…" : ""})`); if (!prefs.chkShow) { prefs.chkShow = true; chkUI(); } return false; } return true; }
 document.addEventListener("change", (e) => { if (e.target && e.target.id === "chk-ap") { prefs.aplus = e.target.checked; savePrefs(); toast(prefs.aplus ? "🅰️ A+ only is on: tick every rule before you enter" : "A+ only is off"); } });
+
+/* KING_LFSIM (Nov 12, night ideas): runs your trades in the order you took them through a LucidFlex eval's rules
+   (end-of-day trailing drawdown that locks at the starting balance, profit target, 50% consistency) and says the day you'd have passed or failed. */
+function lfSim(tr, plan) { const [nm, start, R] = LUCID[plan]; const days = {}; for (const t of tr) { const d = sessDay(t.t_exit); days[d] = (days[d] || 0) + (+t.pnl || 0); }
+  const order = Object.keys(days).sort(); let bal = start, peak = start, floor = start - R.mdd, best = 0, n = 0;
+  for (const d of order) { n++; bal += days[d]; best = Math.max(best, days[d]); if (bal <= floor) return { nm, out: "fail", day: d, n, bal, why: `balance ${money(bal - start)} hit the drawdown line` };
+    peak = Math.max(peak, bal); floor = Math.min(start, peak - R.mdd);   // EOD trailing, stops trailing at the starting balance
+    const prof = bal - start; if (prof >= R.ptg) { const share = best / prof; if (!R.cons || share <= R.cons / 100) return { nm, out: "pass", day: d, n, bal, why: `hit ${money(prof)} with the biggest day ${Math.round(share * 100)}% of profit` };
+      return { nm, out: "cons", day: d, n, bal, why: `hit the target but the biggest day is ${Math.round(share * 100)}% of profit (needs ${R.cons}% or less): keep trading smaller days` }; } }
+  return { nm, out: "open", day: order[order.length - 1], n, bal, why: `still going: ${money(bal - start)} of ${money(R.ptg)}, drawdown line ${money(floor - start)}` }; }
+function lfUI(tr) { const el = $("st-lf"); if (!el) return; const plan = prefs.lfPlan || "lf50";
+  const sel = `<select id="lf-plan">${Object.entries(LUCID).map(([k, v]) => `<option value="${k}" ${k === plan ? "selected" : ""}>${v[0]}</option>`).join("")}</select>`;
+  if (!tr.length) { el.innerHTML = `<div class="mcin">${sel}</div><div class="small muted">No trades in this filter yet.</div>`; } else {
+    const r = lfSim(tr.slice().sort((a, b) => a.t_exit - b.t_exit), plan), col = r.out === "pass" ? "pos-up" : r.out === "fail" ? "pos-dn" : "";
+    el.innerHTML = `<div class="mcin">${sel}</div><div class="lfres"><b class="${col}">${{ pass: "✅ Passed", fail: "❌ Failed", cons: "⚠️ Consistency", open: "⏳ Not done yet" }[r.out]}</b> on trading day ${r.n} (${r.day})</div><div class="small">${esc(r.why)}</div><div class="tiny muted">Uses the eval rules built into KAIROS (end-of-day trailing drawdown that stops at your starting balance, target, consistency). Replay results, not a promise.</div>`; }
+  $("lf-plan").onchange = () => { prefs.lfPlan = $("lf-plan").value; savePrefs(); lfUI(tr); }; }
