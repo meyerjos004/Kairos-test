@@ -2338,3 +2338,17 @@ async function getApp() { const ua = navigator.userAgent, ios = /iPhone|iPad|iPo
   setTimeout(() => { const ok = $("dl-ok"); if (ok) ok.textContent = "Done"; const x = $("dl-x"); if (x) x.style.display = "none"; const b = $("ga-pwa"); if (b) b.onclick = async () => { _bip.prompt(); await _bip.userChoice; _bip = null; }; }, 0); }
 $("a-get") && ($("a-get").onclick = getApp); $("s-get") && ($("s-get").onclick = getApp);
 if (new URLSearchParams(location.search).has("get")) setTimeout(getApp, 1200);
+
+/* KING_CSGRID (Nov 12, Will's fix, King: "a grid of colors, not presets"): every color in Chart settings opens the same color grid as the
+   drawing pencil (grays + 10 hues x 6 shades + My colors + custom picker). The hidden color input underneath still carries the value. */
+function csSwatches() { document.querySelectorAll("#chartset input.csc").forEach((inp) => { if (inp._sw) return; const b = document.createElement("button"); b.type = "button"; b.className = "cssw"; b.title = "Pick a color";
+    inp.after(b); inp._sw = b; inp.classList.add("csc-h"); const sync = () => { b.style.background = inp.value; }; sync(); inp.addEventListener("input", sync); inp.addEventListener("change", sync); inp._sync = sync;
+    b.onclick = (e) => { e.stopPropagation(); csColPop(inp, b); }; }); document.querySelectorAll("#chartset input.csc").forEach((i) => i._sync && i._sync()); }
+function csColPop(inp, btn) { document.getElementById("cspop")?.remove(); const el = document.createElement("div"); el.id = "cspop"; el.className = "cspop dtb"; el.innerHTML = `<div class="dcols">${colGrid(inp.value)}</div>`; document.body.appendChild(el);
+  const r = btn.getBoundingClientRect(); el.style.left = Math.max(8, Math.min(innerWidth - el.offsetWidth - 8, r.left - 10)) + "px"; el.style.top = (r.bottom + el.offsetHeight + 8 > innerHeight ? r.top - el.offsetHeight - 6 : r.bottom + 6) + "px";
+  const set = (v) => { inp.value = v; inp.dispatchEvent(new Event("input", { bubbles: true })); inp.dispatchEvent(new Event("change", { bubbles: true })); };
+  el.addEventListener("click", (e) => { const c = e.target.closest("[data-c]"); if (!c) return; set(c.dataset.c); close(); });
+  el.addEventListener("change", (e) => { if (e.target.id !== "cpick") return; const v = e.target.value; prefs.myCols = [v, ...(prefs.myCols || []).filter((x) => x !== v)].slice(0, 10); savePrefs(); set(v); close(); });
+  el.addEventListener("contextmenu", (e) => { const b = e.target.closest("[data-my]"); if (!b) return; e.preventDefault(); prefs.myCols = (prefs.myCols || []).filter((x) => x !== b.dataset.c); savePrefs(); close(); csColPop(inp, btn); });
+  const close = () => { el.remove(); removeEventListener("pointerdown", out, true); }, out = (e) => { if (!el.contains(e.target) && e.target !== btn) close(); }; setTimeout(() => addEventListener("pointerdown", out, true), 0); }
+$("chartsetbtn").addEventListener("click", () => setTimeout(csSwatches, 0)); csSwatches();
