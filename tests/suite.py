@@ -342,6 +342,26 @@ async def main():
         await E("prefs.tips=true; kTipNow()"); check("tip shows", await E("!$('fxb-tip').classList.contains('hidden') && $('fxb-tt').textContent.length>10"))
         await E("$('fxb-toff').click()"); check("tips switch off", await E("prefs.tips===false && $('fxb-tip').classList.contains('hidden')"))
         check("no page errors", not errs, errs[:3])
+        # upgrade path (Nov 12): a friend's prefs saved by the live build (main 0e919b0) have none of tonight's fields
+        errs.clear()
+        OLD = """{ bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
+  lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false, ind: { ...IND_DEF }, dockH: 150, favs: ["trend", "hline", "rect", "long", "short"], favShow: true, favPos: null, toolsPos: null }"""
+        await E("""(() => { const old = Object.assign(%s, { theme: prefs.theme, magnet: true, media: { tab: "yt", x: 120, y: 90 }, quiz: { n: 12, right: 7, streak: 2, best: 4 } });
+          Object.keys(prefs).forEach((k) => delete prefs[k]); Object.assign(prefs, old);
+          tfUI(); favUI(); if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); speedBestUI(); })()""" % OLD)
+        await pg.wait_for_timeout(200)
+        check("upgrade: rail renders default width", await E("document.getElementById('tools').getBoundingClientRect().width > 30"))
+        check("upgrade: magnet shows Weak when old magnet was on", await E("!!document.querySelector('[data-mag=weak].on')"))
+        check("upgrade: no playlist pill", await E("document.getElementById('plpill').classList.contains('hidden')"))
+        check("upgrade: no speed best text", await E("document.getElementById('qz-best').textContent === ''"))
+        await pg.click("#chartsetbtn"); await pg.wait_for_timeout(200)
+        for t in ["scales", "canvas", "sync", "sym"]:
+            await pg.click('.csnav [data-cst="%s"]' % t); await pg.wait_for_timeout(80)
+        check("upgrade: chart settings tabs all open", await E("!document.querySelector('[data-csp=sym]').classList.contains('hidden') && document.getElementById('cs-grid').value === 'both'"))
+        await pg.click("#cs-x"); await E("view('stats')"); await pg.wait_for_timeout(500)
+        check("upgrade: LucidFlex check renders", await E("document.getElementById('st-lf').innerHTML.length > 20"))
+        await E("view('trade')")
+        check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
 # static: no two functions share a name (a later one silently replaces the first, like speedUI on Nov 12), no duplicate ids in index.html
