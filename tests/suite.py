@@ -344,4 +344,11 @@ async def main():
         check("no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
+# static: no two functions share a name (a later one silently replaces the first, like speedUI on Nov 12), no duplicate ids in index.html
+import re, collections
+_src = open(ROOT + "/app.js").read(); _html = open(ROOT + "/index.html").read()
+_dupf = [k for k, v in collections.Counter(re.findall(r"(?:^|[^.\w$])function\s+([\w$]+)\s*\(", _src)).items() if v > 1]
+check("no duplicate function names in app.js", not _dupf, _dupf)
+_dupi = [k for k, v in collections.Counter(re.findall(r'\sid="([^"]+)"', _html)).items() if v > 1]
+check("no duplicate ids in index.html", not _dupi, _dupi)
 print("PASS %d  FAIL %d" % (len(OK), len(FAIL))); print("\n".join("FAIL " + f for f in FAIL))
