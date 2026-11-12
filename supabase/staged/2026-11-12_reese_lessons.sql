@@ -7,3 +7,5 @@ update public.reese_videos set lesson = 'With 1H bias bullish, waited for price 
 update public.reese_videos set lesson = 'Went long after price swept the lows below 9:30 and closed back above, stop at the low, target the 1H gap.' where id = '-PivY4oZ-YI';
 update public.reese_videos set lesson = 'Shorted after the 30m FVG tap once a 15s FVG held with a bearish close, stop above the protected high.' where id = 'FL-RzYalzPM';
 -- k_X9E-Yj3u0 (Making $15,265): no transcript file yet, no lesson.
+-- Reviewed Nov 12 01:55 MT: all 6 ids exist live, lesson column not there yet, safe to run twice. The app reads reese_videos
+-- with select("*"), so pushing the app before or after this file both work (no lesson = no line shown).

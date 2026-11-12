@@ -19,3 +19,9 @@ create trigger profiles_name_from_allowlist before insert on public.profiles for
 -- Existing profiles that still carry an email handle get fixed too:
 update public.profiles p set name = a.name from public.allowlist a join auth.users u on lower(u.email) = lower(a.email)
  where u.id = p.user_id and a.name is not null and p.name is distinct from a.name and p.name ~ '^[a-z0-9._]+$';
+-- Reviewed Nov 12 01:55 MT against live schema (read-only): safe to run twice (add column if not exists, plain updates,
+-- create or replace + drop/create trigger). profiles.user_id defaults to auth.uid(), which Postgres fills before BEFORE INSERT
+-- triggers, so the lookup works for the app's insert({ name }) call. Trigger runs as definer, so the allowlist SELECT policy
+-- (own row only) doesn't block it. Only fires on new profile rows; the catch-up update only touches lowercase handles, so
+-- King's existing profile name "Josh" is left alone (his allowlist name 'King' only matters for a brand-new profile).
+-- Today: Will has signed in but has no profile yet (gets "Will" on next sign-in); Ben and Ryan haven't signed in.
