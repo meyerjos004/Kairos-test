@@ -1721,10 +1721,19 @@ let dtbP = null, dtbT = 0;
 function dtbShow(p) { const d = hov || sel, el = $("dtb"); clearTimeout(dtbT); if (!d) { dtbT = setTimeout(() => { if (!el.matches(":hover") && !(hov || sel)) el.classList.add("hidden"); }, 450); return; }
   dtbP = p; el.dataset.id = d.id; const r = p.el.getBoundingClientRect(), x1 = xOf(p, d.a.t), x2 = xOf(p, d.b.t), y = d.type === "long" || d.type === "short" ? yOf(p, Math.max(d.entry, d.sl, d.tp)) : Math.min(yOf(p, d.a.p) ?? 1e9, yOf(p, d.b.p) ?? 1e9);
   const pos = d.type === "long" || d.type === "short";
-  el.innerHTML = (pos ? "" : DCOL.map((c) => `<button class="dc ${d.color === c ? "on" : ""}" data-c="${c}" style="background:${c}" title="Color"></button>`).join("") + '<i class="dsep"></i>' +
-    [1, 2, 3].map((w) => `<button data-w="${w}" class="${(d.w || 1.4) === w ? "on" : ""}" title="Thickness ${w}"><b style="height:${w}px"></b></button>`).join("") + '<i class="dsep"></i>' +
-    [["solid", "—"], ["dash", "– –"], ["dot", "···"]].map(([k, s]) => `<button data-dash="${k}" class="${(d.dash || "solid") === k ? "on" : ""}" title="Line style">${s}</button>`).join("") + '<i class="dsep"></i>') +
-    (pos ? "" : `<button data-act="label" class="dlab" title="Label: quick tags or your own text">Aa</button><button data-act="preset" title="Presets (PDH, FVG, OB…)">★</button>`) + `<button data-act="set" title="Settings">⚙</button><button data-act="lock" title="${d.locked ? "Unlock" : "Lock"}">${d.locked ? "🔒" : "🔓"}</button><button data-act="del" title="Delete">🗑</button>`;
+  // KING_DTB (Nov 12, King's Tradesea shot): grip · pencil (color) · T (label) · width · style · ★ · ⚙ · lock · trash, with line-art icons
+  const SV = (path) => `<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${path}</svg>`;
+  const curC = /^#/.test(d.color || "") ? d.color : "#2962ff", curW = d.w || 1.4, curD = d.dash || "solid";
+  el.innerHTML = '<span class="dgrip" aria-hidden="true">⋮⋮</span>' + (pos ? "" :
+    `<button data-act="col" class="dico" title="Line color">${SV('<path d="M15 4l5 5L9 20H4v-5z"/>')}<i class="dund" style="background:${curC}"></i></button>` +
+    `<button data-act="label" class="dico" title="Label: quick tags or your own text">${SV('<path d="M6 5h12M12 5v14"/>')}<i class="dund" style="background:${d.label ? curC : "transparent"}"></i></button>` +
+    `<button data-act="wcyc" class="dtxt" title="Line width"><b style="height:${Math.min(3, Math.round(curW))}px"></b>${Math.max(1, Math.round(curW))}px</button>` +
+    `<button data-act="dcyc" class="dtxt" title="Line style"><b class="dln ${curD}"></b></button>` +
+    '<i class="dsep"></i>' + `<button data-act="preset" class="dico" title="Presets (PDH, FVG, OB…)">${SV('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z"/>')}</button>`) +
+    `<button data-act="set" class="dico" title="Settings">${SV('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3h0a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8v0a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/>')}</button>` +
+    `<button data-act="lock" class="dico ${d.locked ? "on" : ""}" title="${d.locked ? "Unlock" : "Lock"}">${SV(d.locked ? '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>' : '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 017.6-1.7"/>')}</button>` +
+    `<button data-act="del" class="dico" title="Delete">${SV('<path d="M5 7h14M9 7V4.5h6V7M7 7l1 13h8l1-13"/>')}</button>` +
+    (pos ? "" : `<div class="dcols hidden">${DCOL.map((c) => `<button class="dc ${d.color === c ? "on" : ""}" data-c="${c}" style="background:${c}" title="${c}"></button>`).join("")}</div>`);
   el.classList.remove("hidden"); const tw = el.offsetWidth, cx = r.left + ((x1 ?? 0) + (x2 ?? x1 ?? 0)) / 2, ty = r.top + (y < 1e8 ? y : 40) - 46;
   el.style.left = Math.max(r.left + 4, Math.min(r.right - tw - 70, cx - tw / 2)) + "px"; el.style.top = Math.max(r.top + 4, ty) + "px"; }
 /* confluence presets: named styles per tool (color, width, dash, fill, label), one tap to apply, optional default for new drawings */
@@ -1901,7 +1910,7 @@ $("s-lockgo").onclick = () => { let v = $("s-lock").value; if (v === "0") return
 $("s-speed").onclick = (e) => { const b = e.target.closest("[data-sp]"); if (!b) return; prefs.speed = b.dataset.sp; savePrefs(); speedUI(); };
 $("pbe").onclick = beNow; $("pcan").onclick = () => { cancelAll(); snd("cancel"); }; $("pflat").onclick = flatten; $("pclose2").onclick = () => closeAll(); $("prev2").onclick = reverse;
 $("dtb").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const d = drawings.find((z) => z.id === +$("dtb").dataset.id); if (!d) return;
-  if (b.dataset.c) d.color = b.dataset.c; else if (b.dataset.w) d.w = +b.dataset.w; else if (b.dataset.dash) d.dash = b.dataset.dash;
+  if (b.dataset.act === "col") { $("dtb").querySelector(".dcols").classList.toggle("hidden"); return; } if (b.dataset.act === "wcyc") { const W = [1, 2, 3, 4], k = W.indexOf(Math.round(d.w || 1.4)); d.w = W[(k + 1) % W.length]; } else if (b.dataset.act === "dcyc") { const D = ["solid", "dash", "dot"]; d.dash = D[(D.indexOf(d.dash || "solid") + 1) % 3]; } else if (b.dataset.c) d.color = b.dataset.c; else if (b.dataset.w) d.w = +b.dataset.w; else if (b.dataset.dash) d.dash = b.dataset.dash;
   else if (b.dataset.act === "set") { $("dtb").classList.add("hidden"); return toolSettings(d); } else if (b.dataset.act === "preset") { const r = b.getBoundingClientRect(); return presetMenu(d, r.left, r.bottom + 4); } else if (b.dataset.act === "label") { const r = b.getBoundingClientRect(); return labelPop(d, r); } else if (b.dataset.act === "lock") d.locked = !d.locked;
   else if (b.dataset.act === "del") { disarmTool(d); drawings = drawings.filter((z) => z !== d); if (sel === d) sel = null; if (hov === d) hov = null; $("dtb").classList.add("hidden"); repaintAll(); return; }
   repaintAll(); sel = d; dtbShow(dtbP); };

@@ -434,3 +434,12 @@ body.fxshake #app{animation:shk .45s cubic-bezier(.36,.07,.19,.97)}@keyframes sh
  .toast{bottom:76px}
 }
 .vc .vlesson{display:block;margin-top:4px;font:500 11.5px/1.35 Inter,sans-serif;color:#b9b0ff;white-space:normal;text-align:left}
+/* KING_DTB: floating drawing toolbar like Tradesea's */
+.dtb{background:#1d2027;border-color:rgba(255,255,255,.07);border-radius:8px;padding:3px 6px;gap:1px;flex-wrap:wrap;max-width:420px}
+.dtb .dgrip{color:#5d6675;font-size:11px;letter-spacing:-2px;padding:0 6px 0 2px;cursor:grab;user-select:none}
+.dtb button.dico{position:relative;width:32px;height:30px;padding:0}
+.dtb .dund{position:absolute;left:8px;right:8px;bottom:3px;height:3px;border-radius:2px}
+.dtb button.dtxt{height:30px;gap:6px;display:flex;align-items:center;padding:0 8px;font:500 12.5px Inter,sans-serif;color:#c9d2df}
+.dtb button.dtxt b{width:14px}
+.dtb .dln{width:18px!important;height:0!important;border-top:2px solid currentColor;background:none!important}.dtb .dln.dash{border-top-style:dashed}.dtb .dln.dot{border-top-style:dotted}
+.dtb .dcols{display:flex;align-items:center;gap:2px;width:100%;padding:4px 2px 2px;border-top:1px solid rgba(255,255,255,.06);margin-top:2px}.dtb .dcols.hidden{display:none}
