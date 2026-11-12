@@ -1653,7 +1653,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { railUI(); gridApply(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().catch(() => {}); }   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
@@ -2148,3 +2148,5 @@ async function plGo(i) { const P = prefs.pl; if (!P || i >= P.days.length) retur
 $("plbtn") && ($("plbtn").onclick = (e) => { const r = e.target.getBoundingClientRect(), mk = (name, kind) => ({ t: name, f: () => { prefs.pl = { name, days: plDays(kind), i: 0 }; savePrefs(); plGo(0); } });
   menu([{ h: "Session playlist (10 days)" }, mk("Random days", "any"), mk("News days (CPI, jobs, FOMC)", "news"), mk("Mondays", "mon"), mk("Fridays", "fri"), prefs.pl ? "-" : null, prefs.pl ? { t: "End playlist", f: () => { prefs.pl = null; savePrefs(); plUI(); } } : null].filter(Boolean), r.left, r.bottom + 4); });
 setTimeout(() => { try { plUI(); } catch (e) {} }, 0);
+// KING_IPHONE: the Trade view is the start view, so the replay controls show before any tab is tapped
+if (![...document.body.classList].some((c) => c.startsWith("v-"))) document.body.classList.add("v-trade");
