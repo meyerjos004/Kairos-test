@@ -115,7 +115,7 @@ header.top{height:46px;flex:none;display:flex;align-items:center;gap:18px;paddin
 .lots{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin:6px 0}.lots button{padding:4px 0;font:600 12px var(--mono)}.lots button.on{background:rgba(94,230,184,.16);border-color:rgba(94,230,184,.5);color:var(--acc)}
 .padpos{font:11.5px var(--mono);color:var(--mut);padding-top:7px;text-align:center}
 .menu{background:rgba(18,22,29,.96);border:1px solid rgba(255,255,255,.09);box-shadow:0 14px 40px rgba(0,0,0,.45)}
-.demo{top:auto;bottom:52px}
+.demo{top:auto;bottom:52px;white-space:nowrap}
 @media (max-width:1500px){.kv:nth-of-type(4){display:none}}@media (max-width:1250px){.kv:nth-of-type(2){display:none}.replay input[type=datetime-local]{width:150px}}
 @media (max-width:900px){html,body{overflow:auto}#app{flex-direction:column;height:auto}.rail{flex-direction:row;width:auto;height:48px;padding:0 8px}.rsp{flex:1}header.top{flex-wrap:wrap;height:auto;padding:6px}.view{height:auto}.work{flex-direction:column}.tools{flex-direction:row;width:auto;height:44px;justify-content:center;flex-wrap:wrap}.charts{height:62vh}.side{width:auto}.tbar{overflow-x:auto}}
 

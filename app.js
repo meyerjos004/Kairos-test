@@ -1653,7 +1653,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
+  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); speedBestUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().catch(() => {}); }   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
@@ -2104,14 +2104,14 @@ function mfeLine(t) { const m = mfeStats(t); if (!m) return ""; const R = (x) =>
 
 /* KING_SPEED (Nov 12, night ideas): speed run = 10 take-or-fade setups in 5 minutes, scored, best kept */
 let SPD = null, spdT = null;
-function speedUI() { const b = (prefs.quiz || {}).speedBest; if ($("qz-best")) $("qz-best").textContent = b ? `Best speed run: ${b.right}/10 in ${Math.floor(b.secs / 60)}:${String(b.secs % 60).padStart(2, "0")}` : ""; }
+function speedBestUI() { const b = (prefs.quiz || {}).speedBest; if ($("qz-best")) $("qz-best").textContent = b ? `Best speed run: ${b.right}/10 in ${Math.floor(b.secs / 60)}:${String(b.secs % 60).padStart(2, "0")}` : ""; }
 function speedTick() { if (!SPD) return; const left = Math.max(0, Math.round((SPD.end - Date.now()) / 1000)); $("qz-clock").textContent = `⚡ ${SPD.n}/10 · ${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`; if (!left) speedEnd(); }
 function speedEnd() { if (!SPD) return; clearInterval(spdT); const secs = Math.round((Math.min(Date.now(), SPD.end) - SPD.t0) / 1000), r = SPD.right; SPD = null; $("qz-clock").classList.add("hidden");
-  const q = prefs.quiz || (prefs.quiz = { n: 0, right: 0, streak: 0, best: 0 }), b = q.speedBest; const better = !b || r > b.right || (r === b.right && secs < b.secs); if (better) q.speedBest = { right: r, secs }; savePrefs(); speedUI();
+  const q = prefs.quiz || (prefs.quiz = { n: 0, right: 0, streak: 0, best: 0 }), b = q.speedBest; const better = !b || r > b.right || (r === b.right && secs < b.secs); if (better) q.speedBest = { right: r, secs }; savePrefs(); speedBestUI();
   quizStop(); view("learn"); toast(`⚡ Speed run: ${r}/10 right in ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}${better ? " · new best!" : ""}`); if (better && r >= 7) addXp(20); }
 $("qz-speed") && ($("qz-speed").onclick = async () => { SPD = { n: 0, right: 0, t0: Date.now(), end: Date.now() + 5 * 60 * 1000 }; $("qz-clock").classList.remove("hidden"); clearInterval(spdT); spdT = setInterval(speedTick, 500); speedTick(); await quizNext(); });
 (() => { const qa = quizAnswer; window.quizAnswer = quizAnswer = async function (take) { const it = QZ && QZ.it; await qa(take); if (!SPD || !it) return; SPD.n++; if ((it.outcome === "win") === take) SPD.right++; speedTick(); if (SPD.n >= 10) return setTimeout(speedEnd, 900); setTimeout(() => SPD && quizNext(), 1100); }; })();
-setTimeout(() => { try { speedUI(); } catch (e) {} }, 0);
+setTimeout(() => { try { speedBestUI(); } catch (e) {} }, 0);
 
 /* KING_APLUS (Nov 12, night ideas): A+ only mode — with it on, a new trade is blocked until a strategy is picked and every one of its rules is ticked */
 function aplusOk() { const s = curStrat(); if (!s) { toast("🅰️ A+ only: pick a strategy in the Checklist first"); if (!prefs.chkShow) { prefs.chkShow = true; chkUI(); } return false; }
