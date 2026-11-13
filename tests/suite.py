@@ -241,7 +241,7 @@ async def main():
         await E("document.getElementById('kintro')?.dispatchEvent(new PointerEvent('pointerdown'))"); await pg.wait_for_timeout(1200)
         check("launch intro skips on click", await E("!document.getElementById('kintro') && introOn===false"))
         await E("buildFx('test')"); await pg.wait_for_timeout(500); check("chart build overlay runs", await E("!!document.getElementById('kbuild')"))
-        await pg.wait_for_timeout(3600); check("chart build ends and shows the charts", await E("!document.getElementById('kbuild') && $('charts').style.opacity===''"))
+        await pg.wait_for_timeout(7000); check("chart build ends: nothing left hidden, candles back", await E("!document.getElementById('kbuild') && ![...document.querySelectorAll('#app [style*=\"opacity: 0\"]')].length && panes.every(p => p.series.options().visible && p.series.data().length > 0)"))
         # Beta welcome cinematic + onboarding tour
         await E("view('trade'); welcomeIntro(true)"); await pg.wait_for_timeout(300)
         check("welcome gate shows", await E("!!document.getElementById('welcome') && $('w-go').offsetParent!==null"))
