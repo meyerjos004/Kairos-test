@@ -121,9 +121,10 @@ const openPnlAll = () => { let v = openPnl(); for (const s of otherSyms()) v += 
 const storeOf = (s) => (s === sym ? B : X[s] || B);
 async function loadOthers() { for (const k of Object.keys(X)) delete X[k]; if (!months || !months.size) return;
   for (const s of [...new Set([...panes.map(paneSym), ...otherSyms().filter((k) => CTX[k].pos.qty || CTX[k].orders.length), ...(smtOn() ? [smtPartner(sym)] : [])])].filter((s) => s && s !== sym && INST[s])) { const st = (X[s] = { "1m": { bars: [], i: -1 }, "15s": { bars: [], i: -1 } });
-    for (const tf of ["1m", "15s"]) { if (tf === "15s" && !need15) continue; st[tf].bars = (await Promise.all([...months].sort().map((m) => loadMonth(INST[s].data, tf, m)))).flat().sort((a, b) => a.t - b.t); } }
+    for (const tf of ["1m", "15s"]) { if (tf === "15s" && !need15) continue; st[tf].bars = (await Promise.all(tfMonths(tf).map((m) => loadMonth(INST[s].data, tf, m)))).flat().sort((a, b) => a.t - b.t); } }
   advOthers(); }
 function advOthers() { const out = {}; for (const s of Object.keys(X)) { out[s] = { "1m": [], "15s": [] }; for (const tf of ["1m", "15s"]) { const b = X[s][tf]; while (b.bars[b.i + 1] && b.bars[b.i + 1].t <= cursorT) { b.i++; out[s][tf].push(b.bars[b.i]); } while (b.i >= 0 && b.bars[b.i].t > cursorT) b.i--; } } return out; }
+const tfMonths = (tf) => { const a = [...months].sort(); return tf === "15s" ? a.slice(-3) : a; };   // KING_6MO: 15s only needs the months near the cursor
 let need15 = false, lock15 = false, cursorT = 0, sym = "NQ", inst = INST.NQ, timer = null, months = new Set(), sess = null;
 const paneSec = (i) => SEC[prefs.tfs[i] || "5m"];
 function lastBar() { const a = B["1m"].bars[B["1m"].i], b = need15 ? B["15s"].bars[B["15s"].i] : null; if (!a) return b; if (!b) return a; return b.t >= a.t ? b : a; }
@@ -134,8 +135,8 @@ async function loadReplay() { try { execs.length = 0; } catch (e) {}
   for (const k of Object.keys(CTX)) delete CTX[k];
   sym = $("sym").value; prefs.syms = prefs.syms || []; if (!(prefs.sync && prefs.sync.sym)) { prefs.syms[active] = sym; panes.forEach((p) => { if (!prefs.syms[p.i]) prefs.syms[p.i] = sym; }); } inst = INST[sym]; need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
   const s = $("start").value; if (!s) return toast("Pick a start date and time"); if (!DEMO && !blind) { prefs.lastStart = s; prefs.lastSym = $("sym").value; savePrefs(); } const t0 = nyToUtc(s), ym = ymOf(t0);
-  toast("Loading " + sym + "…"); months = new Set([addM(ym, -1), ym, addM(ym, 1)]);
-  for (const tf of ["1m", "15s"]) { B[tf].bars = []; B[tf].i = -1; if (tf === "15s" && !need15) continue; B[tf].bars = (await Promise.all([...months].sort().map((m) => loadMonth(inst.data, tf, m)))).flat().sort((a, b) => a.t - b.t); }
+  toast("Loading " + sym + "…"); months = new Set([-6, -5, -4, -3, -2, -1, 0, 1].map((k) => addM(ym, k)));   // KING_6MO: 6 months of history behind the start
+  for (const tf of ["1m", "15s"]) { B[tf].bars = []; B[tf].i = -1; if (tf === "15s" && !need15) continue; B[tf].bars = (await Promise.all(tfMonths(tf).map((m) => loadMonth(inst.data, tf, m)))).flat().sort((a, b) => a.t - b.t); }
   if (!B["1m"].bars.length) return toast("No data for that month");
   if (need15 && !B["15s"].bars.length) toast("No 15s data around that date (15s covers NY mornings). 15s and 30s panes will be empty.");
   cursorT = t0 - 1; for (const tf of ["1m", "15s"]) { const bs = B[tf].bars; let k = -1; for (let j = 0; j < bs.length && bs[j].t <= cursorT; j++) k = j; B[tf].i = k; }
@@ -1565,7 +1566,7 @@ async function nImportUI(s) {
 }
 async function nImport(quiet) {
   if (!quiet) $("n-impinfo").textContent = "Importing…";
-  try { const r = await notion("import"); realTrades = r.trades.map((x) => ({ t: realUnix(x), sym: symRoot(x.symbol), side: x.side, entry: x.entry, exit: x.exit, pnl: x.pnl, qty: x.qty, title: x.title, url: x.url })).filter((x) => x.t);
+  try { const r = await notion("import"); const _seen = new Set(); realTrades = r.trades.map((x) => ({ t: realUnix(x), sym: symRoot(x.symbol), side: x.side, entry: x.entry, exit: x.exit, pnl: x.pnl, qty: x.qty, title: x.title, url: x.url })).filter((x) => { if (!x.t) return false; const k = x.url || [x.t, x.side, x.pnl, x.entry].join("|"); if (_seen.has(k)) return false; _seen.add(k); return true; });   // KING_REALMARKS: no duplicate rows
     localStorage.setItem(RKEY(), JSON.stringify(realTrades)); localStorage.setItem(RKEY() + "-t", Date.now());
     $("n-impinfo").textContent = realTrades.length + " real trades loaded" + (r.trades.length > realTrades.length ? ` (${r.trades.length - realTrades.length} skipped: no date)` : ""); panes.forEach((p) => p && (p._mkk = null));
   } catch (e) { $("n-impinfo").textContent = "Import: " + e.message; }
@@ -1575,9 +1576,9 @@ async function notionUI() {
   try { const s = await notion("status"); $("n-oauth").classList.remove("hidden");
     if (!s.connected) { $("n-state").textContent = ""; notionAuto = false; return show("n-connect"); }
     $("n-state").innerHTML = "Connected to <b>" + (s.workspace || "Notion") + "</b>";
-    if (!s.db) { nImportUI(s).catch(() => {}); show("n-setup"); const r = await notion("pages"); $("n-pages").innerHTML = r.pages.length ? r.pages.map((p) => `<option value="${p.id}">${p.title}</option>`).join("") : "<option value=''>No pages shared yet. Add your integration to a page first</option>"; return; }
+    if (!s.db) { nImportUI(s).catch((e) => { $("n-impinfo").textContent = "Couldn't list your Notion databases: " + e.message; }); show("n-setup"); const r = await notion("pages"); $("n-pages").innerHTML = r.pages.length ? r.pages.map((p) => `<option value="${p.id}">${p.title}</option>`).join("") : "<option value=''>No pages shared yet. Add your integration to a page first</option>"; return; }
     show("n-ready"); $("n-open").href = s.db_url; $("n-auto").checked = s.auto_sync; notionAuto = s.auto_sync;
-    nImportUI(s).catch(() => {});
+    nImportUI(s).catch((e) => { $("n-impinfo").textContent = "Couldn't list your Notion databases: " + e.message; });
   } catch (e) { $("n-state").textContent = DEMO ? "Not connected (demo)" : "Notion: " + e.message; show("n-connect"); }
 }
 const nmsg = (m) => ($("n-msg").textContent = m);
@@ -2481,7 +2482,9 @@ function dayRecap(last) { if (!realTrades.length || prefs.showReal === false) re
   toast(`📒 Day done. Real: ${real.length} trade${real.length > 1 ? "s" : ""}${real.some((x) => x.pnl != null) ? " " + money(rp) : ""}${bt.length ? ` · Backtest: ${bt.length} ${money(bp)}` : ""}`); }
 function csMarks(p) { const C = csG(); const s = paneSym(p), last = p.candles.length ? p.candles[p.candles.length - 1].time : -1;
   const mk = !C.exm ? [] : execs.filter((x) => x.sym === s).map((x) => ({ time: bucket(loc(x.t), p.sec), position: x.side > 0 ? "belowBar" : "aboveBar", color: x.side > 0 ? "#2bd4a0" : "#ff6b7a", shape: x.side > 0 ? "arrowUp" : "arrowDown", text: C.exl ? `${x.side > 0 ? "B" : "S"} ${x.qty} @ ${px2(x.price)}` : "" })).filter((m) => m.time <= last);
-  if (prefs.showReal !== false && realTrades.length) for (const r of realTrades) { if (r.sym && r.sym !== symRoot(s)) continue; const lt = loc(r.t), dayEnd = Math.floor(lt / 86400) * 86400 + 17 * 3600; if (dayEnd > last) continue;
+  const first = p.candles.length ? p.candles[0].time : Infinity, seenR = new Set();   // KING_REALMARKS: skip trades before the loaded data (they piled on the first candle) + duplicates
+  if (prefs.showReal !== false && realTrades.length) for (const r of realTrades) { if (r.sym && r.sym !== symRoot(s)) continue; const lt = loc(r.t), dayEnd = Math.floor(lt / 86400) * 86400 + 17 * 3600; if (dayEnd > last || bucket(lt, p.sec) < first) continue;
+    const rk = r.url || [r.t, r.side, r.pnl, r.entry].join("|"), rk2 = [r.t, r.side, r.pnl].join("|"); if (seenR.has(rk) || seenR.has(rk2)) continue; seenR.add(rk); seenR.add(rk2);
     mk.push({ time: bucket(lt, p.sec), position: r.side < 0 ? "aboveBar" : "belowBar", color: "#f5c542", shape: "circle", text: "Real" + (r.side ? (r.side > 0 ? " L" : " S") : "") + (r.pnl != null ? " " + (r.pnl >= 0 ? "+" : "") + Math.round(r.pnl) : "") }); }
   dayRecap(last);
   mk.sort((a, b) => a.time - b.time); const key = mk.length + "|" + C.exl + "|" + p.sec; if (p._mkk === key) return; p._mkk = key; p._mk = mk.length; try { p.series.setMarkers(mk); } catch (e) {} }
