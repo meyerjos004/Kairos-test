@@ -1629,58 +1629,84 @@ function splash(force) {   // launch intro (Settings → "Intro animation when t
     setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 250); };
   el.addEventListener("pointerdown", end); addEventListener("keydown", function k(e) { if (e.key === "Escape" || e.key === " " || e.key === "Enter") { removeEventListener("keydown", k); end(); } }); }
 splash();
-/* chart build: colored cursors swim in, draw every pane's frame, axes, grid, candles and price label as glowing wireframes, then the real chart fades up */
+/* chart build (KING_BUILD v2): colored cursors swim in and build every piece of the screen except the candles; each piece pops in as its
+   outline finishes. When the scaffolding is done the candles play themselves into existence left to right and the cursors swim away. */
 let builtOnce = false;
-function buildFx(full) { if (prefs.chartfx === false || (navigator.webdriver && full !== "test")) return; const host = $("charts"); if (!host) return;
-  host.style.transition = "none"; host.style.opacity = "0"; afterIntro(() => requestAnimationFrame(() => runBuild(full !== false))); }
-function runBuild(full) { const host = $("charts"); if (!host || document.getElementById("kbuild")) return; const R = host.getBoundingClientRect(); if (!R.width) { host.style.opacity = ""; return; }
-  const D = Math.min(devicePixelRatio || 1, 2), cv = document.createElement("canvas"); cv.id = "kbuild"; Object.assign(cv.style, { left: R.left + "px", top: R.top + "px", width: R.width + "px", height: R.height + "px" });
-  cv.width = R.width * D; cv.height = R.height * D; document.body.appendChild(cv); const g = cv.getContext("2d"); g.scale(D, D);
-  const L = [], np = panes.length || 1, perPane = Math.max(12, Math.floor((full ? 200 : 110) / np));
-  panes.forEach((p) => { const r = p.el.getBoundingClientRect(), ox = r.left - R.left, oy = r.top - R.top, w = r.width, h = r.height; if (w < 40) return;
-    let aw = 62; try { aw = p.chart.priceScale("right").width() || 62; } catch (e) {} const th = 26;
-    L.push({ k: "rect", x: ox + 2, y: oy + 2, w: w - 4, h: h - 4, z: 0 }, { k: "line", x: ox + w - aw, y: oy + 2, w: 0, h: h - 4, z: 1 }, { k: "line", x: ox + 2, y: oy + h - th, w: w - 4, h: 0, z: 1 });
-    for (let i = 1; i <= 4; i++) L.push({ k: "line", x: ox + 4, y: oy + (h - th) * i / 5, w: w - aw - 8, h: 0, z: 2, dash: 1 });
-    let cs = []; try { const data = p.series.data ? p.series.data() : [], ts = p.chart.timeScale(), lr = ts.getVisibleLogicalRange(); if (data.length && lr) { const a = Math.max(0, Math.floor(lr.from)), b = Math.min(data.length - 1, Math.ceil(lr.to)), step = Math.max(1, Math.ceil((b - a + 1) / perPane));
-      for (let i = a; i <= b; i += step) { const d = data[i]; if (d.open == null) continue; const x = ts.logicalToCoordinate(i), yo = p.series.priceToCoordinate(d.open), yc = p.series.priceToCoordinate(d.close), yh = p.series.priceToCoordinate(d.high), yl = p.series.priceToCoordinate(d.low);
-        if ([x, yo, yc, yh, yl].some((v) => v == null || !isFinite(v)) || x < 0 || x > w - aw) continue; const bw = Math.max(3, Math.min(14, (w - aw) / ((b - a + 1) / step) * 0.6));
-        cs.push({ k: "rect", x: ox + x - bw / 2, y: oy + Math.min(yo, yc), w: bw, h: Math.max(2, Math.abs(yc - yo)), z: 3, wk: [oy + yh, oy + yl], cx: ox + x, up: d.close >= d.open }); } } } catch (e) {}
-    if (!cs.length) for (let i = 0; i < perPane; i++) { const x = ox + 10 + (w - aw - 20) * i / perPane, y = oy + h * (0.3 + 0.35 * Math.sin(i / 5) + Math.random() * 0.08); cs.push({ k: "rect", x, y, w: 6, h: 6 + Math.random() * 18, z: 3, wk: [y - 6, y + 30], cx: x + 3, up: Math.random() > 0.5 }); }
-    L.push(...cs, { k: "rect", x: ox + w - aw + 2, y: oy + h * 0.45, w: aw - 6, h: 16, z: 4, tag: 1 }); });
-  L.forEach((l) => (l.r = Math.random())); L.sort((a, b) => Math.min(a.z, 3) - Math.min(b.z, 3) || a.r - b.r);
-  L.forEach((l) => { l.per = l.k === "line" ? Math.abs(l.w) + Math.abs(l.h) : 2 * (l.w + l.h); l.p = 0; });
-  const COL = ["#ff5a6e", "#48d6ff", "#8b5cf6", "#46e08c", "#ffd24a", "#4b7bff", "#ff8a3d", "#e86bff"], NA = full ? 24 : 14, T = full ? 2.6 : 1.35;
-  const A = Array.from({ length: NA }, (_, i) => { const e = i % 4, rx = Math.random() * R.width, ry = Math.random() * R.height; return { x: e === 0 ? -20 : e === 1 ? R.width + 20 : rx, y: e === 2 ? -20 : e === 3 ? R.height + 20 : ry, vx: 0, vy: 0, c: COL[i % COL.length], job: null, ph: Math.random() * 6.28, h: 0 }; });
-  let qi = 0, done = 0, t0 = performance.now(), last = t0, fin = false; const per = Math.max(0.05, Math.min(0.32, (T * 0.55 * NA) / Math.max(1, L.length)));
+function buildTargets(full) { const vis = (e) => e && e.getClientRects().length && getComputedStyle(e).visibility !== "hidden" && e.offsetWidth > 4 && e.offsetHeight > 4;
+  const out = [], seen = new Set(), add = (e, z) => { if (!seen.has(e) && vis(e)) { seen.add(e); out.push({ el: e, z }); } };
+  if (full) { [".rail", "header.top", ".tbar", ".tools", "#favbar", ".bottom", "#pad"].forEach((q) => document.querySelectorAll(q).forEach((e) => add(e, 0)));
+    [".rail .ri", ".rail .rlogo", "header.top > *", ".tbar > *", ".tools .tool", "#favbar .tool", "#favbar .fbreplay > *", "#pad > *"].forEach((q) => document.querySelectorAll(q).forEach((e) => add(e, 2))); }
+  panes.forEach((p) => add(p.el, 1)); return out; }
+function buildFx(full) { if (prefs.chartfx === false || (navigator.webdriver && full !== "test")) return; full = full !== false && full !== "quick";
+  if (document.getElementById("kbuild")) return; const T = buildTargets(full);
+  T.forEach((t) => { if (t.z !== 1 || full) { t.prev = t.el.style.opacity; t.el.style.opacity = "0"; } });
+  panes.forEach((p) => { try { p.series.applyOptions({ visible: false }); } catch (e) {} });
+  afterIntro(() => requestAnimationFrame(() => runBuild(full, T))); }
+function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min(devicePixelRatio || 1, 2), cv = document.createElement("canvas"); cv.id = "kbuild";
+  Object.assign(cv.style, { left: "0px", top: "0px", width: W + "px", height: H + "px" }); cv.width = W * D; cv.height = H * D; document.body.appendChild(cv); const g = cv.getContext("2d"); g.scale(D, D);
+  const L = [];
+  T.forEach((t) => { const r = t.el.getBoundingClientRect(); L.push({ k: "rect", el: t.el, prev: t.prev, x: r.left + 0.5, y: r.top + 0.5, w: r.width - 1, h: r.height - 1, z: t.z }); });
+  panes.forEach((p) => { const r = p.el.getBoundingClientRect(); let aw = 62; try { aw = p.chart.priceScale("right").width() || 62; } catch (e) {}
+    L.push({ k: "line", x: r.right - aw, y: r.top + 2, w: 0, h: r.height - 4, z: 1.5 }, { k: "line", x: r.left + 2, y: r.bottom - 26, w: r.width - 4, h: 0, z: 1.5 });
+    for (let i = 1; i <= 4; i++) L.push({ k: "line", x: r.left + 4, y: r.top + (r.height - 26) * i / 5, w: r.width - aw - 8, h: 0, z: 1.6, dash: 1 }); });
+  L.forEach((l) => { l.r = Math.random(); l.per = l.k === "line" ? Math.abs(l.w) + Math.abs(l.h) : 2 * (l.w + l.h); l.p = 0; });
+  L.sort((a, b) => Math.floor(a.z) - Math.floor(b.z) || a.r - b.r);
+  const COL = ["#ff5a6e", "#48d6ff", "#8b5cf6", "#46e08c", "#ffd24a", "#4b7bff", "#ff8a3d", "#e86bff"], NA = full ? 24 : 12, TB = full ? 2.4 : 0.9;
+  const A = Array.from({ length: NA }, (_, i) => { const e = i % 4; return { x: e === 0 ? -20 : e === 1 ? W + 20 : Math.random() * W, y: e === 2 ? -20 : e === 3 ? H + 20 : Math.random() * H, vx: 0, vy: 0, c: COL[i % COL.length], job: null, ph: Math.random() * 6.28, h: 0, ex: 0, ey: 0 }; });
+  const per = Math.max(0.06, Math.min(0.32, (TB * 0.7 * NA) / Math.max(1, L.length)));
+  let qi = 0, done = 0, t0 = performance.now(), last = t0, phase = "build", play = null, skip = false, awayT = 0;
   const ptAt = (l, u) => { if (l.k === "line") return [l.x + l.w * u, l.y + l.h * u]; let d = u * l.per; if (d < l.w) return [l.x + d, l.y]; d -= l.w; if (d < l.h) return [l.x + l.w, l.y + d]; d -= l.h; if (d < l.w) return [l.x + l.w - d, l.y + l.h]; d -= l.w; return [l.x, l.y + l.h - d]; };
-  const stroke = (l, u, a) => { g.globalAlpha = a; g.beginPath(); if (l.k === "line") { const [x, y] = ptAt(l, u); g.moveTo(l.x, l.y); g.lineTo(x, y); }
-    else { g.moveTo(l.x, l.y); const d = u * l.per, cs = [[l.w, l.x + l.w, l.y], [l.w + l.h, l.x + l.w, l.y + l.h], [2 * l.w + l.h, l.x, l.y + l.h], [l.per, l.x, l.y]]; for (const [c, x, y] of cs) { if (d >= c) g.lineTo(x, y); else { const [px, py] = ptAt(l, u); g.lineTo(px, py); break; } } }
-    g.setLineDash(l.dash ? [4, 5] : []); g.stroke(); if (l.wk && u >= 1) { g.beginPath(); g.moveTo(l.cx, l.wk[0]); g.lineTo(l.cx, l.y); g.moveTo(l.cx, l.y + l.h); g.lineTo(l.cx, l.wk[1]); g.stroke(); } };
-  const cursor = (a) => { g.save(); g.translate(a.x, a.y); g.rotate(a.h - 0.5); g.globalAlpha = 1; g.shadowColor = a.c; g.shadowBlur = 8; g.fillStyle = a.c; g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 1;
+  const stroke = (l, a) => { if (a <= 0.01) return; g.globalAlpha = a; g.beginPath(); g.setLineDash(l.dash ? [4, 5] : []);
+    if (l.k === "line") { const q = ptAt(l, l.p); g.moveTo(l.x, l.y); g.lineTo(q[0], q[1]); }
+    else { g.moveTo(l.x, l.y); const d = l.p * l.per, cs = [[l.w, l.x + l.w, l.y], [l.w + l.h, l.x + l.w, l.y + l.h], [2 * l.w + l.h, l.x, l.y + l.h], [l.per, l.x, l.y]];
+      for (const c of cs) { if (d >= c[0]) g.lineTo(c[1], c[2]); else { const q = ptAt(l, l.p); g.lineTo(q[0], q[1]); break; } } }
+    g.stroke(); };
+  const reveal = (l) => { if (!l.el) return; const el = l.el; el.style.transition = "opacity .2s ease"; el.style.opacity = l.prev || ""; setTimeout(() => { el.style.transition = ""; }, 260); };
+  const cursor = (a) => { g.save(); g.translate(a.x, a.y); g.rotate(a.h); g.globalAlpha = 1; g.shadowColor = a.c; g.shadowBlur = 8; g.fillStyle = a.c; g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 1;
     g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 13); g.lineTo(3.6, 9.6); g.lineTo(6.4, 15); g.lineTo(8.4, 14); g.lineTo(5.8, 8.8); g.lineTo(10.4, 8.6); g.closePath(); g.fill(); g.shadowBlur = 0; g.stroke(); g.restore(); };
-  const pill = (x, y, txt) => { g.font = "600 9px Inter,sans-serif"; const w = g.measureText(txt).width + 8; g.globalAlpha = 0.95; g.fillStyle = "#2f5bff"; g.beginPath(); g.roundRect ? g.roundRect(x, y, w, 13, 3) : g.rect(x, y, w, 13); g.fill(); g.fillStyle = "#fff"; g.fillText(txt, x + 4, y + 9.5); };
-  const stop = () => { fin = true; }; cv.addEventListener("pointerdown", stop); addEventListener("pointerdown", stop, { once: true });
-  const fr = (now) => { now = performance.now(); const t = (now - t0) / 1000, dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; const rush = fin || t > T * 0.85;
-    const rev = fin ? 1 : Math.max(0, Math.min(1, (t - T * 0.62) / (T * 0.38))); host.style.opacity = String(rev);
-    for (const a of A) { if (!a.job && qi < L.length && !rush) { a.job = L[qi++]; a.mv = true; }
-      let tx, ty; if (a.job) { [tx, ty] = a.mv ? ptAt(a.job, 0) : ptAt(a.job, a.job.p); } else { tx = a.x + Math.cos(a.ph + t) * 40; ty = a.y + Math.sin(a.ph * 1.3 + t) * 40; }
-      const dx = tx - a.x, dy = ty - a.y, dd = Math.hypot(dx, dy) || 1, sp = a.mv ? 1400 : 900, wob = Math.sin(t * 9 + a.ph) * (a.mv ? 0.35 : 0.15);
+  const pill = (x, y, txt) => { g.font = "600 9px Inter,sans-serif"; const w = g.measureText(txt).width + 8; g.globalAlpha = 0.95; g.fillStyle = "#2f5bff"; g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, 13, 3); else g.rect(x, y, w, 13); g.fill(); g.fillStyle = "#fff"; g.fillText(txt, x + 4, y + 9.5); };
+  const startPlay = () => { phase = "play";
+    play = { t: performance.now(), dur: full ? 1300 : 800, P: panes.map((p) => { const o = { p };
+      try { o.data = p.series.data().slice(); const ts = p.chart.timeScale(); o.lr = ts.getVisibleLogicalRange(); o.ps = p.chart.priceScale("right"); o.auto = o.ps.options().autoScale; o.ps.applyOptions({ autoScale: false });
+        o.a = Math.max(0, Math.floor(o.lr ? o.lr.from : 0)); p.series.setData(o.data.slice(0, o.a)); p.series.applyOptions({ visible: true }); if (o.lr) ts.setVisibleLogicalRange(o.lr); } catch (e) { o.bad = 1; }
+      return o; }) };
+    A.forEach((a) => { const ang = Math.atan2(a.y - H / 2, a.x - W / 2); a.ex = W / 2 + Math.cos(ang) * (W + H); a.ey = H / 2 + Math.sin(ang) * (W + H); a.job = null; }); };
+  const endPlay = () => { if (!play) return; play.P.forEach((o) => { try { if (!o.bad) { o.p.series.setData(o.data); if (o.lr) o.p.chart.timeScale().setVisibleLogicalRange(o.lr); o.ps.applyOptions({ autoScale: o.auto }); } } catch (e) {} try { o.p.series.applyOptions({ visible: true }); } catch (e) {} }); play = null; };
+  const onSkip = () => { skip = true; };
+  const finish = () => { L.forEach((l) => { if (!l.done) { l.done = true; l.p = 1; reveal(l); } }); T.forEach((t) => { if (t.el.style.opacity === "0") t.el.style.opacity = t.prev || ""; });
+    if (phase === "build") startPlay(); endPlay(); panes.forEach((p) => { try { p.series.applyOptions({ visible: true }); } catch (e) {} });
+    cv.style.opacity = "0"; setTimeout(() => cv.remove(), 300); removeEventListener("pointerdown", onSkip, true); };
+  addEventListener("pointerdown", onSkip, true);
+  const guard = setTimeout(() => { skip = true; }, 10000);
+  const fr = () => { const now = performance.now(), t = (now - t0) / 1000, dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
+    if (skip) { clearTimeout(guard); finish(); return; }
+    for (const a of A) {
+      if (phase === "build" && !a.job && qi < L.length) { a.job = L[qi++]; a.mv = true; }
+      let tx, ty;
+      if (phase !== "build") { tx = a.ex; ty = a.ey; }
+      else if (a.job) { const q = a.mv ? ptAt(a.job, 0) : ptAt(a.job, a.job.p); tx = q[0]; ty = q[1]; }
+      else { tx = a.x + Math.cos(a.ph + t * 2) * 60; ty = a.y + Math.sin(a.ph * 1.3 + t * 2) * 60; }
+      const dx = tx - a.x, dy = ty - a.y, dd = Math.hypot(dx, dy) || 1, sp = phase !== "build" ? 900 : a.mv ? 1500 : 500, wob = Math.sin(t * 9 + a.ph) * (a.mv ? 0.35 : 0.2);
       const ux = dx / dd, uy = dy / dd, wx = ux - uy * wob, wy = uy + ux * wob; a.vx += (wx * sp - a.vx) * Math.min(1, dt * 9); a.vy += (wy * sp - a.vy) * Math.min(1, dt * 9);
-      if (a.mv) { const st = Math.min(dd, Math.hypot(a.vx, a.vy) * dt); a.x += ux * st + (wx - ux) * st * 0.4; a.y += uy * st + (wy - uy) * st * 0.4; if (dd < 6) { a.mv = false; } }
-      else if (a.job) { a.job.p = Math.min(1, a.job.p + dt / per); const [px, py] = ptAt(a.job, a.job.p); a.x = px; a.y = py; if (a.job.p >= 1) { a.job.done = true; done++; a.job = null; } }
-      else { a.x += a.vx * dt * 0.15; a.y += a.vy * dt * 0.15; }
+      if (phase === "build" && a.job && !a.mv) { a.job.p = Math.min(1, a.job.p + dt / per); const q = ptAt(a.job, a.job.p); a.x = q[0]; a.y = q[1];
+        if (a.job.p >= 1) { a.job.done = true; a.job.dt = t; reveal(a.job); done++; a.job = null; } }
+      else { const st = Math.min(dd, Math.hypot(a.vx, a.vy) * dt); a.x += ux * st + (wx - ux) * st * 0.4; a.y += uy * st + (wy - uy) * st * 0.4; if (a.mv && dd < 6) a.mv = false; }
       if (Math.hypot(a.vx, a.vy) > 5) a.h = Math.atan2(a.vy, a.vx) - Math.PI / 2 + 0.5; }
-    if (rush) L.forEach((l) => { if (!l.done) { l.p = Math.min(1, l.p + dt * 3); if (l.p >= 1) { l.done = true; done++; } } });
-    g.clearRect(0, 0, R.width, R.height); const fade = 1 - rev * 0.85;
-    g.lineWidth = 1.2; g.strokeStyle = "#5b7cff"; g.shadowColor = "#3b5bff"; g.shadowBlur = 6;
-    for (const l of L) if (l.p > 0) { if (l.tag && l.done) { g.shadowBlur = 0; pill(l.x, l.y + 1.5, "LAST"); g.shadowBlur = 6; g.strokeStyle = "#5b7cff"; } stroke(l, l.p, (l.done ? 0.75 : 1) * fade); }
-    g.shadowBlur = 0; for (const a of A) if (a.job && !a.mv) pill(a.x + 10, a.y + 10, `${Math.round(a.job.w || a.job.per)} × ${Math.round(a.job.h || 1)}`);
-    for (const a of A) { g.globalAlpha = fade; cursor(a); }
-    g.globalAlpha = Math.min(1, t * 4) * fade; const bw = 300, bx = R.width / 2 - bw / 2, by = R.height - 46; g.fillStyle = "rgba(14,14,20,.88)"; g.strokeStyle = "rgba(255,255,255,.12)"; g.beginPath(); g.roundRect ? g.roundRect(bx, by, bw, 30, 9) : g.rect(bx, by, bw, 30); g.fill(); g.stroke();
+    if (phase === "build" && t > TB + 1.4) L.forEach((l) => { if (!l.done) { l.p = Math.min(1, l.p + dt * 4); if (l.p >= 1) { l.done = true; l.dt = t; reveal(l); done++; } } });
+    if (phase === "build" && done >= L.length) startPlay();
+    if (phase === "play" && play) { const k = Math.min(1, (performance.now() - play.t) / play.dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      play.P.forEach((o) => { if (o.bad) return; try { const n = Math.round(o.a + (o.data.length - o.a) * e); if (n !== o.n) { o.n = n; o.p.series.setData(o.data.slice(0, n)); if (o.lr) o.p.chart.timeScale().setVisibleLogicalRange(o.lr); } } catch (er) { o.bad = 1; } });
+      if (k >= 1) { endPlay(); phase = "away"; awayT = t; } }
+    g.clearRect(0, 0, W, H); g.lineWidth = 1.2; g.strokeStyle = "#5b7cff"; g.shadowColor = "#3b5bff"; g.shadowBlur = 6;
+    for (const l of L) if (l.p > 0) stroke(l, l.done ? Math.max(0, 1 - (t - l.dt) / 0.6) * 0.9 : 1);
+    g.shadowBlur = 0; for (const a of A) if (a.job && !a.mv) pill(a.x + 10, a.y + 10, Math.round(a.job.w || a.job.per) + " × " + Math.round(a.job.h || 1));
+    for (const a of A) cursor(a);
+    const bw = 300, bx = W / 2 - bw / 2, by = H - 52; g.globalAlpha = phase === "away" ? Math.max(0, 1 - (t - awayT) * 2) : Math.min(1, t * 4);
+    g.fillStyle = "rgba(14,14,20,.9)"; g.strokeStyle = "rgba(255,255,255,.12)"; g.beginPath(); if (g.roundRect) g.roundRect(bx, by, bw, 30, 9); else g.rect(bx, by, bw, 30); g.fill(); g.stroke();
     COL.slice(0, 5).forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.arc(bx + 16 + i * 9, by + 15, 4.5, 0, 6.29); g.fill(); });
-    g.fillStyle = "#e8e6f2"; g.font = "600 11px Inter,sans-serif"; g.fillText(`${NA} agents`, bx + 66, by + 19); g.fillStyle = "#8d89a3"; g.fillText(`${done} / ${L.length} layers`, bx + 130, by + 19);
-    g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(bx + 222, by + 13.5, 64, 3); g.fillStyle = "#8b5cf6"; g.fillRect(bx + 222, by + 13.5, 64 * done / Math.max(1, L.length), 3); g.globalAlpha = 1;
-    if ((done >= L.length && rev >= 1) || t > T + 1.2) { host.style.opacity = ""; host.style.transition = ""; cv.style.opacity = "0"; setTimeout(() => cv.remove(), 300); removeEventListener("pointerdown", stop); return; }
+    g.fillStyle = "#e8e6f2"; g.font = "600 11px Inter,sans-serif"; g.fillText(NA + " agents", bx + 66, by + 19); g.fillStyle = "#8d89a3"; g.fillText(phase === "build" ? done + " / " + L.length + " layers" : "playing candles", bx + 130, by + 19);
+    g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(bx + 222, by + 13.5, 64, 3); g.fillStyle = "#8b5cf6"; g.fillRect(bx + 222, by + 13.5, 64 * (phase === "build" ? done / Math.max(1, L.length) : 1), 3); g.globalAlpha = 1;
+    if (phase === "away" && (A.every((a) => a.x < -30 || a.x > W + 30 || a.y < -30 || a.y > H + 30) || t > awayT + 3)) { clearTimeout(guard); finish(); return; }
     requestAnimationFrame(fr); };
   requestAnimationFrame(fr); }
 /* ---------------- KAIROS OS Beta: welcome cinematic (first time you're let in) + onboarding tour ---------------- */
