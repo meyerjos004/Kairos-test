@@ -2273,7 +2273,8 @@ function labelPop(d, r) { document.getElementById("lblpop")?.remove(); const el 
    Tips slide out next to it every few minutes (Settings → Feature tips, or "Don't show tips" on any tip turns them off). */
 (() => { const w = document.createElement("div"); w.id = "fxb"; w.innerHTML = `<div id="fxb-tip" class="fxb-tip hidden"><span id="fxb-tt"></span><button id="fxb-tx" title="Hide">×</button><button id="fxb-toff" class="fxb-off">Don't show tips</button></div>
   <div id="fxb-card" class="fxb-card hidden"><div class="fxb-h"><b>Send to Claude</b><button id="fxb-x" title="Close">×</button></div><div class="seg fxb-seg"><button data-k="fix" class="on">🔧 Fix</button><button data-k="idea">💡 Idea</button></div>
-  <textarea id="fxb-in" maxlength="1000" placeholder="What should change? Where is it, and what should it do?"></textarea><div class="fxb-f"><span class="tiny muted" id="fxb-where"></span><button class="primary" id="fxb-go">Send</button></div></div>
+  <textarea id="fxb-in" maxlength="1000" placeholder="What should change? Where is it, and what should it do? (Ctrl+V pastes a screenshot)"></textarea>
+  <div class="fxb-shot"><button class="ghost small" id="fxb-paste" title="Win+Shift+S, then click here">📋 Paste my last screenshot</button><button class="ghost small" id="fxb-snap" title="Grab the chart as it is now">📷 Snap the chart</button><span id="fxb-img" class="hidden"><img id="fxb-thumb" alt=""><button id="fxb-rm" title="Remove">×</button></span></div><div class="fxb-f"><span class="tiny muted" id="fxb-where"></span><button class="primary" id="fxb-go">Send</button></div></div>
   <button id="fxb-b" class="fxb-b" title="Fix or idea → Claude"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 00-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 005.2-5.4l-2.5 2.5-2.3-.5-.5-2.3z"/></svg></button>`;
   document.body.appendChild(w); let kind = "fix", tipT = null, idx = Math.floor(Math.random() * KTIPS.length);
   const where = () => { const v = document.querySelector(".vtab.on[data-view]"); return v ? (v.title || v.dataset.view) : "app"; };
@@ -2282,10 +2283,19 @@ function labelPop(d, r) { document.getElementById("lblpop")?.remove(); const el 
   $("fxtop").onclick = () => open($("fxb-card").classList.contains("hidden"));   // KING_FIXTOP (Nov 12 walkthrough): the top-bar button opens the same card
   w.querySelectorAll(".fxb-seg button").forEach((b) => (b.onclick = () => { kind = b.dataset.k; w.querySelectorAll(".fxb-seg button").forEach((x) => x.classList.toggle("on", x === b)); }));
   $("fxb-in").onkeydown = (e) => e.stopPropagation();
-  $("fxb-go").onclick = async () => { const t = $("fxb-in").value.trim(); if (t.length < 3) return toast("Add a few words first"); const body = `[${where()}] ${t}`;
+  /* KING_FIXSHOT (Nov 13): attach a screenshot to a fix (paste the last one from the clipboard, Ctrl+V, or snap the chart) */
+  let shotBlob = null;
+  const setShot = (b) => { shotBlob = b; $("fxb-img").classList.toggle("hidden", !b); if (b) $("fxb-thumb").src = URL.createObjectURL(b); };
+  $("fxb-rm").onclick = () => setShot(null);
+  $("fxb-paste").onclick = async () => { try { const items = await navigator.clipboard.read(); for (const it of items) { const ty = it.types.find((t) => t.startsWith("image/")); if (ty) return setShot(await it.getType(ty)); } toast("No screenshot on the clipboard. Press Win+Shift+S (Mac: Cmd+Ctrl+Shift+4) first."); } catch (e) { toast("Your browser blocked the clipboard. Click in the box and press Ctrl+V instead."); } };
+  $("fxb-in").addEventListener("paste", (e) => { const f = [...(e.clipboardData?.items || [])].find((x) => x.type.startsWith("image/")); if (f) { e.preventDefault(); setShot(f.getAsFile()); } });
+  $("fxb-snap").onclick = async () => { try { const cv = panes[active].chart.takeScreenshot(); setShot(await new Promise((r) => cv.toBlob(r, "image/png"))); } catch (e) { toast("Couldn't grab the chart"); } };
+  const upShot = async () => { if (!shotBlob || DEMO || !user) return ""; try { const path = `${user.id}/fix-${Date.now()}.png`; const up = await sb.storage.from("shots").upload(path, shotBlob, { contentType: shotBlob.type || "image/png", upsert: true }); if (up.error) return "";
+      const { data } = await sb.storage.from("shots").createSignedUrl(path, 60 * 60 * 24 * 30); return data && data.signedUrl ? "\n[screenshot] " + data.signedUrl : ""; } catch (e) { return ""; } };
+  $("fxb-go").onclick = async () => { const t = $("fxb-in").value.trim(); if (t.length < 3) return toast("Add a few words first"); const body = `[${where()}] ${t}` + await upShot();
     if (DEMO) (mem.sg = mem.sg || []).push({ id: "g" + Date.now(), user_id: "demo", body, kind, status: "new", votes: [], created_at: new Date().toISOString() });
     else { const { error } = await sb.from("suggestions").insert({ body, kind }); if (error) return toast(error.message); }
-    $("fxb-in").value = ""; open(false); toast(kind === "fix" ? "🔧 Sent. Claude will look at it." : "💡 Idea sent."); try { renderSg(); } catch (e) {} };
+    $("fxb-in").value = ""; setShot(null); open(false); toast(kind === "fix" ? "🔧 Sent. Claude will look at it." : "💡 Idea sent."); try { renderSg(); } catch (e) {} };
   const tipsOn = () => prefs.tips !== false;
   const showTip = () => { if (!tipsOn() || !$("fxb-card").classList.contains("hidden") || document.hidden) return; idx = (idx + 1) % KTIPS.length; $("fxb-tt").textContent = KTIPS[idx]; const t = $("fxb-tip"); t.classList.remove("hidden"); clearTimeout(tipT); tipT = setTimeout(() => t.classList.add("hidden"), 12000); };
   $("fxb-tx").onclick = () => $("fxb-tip").classList.add("hidden"); $("fxb-toff").onclick = () => { prefs.tips = false; try { savePrefs(); } catch (e) {} $("fxb-tip").classList.add("hidden"); if ($("s-tips")) $("s-tips").checked = false; toast("Tips off. Turn them back on in Settings."); };
