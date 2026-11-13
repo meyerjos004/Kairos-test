@@ -2483,10 +2483,32 @@ function csLines(p) { if (!p || p.dead || !p.candles.length) return; const C = c
 /* KING_DAYRECAP (Nov 13 night shift): when a replay day ends, compare your real trades that day (from Notion) with what you just backtested */
 const recapDone = new Set();
 function dayRecap(last) { if (!realTrades.length || prefs.showReal === false) return; const day = Math.floor(last / 86400) * 86400; if (last < day + 17 * 3600 || recapDone.has(day)) return; recapDone.add(day);
-  const real = realTrades.filter((r) => Math.floor(loc(r.t) / 86400) * 86400 === day); if (!real.length) return;
-  const bt = (jT || []).filter((t) => t.t_entry && Math.floor(loc(t.t_entry) / 86400) * 86400 === day);
-  const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0); const rp = sum(real, (x) => x.pnl), bp = sum(bt, (x) => x.pnl);
-  toast(`📒 Day done. Real: ${real.length} trade${real.length > 1 ? "s" : ""}${real.some((x) => x.pnl != null) ? " " + money(rp) : ""}${bt.length ? ` · Backtest: ${bt.length} ${money(bp)}` : ""}`); }
+  const real = realTrades.filter((r) => Math.floor(loc(r.t) / 86400) * 86400 === day && (!r.sym || r.sym === symRoot(sym))); if (!real.length) return;
+  const seen = new Set(), bt = [...(hist || []), ...(jT || [])].filter((t) => { if (!t.t_entry || Math.floor(loc(t.t_entry) / 86400) * 86400 !== day) return false; const k = t.id || t.t_entry + "|" + t.dir + "|" + t.entry; if (seen.has(k)) return false; seen.add(k); return true; });
+  /* KING_RECAP2 (King, Nov 13): win rate + R for both sides, and where real trading went off the backtest (the model you replayed) */
+  const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0), wr = (a) => { const k = a.filter((x) => x.pnl != null); return k.length ? Math.round((100 * k.filter((x) => x.pnl > 0).length) / k.length) + "%" : "—"; };
+  const risk = Math.max(1, Math.abs((prefs.riskp || 1) / 100 * (startBal || prefs.bal || 50000)));
+  const rOf = (x) => (x.r != null ? +x.r : x.pnl != null ? x.pnl / risk : null), avgR = (a) => { const v = a.map(rOf).filter((x) => x != null); return v.length ? (v.reduce((s, x) => s + x, 0) / v.length >= 0 ? "+" : "") + (v.reduce((s, x) => s + x, 0) / v.length).toFixed(2) + "R" : "—"; };
+  const cls = (v) => (v >= 0 ? "pos-up" : "pos-dn");
+  const rp = sum(real, (x) => x.pnl), bp = sum(bt, (x) => x.pnl), side = (d) => (d > 0 ? "long" : d < 0 ? "short" : "?"), hmT = (t) => lhm(loc(t));
+  // pair each real trade with the closest backtest trade on the same side within 20 minutes
+  const used = new Set(), dev = [];
+  for (const r of real.slice().sort((a, b) => a.t - b.t)) { let best = null, bd = 1e9;
+    bt.forEach((b, k) => { if (used.has(k) || (r.side && b.dir !== r.side)) return; const d = Math.abs(b.t_entry - r.t); if (d <= 1200 && d < bd) { bd = d; best = k; } });
+    if (best == null) { dev.push(`🟡 ${hmT(r.t)} real ${side(r.side)}${r.pnl != null ? " " + money(r.pnl) : ""}: <b>not in your backtest</b> (extra trade)`); continue; }
+    used.add(best); const b = bt[best], dp = (r.pnl ?? 0) - (b.pnl ?? 0), late = Math.round((r.t - b.t_entry) / 60);
+    const bits = []; if (Math.abs(late) >= 2) bits.push(late > 0 ? `entered ${late} min later` : `entered ${-late} min earlier`);
+    if (r.exit != null && b.exit != null && Math.abs(r.exit - b.exit) >= inst.tick * 8) bits.push(`exited at ${px2(r.exit)} vs ${px2(b.exit)}`);
+    if (r.pnl != null && b.pnl != null && Math.abs(dp) >= 50) bits.push(dp > 0 ? `made ${money(dp)} more` : `made ${money(-dp)} less`);
+    dev.push(bits.length ? `🔀 ${hmT(r.t)} ${side(r.side)}: same trade, ${bits.join(", ")}` : `✅ ${hmT(r.t)} ${side(r.side)}: matched the backtest`); }
+  bt.forEach((b, k) => { if (!used.has(k)) dev.push(`⚪ ${hmT(b.t_entry)} backtest ${side(b.dir)} ${money(b.pnl)}: <b>you skipped it live</b>`); });
+  const line = `📒 Day done. Real: ${real.length} · ${wr(real)} win · ${avgR(real)}${real.some((x) => x.pnl != null) ? " · " + money(rp) : ""}${bt.length ? ` | Backtest: ${bt.length} · ${wr(bt)} · ${avgR(bt)} · ${money(bp)}` : ""} · tap for details`;
+  window._recap = { day, real, bt, dev, line }; toast(line); clearTimeout(toastT); toastT = setTimeout(() => toast(""), 9000); const tEl = $("toast"); tEl.style.cursor = "pointer";
+  tEl.onclick = () => { tEl.onclick = null; tEl.style.cursor = ""; toast("");
+    dlg(`<h3>Day recap · ${new Date(day * 1000).toISOString().slice(0, 10)}</h3><table class="bt"><tr><th></th><th>Trades</th><th>Win</th><th>Avg R</th><th>P&amp;L</th></tr><tr><td>Real</td><td>${real.length}</td><td>${wr(real)}</td><td>${avgR(real)}</td><td class="${cls(rp)}">${money(rp)}</td></tr><tr><td>Backtest</td><td>${bt.length}</td><td>${wr(bt)}</td><td>${avgR(bt)}</td><td class="${cls(bp)}">${money(bp)}</td></tr></table>
+      <h4 style="margin:12px 0 6px">Where you went off the model</h4><div class="recap-dev">${dev.map((x) => `<div>${x}</div>`).join("") || '<div class="muted">Nothing to compare</div>'}</div><div class="tiny muted" style="margin-top:8px">Real R uses your risk setting (${money(risk)} = 1R) unless your journal has an R column.</div>`, () => {});
+    $("dl-ok").textContent = "Done"; $("dl-x").classList.add("hidden"); };
+  setTimeout(() => { if (tEl.onclick) { tEl.onclick = null; tEl.style.cursor = ""; } }, 9000); }
 function csMarks(p) { const C = csG(); const s = paneSym(p), last = p.candles.length ? p.candles[p.candles.length - 1].time : -1;
   const mk = !C.exm ? [] : execs.filter((x) => x.sym === s).map((x) => ({ time: bucket(loc(x.t), p.sec), position: x.side > 0 ? "belowBar" : "aboveBar", color: x.side > 0 ? "#2bd4a0" : "#ff6b7a", shape: x.side > 0 ? "arrowUp" : "arrowDown", text: C.exl ? `${x.side > 0 ? "B" : "S"} ${x.qty} @ ${px2(x.price)}` : "" })).filter((m) => m.time <= last);
   const first = p.candles.length ? p.candles[0].time : Infinity, seenR = new Set();   // KING_REALMARKS: skip trades before the loaded data (they piled on the first candle) + duplicates

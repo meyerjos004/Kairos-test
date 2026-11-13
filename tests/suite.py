@@ -354,6 +354,14 @@ async def main():
         await E("labelPop(drawings[drawings.length-1], {left:400,bottom:300}); $('lp-in').value='My level'; $('lp-ok').click()"); check("free text label sets", await E("drawings[drawings.length-1].label==='My level'"))
         await E("drawings.pop(); sel=null; repaintAll()")
         # fix bubble + tips
+        await E("""(() => { const off = loc(nowT()) - nowT(), day = Math.floor(loc(nowT()) / 86400) * 86400, t = day + 10 * 3600 - off; recapDone.clear(); window._oldReal = realTrades; window._oldHist = hist.slice();
+          realTrades = [{ t, side: 1, pnl: 250, entry: 100, exit: 110 }, { t: t + 7200, side: -1, pnl: -80 }]; hist.length = 0; hist.push({ t_entry: t + 300, dir: 1, entry: 100, exit: 105, pnl: 100, r: 1 }, { t_entry: t + 14400, dir: -1, entry: 90, exit: 92, pnl: -40, r: -0.4 });
+          dayRecap(day + 18 * 3600); })()""")
+        rc = await E("window._recap ? window._recap.dev.join(' || ') : ''")
+        check("day recap: win rate + R in the line", await E("!!window._recap && /win/.test(_recap.line) && /R/.test(_recap.line)"), await E("window._recap && _recap.line"))
+        check("day recap: finds same trade, extra real trade and skipped backtest trade", "same trade" in rc and "not in your backtest" in rc and "skipped it live" in rc, rc)
+        await E("$('toast').click()"); await pg.wait_for_timeout(200); check("day recap details open on tap", await E("!$('dlg').classList.contains('hidden') && /went off the model/.test($('dlgbox').textContent)"))
+        await E("$('dl-ok').click(); realTrades = window._oldReal; hist.length = 0; hist.push(...window._oldHist)")
         await E("$('fxb-b').click()"); check("fix bubble opens", await E("!$('fxb-card').classList.contains('hidden')"))
         await E("$('fxb-snap').click()"); await pg.wait_for_timeout(900); await E("$('fxb-snap').click()"); await pg.wait_for_timeout(900)
         check("fix box holds 2 screenshots", await E("document.querySelectorAll('#fxb-imgs img').length") == 2, await E("document.querySelectorAll('#fxb-imgs img').length"))
