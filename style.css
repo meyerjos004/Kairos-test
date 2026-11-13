@@ -561,3 +561,32 @@ a.gdl{background:linear-gradient(180deg,#a78bfa,#8b5cf6);color:#0b0614!important
 #kintro.drop::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(185,140,255,.55),transparent 55%);animation:wfl 1.1s ease forwards;pointer-events:none}
 #kintro .ktip{position:absolute;bottom:9vh;font:400 13px Inter,sans-serif;color:#8d89a3;max-width:min(560px,82vw);text-align:center;line-height:1.5;opacity:0;transition:opacity .8s .6s}#kintro.drop .ktip{opacity:1}#kintro .ktip b{color:#b98cff;margin-right:8px;font-weight:600}
 #kbuild{position:fixed;z-index:60;pointer-events:none;transition:opacity .3s}
+
+/* KING_TOOLS (Nov 12): Tradesea-sized tools, compact replay pills, layout menu opens to the left on the right side */
+.tools{width:58px}.tools .tool{width:44px;height:42px;border-radius:10px}.tools .tool svg{width:25px;height:25px;stroke-width:1.35}
+.tools .tsep{width:30px;margin:6px 0}.favbar .tool{width:36px;height:34px}.favbar .tool svg{width:22px;height:22px;stroke-width:1.4}
+.fbreplay .ddb,.replay .ddb{min-width:0;padding:4px 8px;gap:5px;font-size:12px;border-radius:8px}.fbreplay .ddb svg,.replay .ddb svg{width:10px;height:10px}
+.fbreplay .seg button{height:30px;min-width:30px}
+.laywrap.rmenu #laymenu{left:auto;right:0}
+/* KING_GLASS: Apple-style glass bubbles for every bar (desktop). Purely visual: the sheen layer never takes clicks */
+@media (min-width:901px){
+  body.glass{background:radial-gradient(1100px 520px at 15% -12%,rgba(124,107,255,.09),transparent 60%),radial-gradient(900px 500px at 100% 110%,rgba(72,214,255,.05),transparent 60%),#06070a}
+  body.glass #app{gap:8px;padding:8px}
+  body.glass .main{gap:8px}
+  body.glass #v-trade .work{gap:8px;padding-top:0}
+  body.glass .rail,body.glass header.top,body.glass .tbar,body.glass .tools:not(.float),body.glass .favbar,body.glass .tools.float,body.glass .bottom{
+    background:linear-gradient(180deg,rgba(255,255,255,.075) 0%,rgba(255,255,255,.028) 38%,rgba(255,255,255,.012) 100%),rgba(17,19,26,.66);
+    -webkit-backdrop-filter:blur(22px) saturate(1.6);backdrop-filter:blur(22px) saturate(1.6);
+    border:1px solid rgba(255,255,255,.085);border-radius:16px;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.17),inset 0 -1px 0 rgba(0,0,0,.45),inset 1px 0 0 rgba(255,255,255,.035),inset -1px 0 0 rgba(255,255,255,.02),0 12px 32px rgba(0,0,0,.38),0 1px 2px rgba(0,0,0,.5)}
+  body.glass .rail{height:auto;border-right:1px solid rgba(255,255,255,.085)}
+  body.glass header.top,body.glass .tbar{border-bottom:1px solid rgba(255,255,255,.085)}
+  body.glass .tools:not(.float){border-right:1px solid rgba(255,255,255,.085);margin-bottom:8px;padding:10px 0}
+  body.glass .rail::after,body.glass header.top::after,body.glass .tbar::after,body.glass .tools::after,body.glass .favbar::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:radial-gradient(120% 60% at 30% -20%,rgba(255,255,255,.13),transparent 60%),linear-gradient(180deg,rgba(255,255,255,.06),transparent 30%);mix-blend-mode:screen}
+  body.glass header.top,body.glass .tbar,body.glass .tools:not(.float){position:relative}
+  body.glass header.top{z-index:40}body.glass .tbar{z-index:30}body.glass .tools:not(.float){z-index:20}
+  body.glass .tools .tool.on{background:linear-gradient(180deg,rgba(150,130,255,.28),rgba(124,107,255,.12));box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 2px 8px rgba(124,107,255,.25)}
+  body.glass .tools .tool:hover{background:rgba(255,255,255,.07);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+  body.glass #charts{border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.06)}
+}

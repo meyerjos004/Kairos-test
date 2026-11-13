@@ -1390,7 +1390,7 @@ const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000; return s < 60 ? "now" : s < 3600 ? Math.floor(s / 60) + "m" : s < 86400 ? Math.floor(s / 3600) + "h" : Math.floor(s / 86400) + "d"; };
 async function loadMe() {
   if (DEMO) { me = { user_id: "demo", name: "You", share_stats: true }; names = { demo: "You", b: "Ben", w: "Will" }; return; }
-  const { data } = await sb.from("profiles").select("*"); (data || []).forEach((p) => { names[p.user_id] = p.name || "trader"; profs[p.user_id] = p; }); me = (data || []).find((p) => p.user_id === user.id); try { if (me && me.name) localStorage.setItem("kz-name", String(me.name)); } catch (e) {}
+  const { data } = await sb.from("profiles").select("*"); (data || []).forEach((p) => { names[p.user_id] = p.name || "trader"; profs[p.user_id] = p; }); me = (data || []).find((p) => p.user_id === user.id); try { if (me && me.name) { localStorage.setItem("kz-name", String(me.name)); localStorage.setItem("kz-uid", user.id); } } catch (e) {}
   if (!me) { const nm = (user.email || "me").split("@")[0].replace(/[0-9_.]+$/, "") || "me"; const r = await sb.from("profiles").insert({ name: nm }).select().single(); me = r.data || { user_id: user.id, name: nm, share_stats: true }; names[user.id] = me.name; }
   else sb.from("profiles").update({ seen_at: new Date().toISOString() }).eq("user_id", user.id).then(() => {});
 }
@@ -1547,7 +1547,7 @@ const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", 
 function fillSettings() {
   if ($("s-name")) $("s-name").value = (me && me.name) || "";
   if ($("s-tips")) $("s-tips").checked = prefs.tips !== false;
-  if ($("s-sound")) { $("s-sound").checked = prefs.sound !== false; $("s-vol").value = prefs.vol ?? 60; $("s-hap").checked = prefs.haptics !== false; $("s-splash").checked = prefs.splash !== false; if ($("s-chartfx")) $("s-chartfx").checked = prefs.chartfx !== false; $("s-review").checked = prefs.review !== false; }
+  if ($("s-sound")) { $("s-sound").checked = prefs.sound !== false; $("s-vol").value = prefs.vol ?? 60; $("s-hap").checked = prefs.haptics !== false; $("s-splash").checked = prefs.splash !== false; if ($("s-chartfx")) $("s-chartfx").checked = prefs.chartfx !== false; if ($("s-glass")) $("s-glass").checked = prefs.glass !== false; $("s-review").checked = prefs.review !== false; }
   $("s-bal").value = prefs.bal; $("s-dll").value = prefs.dll; $("s-ptg").value = prefs.ptg; $("s-act").value = prefs.act; $("s-mdd").value = prefs.mdd; $("s-fee").value = prefs.fee; $("s-mfee").value = prefs.mfee;
   $("s-opens").checked = !!prefs.opens; $("s-sess").checked = !!prefs.sess; $("s-up").value = prefs.up; $("s-dn").value = prefs.dn; $("sym").value = prefs.sym; $("o-sl").value = prefs.slPts; $("o-tp").value = prefs.tpPts;
   $("s-keys").innerHTML = Object.entries(KEYNAMES).map(([k, n]) => `<div><span>${n}</span><input data-key="${k}" maxlength="1" value="${prefs.keys[k] || ""}"></div>`).join("");
@@ -1557,7 +1557,7 @@ function saveSettings() {
   Object.assign(prefs, { bal: +$("s-bal").value, dll: +$("s-dll").value, ptg: +$("s-ptg").value, act: $("s-act").value, mdd: +$("s-mdd").value, fee: +$("s-fee").value, mfee: +$("s-mfee").value, opens: $("s-opens").checked, sess: $("s-sess").checked, up: $("s-up").value, dn: $("s-dn").value });
   document.querySelectorAll("[data-key]").forEach((i) => (prefs.keys[i.dataset.key] = i.value.toLowerCase()));
   const nm = $("s-name").value.trim(); if (me && nm && nm !== me.name) { me.name = nm; names[me.user_id] = nm; if (!DEMO) sb.from("profiles").update({ name: nm }).eq("user_id", me.user_id).then(() => {}); }
-  Object.assign(prefs, { sound: $("s-sound").checked, vol: +$("s-vol").value, haptics: $("s-hap").checked, splash: $("s-splash").checked, chartfx: $("s-chartfx") ? $("s-chartfx").checked : true, review: $("s-review").checked }); sfx("fill");
+  Object.assign(prefs, { sound: $("s-sound").checked, vol: +$("s-vol").value, haptics: $("s-hap").checked, splash: $("s-splash").checked, chartfx: $("s-chartfx") ? $("s-chartfx").checked : true, glass: $("s-glass") ? $("s-glass").checked : true, review: $("s-review").checked }); document.body.classList.toggle("glass", prefs.glass !== false); sfx("fill");
   if (acct) { acct.rules = { ...(acct.rules || {}), mdd: prefs.mdd, dll: prefs.dll, ptg: prefs.ptg }; db.updAccount(acct.id, { rules: acct.rules }).catch(() => {}); }
   panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: prefs.up, wickDownColor: prefs.dn })); try { csApplyAll(); } catch (e) {} savePrefs(); drawOpens(); repaintAll(); refresh(); $("s-msg").textContent = "Saved";
 }
@@ -1603,7 +1603,7 @@ const KLINES = ["THE SESSION RETURNS", "BACK TO THE SCREEN", "TIME TO REPLAY", "
   "{name}, BACK TO THE CHARTS", "{name}, TIME TO REPLAY", "{name}, PICK UP THE THREAD", "{name}, THE SESSION RESUMES"];
 let introOn = false; const introWait = [];
 function afterIntro(f) { if (introOn) introWait.push(f); else f(); }
-function introLine() { let nm = ""; try { nm = (localStorage.getItem("kz-name") || "").split(" ")[0].slice(0, 14); } catch (e) {}
+function introLine() { let nm = ""; try { nm = (localStorage.getItem("kz-name") || "").split(" ")[0].slice(0, 14); const uid = localStorage.getItem("kz-uid"), tok = Object.keys(localStorage).find((k) => /^sb-.*-auth-token$/.test(k)); if (uid && tok && !(localStorage.getItem(tok) || "").includes(uid)) nm = ""; } catch (e) {}
   let last = ""; try { last = localStorage.getItem("kz-line") || ""; } catch (e) {}
   const pool = KLINES.filter((l) => (nm || !l.includes("{name}")) && l !== last), l = pool[Math.floor(Math.random() * pool.length)] || KLINES[0];
   try { localStorage.setItem("kz-line", l); } catch (e) {} return l.replace("{name}", nm.toUpperCase()); }
@@ -1780,7 +1780,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); speedBestUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
+  document.body.classList.toggle("glass", prefs.glass !== false); applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); speedBestUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().catch(() => {}); }   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
@@ -1792,7 +1792,7 @@ async function boot() {
 }
 $("a-in").onclick = async () => { try { kChime(new (window.AudioContext || window.webkitAudioContext)()); } catch (e) {} const { error } = await sb.auth.signInWithPassword({ email: $("a-email").value.trim(), password: $("a-pass").value }); $("a-msg").textContent = error ? error.message : ""; if (!error) boot(); };
 $("a-up").onclick = async () => { const { data, error } = await sb.auth.signUp({ email: $("a-email").value.trim(), password: $("a-pass").value, options: { emailRedirectTo: location.origin + location.pathname } }); $("a-msg").textContent = error ? error.message : data.session ? "" : "Check your email to confirm, then sign in here."; if (data && data.session) boot(); };
-$("logout").onclick = async () => { await sb.auth.signOut(); location.reload(); }; $("lockbtn").onclick = lockDlg;
+$("logout").onclick = async () => { try { localStorage.removeItem("kz-name"); } catch (e) {} await sb.auth.signOut(); location.reload(); }; $("lockbtn").onclick = lockDlg;
 
 /* ---------------- AI themes: your words -> the PC's Claude Code -> a new theme ---------------- */
 const TH_KEYS = ["--bg", "--panel", "--acc", "--acc2", "--txt", "--mut", "--line"], TH_OK = /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i;
@@ -2401,7 +2401,7 @@ function profileSetup(force) { if (document.getElementById("psetup")) return; if
   $("ps-later").onclick = () => { prefs.psLater = Date.now(); savePrefs(); el.remove(); };
   $("ps-ok").onclick = async () => { const n = $("ps-n").value.trim().slice(0, 24), u = $("ps-u").value.trim().toLowerCase(); if (!n) return ($("ps-msg").textContent = "Add a display name");
     if (!/^[a-z0-9_]{3,16}$/.test(u)) return ($("ps-msg").textContent = "Username: 3-16 letters, numbers or _");
-    if (!DEMO && me) { const { error } = await sb.from("profiles").update({ name: n, username: u }).eq("user_id", me.user_id); if (error) return ($("ps-msg").textContent = /duplicate|unique/i.test(error.message) ? "That username is taken" : /column/i.test(error.message) ? "Usernames turn on after the next update" : "Couldn't save: " + error.message); }
+    if (!DEMO && me) { const { error } = await sb.from("profiles").update({ name: n, username: u }).eq("user_id", me.user_id); try { localStorage.setItem("kz-name", String(n)); } catch (e) {} if (error) return ($("ps-msg").textContent = /duplicate|unique/i.test(error.message) ? "That username is taken" : /column/i.test(error.message) ? "Usernames turn on after the next update" : "Couldn't save: " + error.message); }
     if (me) { me.name = n; me.username = u; names[me.user_id] = n; profs[me.user_id] = me; } if ($("s-name")) $("s-name").value = n; el.remove(); toast("Profile saved"); }; }
 $("s-prof") && ($("s-prof").onclick = () => profileSetup(true));
 async function adFx() { const box = $("ad-fx"); if (!box || DEMO || !isAdmin) return; const { data } = await sb.from("profiles").select("*"); const opts = ["", "none", ...new Set(NAME_FX.map((x) => x[1]))];
