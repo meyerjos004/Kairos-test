@@ -631,3 +631,10 @@ body.glass .tools:not(.float),body.glass .tools.float{background:linear-gradient
 
 /* KING_RECAP2 */
 .recap-dev{display:flex;flex-direction:column;gap:5px;font-size:13.5px;max-height:46vh;overflow:auto}.recap-dev div{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.04)}
+
+/* KING_SPFULL: playlist -> songs */
+.sphead{display:flex;align-items:center;gap:8px;margin:2px 0 8px}.sphead b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+.sptracks{display:flex;flex-direction:column;gap:2px;max-height:52vh;overflow:auto;margin-bottom:8px}
+.sptr{all:unset;cursor:pointer;display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;font-size:12px}.sptr:hover{background:rgba(255,255,255,.06)}
+.sptr .n{width:18px;text-align:right;color:var(--mut)}.sptr .t{flex:1;min-width:0;display:flex;flex-direction:column}.sptr .t b{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sptr .t i{font-style:normal;color:var(--mut);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.sptr .d{color:var(--mut);font-size:11px}
+.sptr.on{background:rgba(30,215,96,.12)}.sptr.on b{color:#1ed760}

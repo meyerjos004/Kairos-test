@@ -1328,7 +1328,7 @@ async function libUI() { const el = $("m-lib");
   $("rv-q").oninput = (e) => { rvQ = e.target.value.toLowerCase(); clearTimeout(libUI.t); libUI.t = setTimeout(() => { const pos = e.target.selectionStart; libUI().then(() => { const q = $("rv-q"); q.focus(); q.setSelectionRange(pos, pos); }); }, 200); }; }
 
 /* ---- Spotify (PKCE: no secret, each person signs into their own account) ---- */
-const SP_SCOPES = "playlist-read-private playlist-read-collaborative user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played user-library-read";
+const SP_SCOPES = "streaming user-read-email user-read-private playlist-read-private playlist-read-collaborative user-read-playback-state user-modify-playback-state user-read-currently-playing user-read-recently-played user-library-read";
 let spV = null, spMe = null, spPls = null;
 const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 async function spConnect() { const id = MCFG().spotify; if (!id) return toast("Spotify isn't set up yet");
@@ -1337,13 +1337,45 @@ async function spConnect() { const id = MCFG().spotify; if (!id) return toast("S
   window.open(u, "kz-oauth", "width=480,height=720"); }
 async function spToken(body) { const r = await fetch("https://accounts.spotify.com/api/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ client_id: MCFG().spotify, ...body }) });
   const j = await r.json(); if (!r.ok) throw new Error(j.error_description || j.error || "Spotify sign-in failed"); const old = jget("kz-sp") || {};
-  jset("kz-sp", { at: j.access_token, rt: j.refresh_token || old.rt, exp: Date.now() + (j.expires_in - 60) * 1000 }); }
+  jset("kz-sp", { at: j.access_token, rt: j.refresh_token || old.rt, exp: Date.now() + (j.expires_in - 60) * 1000, sc: j.scope || old.sc || "" }); }
 async function spApi(path, opt = {}, retry = true) { let t = jget("kz-sp"); if (!t) throw new Error("not connected");
   if (Date.now() > t.exp) { await spToken({ grant_type: "refresh_token", refresh_token: t.rt }); t = jget("kz-sp"); }
   const r = await fetch("https://api.spotify.com/v1" + path, { ...opt, headers: { Authorization: "Bearer " + t.at, "Content-Type": "application/json", ...(opt.headers || {}) } });
   if (r.status === 401 && retry) { jset("kz-sp", { ...t, exp: 0 }); return spApi(path, opt, false); }
   if (r.status === 204 || r.status === 202) return null; const j = await r.json().catch(() => null); if (!r.ok) { const e = new Error((j && j.error && j.error.message) || "Spotify error " + r.status); e.status = r.status; throw e; } return j; }
 function spPlay(kind, id) { $("sp-frame").innerHTML = `<iframe src="https://open.spotify.com/embed/${kind}/${id}?utm_source=generator&theme=0" width="100%" height="152" frameborder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`; prefs.media.sp = `https://open.spotify.com/${kind}/${id}`; savePrefs(); }
+/* KING_SPFULL (King, Nov 13): the embed only plays 30 s previews. With Premium, KAIROS becomes a Spotify device (Web Playback SDK) and plays full songs.
+   Tap a playlist -> its songs; tap a song -> it plays here and shows at the top. Without Premium (or the old sign-in) it falls back to the preview player. */
+let spDev = null, spSdk = null, spView = null;
+async function spAT() { let t = jget("kz-sp"); if (Date.now() > t.exp) { await spToken({ grant_type: "refresh_token", refresh_token: t.rt }); t = jget("kz-sp"); } return t.at; }
+const spHasStream = () => /streaming/.test((jget("kz-sp") || {}).sc || "");
+function spPlayer() { if (spSdk || !spHasStream() || DEMO) return Promise.resolve(spDev);
+  return new Promise((ok) => { const go = () => { spSdk = new Spotify.Player({ name: "KAIROS", getOAuthToken: (cb) => spAT().then(cb).catch(() => {}), volume: 0.7 });
+      spSdk.addListener("ready", ({ device_id }) => { spDev = device_id; ok(spDev); });
+      spSdk.addListener("not_ready", () => { spDev = null; });
+      spSdk.addListener("account_error", () => { spDev = null; spSdk = "nopremium"; toast("Full songs need Spotify Premium. Using the preview player."); ok(null); });
+      spSdk.addListener("authentication_error", () => { spDev = null; ok(null); });
+      spSdk.addListener("player_state_changed", (st) => { if (st) spNowFromSdk(st); });
+      spSdk.connect(); setTimeout(() => ok(spDev), 8000); };
+    if (window.Spotify && Spotify.Player) return go(); window.onSpotifyWebPlaybackSDKReady = go;
+    if (!document.getElementById("sp-sdk")) { const sc = document.createElement("script"); sc.id = "sp-sdk"; sc.src = "https://sdk.scdn.co/spotify-player.js"; document.head.appendChild(sc); } }); }
+function spNowFromSdk(st) { const box = $("sp-now"), it = st.track_window && st.track_window.current_track; if (!box || !it) return;
+  box.innerHTML = `<img src="${esc((it.album.images[it.album.images.length - 1] || it.album.images[0] || {}).url || "")}" alt=""><div><b>${esc(it.name)}</b><i>${esc(it.artists.map((a) => a.name).join(", "))} · on KAIROS</i></div><span class="spc"><button class="pb" data-sp="previous">⏮</button><button class="pb" data-sp="${st.paused ? "play" : "pause"}">${st.paused ? "▶" : "⏸"}</button><button class="pb" data-sp="next">⏭</button></span>`;
+  document.querySelectorAll("#sp-body .sptr").forEach((r) => r.classList.toggle("on", r.dataset.uri === it.uri)); }
+async function spTracks(id) { let j; try { j = await spApi(`/playlists/${id}/items?limit=100`); } catch (e) { j = await spApi(`/playlists/${id}/tracks?limit=100`); }
+  return (j.items || []).map((x) => x.item || x.track).filter((t) => t && t.uri && t.type !== "episode"); }
+async function spOpenPl(id) { const pl = (spPls || []).find((p) => p && p.id === id) || { name: "Playlist" }; spView = id; const box = $("sp-list"); if (!box) return;
+  box.innerHTML = `<div class="sphead"><button class="pb" id="sp-back">‹ Playlists</button><b>${esc(pl.name)}</b></div><div class="muted tiny">Loading songs…</div>`; $("sp-back").onclick = spBack;
+  let tr = []; try { tr = await spTracks(id); } catch (e) { box.querySelector(".muted").textContent = e.message; return; }
+  box.innerHTML = `<div class="sphead"><button class="pb" id="sp-back">‹ Playlists</button><b>${esc(pl.name)}</b><button class="pb" id="sp-all" title="Play from the top">▶ Play</button></div>
+    <div class="sptracks">${tr.map((t, i) => `<button class="sptr" data-uri="${t.uri}" data-i="${i}"><span class="n">${i + 1}</span><span class="t"><b>${esc(t.name)}</b><i>${esc((t.artists || []).map((a) => a.name).join(", "))}</i></span><span class="d">${Math.floor(t.duration_ms / 60000)}:${String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, "0")}</span></button>`).join("") || '<div class="muted tiny">No songs here</div>'}</div>`;
+  $("sp-back").onclick = spBack; $("sp-all").onclick = () => spStart(id, tr[0] && tr[0].uri);
+  box.querySelector(".sptracks").onclick = (e) => { const r = e.target.closest(".sptr"); if (r) spStart(id, r.dataset.uri); }; }
+function spBack() { spView = null; spUI(); }
+async function spStart(plId, uri) { const dev = await spPlayer();
+  if (!dev) { if (!spHasStream()) toast("Reconnect Spotify once (Sign out, then Connect) to unlock full songs. Playing the preview for now."); return spPlay("playlist", plId); }
+  try { await spApi(`/me/player/play?device_id=${dev}`, { method: "PUT", body: JSON.stringify({ context_uri: "spotify:playlist:" + plId, ...(uri ? { offset: { uri } } : {}) }) }); $("sp-frame").innerHTML = ""; prefs.media.sp = `https://open.spotify.com/playlist/${plId}`; savePrefs(); }
+  catch (e) { toast(e.status === 403 ? "Full songs need Spotify Premium. Playing the preview." : "Spotify: " + e.message); spPlay("playlist", plId); } }
 async function spNow() { const box = $("sp-now"); if (!box) return; try { const p = await spApi("/me/player"); const it = p && p.item;
   box.innerHTML = it ? `<img src="${esc((it.album && it.album.images[2] || it.album.images[0] || {}).url || "")}" alt=""><div><b>${esc(it.name)}</b><i>${esc((it.artists || []).map((a) => a.name).join(", "))} · on ${esc(p.device ? p.device.name : "Spotify")}</i></div><span class="spc"><button class="pb" data-sp="previous">⏮</button><button class="pb" data-sp="${p.is_playing ? "pause" : "play"}">${p.is_playing ? "⏸" : "▶"}</button><button class="pb" data-sp="next">⏭</button></span>`
     : '<div><i>Nothing playing on your Spotify right now. Pick a playlist below, or press play in your Spotify app and the controls show up here.</i></div>'; } catch (e) { box.innerHTML = ""; } }
@@ -1351,11 +1383,13 @@ async function spUI() { const el = $("m-sp"); if (!el.querySelector("#sp-frame")
   const body = $("sp-body"); if (!MCFG().spotify) { body.innerHTML = needSetup("Spotify"); return; }
   if (!jget("kz-sp")) { body.innerHTML = `<div class="mempty"><b>Your music, next to the chart</b><span>Sign in with your own Spotify to see your playlists and control what's playing.</span><button class="primary small" id="sp-in">Connect Spotify</button></div>`; $("sp-in").onclick = spConnect; return; }
   try { spMe = spMe || (await spApi("/me")); spPls = spPls || (await spApi("/me/playlists?limit=50")).items || []; } catch (e) { body.innerHTML = `<div class="mempty"><span>${esc(e.message)}</span><button class="small" id="sp-in">Reconnect Spotify</button></div>`; $("sp-in").onclick = () => { jset("kz-sp", null); spMe = spPls = null; spConnect(); }; return; }
-  body.innerHTML = `<div class="mwho"><span>🎧 ${esc(spMe.display_name || spMe.id)}</span><button class="pb tiny" id="sp-out">Sign out</button></div><div class="spnow" id="sp-now"></div>
-    <div class="plgrid">${spPls.filter(Boolean).map((p) => `<button class="pl" data-pl="${p.id}"><img loading="lazy" src="${esc((p.images && p.images[0] && p.images[0].url) || "")}" alt=""><b>${esc(p.name)}</b></button>`).join("")}</div>`;
-  if (prefs.media.sp && !$("sp-frame").innerHTML) { const m = prefs.media.sp.match(/spotify\.com\/(\w+)\/(\w+)/); if (m) spPlay(m[1], m[2]); }
-  $("sp-out").onclick = () => { jset("kz-sp", null); spMe = spPls = null; $("sp-frame").innerHTML = ""; spUI(); };
-  body.onclick = async (e) => { const p = e.target.closest("[data-pl]"); if (p) return spPlay("playlist", p.dataset.pl); const c = e.target.closest("[data-sp]"); if (!c) return;
+  body.innerHTML = `<div class="mwho"><span>🎧 ${esc(spMe.display_name || spMe.id)}</span><button class="pb tiny" id="sp-out">Sign out</button></div><div class="spnow" id="sp-now"></div><div id="sp-list">
+    <div class="plgrid">${spPls.filter(Boolean).map((p) => `<button class="pl" data-pl="${p.id}"><img loading="lazy" src="${esc((p.images && p.images[0] && p.images[0].url) || "")}" alt=""><b>${esc(p.name)}</b></button>`).join("")}</div></div>${spHasStream() ? "" : '<div class="tiny muted">Previews only? Sign out and connect again once to play full songs (Premium).</div>'}`;
+  if (spView) spOpenPl(spView); spPlayer();
+  if (prefs.media.sp && !$("sp-frame").innerHTML && !spHasStream()) { const m = prefs.media.sp.match(/spotify\.com\/(\w+)\/(\w+)/); if (m) spPlay(m[1], m[2]); }
+  $("sp-out").onclick = () => { jset("kz-sp", null); spMe = spPls = null; try { spSdk && spSdk.disconnect && spSdk.disconnect(); } catch (e) {} spSdk = spDev = null; spView = null; $("sp-frame").innerHTML = ""; spUI(); };
+  body.onclick = async (e) => { const p = e.target.closest("[data-pl]"); if (p) return spOpenPl(p.dataset.pl); const c = e.target.closest("[data-sp]"); if (!c) return;
+    if (spSdk && spSdk !== "nopremium" && spDev) { const a = c.dataset.sp; try { await (a === "next" ? spSdk.nextTrack() : a === "previous" ? spSdk.previousTrack() : spSdk.togglePlay()); } catch (er) {} return; }
     try { await spApi("/me/player/" + c.dataset.sp, { method: c.dataset.sp === "play" || c.dataset.sp === "pause" ? "PUT" : "POST" }); setTimeout(spNow, 350); } catch (er) { toast(er.status === 403 ? "Spotify only allows remote controls with Premium. The player below still works." : er.message); } };
   spNow(); clearInterval(spUI.iv); spUI.iv = setInterval(() => { if (prefs.media.show && prefs.media.tab === "sp") spNow(); }, 8000); }
 

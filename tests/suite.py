@@ -362,6 +362,13 @@ async def main():
         check("day recap: finds same trade, extra real trade and skipped backtest trade", "same trade" in rc and "not in your backtest" in rc and "skipped it live" in rc, rc)
         await E("$('toast').click()"); await pg.wait_for_timeout(200); check("day recap details open on tap", await E("!$('dlg').classList.contains('hidden') && /went off the model/.test($('dlgbox').textContent)"))
         await E("$('dl-ok').click(); realTrades = window._oldReal; hist.length = 0; hist.push(...window._oldHist)")
+        await E("""(async () => { window.REWIND = Object.assign({}, window.REWIND || {}, { spotify: "x" }); jset("kz-sp", { at: "a", rt: "r", exp: Date.now() + 3e6, sc: "streaming playlist-read-private" }); spMe = { display_name: "T" }; spPls = [{ id: "P1", name: "Study", images: [] }];
+          window._spApi = spApi; spApi = async (path) => path.startsWith("/playlists/P1/items") ? { items: [{ item: { uri: "spotify:track:1", name: "Netrunner", type: "track", duration_ms: 200000, artists: [{ name: "Jergus" }] } }, { item: { uri: "spotify:track:2", name: "Innerbloom", type: "track", duration_ms: 580000, artists: [{ name: "RUFUS" }] } }] } : path === "/me/player" ? null : {};
+          prefs.media = prefs.media || {}; await spUI(); })()""")
+        await pg.wait_for_timeout(300); await E("document.querySelector('#sp-body [data-pl=P1]').click()"); await pg.wait_for_timeout(400)
+        check("spotify: tapping a playlist shows its songs", await E("document.querySelectorAll('#sp-body .sptr').length") == 2, await E("document.getElementById('sp-body') && document.getElementById('sp-body').innerText.slice(0,200)"))
+        await E("document.querySelector('#sp-back').click()"); await pg.wait_for_timeout(300); check("spotify: back goes to the playlists", await E("!!document.querySelector('#sp-body [data-pl=P1]')"))
+        await E("spApi = window._spApi; jset('kz-sp', null); spMe = spPls = null")
         await E("$('fxb-b').click()"); check("fix bubble opens", await E("!$('fxb-card').classList.contains('hidden')"))
         await E("$('fxb-snap').click()"); await pg.wait_for_timeout(900); await E("$('fxb-snap').click()"); await pg.wait_for_timeout(900)
         check("fix box holds 2 screenshots", await E("document.querySelectorAll('#fxb-imgs img').length") == 2, await E("document.querySelectorAll('#fxb-imgs img').length"))
