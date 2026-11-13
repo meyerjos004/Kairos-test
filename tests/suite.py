@@ -355,6 +355,11 @@ async def main():
         await E("drawings.pop(); sel=null; repaintAll()")
         # fix bubble + tips
         await E("$('fxb-b').click()"); check("fix bubble opens", await E("!$('fxb-card').classList.contains('hidden')"))
+        await E("$('fxb-snap').click()"); await pg.wait_for_timeout(900); await E("$('fxb-snap').click()"); await pg.wait_for_timeout(900)
+        check("fix box holds 2 screenshots", await E("document.querySelectorAll('#fxb-imgs img').length") == 2, await E("document.querySelectorAll('#fxb-imgs img').length"))
+        await E("document.querySelector('#fxb-imgs img').click()"); check("tap a screenshot opens it big", await E("!!document.querySelector('.fxb-lb img')"))
+        await E("document.querySelector('.fxb-lb').click()"); check("big view closes", await E("!document.querySelector('.fxb-lb')"))
+        await E("document.querySelector('#fxb-imgs [data-rm]').click()"); check("x removes one screenshot", await E("document.querySelectorAll('#fxb-imgs img').length") == 1)
         await E("$('fxb-in').value='Test fix from bubble'; $('fxb-go').click()"); await pg.wait_for_timeout(200); check("fix bubble sends to fix box", await E("(mem.sg||[]).some(x=>x.body.includes('Test fix from bubble'))"))
         await E("prefs.tips=true; kTipNow()"); check("tip shows", await E("!$('fxb-tip').classList.contains('hidden') && $('fxb-tt').textContent.length>10"))
         await E("$('fxb-toff').click()"); check("tips switch off", await E("prefs.tips===false && $('fxb-tip').classList.contains('hidden')"))

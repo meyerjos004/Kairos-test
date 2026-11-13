@@ -2282,7 +2282,7 @@ function labelPop(d, r) { document.getElementById("lblpop")?.remove(); const el 
 (() => { const w = document.createElement("div"); w.id = "fxb"; w.innerHTML = `<div id="fxb-tip" class="fxb-tip hidden"><span id="fxb-tt"></span><button id="fxb-tx" title="Hide">×</button><button id="fxb-toff" class="fxb-off">Don't show tips</button></div>
   <div id="fxb-card" class="fxb-card hidden"><div class="fxb-h"><b>Send to Claude</b><button id="fxb-x" title="Close">×</button></div><div class="seg fxb-seg"><button data-k="fix" class="on">🔧 Fix</button><button data-k="idea">💡 Idea</button></div>
   <textarea id="fxb-in" maxlength="1000" placeholder="What should change? Where is it, and what should it do? (Ctrl+V pastes a screenshot)"></textarea>
-  <div class="fxb-shot"><button class="ghost small" id="fxb-paste" title="Win+Shift+S, then click here">📋 Paste my last screenshot</button><button class="ghost small" id="fxb-snap" title="Grab the chart as it is now">📷 Snap the chart</button><span id="fxb-img" class="hidden"><img id="fxb-thumb" alt=""><button id="fxb-rm" title="Remove">×</button></span></div><div class="fxb-f"><span class="tiny muted" id="fxb-where"></span><button class="primary" id="fxb-go">Send</button></div></div>
+  <div class="fxb-shot"><button class="ghost small" id="fxb-paste" title="Win+Shift+S, then click here">📋 Paste my last screenshot</button><button class="ghost small" id="fxb-snap" title="Grab the chart as it is now">📷 Snap the chart</button><span id="fxb-imgs"></span></div><div class="fxb-f"><span class="tiny muted" id="fxb-where"></span><button class="primary" id="fxb-go">Send</button></div></div>
   <button id="fxb-b" class="fxb-b" title="Fix or idea → Claude"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a4 4 0 00-5.4 5.2L4 16.8V20h3.2l5.3-5.3a4 4 0 005.2-5.4l-2.5 2.5-2.3-.5-.5-2.3z"/></svg></button>`;
   document.body.appendChild(w); let kind = "fix", tipT = null, idx = Math.floor(Math.random() * KTIPS.length);
   const where = () => { const v = document.querySelector(".vtab.on[data-view]"); return v ? (v.title || v.dataset.view) : "app"; };
@@ -2292,14 +2292,21 @@ function labelPop(d, r) { document.getElementById("lblpop")?.remove(); const el 
   w.querySelectorAll(".fxb-seg button").forEach((b) => (b.onclick = () => { kind = b.dataset.k; w.querySelectorAll(".fxb-seg button").forEach((x) => x.classList.toggle("on", x === b)); }));
   $("fxb-in").onkeydown = (e) => e.stopPropagation();
   /* KING_FIXSHOT (Nov 13): attach a screenshot to a fix (paste the last one from the clipboard, Ctrl+V, or snap the chart) */
-  let shotBlob = null;
-  const setShot = (b) => { shotBlob = b; $("fxb-img").classList.toggle("hidden", !b); if (b) $("fxb-thumb").src = URL.createObjectURL(b); };
-  $("fxb-rm").onclick = () => setShot(null);
+  /* KING_FIXSHOT2 (King, Nov 13): up to 3 screenshots; tap one to see it full size, × removes it */
+  let shots = []; const MAXS = 3;
+  const drawShots = () => { $("fxb-imgs").innerHTML = shots.map((x, i) => `<span class="fxb-img"><img src="${x.u}" data-i="${i}" alt="" title="Tap to see it big"><button data-rm="${i}" title="Remove">×</button></span>`).join("");
+    $("fxb-paste").disabled = $("fxb-snap").disabled = shots.length >= MAXS; };
+  const setShot = (b) => { if (b === null) { shots.forEach((x) => URL.revokeObjectURL(x.u)); shots = []; return drawShots(); } if (shots.length >= MAXS) return toast("Up to " + MAXS + " screenshots per fix"); shots.push({ b, u: URL.createObjectURL(b) }); drawShots(); };
+  $("fxb-imgs").onclick = (e) => { const rm = e.target.closest("[data-rm]"); if (rm) { const [x] = shots.splice(+rm.dataset.rm, 1); URL.revokeObjectURL(x.u); return drawShots(); }
+    const im = e.target.closest("img[data-i]"); if (!im) return; const lb = document.createElement("div"); lb.className = "fxb-lb"; lb.innerHTML = `<img src="${im.src}" alt=""><button title="Close">×</button>`; lb.onclick = () => lb.remove();
+    const esc = (k) => { if (k.key === "Escape") { lb.remove(); removeEventListener("keydown", esc, true); } }; addEventListener("keydown", esc, true); document.body.appendChild(lb); };
   $("fxb-paste").onclick = async () => { try { const items = await navigator.clipboard.read(); for (const it of items) { const ty = it.types.find((t) => t.startsWith("image/")); if (ty) return setShot(await it.getType(ty)); } toast("No screenshot on the clipboard. Press Win+Shift+S (Mac: Cmd+Ctrl+Shift+4) first."); } catch (e) { toast("Your browser blocked the clipboard. Click in the box and press Ctrl+V instead."); } };
   $("fxb-in").addEventListener("paste", (e) => { const f = [...(e.clipboardData?.items || [])].find((x) => x.type.startsWith("image/")); if (f) { e.preventDefault(); setShot(f.getAsFile()); } });
   $("fxb-snap").onclick = async () => { try { const cv = panes[active].chart.takeScreenshot(); setShot(await new Promise((r) => cv.toBlob(r, "image/png"))); } catch (e) { toast("Couldn't grab the chart"); } };
-  const upShot = async () => { if (!shotBlob || DEMO || !user) return ""; try { const path = `${user.id}/fix-${Date.now()}.png`; const up = await sb.storage.from("shots").upload(path, shotBlob, { contentType: shotBlob.type || "image/png", upsert: true }); if (up.error) return "";
-      const { data } = await sb.storage.from("shots").createSignedUrl(path, 60 * 60 * 24 * 30); return data && data.signedUrl ? "\n[screenshot] " + data.signedUrl : ""; } catch (e) { return ""; } };
+  const upShot = async () => { if (!shots.length || DEMO || !user) return ""; let out = "";
+    for (const [i, x] of shots.entries()) { try { const path = `${user.id}/fix-${Date.now()}-${i + 1}.png`; const up = await sb.storage.from("shots").upload(path, x.b, { contentType: x.b.type || "image/png", upsert: true }); if (up.error) continue;
+      const { data } = await sb.storage.from("shots").createSignedUrl(path, 60 * 60 * 24 * 30); if (data && data.signedUrl) out += "\n[screenshot] " + data.signedUrl; } catch (e) {} }
+    return out; };
   $("fxb-go").onclick = async () => { const t = $("fxb-in").value.trim(); if (t.length < 3) return toast("Add a few words first"); const body = `[${where()}] ${t}` + await upShot();
     if (DEMO) (mem.sg = mem.sg || []).push({ id: "g" + Date.now(), user_id: "demo", body, kind, status: "new", votes: [], created_at: new Date().toISOString() });
     else { const { error } = await sb.from("suggestions").insert({ body, kind }); if (error) return toast(error.message); }

@@ -622,3 +622,9 @@ body.glass .tools:not(.float),body.glass .tools.float{background:linear-gradient
 .fxb-shot{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0}.fxb-shot .small{font-size:11px;padding:4px 8px}
 #fxb-img{position:relative;display:inline-flex}#fxb-thumb{height:44px;max-width:120px;border-radius:6px;border:1px solid rgba(255,255,255,.15);object-fit:cover}
 #fxb-rm{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;padding:0;font-size:12px;line-height:16px;background:#222;color:#fff;border:1px solid #555}
+
+/* KING_FIXSHOT2: thumbnails + full-size view */
+#fxb-imgs{display:flex;gap:6px;flex-wrap:wrap}.fxb-img{position:relative;display:inline-block}.fxb-img img{width:64px;height:40px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,.14);cursor:zoom-in;display:block}
+.fxb-img button{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border-radius:50%;border:0;background:#2a2f3b;color:#fff;font-size:12px;line-height:18px;padding:0;cursor:pointer}
+.fxb-lb{position:fixed;inset:0;z-index:9999;background:rgba(5,7,10,.88);display:grid;place-items:center;cursor:zoom-out;animation:fxbIn .18s ease}.fxb-lb img{max-width:92vw;max-height:88vh;border-radius:10px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.fxb-lb button{position:absolute;top:18px;right:22px;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.2);background:rgba(20,24,32,.9);color:#fff;font-size:20px;cursor:pointer}
