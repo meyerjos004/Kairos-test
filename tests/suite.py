@@ -235,6 +235,13 @@ async def main():
         check("SMT only uses closed candles", await E("(()=>{const z=smtFind('5m',300); const now=bucket(loc(nowT()),300); return z.every(s=>s.t2<now)})()"))
         await pg.screenshot(path="/home/claude/shot/smt.png")
         await E("Object.keys(smtCfg()).forEach(k=>smtCfg()[k]=false); repaintAll()")
+        # KING_STARTFX: launch intro (random line, no gate) + chart build animation
+        ki = await E("(()=>{ splash(true); const k=document.getElementById('kintro'); return k ? [k.querySelector('.wwel').textContent, !!k.querySelector('button')] : null })()")
+        check("launch intro shows a line, not Welcome", bool(ki) and 'WELCOME' not in ki[0].upper() and not ki[1], ki)
+        await E("document.getElementById('kintro')?.dispatchEvent(new PointerEvent('pointerdown'))"); await pg.wait_for_timeout(1200)
+        check("launch intro skips on click", await E("!document.getElementById('kintro') && introOn===false"))
+        await E("buildFx('test')"); await pg.wait_for_timeout(500); check("chart build overlay runs", await E("!!document.getElementById('kbuild')"))
+        await pg.wait_for_timeout(3600); check("chart build ends and shows the charts", await E("!document.getElementById('kbuild') && $('charts').style.opacity===''"))
         # Beta welcome cinematic + onboarding tour
         await E("view('trade'); welcomeIntro(true)"); await pg.wait_for_timeout(300)
         check("welcome gate shows", await E("!!document.getElementById('welcome') && $('w-go').offsetParent!==null"))

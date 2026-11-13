@@ -145,6 +145,7 @@ async function loadReplay() { try { execs.length = 0; } catch (e) {}
   catch (e) { return toast("Could not start a session: " + e.message); }
   hist = []; lock = null; alerts = []; rebuildAll(); drawAlerts();
   { const ev = econOn(new Date(loc(t0) * 1000).toISOString().slice(0, 10)); if (ev.length) setTimeout(() => toast("📅 News today: " + ev.map((e) => `${e.name} ${e.hm} ET`).join(", ")), 900); } panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast(""); prefs.sym = sym; savePrefs();
+  try { buildFx(!builtOnce); builtOnce = true; } catch (e) {}   // KING_STARTFX
 }
 async function ensure15() {   // a pane switched to 15s/30s mid-session: load 15s data without resetting the session
   need15 = true; if (B["15s"].bars.length || !B["1m"].bars.length) return;
@@ -1389,7 +1390,7 @@ const esc = (x) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const ago = (iso) => { const s = (Date.now() - Date.parse(iso)) / 1000; return s < 60 ? "now" : s < 3600 ? Math.floor(s / 60) + "m" : s < 86400 ? Math.floor(s / 3600) + "h" : Math.floor(s / 86400) + "d"; };
 async function loadMe() {
   if (DEMO) { me = { user_id: "demo", name: "You", share_stats: true }; names = { demo: "You", b: "Ben", w: "Will" }; return; }
-  const { data } = await sb.from("profiles").select("*"); (data || []).forEach((p) => { names[p.user_id] = p.name || "trader"; profs[p.user_id] = p; }); me = (data || []).find((p) => p.user_id === user.id);
+  const { data } = await sb.from("profiles").select("*"); (data || []).forEach((p) => { names[p.user_id] = p.name || "trader"; profs[p.user_id] = p; }); me = (data || []).find((p) => p.user_id === user.id); try { if (me && me.name) localStorage.setItem("kz-name", String(me.name)); } catch (e) {}
   if (!me) { const nm = (user.email || "me").split("@")[0].replace(/[0-9_.]+$/, "") || "me"; const r = await sb.from("profiles").insert({ name: nm }).select().single(); me = r.data || { user_id: user.id, name: nm, share_stats: true }; names[user.id] = me.name; }
   else sb.from("profiles").update({ seen_at: new Date().toISOString() }).eq("user_id", user.id).then(() => {});
 }
@@ -1546,7 +1547,7 @@ const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", 
 function fillSettings() {
   if ($("s-name")) $("s-name").value = (me && me.name) || "";
   if ($("s-tips")) $("s-tips").checked = prefs.tips !== false;
-  if ($("s-sound")) { $("s-sound").checked = prefs.sound !== false; $("s-vol").value = prefs.vol ?? 60; $("s-hap").checked = prefs.haptics !== false; $("s-splash").checked = prefs.splash !== false; $("s-review").checked = prefs.review !== false; }
+  if ($("s-sound")) { $("s-sound").checked = prefs.sound !== false; $("s-vol").value = prefs.vol ?? 60; $("s-hap").checked = prefs.haptics !== false; $("s-splash").checked = prefs.splash !== false; if ($("s-chartfx")) $("s-chartfx").checked = prefs.chartfx !== false; $("s-review").checked = prefs.review !== false; }
   $("s-bal").value = prefs.bal; $("s-dll").value = prefs.dll; $("s-ptg").value = prefs.ptg; $("s-act").value = prefs.act; $("s-mdd").value = prefs.mdd; $("s-fee").value = prefs.fee; $("s-mfee").value = prefs.mfee;
   $("s-opens").checked = !!prefs.opens; $("s-sess").checked = !!prefs.sess; $("s-up").value = prefs.up; $("s-dn").value = prefs.dn; $("sym").value = prefs.sym; $("o-sl").value = prefs.slPts; $("o-tp").value = prefs.tpPts;
   $("s-keys").innerHTML = Object.entries(KEYNAMES).map(([k, n]) => `<div><span>${n}</span><input data-key="${k}" maxlength="1" value="${prefs.keys[k] || ""}"></div>`).join("");
@@ -1556,7 +1557,7 @@ function saveSettings() {
   Object.assign(prefs, { bal: +$("s-bal").value, dll: +$("s-dll").value, ptg: +$("s-ptg").value, act: $("s-act").value, mdd: +$("s-mdd").value, fee: +$("s-fee").value, mfee: +$("s-mfee").value, opens: $("s-opens").checked, sess: $("s-sess").checked, up: $("s-up").value, dn: $("s-dn").value });
   document.querySelectorAll("[data-key]").forEach((i) => (prefs.keys[i.dataset.key] = i.value.toLowerCase()));
   const nm = $("s-name").value.trim(); if (me && nm && nm !== me.name) { me.name = nm; names[me.user_id] = nm; if (!DEMO) sb.from("profiles").update({ name: nm }).eq("user_id", me.user_id).then(() => {}); }
-  Object.assign(prefs, { sound: $("s-sound").checked, vol: +$("s-vol").value, haptics: $("s-hap").checked, splash: $("s-splash").checked, review: $("s-review").checked }); sfx("fill");
+  Object.assign(prefs, { sound: $("s-sound").checked, vol: +$("s-vol").value, haptics: $("s-hap").checked, splash: $("s-splash").checked, chartfx: $("s-chartfx") ? $("s-chartfx").checked : true, review: $("s-review").checked }); sfx("fill");
   if (acct) { acct.rules = { ...(acct.rules || {}), mdd: prefs.mdd, dll: prefs.dll, ptg: prefs.ptg }; db.updAccount(acct.id, { rules: acct.rules }).catch(() => {}); }
   panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: prefs.up, wickDownColor: prefs.dn })); try { csApplyAll(); } catch (e) {} savePrefs(); drawOpens(); repaintAll(); refresh(); $("s-msg").textContent = "Saved";
 }
@@ -1594,8 +1595,94 @@ const KTIPS = ["Hold the corner triangle on any tool button to see every tool in
   "Your journal fills itself from your replay trades. Add mistakes so the drills can target them.", "Pop out the Spotify / YouTube window onto a side screen.",
   "Drag the bottom panel up for more room, or the sidebar edge to widen it.", "Found a bug or have an idea? Tap the 🔧 bubble in the corner. It goes straight to Claude.",
   "Friends → Leaderboard shows who backtested the most this week.", "Double-click the toolbar grip to dock it again after floating it."];
-function splash() { splashSound(); const s = document.createElement("div"); s.className = "splash"; s.innerHTML = '<div class="sp-in"><img class="sp-lock" src="brand/kairos-intro.svg?' + Date.now() + '" alt="KAIROS OS"><div class="sp-tip"><b>Tip</b> ' + esc(KTIPS[Math.floor(Math.random() * KTIPS.length)]) + '</div></div>'; document.body.appendChild(s); setTimeout(() => s.classList.add("out"), 2400); setTimeout(() => s.remove(), 2900); }
-if (prefs.splash !== false) splash();
+/* KING_STARTFX (Nov 12): every launch / reload plays a short take on the welcome cinematic (no tap gate, a random opening line),
+   then the charts get "built" by swimming cursors. Lines from Codex; {name} = your first name (cached from the last visit). */
+const KLINES = ["THE SESSION RETURNS", "BACK TO THE SCREEN", "TIME TO REPLAY", "THE MARKETS AWAIT", "FOCUS RESETS", "PICK UP THE THREAD", "ANOTHER SESSION", "REPLAY BEGINS",
+  "THE CLOCK RESUMES", "MARKETS IN MOTION", "TIME, REVISITED", "THE TAPE IS LIVE", "BACK IN SEQUENCE", "A NEW SESSION", "THE CHARTS ARE READY", "RETURN TO THE TAPE",
+  "HISTORY, IN MOTION", "THE NEXT MOVE", "ON THE CLOCK", "SESSION RELOADED", "BACK TO THE BARS", "THE SIGNAL RETURNS",
+  "{name}, BACK TO THE CHARTS", "{name}, TIME TO REPLAY", "{name}, PICK UP THE THREAD", "{name}, THE SESSION RESUMES"];
+let introOn = false; const introWait = [];
+function afterIntro(f) { if (introOn) introWait.push(f); else f(); }
+function introLine() { let nm = ""; try { nm = (localStorage.getItem("kz-name") || "").split(" ")[0].slice(0, 14); } catch (e) {}
+  let last = ""; try { last = localStorage.getItem("kz-line") || ""; } catch (e) {}
+  const pool = KLINES.filter((l) => (nm || !l.includes("{name}")) && l !== last), l = pool[Math.floor(Math.random() * pool.length)] || KLINES[0];
+  try { localStorage.setItem("kz-line", l); } catch (e) {} return l.replace("{name}", nm.toUpperCase()); }
+function kScore(A, D) { const ac = A.ac, t = ac.currentTime + 0.05; D = Math.max(0.6, D);
+  [329.63, 392, 440].forEach((f, k) => wTone(A, f, t + 0.08 + k * 0.22, 1.2, 0.04, "triangle"));
+  const n = ac.createBufferSource(), nb = ac.createBuffer(1, Math.ceil(ac.sampleRate * (D + 0.4)), ac.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1; n.buffer = nb;
+  const r0 = t + Math.max(0, D - 1.4), bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.Q.value = 6; bp.frequency.setValueAtTime(300, r0); bp.frequency.exponentialRampToValueAtTime(5000, t + D - 0.05);
+  const ng = ac.createGain(); ng.gain.setValueAtTime(0, r0); ng.gain.linearRampToValueAtTime(0.12, t + D - 0.08); ng.gain.linearRampToValueAtTime(0, t + D); n.connect(bp); bp.connect(ng); ng.connect(A.M); n.start(r0); n.stop(t + D + 0.2);
+  const T = t + D, b = ac.createOscillator(), bg = ac.createGain(); b.frequency.setValueAtTime(130, T); b.frequency.exponentialRampToValueAtTime(34, T + 1.2); bg.gain.setValueAtTime(0, T); bg.gain.linearRampToValueAtTime(0.6, T + 0.02); bg.gain.exponentialRampToValueAtTime(0.001, T + 2.1); b.connect(bg); bg.connect(A.M); b.start(T); b.stop(T + 2.2);
+  [110, 164.81, 220, 277.18, 329.63, 440].forEach((f, k) => { const o = ac.createOscillator(), g = ac.createGain(), lp = ac.createBiquadFilter(); o.type = "sawtooth"; o.frequency.value = f; o.detune.value = k % 2 ? 8 : -8;
+    lp.type = "lowpass"; lp.frequency.setValueAtTime(400, T); lp.frequency.linearRampToValueAtTime(2400, T + 1.2); lp.frequency.linearRampToValueAtTime(600, T + 3.2);
+    g.gain.setValueAtTime(0, T); g.gain.linearRampToValueAtTime(0.032, T + 0.08); g.gain.exponentialRampToValueAtTime(0.0008, T + 3.4); o.connect(lp); lp.connect(g); g.connect(A.M); g.connect(A.V); o.start(T); o.stop(T + 3.5); });
+  [523.25, 659.25, 783.99, 1046.5].forEach((f, k) => wTone(A, f, T + 0.9 + k * 0.08, 1.2, 0.028)); }
+function splash(force) {   // launch intro (Settings → "Intro animation when the app opens")
+  if (document.getElementById("kintro") || (!force && (navigator.webdriver || prefs.splash === false))) return;
+  introOn = true; const line = introLine(), chars = [...line], n = chars.length, D = Math.max(1.9, 0.55 + n * 0.042 + 0.55), t0 = performance.now();
+  const el = document.createElement("div"); el.id = "kintro";
+  el.innerHTML = `<canvas class="wfield"></canvas><div class="wwel${n > 18 ? " long" : ""}">${chars.map((c, i) => `<span style="--d:${(i * 0.042).toFixed(3)}s">${c === " " ? "&nbsp;" : esc(c)}</span>`).join("")}<em style="--e:${(0.2 + n * 0.042).toFixed(2)}s">…</em></div><img class="wlock" alt="KAIROS OS Beta"><div class="ktip"><b>Tip</b>${esc(KTIPS[Math.floor(Math.random() * KTIPS.length)])}</div>`;
+  document.body.appendChild(el); try { wField(el.querySelector(".wfield")); } catch (e) {}
+  if (prefs.sound !== false && !DEMO) { const A = wAudio(); if (A) A.ac.resume().then(() => { if (A.ac.state === "running") kScore(A, D - (performance.now() - t0) / 1000); else A.ac.close(); }).catch(() => {}); }
+  const tm = [setTimeout(() => { el.classList.add("drop"); el.querySelector(".wlock").src = "brand/kairos-intro.svg?d=" + Date.now(); }, D * 1000), setTimeout(() => end(), (D + 2.5) * 1000)];
+  let ended = false; const end = () => { if (ended) return; ended = true; tm.forEach(clearTimeout); el.classList.add("out"); setTimeout(() => el.remove(), 750);
+    setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 250); };
+  el.addEventListener("pointerdown", end); addEventListener("keydown", function k(e) { if (e.key === "Escape" || e.key === " " || e.key === "Enter") { removeEventListener("keydown", k); end(); } }); }
+splash();
+/* chart build: colored cursors swim in, draw every pane's frame, axes, grid, candles and price label as glowing wireframes, then the real chart fades up */
+let builtOnce = false;
+function buildFx(full) { if (prefs.chartfx === false || (navigator.webdriver && full !== "test")) return; const host = $("charts"); if (!host) return;
+  host.style.transition = "none"; host.style.opacity = "0"; afterIntro(() => requestAnimationFrame(() => runBuild(full !== false))); }
+function runBuild(full) { const host = $("charts"); if (!host || document.getElementById("kbuild")) return; const R = host.getBoundingClientRect(); if (!R.width) { host.style.opacity = ""; return; }
+  const D = Math.min(devicePixelRatio || 1, 2), cv = document.createElement("canvas"); cv.id = "kbuild"; Object.assign(cv.style, { left: R.left + "px", top: R.top + "px", width: R.width + "px", height: R.height + "px" });
+  cv.width = R.width * D; cv.height = R.height * D; document.body.appendChild(cv); const g = cv.getContext("2d"); g.scale(D, D);
+  const L = [], np = panes.length || 1, perPane = Math.max(12, Math.floor((full ? 200 : 110) / np));
+  panes.forEach((p) => { const r = p.el.getBoundingClientRect(), ox = r.left - R.left, oy = r.top - R.top, w = r.width, h = r.height; if (w < 40) return;
+    let aw = 62; try { aw = p.chart.priceScale("right").width() || 62; } catch (e) {} const th = 26;
+    L.push({ k: "rect", x: ox + 2, y: oy + 2, w: w - 4, h: h - 4, z: 0 }, { k: "line", x: ox + w - aw, y: oy + 2, w: 0, h: h - 4, z: 1 }, { k: "line", x: ox + 2, y: oy + h - th, w: w - 4, h: 0, z: 1 });
+    for (let i = 1; i <= 4; i++) L.push({ k: "line", x: ox + 4, y: oy + (h - th) * i / 5, w: w - aw - 8, h: 0, z: 2, dash: 1 });
+    let cs = []; try { const data = p.series.data ? p.series.data() : [], ts = p.chart.timeScale(), lr = ts.getVisibleLogicalRange(); if (data.length && lr) { const a = Math.max(0, Math.floor(lr.from)), b = Math.min(data.length - 1, Math.ceil(lr.to)), step = Math.max(1, Math.ceil((b - a + 1) / perPane));
+      for (let i = a; i <= b; i += step) { const d = data[i]; if (d.open == null) continue; const x = ts.logicalToCoordinate(i), yo = p.series.priceToCoordinate(d.open), yc = p.series.priceToCoordinate(d.close), yh = p.series.priceToCoordinate(d.high), yl = p.series.priceToCoordinate(d.low);
+        if ([x, yo, yc, yh, yl].some((v) => v == null || !isFinite(v)) || x < 0 || x > w - aw) continue; const bw = Math.max(3, Math.min(14, (w - aw) / ((b - a + 1) / step) * 0.6));
+        cs.push({ k: "rect", x: ox + x - bw / 2, y: oy + Math.min(yo, yc), w: bw, h: Math.max(2, Math.abs(yc - yo)), z: 3, wk: [oy + yh, oy + yl], cx: ox + x, up: d.close >= d.open }); } } } catch (e) {}
+    if (!cs.length) for (let i = 0; i < perPane; i++) { const x = ox + 10 + (w - aw - 20) * i / perPane, y = oy + h * (0.3 + 0.35 * Math.sin(i / 5) + Math.random() * 0.08); cs.push({ k: "rect", x, y, w: 6, h: 6 + Math.random() * 18, z: 3, wk: [y - 6, y + 30], cx: x + 3, up: Math.random() > 0.5 }); }
+    L.push(...cs, { k: "rect", x: ox + w - aw + 2, y: oy + h * 0.45, w: aw - 6, h: 16, z: 4, tag: 1 }); });
+  L.forEach((l) => (l.r = Math.random())); L.sort((a, b) => Math.min(a.z, 3) - Math.min(b.z, 3) || a.r - b.r);
+  L.forEach((l) => { l.per = l.k === "line" ? Math.abs(l.w) + Math.abs(l.h) : 2 * (l.w + l.h); l.p = 0; });
+  const COL = ["#ff5a6e", "#48d6ff", "#8b5cf6", "#46e08c", "#ffd24a", "#4b7bff", "#ff8a3d", "#e86bff"], NA = full ? 24 : 14, T = full ? 2.6 : 1.35;
+  const A = Array.from({ length: NA }, (_, i) => { const e = i % 4, rx = Math.random() * R.width, ry = Math.random() * R.height; return { x: e === 0 ? -20 : e === 1 ? R.width + 20 : rx, y: e === 2 ? -20 : e === 3 ? R.height + 20 : ry, vx: 0, vy: 0, c: COL[i % COL.length], job: null, ph: Math.random() * 6.28, h: 0 }; });
+  let qi = 0, done = 0, t0 = performance.now(), last = t0, fin = false; const per = Math.max(0.05, Math.min(0.32, (T * 0.55 * NA) / Math.max(1, L.length)));
+  const ptAt = (l, u) => { if (l.k === "line") return [l.x + l.w * u, l.y + l.h * u]; let d = u * l.per; if (d < l.w) return [l.x + d, l.y]; d -= l.w; if (d < l.h) return [l.x + l.w, l.y + d]; d -= l.h; if (d < l.w) return [l.x + l.w - d, l.y + l.h]; d -= l.w; return [l.x, l.y + l.h - d]; };
+  const stroke = (l, u, a) => { g.globalAlpha = a; g.beginPath(); if (l.k === "line") { const [x, y] = ptAt(l, u); g.moveTo(l.x, l.y); g.lineTo(x, y); }
+    else { g.moveTo(l.x, l.y); const d = u * l.per, cs = [[l.w, l.x + l.w, l.y], [l.w + l.h, l.x + l.w, l.y + l.h], [2 * l.w + l.h, l.x, l.y + l.h], [l.per, l.x, l.y]]; for (const [c, x, y] of cs) { if (d >= c) g.lineTo(x, y); else { const [px, py] = ptAt(l, u); g.lineTo(px, py); break; } } }
+    g.setLineDash(l.dash ? [4, 5] : []); g.stroke(); if (l.wk && u >= 1) { g.beginPath(); g.moveTo(l.cx, l.wk[0]); g.lineTo(l.cx, l.y); g.moveTo(l.cx, l.y + l.h); g.lineTo(l.cx, l.wk[1]); g.stroke(); } };
+  const cursor = (a) => { g.save(); g.translate(a.x, a.y); g.rotate(a.h - 0.5); g.globalAlpha = 1; g.shadowColor = a.c; g.shadowBlur = 8; g.fillStyle = a.c; g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 13); g.lineTo(3.6, 9.6); g.lineTo(6.4, 15); g.lineTo(8.4, 14); g.lineTo(5.8, 8.8); g.lineTo(10.4, 8.6); g.closePath(); g.fill(); g.shadowBlur = 0; g.stroke(); g.restore(); };
+  const pill = (x, y, txt) => { g.font = "600 9px Inter,sans-serif"; const w = g.measureText(txt).width + 8; g.globalAlpha = 0.95; g.fillStyle = "#2f5bff"; g.beginPath(); g.roundRect ? g.roundRect(x, y, w, 13, 3) : g.rect(x, y, w, 13); g.fill(); g.fillStyle = "#fff"; g.fillText(txt, x + 4, y + 9.5); };
+  const stop = () => { fin = true; }; cv.addEventListener("pointerdown", stop); addEventListener("pointerdown", stop, { once: true });
+  const fr = (now) => { now = performance.now(); const t = (now - t0) / 1000, dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now; const rush = fin || t > T * 0.85;
+    const rev = fin ? 1 : Math.max(0, Math.min(1, (t - T * 0.62) / (T * 0.38))); host.style.opacity = String(rev);
+    for (const a of A) { if (!a.job && qi < L.length && !rush) { a.job = L[qi++]; a.mv = true; }
+      let tx, ty; if (a.job) { [tx, ty] = a.mv ? ptAt(a.job, 0) : ptAt(a.job, a.job.p); } else { tx = a.x + Math.cos(a.ph + t) * 40; ty = a.y + Math.sin(a.ph * 1.3 + t) * 40; }
+      const dx = tx - a.x, dy = ty - a.y, dd = Math.hypot(dx, dy) || 1, sp = a.mv ? 1400 : 900, wob = Math.sin(t * 9 + a.ph) * (a.mv ? 0.35 : 0.15);
+      const ux = dx / dd, uy = dy / dd, wx = ux - uy * wob, wy = uy + ux * wob; a.vx += (wx * sp - a.vx) * Math.min(1, dt * 9); a.vy += (wy * sp - a.vy) * Math.min(1, dt * 9);
+      if (a.mv) { const st = Math.min(dd, Math.hypot(a.vx, a.vy) * dt); a.x += ux * st + (wx - ux) * st * 0.4; a.y += uy * st + (wy - uy) * st * 0.4; if (dd < 6) { a.mv = false; } }
+      else if (a.job) { a.job.p = Math.min(1, a.job.p + dt / per); const [px, py] = ptAt(a.job, a.job.p); a.x = px; a.y = py; if (a.job.p >= 1) { a.job.done = true; done++; a.job = null; } }
+      else { a.x += a.vx * dt * 0.15; a.y += a.vy * dt * 0.15; }
+      if (Math.hypot(a.vx, a.vy) > 5) a.h = Math.atan2(a.vy, a.vx) - Math.PI / 2 + 0.5; }
+    if (rush) L.forEach((l) => { if (!l.done) { l.p = Math.min(1, l.p + dt * 3); if (l.p >= 1) { l.done = true; done++; } } });
+    g.clearRect(0, 0, R.width, R.height); const fade = 1 - rev * 0.85;
+    g.lineWidth = 1.2; g.strokeStyle = "#5b7cff"; g.shadowColor = "#3b5bff"; g.shadowBlur = 6;
+    for (const l of L) if (l.p > 0) { if (l.tag && l.done) { g.shadowBlur = 0; pill(l.x, l.y + 1.5, "LAST"); g.shadowBlur = 6; g.strokeStyle = "#5b7cff"; } stroke(l, l.p, (l.done ? 0.75 : 1) * fade); }
+    g.shadowBlur = 0; for (const a of A) if (a.job && !a.mv) pill(a.x + 10, a.y + 10, `${Math.round(a.job.w || a.job.per)} × ${Math.round(a.job.h || 1)}`);
+    for (const a of A) { g.globalAlpha = fade; cursor(a); }
+    g.globalAlpha = Math.min(1, t * 4) * fade; const bw = 300, bx = R.width / 2 - bw / 2, by = R.height - 46; g.fillStyle = "rgba(14,14,20,.88)"; g.strokeStyle = "rgba(255,255,255,.12)"; g.beginPath(); g.roundRect ? g.roundRect(bx, by, bw, 30, 9) : g.rect(bx, by, bw, 30); g.fill(); g.stroke();
+    COL.slice(0, 5).forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.arc(bx + 16 + i * 9, by + 15, 4.5, 0, 6.29); g.fill(); });
+    g.fillStyle = "#e8e6f2"; g.font = "600 11px Inter,sans-serif"; g.fillText(`${NA} agents`, bx + 66, by + 19); g.fillStyle = "#8d89a3"; g.fillText(`${done} / ${L.length} layers`, bx + 130, by + 19);
+    g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(bx + 222, by + 13.5, 64, 3); g.fillStyle = "#8b5cf6"; g.fillRect(bx + 222, by + 13.5, 64 * done / Math.max(1, L.length), 3); g.globalAlpha = 1;
+    if ((done >= L.length && rev >= 1) || t > T + 1.2) { host.style.opacity = ""; host.style.transition = ""; cv.style.opacity = "0"; setTimeout(() => cv.remove(), 300); removeEventListener("pointerdown", stop); return; }
+    requestAnimationFrame(fr); };
+  requestAnimationFrame(fr); }
 /* ---------------- KAIROS OS Beta: welcome cinematic (first time you're let in) + onboarding tour ---------------- */
 const APP_VERSION = "0.9.1", APP_LABEL = "Beta";
 function wAudio() { try { const ac = new (window.AudioContext || window.webkitAudioContext)(), M = ac.createGain(); M.gain.value = 0.9; M.connect(ac.destination);
@@ -1700,7 +1787,7 @@ async function boot() {
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
   if (DEMO) { $("start").value = "2026-10-14T09:45"; await loadReplay(); for (let i = 0; i < 25; i++) await stepFwd(); }
   refresh(); fxLoadHave().then(fxUI).catch(() => {}); if ($("s-ver")) $("s-ver").textContent = `Beta · version ${APP_VERSION}${window.KAIROS_DESKTOP ? " · desktop app " + window.KAIROS_DESKTOP.version : ""}. 1.0 is the full release.`;
-  const qp = new URLSearchParams(location.search); if (qp.has("welcome") || (!DEMO && !prefs.welcomed)) setTimeout(() => welcomeIntro(), DEMO ? 300 : 2400); else if (qp.has("tour")) setTimeout(tour, 600);
+  const qp = new URLSearchParams(location.search); if (qp.has("welcome") || (!DEMO && !prefs.welcomed)) afterIntro(() => setTimeout(() => welcomeIntro(), DEMO ? 300 : 600)); else if (qp.has("tour")) setTimeout(tour, 600);
   else if (!DEMO && me && !me.username && !prefs.psLater) setTimeout(() => profileSetup(), 4000);   // friends who already went through the welcome get it once too
 }
 $("a-in").onclick = async () => { try { kChime(new (window.AudioContext || window.webkitAudioContext)()); } catch (e) {} const { error } = await sb.auth.signInWithPassword({ email: $("a-email").value.trim(), password: $("a-pass").value }); $("a-msg").textContent = error ? error.message : ""; if (!error) boot(); };
@@ -1887,7 +1974,7 @@ const FX = {
   const _rs = renderStats; renderStats = async function () { await _rs.apply(this, arguments); document.querySelectorAll("#st-kpi b").forEach(FX.count); FX.stagger([...document.querySelectorAll("#st-kpi > div")]); };
   const _dlg = dlg; dlg = function () { const r = _dlg.apply(this, arguments); FX.pop($("dlgbox")); return r; };
   const _toast = toast; toast = function (m) { _toast(m); if (m) FX.spring($("toast"), { opacity: [0, 1], y: [16, 0] }, { bounce: 0.35 }); };
-  const _sp = splash; splash = function () { _sp(); const l = document.querySelector(".splash .sp-in"); if (l && window.anime && FX.ok()) try { anime.animate(l, { scale: [0.8, 1], opacity: [0, 1], rotate: ["-8deg", "0deg"], duration: 700, ease: "outElastic(1, .6)" }); } catch (e) {} }; }
+  /* old splash bounce removed (KING_STARTFX replaced the splash) */ }
 document.querySelectorAll(".vtab[data-view]").forEach((b) => (b.onclick = () => view(b.dataset.view)));
 $("start").addEventListener("change", () => { if (!pos.qty && !orders.length) { blind = null; blindUI(); loadReplay(); } });   // picking a date loads it right away
 $("go").onclick = () => { blind = null; blindUI(); loadReplay(); }; $("play").onclick = play; $("step").onclick = () => { pause(); $("stepsz").value === "candle" ? stepCandle() : stepFwd(); };
