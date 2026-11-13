@@ -63,6 +63,26 @@ async function loadMonth(sym, tf, ym) {
   })();
   monthCache.set(key, p); return p;
 }
+/* KING_1S (King, Nov 13): real 1-second bars (from NinjaTrader ticks) per UTC day: bars/{SYM}/1s/YYYY-MM-DD.csv.gz. Used only to animate the forming candle. */
+const day1s = new Map();
+function load1s(sym, day) { const key = sym + "/" + day; if (day1s.has(key)) return day1s.get(key);
+  const p = (DEMO ? Promise.resolve([]) : (async () => { try { const { data, error } = await sb.storage.from("bars").download(`${sym}/1s/${day}.csv.gz`); if (error || !data) return [];
+      const txt = await new Response(data.stream().pipeThrough(new DecompressionStream("gzip"))).text(), out = [], L = txt.split("\n");
+      for (let i = 1; i < L.length; i++) { const c = L[i].split(","); if (c.length >= 5) out.push({ t: +c[0], o: +c[1], h: +c[2], l: +c[3], c: +c[4] }); } return out; } catch (e) { return []; } })())
+    .then((a) => { p.v = a; if (day1s.size > 6) day1s.delete(day1s.keys().next().value); return a; });
+  day1s.set(key, p); return p; }
+function subs1s(sym, t0, t1) { const day = new Date(t0 * 1000).toISOString().slice(0, 10), p = load1s(sym, day); if (!p.v) return null;   // null = still loading
+  const a = p.v; let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m].t < t0) lo = m + 1; else hi = m; } const out = []; for (let k = lo; k < a.length && a[k].t < t1; k++) out.push(a[k]); return out; }
+function fakeSubs(x, n) { const up = x.c >= x.o, pts = up ? [x.o, x.l, x.h, x.c] : [x.o, x.h, x.l, x.c], out = [];   // no 1s data: open -> wick -> wick -> close
+  for (let k = 0; k < n; k++) { const f = (k / (n - 1 || 1)) * 3, i = Math.min(2, Math.floor(f)), v = pts[i] + (pts[i + 1] - pts[i]) * (f - i), r = Math.round(v * 4) / 4; out.push({ t: x.t, o: r, h: r, l: r, c: r }); } return out; }
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function animBars(jobs, ms) {   // jobs: [{p, x, subs}] -> grow each pane's newest candle through its sub-bars, then lock in the real bar
+  const frames = Math.max(2, Math.min(40, Math.floor(ms / 30))); let done = 0;
+  for (let f = 1; f <= frames; f++) { for (const j of jobs) { const n = Math.max(1, Math.round((j.subs.length * f) / frames)); const s0 = j.subs.slice(0, n);
+      const part = { t: j.x.t, o: j.x.o, h: Math.max(...s0.map((z) => z.h), j.x.o), l: Math.min(...s0.map((z) => z.l), j.x.o), c: s0[s0.length - 1].c };
+      if (j.p.dead) continue; j.p.series.update(pushBar(j.p, part)); }
+    if (f < frames) await sleep(ms / frames); if (!timer) break; }
+  for (const j of jobs) if (!j.p.dead) j.p.series.update(pushBar(j.p, j.x)); done = 1; return done; }
 function demoMonth(sym, tf, ym) {
   if (tf === "15s") { const out = []; for (const b of demoMonth(sym, "1m", ym)) { const h = new Date(loc(b.t) * 1000).getUTCHours(), mi = new Date(loc(b.t) * 1000).getUTCMinutes(); if (!((h === 9 && mi >= 20) || h === 10 || h === 11)) continue;
       const pts = [b.o, b.o + (b.h - b.o) * 0.6, b.l + (b.c - b.l) * 0.4, b.c]; for (let k = 0; k < 4; k++) { const o = k ? pts[k - 1] : b.o, c = pts[k]; out.push({ t: b.t + 15 * k, o: rnd(o), h: rnd(Math.max(o, c, k === 1 ? b.h : -1e9)), l: rnd(Math.min(o, c, k === 2 ? b.l : 1e9)), c: rnd(c) }); } } return out; }
@@ -161,7 +181,7 @@ async function ensureAhead() {
   for (const s of Object.keys(X)) for (const tf of ["1m", "15s"]) { if (tf === "15s" && !need15) continue; const more = await loadMonth(INST[s].data, tf, nx), xb = X[s][tf].bars, xl = xb.length ? xb[xb.length - 1].t : 0; for (const x of more) if (x.t > xl) xb.push(x); }
   for (const tf of ["1m", "15s"]) { if (tf === "15s" && !need15) continue; const more = await loadMonth(inst.data, tf, nx), lt = B[tf].bars.length ? B[tf].bars[B[tf].bars.length - 1].t : 0; for (const x of more) if (x.t > lt) B[tf].bars.push(x); }
 }
-async function stepFwd(ui = true) {
+async function stepFwd(ui = true, anim = 0) {
   if (!B["1m"].bars.length) return;
   const nxt = ["1m", "15s"].filter((tf) => tf === "1m" || need15).map((tf) => B[tf].bars[B[tf].i + 1]).filter(Boolean).map((b) => b.t);
   if (!nxt.length) { await ensureAhead(); if (!B["1m"].bars[B["1m"].i + 1]) { pause(); toast("End of data"); return false; } return stepFwd(ui); }
@@ -170,8 +190,17 @@ async function stepFwd(ui = true) {
   for (const tf of ["1m", "15s"]) { const b = B[tf]; while (b.bars[b.i + 1] && b.bars[b.i + 1].t <= cursorT) { b.i++; fresh[tf].push(b.bars[b.i]); } }
   const fx = advOthers();
   // fix 16: with 15s data on, 1m+ charts are built from the 15s bars inside the current minute, so no chart ever shows the rest of a minute that hasn't happened yet
+  const jobs = [];
   if (ui) panes.forEach((p) => { const ps = paneSym(p), F = ps === sym ? fresh : fx[ps] || { "1m": [], "15s": [] }, S = storeOf(ps);
-    const src = paneSec(p.i) < 60 ? F["15s"] : need15 ? [...F["1m"].filter((x) => !hasFine(x.t, S)), ...F["15s"]].sort((u, v) => u.t - v.t) : F["1m"]; for (const x of src) p.series.update(pushBar(p, x)); if (src.length) indTick(p); });
+    const src = paneSec(p.i) < 60 ? F["15s"] : need15 ? [...F["1m"].filter((x) => !hasFine(x.t, S)), ...F["15s"]].sort((u, v) => u.t - v.t) : F["1m"];
+    if (anim && src.length && prefs.live1s !== false && !p.dead) {   // KING_1S: the newest candle forms second by second while the replay plays
+      const x = src[src.length - 1], dx = paneSec(p.i) < 60 || (need15 && hasFine(x.t, S)) ? 15 : 60, ds = (INST[ps] || inst).data;
+      for (const y of src.slice(0, -1)) p.series.update(pushBar(p, y));
+      let sb = subs1s(ds, x.t, x.t + dx); const day = new Date((x.t + 86400) * 1000).toISOString().slice(0, 10); load1s(ds, day);   // prefetch tomorrow
+      if (!sb || !sb.length) sb = fakeSubs(x, dx === 60 ? 12 : 4); jobs.push({ p, x, subs: sb }); }
+    else for (const x of src) p.series.update(pushBar(p, x));
+    if (src.length) indTick(p); });
+  if (jobs.length) { if (ui) { refresh(); } await animBars(jobs, anim); jobs.forEach((j) => indTick(j.p)); }
   for (const x of fresh["15s"]) engineBar(x);                                   // fills use the finest bars available
   for (const x of fresh["1m"]) if (!(need15 && hasFine(x.t))) engineBar(x);
   for (const s of otherSyms()) { const c = CTX[s]; if (!c || !(c.pos.qty || c.orders.length) || !fx[s]) continue; withSym(s, () => { for (const x of fx[s]["15s"]) engineBar(x); for (const x of fx[s]["1m"]) if (!(need15 && hasFine(x.t))) engineBar(x); }); }
@@ -192,7 +221,10 @@ function stepBack() {
   if (pos.qty || orders.length) return toast("Close positions and cancel orders before stepping back");
   const b = B["1m"]; if (b.i <= 0) return; b.i--; cursorT = b.bars[b.i].t; const f = B["15s"]; while (f.i >= 0 && f.bars[f.i].t > cursorT) f.i--; advOthers(); rebuildAll();
 }
-function play() { if (timer) return pause(); $("play").textContent = "⏸"; const tick = async () => { await stepFwd(); if (timer) timer = setTimeout(tick, +$("speed").value); }; timer = setTimeout(tick, 0); }
+function play() { if (timer) return pause(); $("play").textContent = "⏸";
+  const tick = async () => { const sp = +$("speed").value, an = prefs.live1s !== false && sp >= 150 ? Math.round(sp * 0.85) : 0;   // KING_1S: most of each step is spent forming the candle
+    await stepFwd(true, an); if (timer) timer = setTimeout(tick, Math.max(0, sp - an)); };
+  timer = setTimeout(tick, 0); }
 function pause() { clearTimeout(timer); timer = null; $("play").textContent = "▶"; }
 
 /* ---------------- panes (1-8 charts) ---------------- */
@@ -1648,7 +1680,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); try { connUI(); } catch (e) {} } }
+function view(v) { try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
 function layMenu() { const sv = prefs.saved || [];
   $("laymenu").innerHTML = Object.entries(LAYOUTS).map(([k, [c, r]]) => `<button class="lay ${k === prefs.layout ? "on" : ""}" data-lay="${k}"><i style="grid-template-columns:repeat(${c},1fr);grid-template-rows:repeat(${r},1fr)">${"<b></b>".repeat(c * r)}</i>${c * r} chart${c * r > 1 ? "s" : ""}${k === "2h" ? " ↕" : ""}</button>`).join("")
     + `<div class="slay"><div class="mh">Saved layouts</div>${sv.map((x, i) => `<div class="slrow"><button class="sl" data-sl="${i}">${esc(x.name)}<i>${x.layout === "1" ? "1 chart" : (LAYOUTS[x.layout] ? LAYOUTS[x.layout][0] * LAYOUTS[x.layout][1] : "?") + " charts"} · ${esc((x.tfs || []).slice(0, LAYOUTS[x.layout] ? LAYOUTS[x.layout][0] * LAYOUTS[x.layout][1] : 1).join(" / "))}</i></button><button class="pb" data-sldel="${i}" title="Delete">×</button></div>`).join("") || '<div class="tiny muted" style="padding:2px 6px">None yet.</div>'}<button class="small ghost" id="sl-save">+ Save this layout…</button></div>`; }
@@ -2350,6 +2382,7 @@ function labelPop(d, r) { document.getElementById("lblpop")?.remove(); const el 
   $("fxb-tx").onclick = () => $("fxb-tip").classList.add("hidden"); $("fxb-toff").onclick = () => { prefs.tips = false; try { savePrefs(); } catch (e) {} $("fxb-tip").classList.add("hidden"); if ($("s-tips")) $("s-tips").checked = false; toast("Tips off. Turn them back on in Settings."); };
   setTimeout(showTip, 90 * 1000); setInterval(showTip, 5 * 60 * 1000); window.kTipNow = showTip; })();
 
+$("s-live1s") && ($("s-live1s").onchange = () => { prefs.live1s = $("s-live1s").checked; savePrefs(); });   // KING_1S
 $("s-tips") && ($("s-tips").onchange = () => { prefs.tips = $("s-tips").checked; savePrefs(); if (prefs.tips) window.kTipNow && kTipNow(); });
 
 /* KING_RAIL (Nov 11, Brief 3): the left sidebar expands to show names (button at the bottom) and its edge drags to any width; the width is remembered per user */

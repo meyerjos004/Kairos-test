@@ -369,6 +369,14 @@ async def main():
         check("spotify: tapping a playlist shows its songs", await E("document.querySelectorAll('#sp-body .sptr').length") == 2, await E("document.getElementById('sp-body') && document.getElementById('sp-body').innerText.slice(0,200)"))
         await E("document.querySelector('#sp-back').click()"); await pg.wait_for_timeout(300); check("spotify: back goes to the playlists", await E("!!document.querySelector('#sp-body [data-pl=P1]')"))
         await E("spApi = window._spApi; jset('kz-sp', null); spMe = spPls = null")
+        # KING_1S: while playing, the newest candle forms over several frames (demo has no 1s data -> simulated path) and ends on the real bar
+        await E("pause(); setPaneTf(active, '1m')"); await pg.wait_for_timeout(300)
+        seen = await E("""(async () => { const p = panes[active], seen = new Set(); timer = 1; const nb = B['1m'].bars[B['1m'].i + 1];
+          const orig = p.series.update.bind(p.series); p.series.update = (c) => { if (c.time === bucket(loc(nb.t), p.sec)) seen.add(c.close); return orig(c); };
+          await stepFwd(true, 300); timer = null; p.series.update = orig; const last = p.candles[p.candles.length - 1]; return [seen.size, last.close === nb.c, last.high === Math.max(nb.h, last.high)]; })()""")
+        check("1s: candle forms over several frames while playing", seen[0] >= 3, seen)
+        check("1s: candle ends on the real bar", seen[1] and seen[2], seen)
+        check("1s: setting exists", await E("!!document.getElementById('s-live1s')"))
         await E("$('fxb-b').click()"); check("fix bubble opens", await E("!$('fxb-card').classList.contains('hidden')"))
         await E("$('fxb-snap').click()"); await pg.wait_for_timeout(900); await E("$('fxb-snap').click()"); await pg.wait_for_timeout(900)
         check("fix box holds 2 screenshots", await E("document.querySelectorAll('#fxb-imgs img').length") == 2, await E("document.querySelectorAll('#fxb-imgs img').length"))
