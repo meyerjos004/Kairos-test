@@ -590,3 +590,9 @@ a.gdl{background:linear-gradient(180deg,#a78bfa,#8b5cf6);color:#0b0614!important
   body.glass .tools .tool:hover{background:rgba(255,255,255,.07);box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
   body.glass #charts{border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.06)}
 }
+/* KING_TOOLS hotfix (Nov 13): no sideways scroll in the tool rail, corner triangle stays inside its tool with no box behind it */
+.tools{overflow-x:hidden!important}
+.tools .tg{width:44px}
+.tgx{width:14px!important;height:14px!important;right:1px!important;bottom:1px!important;background:none!important;box-shadow:none!important;border:0!important}
+.tgx:hover,.tgx.open{background:none!important;color:#fff!important}
+.tgx svg{width:6px!important;height:6px!important;margin:auto 1px 1px auto!important}
