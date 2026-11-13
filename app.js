@@ -2465,10 +2465,18 @@ function csLines(p) { if (!p || p.dead || !p.candles.length) return; const C = c
       cd.textContent = (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(sx).padStart(2, "0"); } else cd.textContent = ""; }
   if (C.chg) { const o = p.el.querySelector(".ohlc"); if (o && !o.innerHTML && p.candles.length > 1) { const pv = p.candles[p.candles.length - 2].close, ch = last.close - pv; o.innerHTML = `<b class="${ch >= 0 ? "pos-up" : "pos-dn"}">${ch >= 0 ? "+" : ""}${px2(ch)} (${((ch / pv) * 100).toFixed(2)}%)</b>`; } }
   csMarks(p); }
+/* KING_DAYRECAP (Nov 13 night shift): when a replay day ends, compare your real trades that day (from Notion) with what you just backtested */
+const recapDone = new Set();
+function dayRecap(last) { if (!realTrades.length || prefs.showReal === false) return; const day = Math.floor(last / 86400) * 86400; if (last < day + 17 * 3600 || recapDone.has(day)) return; recapDone.add(day);
+  const real = realTrades.filter((r) => Math.floor(loc(r.t) / 86400) * 86400 === day); if (!real.length) return;
+  const bt = (jT || []).filter((t) => t.t_entry && Math.floor(loc(t.t_entry) / 86400) * 86400 === day);
+  const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0); const rp = sum(real, (x) => x.pnl), bp = sum(bt, (x) => x.pnl);
+  toast(`📒 Day done. Real: ${real.length} trade${real.length > 1 ? "s" : ""}${real.some((x) => x.pnl != null) ? " " + money(rp) : ""}${bt.length ? ` · Backtest: ${bt.length} ${money(bp)}` : ""}`); }
 function csMarks(p) { const C = csG(); const s = paneSym(p), last = p.candles.length ? p.candles[p.candles.length - 1].time : -1;
   const mk = !C.exm ? [] : execs.filter((x) => x.sym === s).map((x) => ({ time: bucket(loc(x.t), p.sec), position: x.side > 0 ? "belowBar" : "aboveBar", color: x.side > 0 ? "#2bd4a0" : "#ff6b7a", shape: x.side > 0 ? "arrowUp" : "arrowDown", text: C.exl ? `${x.side > 0 ? "B" : "S"} ${x.qty} @ ${px2(x.price)}` : "" })).filter((m) => m.time <= last);
   if (prefs.showReal !== false && realTrades.length) for (const r of realTrades) { if (r.sym && r.sym !== symRoot(s)) continue; const lt = loc(r.t), dayEnd = Math.floor(lt / 86400) * 86400 + 17 * 3600; if (dayEnd > last) continue;
     mk.push({ time: bucket(lt, p.sec), position: r.side < 0 ? "aboveBar" : "belowBar", color: "#f5c542", shape: "circle", text: "Real" + (r.side ? (r.side > 0 ? " L" : " S") : "") + (r.pnl != null ? " " + (r.pnl >= 0 ? "+" : "") + Math.round(r.pnl) : "") }); }
+  dayRecap(last);
   mk.sort((a, b) => a.time - b.time); const key = mk.length + "|" + C.exl + "|" + p.sec; if (p._mkk === key) return; p._mkk = key; p._mk = mk.length; try { p.series.setMarkers(mk); } catch (e) {} }
 // the settings window
 const CSF = { "cs-prevclr": "prevClr", "cs-body": "body", "cs-bord": "bord", "cs-bu": "bu", "cs-bd": "bd", "cs-wick": "wick", "cs-wu": "wu", "cs-wd": "wd", "cs-prec": "prec", "cs-title": "title", "cs-titlek": "titleK", "cs-mstat": "mstat", "cs-vals": "vals", "cs-chg": "chg", "cs-lbg": "lbg", "cs-lbga": "lbga",
