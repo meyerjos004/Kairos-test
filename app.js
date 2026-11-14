@@ -2257,7 +2257,7 @@ $("ev-list").onclick = (e) => { const b = e.target.closest("[data-buy]"); if (b)
 $("dockbtn").onclick = () => { prefs.dockClosed = !prefs.dockClosed; savePrefs(); dockUI(); };
 $("tfbar").onclick = (e) => { const b = e.target.closest(".tf"); if (b) setPaneTf(active, b.dataset.tf); };
 $("ranges").onclick = (e) => { const b = e.target.closest("[data-r]"); if (b) showRange(+b.dataset.r); };
-$("gotobtn").onclick = () => { const s = $("start"); s.focus(); try { s.showPicker(); } catch (e) {} };
+
 $("sc-pct").onclick = () => setScale("pct"); $("sc-log").onclick = () => setScale("log"); $("sc-auto").onclick = () => setScale("auto");
 $("indbtn").onclick = indMenu; $("shotbtn").onclick = saveShot; $("sidebtn").onclick = () => { prefs.side = !prefs.side; savePrefs(); sideUI(); };
 $("fullbtn").onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
@@ -2505,7 +2505,7 @@ function plUI() { const P = prefs.pl, el = $("plpill"); if (!el) return; if (!P 
   el.classList.remove("hidden"); el.title = P.name + " playlist"; el.innerHTML = `${P.i + 1}/${P.days.length}<button class="pb" id="pl-next" title="Next session" ${P.i + 1 >= P.days.length ? "disabled" : ""}>▶</button><button class="pb" id="pl-x" title="End playlist">×</button>`;
   $("pl-next").onclick = () => plGo(P.i + 1); $("pl-x").onclick = () => { prefs.pl = null; savePrefs(); plUI(); }; }
 async function plGo(i) { const P = prefs.pl; if (!P || i >= P.days.length) return; if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); P.i = i; savePrefs(); plUI();
-  $("start").value = P.days[i] + "T08:30"; await loadReplay(); toast(`▤ ${P.name}: session ${i + 1} of ${P.days.length}`); }
+  $("start").value = P.days[i] + "T08:30"; await loadReplay(); toast(`▤ ${P.name}: session ${i + 1} of ${P.days.length}`); try { dpLabel(); } catch (e) {} }
 $("plbtn") && ($("plbtn").onclick = (e) => { const r = e.target.getBoundingClientRect(), mk = (name, kind) => ({ t: name, f: () => { prefs.pl = { name, days: plDays(kind), i: 0 }; savePrefs(); plGo(0); } });
   menu([{ h: "Session playlist (10 days)" }, mk("Random days", "any"), mk("News days (CPI, jobs, FOMC)", "news"), mk("Mondays", "mon"), mk("Fridays", "fri"), prefs.pl ? "-" : null, prefs.pl ? { t: "End playlist", f: () => { prefs.pl = null; savePrefs(); plUI(); } } : null].filter(Boolean), r.left, r.bottom + 4); });
 setTimeout(() => { try { plUI(); } catch (e) {} }, 0);
@@ -2674,3 +2674,54 @@ function csColPop(inp, btn) { document.getElementById("cspop")?.remove(); const 
   el.addEventListener("contextmenu", (e) => { const b = e.target.closest("[data-my]"); if (!b) return; e.preventDefault(); prefs.myCols = (prefs.myCols || []).filter((x) => x !== b.dataset.c); savePrefs(); close(); csColPop(inp, btn); });
   const close = () => { el.remove(); removeEventListener("pointerdown", out, true); }, out = (e) => { if (!el.contains(e.target) && e.target !== btn) close(); }; setTimeout(() => addEventListener("pointerdown", out, true), 0); }
 $("chartsetbtn").addEventListener("click", () => setTimeout(csSwatches, 0)); csSwatches();
+
+/* KING_DATEPICK (King, Nov 14): "Choose dates" flow. Years (+ search) → optional day timeline for the year → months (Test this month / month timeline) → weeks (Test this week / choose days). Ranges become a session playlist. */
+const DP = { from: Date.UTC(2021, 1, 1) };
+const DPM = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function dpLast() { const d = new Date(); d.setUTCDate(d.getUTCDate() - 1); return d.getTime(); }
+function dpIso(t) { return new Date(t).toISOString().slice(0, 10); }
+function dpTrading(t) { const d = new Date(t), wd = d.getUTCDay(), m = d.getUTCMonth(), dd = d.getUTCDate(); return wd >= 1 && wd <= 5 && !(m === 11 && dd === 25) && !(m === 0 && dd === 1) && t >= DP.from && t <= dpLast(); }
+function dpDays(a, z) { const out = []; for (let t = a; t <= z; t += 864e5) if (dpTrading(t)) out.push(dpIso(t)); return out; }
+function dpOpen() { let el = $("dpick"); if (!el) { el = document.createElement("div"); el.id = "dpick"; el.className = "dpwrap hidden"; document.body.appendChild(el); el.onclick = (e) => { if (e.target === el) dpClose(); }; } el.classList.remove("hidden"); dpYears(); }
+function dpClose() { const el = $("dpick"); if (el) el.classList.add("hidden"); }
+function dpShell(crumbs, body) { $("dpick").innerHTML = `<div class="dp"><div class="dp-top"><div class="dp-crumbs">${crumbs.map((c, i) => `<button class="dp-cr" data-cr="${i}">${esc(c[0])}</button>`).join('<span class="dp-sep">›</span>')}</div><button class="dp-x" title="Close">×</button></div>${body}</div>`;
+  $("dpick").querySelector(".dp-x").onclick = dpClose; $("dpick").querySelectorAll(".dp-cr").forEach((b) => b.onclick = () => crumbs[+b.dataset.cr][1]()); }
+async function dpTest(days, name) { if (!days.length) return toast("No trading days there"); if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); dpClose();
+  if (days.length === 1) { prefs.pl = null; savePrefs(); plUI(); blind = null; blindUI(); $("start").value = days[0] + "T08:30"; await loadReplay(); dpLabel(); return; }
+  prefs.pl = { name, days, i: 0 }; savePrefs(); await plGo(0); dpLabel(); }
+function dpSearch(q) { q = q.trim().toLowerCase(); if (!q) return null; let m = -1, y = null, d = null;
+  const mm = DPM.findIndex((n) => q.includes(n.toLowerCase()) || q.split(/[\s,/-]+/).includes(n.slice(0, 3).toLowerCase())); if (mm >= 0) m = mm;
+  const ys = q.match(/\b(20\d\d)\b/); if (ys) y = +ys[1]; const iso = q.match(/(20\d\d)-(\d{1,2})(?:-(\d{1,2}))?/); if (iso) { y = +iso[1]; m = +iso[2] - 1; d = iso[3] ? +iso[3] : null; }
+  if (m >= 0 && d == null) { const dm = q.replace(/20\d\d/, "").match(/\b(\d{1,2})(st|nd|rd|th)?\b/); if (dm) d = +dm[1]; }
+  if (y == null) return null; return { y, m, d }; }
+function dpYears() { const y0 = 2021, y1 = new Date(dpLast()).getUTCFullYear(); let ys = ""; for (let y = y1; y >= y0; y--) ys += `<button class="dp-big" data-y="${y}">${y}</button>`;
+  dpShell([["Choose dates", dpYears]], `<div class="dp-search"><input id="dp-q" placeholder="Search for a specific date range, e.g. april 2025" autocomplete="off"><button id="dp-qgo" class="primary">Go</button></div><div class="dp-hint tiny muted">Pick a year</div><div class="dp-grid">${ys}</div>`);
+  const go = () => { const r = dpSearch($("dp-q").value); if (!r) return toast("Try something like “april 2025” or “2025-04-17”"); if (r.m < 0) return dpAsk(r.y); if (r.d) return dpTest([dpIso(Date.UTC(r.y, r.m, r.d))].filter((s) => dpTrading(Date.parse(s + "T00:00:00Z"))), "");
+    dpWeeks(r.y, r.m); };
+  $("dp-qgo").onclick = go; $("dp-q").onkeydown = (e) => { e.stopPropagation(); if (e.key === "Enter") go(); }; setTimeout(() => $("dp-q") && $("dp-q").focus(), 30);
+  $("dpick").querySelectorAll("[data-y]").forEach((b) => b.onclick = () => dpAsk(+b.dataset.y)); }
+function dpAsk(y) { dpShell([["Choose dates", dpYears], [String(y), () => dpAsk(y)]], `<div class="dp-q2"><b>Select specific date ranges in ${y}?</b><div class="tiny muted">Yes shows every day of the year on a timeline. No goes to the months.</div><div class="row"><button id="dp-no">No, show months</button><button id="dp-yes" class="primary">Yes</button></div></div>`);
+  $("dp-yes").onclick = () => dpLine(y, 0, 11, [["Choose dates", dpYears], [String(y), () => dpAsk(y)], ["Timeline", null]]); $("dp-no").onclick = () => dpMonths(y); }
+function dpLine(y, m0, m1, crumbs) { crumbs[crumbs.length - 1][1] = () => dpLine(y, m0, m1, crumbs); let sel = [];
+  let cols = ""; for (let m = m0; m <= m1; m++) { const n = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); let ds = ""; for (let d = 1; d <= n; d++) { const t = Date.UTC(y, m, d), ok = dpTrading(t), wd = new Date(t).getUTCDay();
+      ds += `<button class="dp-day${ok ? "" : " off"}${wd === 1 ? " mon" : ""}" data-t="${t}" ${ok ? "" : "disabled"} title="${dpIso(t)}">${d}</button>`; } cols += `<div class="dp-mcol"><div class="dp-mname">${DPM[m].slice(0, 3)}</div><div class="dp-days">${ds}</div></div>`; }
+  dpShell(crumbs, `<div class="dp-hint tiny muted" id="dp-st">Click a start day, then an end day</div><div class="dp-line">${cols}</div><div class="row dp-foot"><button id="dp-clr">Clear</button><button id="dp-run" class="primary" disabled>Test these days</button></div>`);
+  const paint = () => { const [a, z] = sel.length === 2 ? sel : [sel[0], sel[0]]; $("dpick").querySelectorAll(".dp-day").forEach((b) => { const t = +b.dataset.t; b.classList.toggle("in", sel.length > 0 && t >= a && t <= z); b.classList.toggle("end", t === a || t === z && sel.length === 2); });
+    const n = sel.length ? dpDays(a, z).length : 0; $("dp-st").textContent = !sel.length ? "Click a start day, then an end day" : sel.length === 1 ? `Start ${dpIso(a)}. Now click the end day` : `${dpIso(a)} → ${dpIso(z)} · ${n} trading day${n === 1 ? "" : "s"}`; $("dp-run").disabled = sel.length !== 2; };
+  $("dpick").querySelectorAll(".dp-day:not(.off)").forEach((b) => b.onclick = () => { const t = +b.dataset.t; if (sel.length !== 1) sel = [t]; else sel = [Math.min(sel[0], t), Math.max(sel[0], t)]; paint(); });
+  $("dp-clr").onclick = () => { sel = []; paint(); }; $("dp-run").onclick = () => dpTest(dpDays(sel[0], sel[1]), `${dpIso(sel[0])} → ${dpIso(sel[1])}`); }
+function dpMonths(y) { let ms = ""; for (let m = 0; m < 12; m++) { const has = dpDays(Date.UTC(y, m, 1), Date.UTC(y, m + 1, 0)).length; ms += `<button class="dp-big" data-m="${m}" ${has ? "" : "disabled"}>${DPM[m]}</button>`; }
+  dpShell([["Choose dates", dpYears], [String(y), () => dpAsk(y)], ["Months", () => dpMonths(y)]], `<div class="dp-hint tiny muted">Pick a month</div><div class="dp-grid m">${ms}</div>`);
+  $("dpick").querySelectorAll("[data-m]").forEach((b) => b.onclick = () => dpWeeks(y, +b.dataset.m)); }
+function dpWeeks(y, m) { const a = Date.UTC(y, m, 1), z = Date.UTC(y, m + 1, 0), cr = [["Choose dates", dpYears], [String(y), () => dpAsk(y)], ["Months", () => dpMonths(y)], [DPM[m], () => dpWeeks(y, m)]];
+  const wk = []; let t = a - ((new Date(a).getUTCDay() + 6) % 7) * 864e5; while (t <= z) { const days = dpDays(Math.max(t, a), Math.min(t + 4 * 864e5, z)); if (days.length) wk.push(days); t += 7 * 864e5; }
+  const fmtD = (s) => new Date(s + "T12:00:00Z").toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
+  dpShell(cr, `<div class="row dp-mrow"><button id="dp-tm" class="primary">Test this month</button><button id="dp-ml">Month timeline</button></div><div class="dp-hint tiny muted">Weeks in ${DPM[m]} ${y}</div><div class="dp-weeks">${wk.map((d, i) => `<div class="dp-wk"><div><b>Week ${i + 1}</b><span class="muted"> · ${fmtD(d[0])} – ${fmtD(d[d.length - 1])} · ${d.length} day${d.length === 1 ? "" : "s"}</span></div><div class="dp-wkb"><button data-tw="${i}" class="primary">Test this week</button><button data-cd="${i}">Choose a specific day/days</button></div><div class="dp-chips hidden" id="dp-c${i}">${d.map((s) => `<button class="dp-chip" data-s="${s}">${new Date(s + "T12:00:00Z").toLocaleDateString([], { weekday: "short", day: "numeric", timeZone: "UTC" })}</button>`).join("")}<button class="primary dp-cgo" data-cg="${i}" disabled>Test</button></div></div>`).join("")}</div>`);
+  $("dp-tm").onclick = () => dpTest(dpDays(a, z), `${DPM[m]} ${y}`); $("dp-ml").onclick = () => dpLine(y, m, m, cr.concat([["Timeline", null]]));
+  $("dpick").querySelectorAll("[data-tw]").forEach((b) => b.onclick = () => dpTest(wk[+b.dataset.tw], `${DPM[m]} ${y} · week ${+b.dataset.tw + 1}`));
+  $("dpick").querySelectorAll("[data-cd]").forEach((b) => b.onclick = () => $("dp-c" + b.dataset.cd).classList.toggle("hidden"));
+  $("dpick").querySelectorAll(".dp-chip").forEach((b) => b.onclick = () => { b.classList.toggle("on"); const box = b.parentElement; box.querySelector(".dp-cgo").disabled = !box.querySelector(".dp-chip.on"); });
+  $("dpick").querySelectorAll("[data-cg]").forEach((b) => b.onclick = () => { const s = [...b.parentElement.querySelectorAll(".dp-chip.on")].map((x) => x.dataset.s); dpTest(s, `${DPM[m]} ${y} · ${s.length} days`); }); }
+function dpLabel() { const b = $("choosedates"); if (!b) return; const v = $("start").value, P = prefs.pl; b.querySelector("span").textContent = P && P.days && P.days.length > 1 ? `${P.name} (${P.i + 1}/${P.days.length})` : v ? new Date(v.slice(0, 10) + "T12:00:00Z").toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "Choose dates"; }
+$("choosedates") && ($("choosedates").onclick = dpOpen); $("gotobtn") && ($("gotobtn").onclick = dpOpen);
+$("start").addEventListener("change", dpLabel); setTimeout(() => { try { dpLabel(); } catch (e) {} }, 300);
