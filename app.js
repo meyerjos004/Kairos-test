@@ -13,13 +13,40 @@ const INST = { NQ: { data: "NQ", pt: 20, micro: false }, MNQ: { data: "NQ", pt: 
 const TFS = [["15s", 15], ["30s", 30], ["1m", 60], ["2m", 120], ["3m", 180], ["5m", 300], ["15m", 900], ["30m", 1800], ["1h", 3600], ["4h", 14400], ["1D", 86400]];
 const SEC = Object.fromEntries(TFS);
 const TICK = 0.25;
+/* KING_LAYOUT2 (King, Nov 14): TradingView-style layout menu (1–8 charts, many arrangements) + SYNC IN LAYOUT toggles (default: Interval + Crosshair) */
+const LAYS = (() => { const L = {}, add = (k, cols, rows, rects) => (L[k] = { cols, rows, rects });
+  const grid = (c, r) => { const R = []; for (let y = 1; y <= r; y++) for (let x = 1; x <= c; x++) R.push([x, y, 1, 1]); return R; };
+  const lcm = (a, b) => { const g = (x, y) => (y ? g(y, x % y) : x); return (a * b) / g(a, b); };
+  const tb = (a, b) => { const c = lcm(a, b), R = []; for (let i = 0; i < a; i++) R.push([1 + (i * c) / a, 1, c / a, 1]); for (let i = 0; i < b; i++) R.push([1 + (i * c) / b, 2, c / b, 1]); return [c, 2, R]; };
+  const lr = (a, b) => { const r = lcm(a, b), R = []; for (let i = 0; i < a; i++) R.push([1, 1 + (i * r) / a, 1, r / a]); for (let i = 0; i < b; i++) R.push([2, 1 + (i * r) / b, 1, r / b]); return [2, r, R]; };
+  for (let n = 1; n <= 8; n++) {
+    if (n === 1) { add("g1x1", 1, 1, grid(1, 1)); continue; }
+    add(`g${n}x1`, n, 1, grid(n, 1)); if (n <= 6) add(`g1x${n}`, 1, n, grid(1, n));
+    for (const [c, r] of [[2, 2], [3, 2], [2, 3], [4, 2], [2, 4]]) if (c * r === n) add(`g${c}x${r}`, c, r, grid(c, r));
+    if (n >= 3) { const k = n - 1; add(`L${n}`, ...lr(1, k)); add(`R${n}`, ...lr(k, 1)); add(`T${n}`, ...tb(1, k)); add(`B${n}`, ...tb(k, 1)); }
+    if (n >= 5) for (let a = 2; a <= n - 2; a++) if (Math.abs(a - (n - a)) <= 1 && a !== n - a || (n === 6 && a === 3) || (n === 8 && a === 4)) { if (n === 6 && a === 3 || n === 8 && a === 4) continue; add(`S${a}_${n - a}`, ...tb(a, n - a)); }
+    if (n === 4) { add("S2_2v", ...lr(2, 2)); }
+  }
+  return L; })();
+const LAY_OLD = { "1": "g1x1", "2": "g2x1", "2h": "g1x2", "3": "g3x1", "4": "g2x2", "6": "g3x2", "8": "g4x2" };
+const layOf = (k) => LAYS[LAY_OLD[k] || k] || LAYS.g1x1;
+const layN = (k) => layOf(k).rects.length;
+function layIcon(k) { const L = layOf(k), W = 22, H = 16, cw = W / L.cols, rh = H / L.rows;
+  return `<svg viewBox="-1 -1 24 18" width="26" height="20">${L.rects.map(([x, y, w, h]) => `<rect x="${((x - 1) * cw).toFixed(2)}" y="${((y - 1) * rh).toFixed(2)}" width="${(w * cw).toFixed(2)}" height="${(h * rh).toFixed(2)}" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.2"/>`).join("")}</svg>`; }
+function layMenu2() { const cur = LAY_OLD[prefs.layout] || prefs.layout, byN = {}; for (const k of Object.keys(LAYS)) (byN[LAYS[k].rects.length] = byN[LAYS[k].rects.length] || []).push(k);
+  const S = prefs.sync || {}, sv = prefs.saved || [], tg = (k, nm, tip) => `<label class="lsync" title="${tip}"><span>${nm} <i class="qm" title="${tip}">i</i></span><input type="checkbox" data-sync="${k}" ${S[k] ? "checked" : ""}><b class="sw"></b></label>`;
+  $("laymenu").innerHTML = `<div class="lgrid">${Object.keys(byN).sort((a, b) => a - b).map((n) => `<div class="lrow"><span class="ln">${n}</span>${byN[n].map((k) => `<button class="lay2 ${k === cur ? "on" : ""}" data-lay="${k}" title="${n} chart${n > 1 ? "s" : ""}">${layIcon(k)}</button>`).join("")}</div>`).join("")}</div>
+    <div class="lsec">SYNC IN LAYOUT</div>${tg("sym", "Symbol", "Every chart shows the same symbol")}${tg("int", "Interval", "Changing the timeframe on one chart changes all of them")}${tg("cross", "Crosshair", "The crosshair moves on every chart together")}${tg("time", "Time", "Scrolling one chart scrolls the others to the same time")}${tg("range", "Date range", "Date-range buttons (1d, 5d, 1m…) apply to every chart")}
+    <div class="slay"><div class="mh">Saved layouts</div>${sv.map((x, i) => `<div class="slrow"><button class="sl" data-sl="${i}">${esc(x.name)}<i>${layN(x.layout)} chart${layN(x.layout) > 1 ? "s" : ""} · ${esc((x.tfs || []).slice(0, layN(x.layout)).join(" / "))}</i></button><button class="pb" data-sldel="${i}" title="Delete">×</button></div>`).join("") || '<div class="tiny muted" style="padding:2px 6px">None yet.</div>'}<button class="small ghost" id="sl-save">+ Save this layout…</button></div>`;
+  $("laymenu").querySelectorAll("[data-sync]").forEach((c) => c.onchange = () => { prefs.sync = { ...(prefs.sync || {}), [c.dataset.sync]: c.checked }; savePrefs(); if (B["1m"].bars.length && c.dataset.sync === "sym") loadOthers().then(rebuildAll); else panes.forEach(label); }); }
+
 const LAYOUTS = { "1": [1, 1], "2": [2, 1], "2h": [1, 2], "3": [3, 1], "4": [2, 2], "6": [3, 2], "8": [4, 2] };
 const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
 const IND_DEF = { sbox: false, data: false, sess: false, pd: false, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: false, ob: false, h4: false, po3: false, htfc: [] };   // KING_INDOFF (Nov 14): all off until the user saves a chart template
 const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", be: "e", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
-  lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false, ind: { ...IND_DEF }, dockH: 150, favs: ["trend", "hline", "rect", "long", "short"], favShow: true, favPos: null, toolsPos: null };
+  lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false, ind: { ...IND_DEF }, dockH: 150, favs: ["trend", "hline", "rect", "long", "short"], favShow: true, favPos: null, toolsPos: null, sync: { sym: false, int: true, cross: true, time: false, range: false } };
 
 // KING_CS2 settings defaults (see the Chart settings block near the end)
 const CS_DEF = { prevClr: false, body: true, bord: false, bu: "#2bd4a0", bd: "#ff6b7a", wick: true, wu: "", wd: "", prec: "def", title: true, titleK: "full", mstat: true, vals: true, chg: false, lbg: false, lbga: 40,
@@ -314,9 +341,9 @@ function sideUI() { $("side").classList.toggle("hidden", !prefs.side); $("sidebt
 function dockUI() { $("dock").classList.toggle("closed", !!prefs.dockClosed); dockH(); }
 function buildPanes() {
   panes.forEach((p) => { p.dead = true; try { if (p.prim) p.series.detachPrimitive(p.prim); } catch (e) {} p.chart.remove(); }); $("charts").innerHTML = ""; panes = [];
-  const [c, r] = LAYOUTS[prefs.layout] || [1, 1], n = c * r; $("charts").style.gridTemplateColumns = `repeat(${c},minmax(0,1fr))`; $("charts").style.gridTemplateRows = `repeat(${r},minmax(0,1fr))`;
+  const LY = layOf(prefs.layout), n = LY.rects.length; $("charts").style.gridTemplateColumns = `repeat(${LY.cols},minmax(0,1fr))`; $("charts").style.gridTemplateRows = `repeat(${LY.rows},minmax(0,1fr))`;   // KING_LAYOUT2
   while (prefs.tfs.length < 8) prefs.tfs.push(DEF_TFS[prefs.tfs.length]);
-  for (let i = 0; i < n; i++) { const p = makePane(i); panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
+  for (let i = 0; i < n; i++) { const p = makePane(i); const [x, y, w, h] = LY.rects[i]; p.el.style.gridArea = `${y} / ${x} / span ${h} / span ${w}`; panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
 }
 function rebuildPane(p) {
   p.sec = paneSec(p.i); p.candles = []; const S = storeOf(paneSym(p)), src = p.sec < 60 ? S["15s"] : S["1m"];
@@ -1663,7 +1690,8 @@ async function notionUI() {
 const nmsg = (m) => ($("n-msg").textContent = m);
 
 /* ---------------- prefs / settings / admin ---------------- */
-async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) };
+async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout] && !LAYS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) };
+    if (!prefs.syncDef1) { prefs.sync = { sym: false, int: true, cross: true, time: false, range: false }; prefs.syncDef1 = true; }   // KING_SYNCDEF (Nov 14)
     if (!(prefs.templates || []).length && !prefs.indOff1) { prefs.ind = { ...IND_DEF, ...(d.ind && d.ind.smt ? { smt: d.ind.smt } : {}) }; prefs.indOff1 = true; savePrefs(); } } }   // KING_INDOFF: one-time reset to all-off for users who never saved a template
 function savePrefs() { if (!DEMO && user) sb.from("prefs").upsert({ user_id: user.id, data: prefs, updated_at: new Date().toISOString() }).then(() => {}); }
 const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", joinask: "Join ask", reverse: "Reverse", flatten: "Flatten all", cancel: "Cancel all", close: "Close all", be: "Stop to breakeven", trend: "Trend line", hline: "Horizontal line", vline: "Vertical line", rect: "Zone", long: "Long position", short: "Short position", measure: "Measure" };
@@ -1696,8 +1724,7 @@ async function loadAdmin() {
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
 function view(v) { try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
 function layMenu() { const sv = prefs.saved || [];
-  $("laymenu").innerHTML = Object.entries(LAYOUTS).map(([k, [c, r]]) => `<button class="lay ${k === prefs.layout ? "on" : ""}" data-lay="${k}"><i style="grid-template-columns:repeat(${c},1fr);grid-template-rows:repeat(${r},1fr)">${"<b></b>".repeat(c * r)}</i>${c * r} chart${c * r > 1 ? "s" : ""}${k === "2h" ? " ↕" : ""}</button>`).join("")
-    + `<div class="slay"><div class="mh">Saved layouts</div>${sv.map((x, i) => `<div class="slrow"><button class="sl" data-sl="${i}">${esc(x.name)}<i>${x.layout === "1" ? "1 chart" : (LAYOUTS[x.layout] ? LAYOUTS[x.layout][0] * LAYOUTS[x.layout][1] : "?") + " charts"} · ${esc((x.tfs || []).slice(0, LAYOUTS[x.layout] ? LAYOUTS[x.layout][0] * LAYOUTS[x.layout][1] : 1).join(" / "))}</i></button><button class="pb" data-sldel="${i}" title="Delete">×</button></div>`).join("") || '<div class="tiny muted" style="padding:2px 6px">None yet.</div>'}<button class="small ghost" id="sl-save">+ Save this layout…</button></div>`; }
+  return layMenu2(); }
 function saveLayout() { const name = (prompt("Name this layout (e.g. NQ/ES SMT, 1m + 15m)") || "").trim().slice(0, 30); if (!name) return;
   const I = JSON.parse(JSON.stringify(prefs.ind || {})); (prefs.saved = prefs.saved || []).push({ name, layout: prefs.layout, tfs: prefs.tfs.slice(), syms: (prefs.syms || []).slice(), sync: { ...(prefs.sync || {}) }, ind: I }); savePrefs(); layMenu(); toast(`Saved layout "${name}"`); }
 function loadLayout(i) { const x = (prefs.saved || [])[i]; if (!x) return; prefs.tfs = x.tfs.slice(); prefs.syms = (x.syms || []).slice(); prefs.sync = { ...(x.sync || {}) }; if (x.ind) prefs.ind = JSON.parse(JSON.stringify(x.ind)); setLayout(x.layout); tfUI(); layMenu(); toast(`Layout "${x.name}"`); }
@@ -2156,7 +2183,7 @@ $("tplmenu").onclick = async (e) => { const b = e.target.closest("button"); if (
   if (b.dataset.tplup != null) { const t = L[+b.dataset.tplup]; if (!t || !confirm(`Overwrite "${t.name}" with your current settings?`)) return; t.data = tplSnap(); t.at = Date.now(); prefs.tplOn = t.name; savePrefs(); tplMenu(); return toast(`Updated "${t.name}"`); }
   if (b.dataset.tplren != null) { const t = L[+b.dataset.tplren]; const nm = (prompt("New name", t.name) || "").trim().slice(0, 40); if (!nm) return; if (prefs.tplOn === t.name) prefs.tplOn = nm; t.name = nm; savePrefs(); tplMenu(); return; }
   if (b.dataset.tpldel != null) { const t = L[+b.dataset.tpldel]; if (!t || !confirm(`Delete template "${t.name}"? Your current settings stay as they are.`)) return; L.splice(+b.dataset.tpldel, 1); if (prefs.tplOn === t.name) prefs.tplOn = null; savePrefs(); tplMenu(); } };
-$("laybtn").onclick = () => $("laymenu").classList.toggle("hidden"); $("laymenu").onclick = (e) => { const b = e.target.closest(".lay"); if (b) { setLayout(b.dataset.lay); layMenu(); return; } const l = e.target.closest("[data-sl]"); if (l) return loadLayout(+l.dataset.sl);
+$("laybtn").onclick = () => $("laymenu").classList.toggle("hidden"); $("laymenu").onclick = (e) => { const b = e.target.closest(".lay,.lay2"); if (b) { setLayout(b.dataset.lay); layMenu(); return; } const l = e.target.closest("[data-sl]"); if (l) return loadLayout(+l.dataset.sl);
   const d = e.target.closest("[data-sldel]"); if (d) { prefs.saved.splice(+d.dataset.sldel, 1); savePrefs(); layMenu(); return; } if (e.target.closest("#sl-save")) saveLayout(); };
 document.addEventListener("click", (e) => { const b = e.target.closest("#tools [data-tool], #favbar [data-tool]"); if (b) setTool(b.dataset.tool); });
 $("tools").addEventListener("contextmenu", (e) => { const b = e.target.closest("[data-tool]"); e.preventDefault(); const items = [{ h: "Toolbar" }];
