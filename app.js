@@ -15,7 +15,7 @@ const SEC = Object.fromEntries(TFS);
 const TICK = 0.25;
 const LAYOUTS = { "1": [1, 1], "2": [2, 1], "2h": [1, 2], "3": [3, 1], "4": [2, 2], "6": [3, 2], "8": [4, 2] };
 const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
-const IND_DEF = { sbox: true, data: true, sess: false, pd: true, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: true, ob: false, h4: false, po3: false, htfc: ["4h", "1D"] };
+const IND_DEF = { sbox: false, data: false, sess: false, pd: false, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: false, ob: false, h4: false, po3: false, htfc: [] };   // KING_INDOFF (Nov 14): all off until the user saves a chart template
 const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", be: "e", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
 let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
@@ -167,7 +167,8 @@ async function loadReplay() { try { execs.length = 0; } catch (e) {}
   catch (e) { return toast("Could not start a session: " + e.message); }
   hist = []; lock = null; alerts = []; rebuildAll(); drawAlerts();
   { const ev = econOn(new Date(loc(t0) * 1000).toISOString().slice(0, 10)); if (ev.length) setTimeout(() => toast("📅 News today: " + ev.map((e) => `${e.name} ${e.hm} ET`).join(", ")), 900); } panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast(""); prefs.sym = sym; savePrefs();
-  try { buildFx(!builtOnce); builtOnce = true; } catch (e) {}   // KING_STARTFX
+  try { if (!builtOnce) buildFx(true); builtOnce = true; } catch (e) {}   // KING_STARTFX + KING_FXONCE (Nov 14): the cursor build only plays when the site loads, never on replay-from-candle, take/fade, setups or date picks
+  panes.forEach((p) => { try { p.chart.priceScale("right").applyOptions({ autoScale: true }); if (loadReplay.center) { const r = p.chart.timeScale().getVisibleLogicalRange(); if (r) p.chart.timeScale().scrollToPosition((r.to - r.from) / 2, false); } } catch (e) {} }); loadReplay.center = false;   // KING_SNAP
 }
 async function ensure15() {   // a pane switched to 15s/30s mid-session: load 15s data without resetting the session
   need15 = true; if (B["15s"].bars.length || !B["1m"].bars.length) return;
@@ -258,12 +259,11 @@ function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filt
 // KING_TFCENTER (Josh, Nov 13): changing interval keeps your place. The moment in the middle of the chart stays in the
 // middle (same width in bars), like TradingView. If you were parked at the live edge you stay there. Settings toggle: keepC.
 function tfAnchor(p) { try { const n = p.candles.length, r = p.chart.timeScale().getVisibleLogicalRange(); if (!n || !r) return null; const w = r.to - r.from;
-  if (r.to >= n - 1) return { live: true, w, off: r.to - (n - 1) };   // newest bar on screen: stay pinned to it
-  const c = (r.from + r.to) / 2, k = Math.max(0, Math.min(n - 1, Math.round(c))); return { t: p.candles[k].time + p.sec / 2, w }; } catch (e) { return null; } }
+  const c = Math.min((r.from + r.to) / 2, n - 1), k = Math.max(0, Math.min(n - 1, Math.round(c))); return { t: p.candles[k].time + p.sec / 2, w }; } catch (e) { return null; } }   // KING_TFCENTER (Nov 14): always keep the centre candle's time, even at the live edge
 function tfRestore(p, a) { if (!a || p.dead || !p.candles.length) return; try { const ts = p.chart.timeScale(), n = p.candles.length;
   if (a.live) { const to = n - 1 + Math.max(0, a.off); ts.setVisibleLogicalRange({ from: to - a.w, to }); return; }
   let lo = 0, hi = n - 1, k = 0; while (lo <= hi) { const m = (lo + hi) >> 1; if (p.candles[m].time <= a.t) { k = m; lo = m + 1; } else hi = m - 1; }   // the new candle covering that time
-  ts.setVisibleLogicalRange({ from: k - a.w / 2, to: k + a.w / 2 }); } catch (e) {} }
+  const w = Math.max(60, Math.min(160, a.w)); ts.setVisibleLogicalRange({ from: k - w / 2, to: k + w / 2 }); p.chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} }   // KING_TFCENTER: clean candle width + fresh vertical fit
 async function setPaneTf(i, tf, noSync) { const p = panes[i]; if (!p) return; const keep = csG().keepC !== false;
   const qs = [p].concat(!noSync && prefs.sync && prefs.sync.int ? panes.filter((q) => q.i !== i) : []), anc = new Map(qs.map((q) => [q, keep ? tfAnchor(q) : null]));
   for (const q of qs) { prefs.tfs[q.i] = tf; label(q); } savePrefs(); tfUI();
@@ -939,7 +939,7 @@ function chartMenu(p, x, y, cx, cy) {
   menu([{ h: `${sym} @ ${px2(pr)} · ${q} lot${q > 1 ? "s" : ""}` },
     { t: above ? `Sell limit @ ${px2(pr)}` : `Buy limit @ ${px2(pr)}`, c: above ? "s" : "b", f: () => place(above ? -1 : 1, "limit", pr, q, br) },
     { t: above ? `Buy stop @ ${px2(pr)}` : `Sell stop @ ${px2(pr)}`, c: above ? "b" : "s", f: () => place(above ? 1 : -1, "stop", pr, q, br) },
-    { t: "Start the replay from this candle", f: () => { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); $("start").value = fmt(t + 60).replace(" ", "T"); loadReplay(); } },
+    { t: "Start the replay from this candle", f: () => { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); $("start").value = fmt(t + 60).replace(" ", "T"); loadReplay.center = true; loadReplay(); } },
     "-", { t: "Long position here", c: "b", k: prefs.keys.long.toUpperCase(), f: () => { newDrawing("long", p, { t, p: pr }); repaintAll(); } },
     { t: "Short position here", c: "s", k: prefs.keys.short.toUpperCase(), f: () => { newDrawing("short", p, { t, p: pr }); repaintAll(); } },
     { t: "Horizontal line here", k: prefs.keys.hline.toUpperCase(), f: () => { newDrawing("hline", p, { t, p: pr }); repaintAll(); } },
@@ -1215,7 +1215,7 @@ function reeseCheck(prevLt, curLt) {   // called while stepping: a Reese session
   for (const r of reese) { const e = sessEnd(r); if (prevLt < e && curLt >= e) { const k = r.day + "|" + r.session, sn = seen(); if (!sn.has(k)) { sn.add(k); prefs.seenSess = [...sn]; savePrefs(); } reesePop(r); } } }
 
 /* Reese media: his Discord screenshots + what he said during that session (members-only bucket) */
-function reeseMedia(r, open) { const sh = r.shots || [], nt = r.notes || []; if (!sh.length && !nt.length) return "";
+function reeseMedia(r, open) { const sh = r.shots || [], nt = tradeNotes(r); if (!sh.length && !nt.length) return "";
   return `<details class="rmedia" ${open ? "open" : ""}><summary>📸 His screenshots${nt.length ? " + what he said live" : ""}</summary>
     ${sh.length ? `<div class="rshots">${sh.map((p) => `<a target="_blank" rel="noopener" data-rp="${esc(p)}"><img alt="Reese screenshot" data-rp="${esc(p)}"></a>`).join("")}</div>` : ""}
     ${nt.length ? `<div class="rnotes">${nt.map((n) => `<div><span class="muted">${esc(n.t)}</span> ${esc(n.x)}</div>`).join("")}</div>` : ""}</details>`; }
@@ -1654,7 +1654,8 @@ async function notionUI() {
 const nmsg = (m) => ($("n-msg").textContent = m);
 
 /* ---------------- prefs / settings / admin ---------------- */
-async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) }; } }
+async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) };
+    if (!(prefs.templates || []).length && !prefs.indOff1) { prefs.ind = { ...IND_DEF, ...(d.ind && d.ind.smt ? { smt: d.ind.smt } : {}) }; prefs.indOff1 = true; savePrefs(); } } }   // KING_INDOFF: one-time reset to all-off for users who never saved a template
 function savePrefs() { if (!DEMO && user) sb.from("prefs").upsert({ user_id: user.id, data: prefs, updated_at: new Date().toISOString() }).then(() => {}); }
 const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", joinask: "Join ask", reverse: "Reverse", flatten: "Flatten all", cancel: "Cancel all", close: "Close all", be: "Stop to breakeven", trend: "Trend line", hline: "Horizontal line", vline: "Vertical line", rect: "Zone", long: "Long position", short: "Short position", measure: "Measure" };
 function fillSettings() {
@@ -2759,7 +2760,11 @@ function reeseFind(r) { const st = sessEnd(r) - (r.session === "NY" ? 7.5 * 3600
   const hit = (from, px) => { const b = bars.find((b) => loc(b.t) >= from && b.l <= px && b.h >= px); return b ? loc(b.t) : null; };
   if (te == null && r.entry) te = hit(st, +r.entry); if (tx == null && r.exit && te != null) tx = hit(te + 60, +r.exit); return { te, tx, st, z }; }
 function reeseClear() { drawings = drawings.filter((d) => !reeseIds.includes(d.id)); reeseIds = []; reeseMk = []; panes.forEach((p) => { p._mkk = null; csMarks(p); }); repaintAll(); const el = $("reesepanel"); if (el) el.remove(); }
-function reeseOnChart(r) { reeseClear(); const p = panes[active] || panes[0]; if (!p) return; const { te, tx } = reeseFind(r), sec = p.sec;
+const RTRADE = /\b(long|short|buy|sell|entry|entered|stop|sl|tp|target|be|breakeven|partial|runner|r\b|rr|nq|es|mnq|mes|smt|fvg|ifvg|bpr|sweep|swept|liquidity|liq|high|low|open|close|bias|htf|ltf|1m|5m|15m|15s|1h|4h|daily|gap|level|candle|wick|displacement|cisd|po3|manip|pdh|pdl|asia|london|ny|session|news|cpi|fomc|nfp|pts|points|ticks|loss|win|trade|chart|setup|range|premium|discount|eq|orderblock|ob)\b|\d{4,5}(\.\d+)?/i;
+const tradeNotes = (r) => (r.notes || []).filter((n) => RTRADE.test(String(n.x || "")));   // KING_RNOTES (King, Nov 14): only show what he said about trading
+async function reeseOnChart(r) { reeseClear(); let p = panes[active] || panes[0]; if (!p) return;
+  if (p.sec < 60) { await setPaneTf(p.i, "1m"); p = panes[p.i]; toast("Switched to 1m to show Reese's trade"); }   // KING_REESE1M: 15s/30s → 1m, centred on his entry
+  const { te, tx } = reeseFind(r), sec = p.sec;
   if (r.dir && r.entry && te != null) { const s = r.dir > 0 ? 1 : -1, e = +r.entry, ex = r.exit ? +r.exit : null;
     const tp = r.target ? +r.target : (r.result === "win" && ex ? ex : rnd(e + s * prefs.tpPts)), sl = r.stop ? +r.stop : (r.result === "loss" && ex ? ex : rnd(e - s * prefs.slPts));
     const d = { id: did++, type: s > 0 ? "long" : "short", pane: p.i, a: { t: te, p: e }, b: { t: tx != null ? tx : te + sec * 30, p: e }, entry: e, sl, tp, side: s, state: "idle", qty: null, reese: true }; drawings.push(d); reeseIds.push(d.id);
@@ -2767,16 +2772,16 @@ function reeseOnChart(r) { reeseClear(); const p = panes[active] || panes[0]; if
     if (conf.length) { const t = { id: did++, type: "text", pane: p.i, a: { t: te, p: s > 0 ? Math.max(tp, e) : Math.min(tp, e) }, b: { t: te, p: e }, text: "Reese: " + conf.join(" · "), reese: true }; drawings.push(t); reeseIds.push(t.id); }
     reeseMk.push({ t: te, position: s > 0 ? "belowBar" : "aboveBar", color: "#c08bff", shape: s > 0 ? "arrowUp" : "arrowDown", text: `Reese ${s > 0 ? "BUY" : "SELL"} @ ${px2(e)}` });
     if (tx != null && ex) reeseMk.push({ t: tx, position: s > 0 ? "aboveBar" : "belowBar", color: "#c08bff", shape: s > 0 ? "arrowDown" : "arrowUp", text: `Reese out @ ${px2(ex)} · ${r.result || ""}` }); }
-  (r.notes || []).forEach((n) => { const t = nyClock(r.day, n.t); if (t != null) reeseMk.push({ t, position: "aboveBar", color: "#8ab4ff", shape: "square", text: "💬 " + String(n.t).replace(/\s+/g, "") }); });
+  tradeNotes(r).forEach((n) => { const t = nyClock(r.day, n.t); if (t != null) reeseMk.push({ t, position: "aboveBar", color: "#8ab4ff", shape: "square", text: "💬 " + String(n.t).replace(/\s+/g, "") }); });
   panes.forEach((q) => { q._mkk = null; csMarks(q); }); repaintAll();
   const inData = (t) => p.candles.length && bucket(t, sec) >= p.candles[0].time && bucket(t, sec) <= p.candles[p.candles.length - 1].time;
-  if (te != null && inData(te)) try { p.chart.timeScale().setVisibleRange({ from: bucket(te, sec) - sec * 60, to: bucket(tx != null ? tx : te, sec) + sec * 40 }); } catch (e) {}
+  if (te != null && inData(te)) try { const ts = p.chart.timeScale(), k = p.candles.findIndex((c) => c.time >= bucket(te, sec)); if (k >= 0) ts.setVisibleLogicalRange({ from: k - 50, to: k + 50 }); p.chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {}
   let el = $("reesepanel"); if (!el) { el = document.createElement("div"); el.id = "reesepanel"; document.body.appendChild(el); }
   el.innerHTML = `<div class="rp-h"><b>Reese · ${esc(r.day)} · ${esc(r.session)}</b><button id="rp-x" title="Hide Reese's marks">×</button></div>
     ${r.dir ? `<div class="rp-t"><span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · <b>${esc(r.result || "")}</b>${te != null ? ` <span class="muted">· ${fmt(te).slice(11, 16)} NY</span>` : ""}</div>` : ""}
     ${(r.confluences || []).length ? `<div class="rp-conf">${r.confluences.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
     <div class="small muted">${esc(r.summary || "")}</div>
-    ${(r.notes || []).length ? `<div class="rp-notes">${r.notes.map((n) => `<button class="rp-n" data-nt="${esc(n.t)}"><span>${esc(n.t)}</span> ${esc(n.x)}</button>`).join("")}</div>` : ""}
+    ${tradeNotes(r).length ? `<div class="rp-notes">${tradeNotes(r).map((n) => `<button class="rp-n" data-nt="${esc(n.t)}"><span>${esc(n.t)}</span> ${esc(n.x)}</button>`).join("")}</div>` : ""}
     ${te == null && r.dir ? '<div class="tiny muted">His exact entry time isn\'t in the data yet, so the box is placed where price first hit his entry.</div>' : ""}`;
   $("rp-x").onclick = reeseClear;
   el.querySelectorAll(".rp-n").forEach((b) => b.onclick = () => { const t = nyClock(r.day, b.dataset.nt); if (t != null) try { p.chart.timeScale().setVisibleRange({ from: bucket(t, sec) - sec * 40, to: bucket(t, sec) + sec * 40 }); } catch (e) {} }); }
