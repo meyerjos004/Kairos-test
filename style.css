@@ -643,3 +643,7 @@ body.glass .tools:not(.float),body.glass .tools.float{background:linear-gradient
 @media (max-width:600px){#ftabs{overflow-x:auto;max-width:100%;scrollbar-width:none}#ftabs button{flex:none}}
 @media (max-width:600px){.setnav #s-save{position:sticky;right:0;flex:none;z-index:2;box-shadow:-12px 0 12px var(--bg,#0b0d12)}}
 #st-eq{position:relative}.eqempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;pointer-events:none;z-index:3}
+
+/* KING_SKIPCOL (Nov 14): NY green, Asia amber, red-outlined SKIP */
+.skips #skipny{color:#3ddc84}.skips #skipasia{color:#ffb547}.skips #skipny:hover{background:rgba(61,220,132,.12)}.skips #skipasia:hover{background:rgba(255,181,71,.12)}
+.skipbtn{border:1.5px solid #ff4d5e;color:#ff4d5e;background:transparent;border-radius:8px;padding:4px 9px;font:700 11px/1 inherit;letter-spacing:.08em;margin-right:6px}.skipbtn:hover{background:rgba(255,77,94,.12)}

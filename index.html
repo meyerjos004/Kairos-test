@@ -57,13 +57,12 @@
       <input id="start" type="datetime-local" title="Start (New York time)">
       <button id="go" class="primary small hidden" title="Load">Load</button>
       <div class="seg"><button id="back" title="Step back (←)">⏮</button><button id="play" title="Play / pause (space)">▶</button><button id="step" title="Step one bar (→)">⏭</button></div>
-      <div class="seg skips"><button id="skipny" title="Skip to the next NY open (9:30 New York)">NY open</button><button id="skipasia" title="Skip to the next Asia open (20:00 New York)">Asia open</button></div>
+      <button id="skipnext" class="skipbtn" title="Skip to whichever session opens next (NY 9:30 or Asia 20:00)">SKIP</button><div class="seg skips"><button id="skipny" title="Skip to the next NY open (9:30 New York)">NY open</button><button id="skipasia" title="Skip to the next Asia open (20:00 New York)">Asia open</button></div>
       <button id="blindbtn" class="small" title="Mystery day: a random day with the date hidden until you finish (no cherry-picking)">🎲</button><button id="plbtn" class="small" title="Session playlist: queue 10 days (random, news days, Mondays, Fridays)">▤</button><span id="plpill" class="plpill hidden"></span>
-      <select id="stepsz" title="What one step moves"><option value="bar">1 bar</option><option value="candle">1 candle</option></select>
-      <select id="speed" title="Replay speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option><option value="10">100×</option></select>
+      <select id="stepsz" title="How far each step / play tick moves (KING_STEPTF)"><option value="sync" selected>Sync to timeframe</option><option value="60">1m</option><option value="120">2m</option><option value="180">3m</option><option value="300">5m</option><option value="900">15m</option><option value="1800">30m</option><option value="3600">1h</option><option value="14400">4h</option><option value="86400">D</option></select>
+      <select id="speed" title="Replay speed"><option value="1000">1×</option><option value="400" selected>2×</option><option value="150">5×</option><option value="50">20×</option></select><button id="playday" class="small" title="Play out the rest of the day, fast, to 12:00 New York (KING_PLAYDAY)">⏩ Play out day</button>
     </div>
-    <button id="lockbtn" class="ib" title="Personal lockout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
-    <button id="livepill" class="livepill hidden" title="Friends in your live session"></button><span class="conn" title="Replay data">●</span>
+        <button id="livepill" class="livepill hidden" title="Friends in your live session"></button><span class="conn" title="Replay data">●</span>
   </header>
 
   <section id="v-trade" class="view">
@@ -177,7 +176,7 @@
         <div class="tiny muted">Pick up to 6 button groups for the Scalp pad.</div>
         <div id="s-padbtns" class="chips"></div>
         </div>
-        <div class="setc"><h3>Personal lockout</h3>
+        <div class="setc hidden" data-removed="KING_NOLOCK"><h3>Personal lockout</h3>
         <div class="tiny muted">Blocks new trades in replay until the time is up. No way to cancel it early. That's the point.</div>
         <div class="row2"><select id="s-lock"><option value="0">Pick…</option><option value="1">1 hour</option><option value="2">2 hours</option><option value="4">4 hours</option><option value="day">Rest of the day</option><option value="custom">Custom hours…</option></select><button id="s-lockgo" class="small">Lock me out</button></div>
         <div id="s-lockmsg" class="tiny muted"></div>

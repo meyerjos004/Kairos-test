@@ -223,7 +223,7 @@ function stepBack() {
 }
 function play() { if (timer) return pause(); $("play").textContent = "⏸";
   const tick = async () => { const sp = +$("speed").value, an = prefs.live1s !== false && sp >= 150 ? Math.round(sp * 0.85) : 0;   // KING_1S: most of each step is spent forming the candle
-    await stepFwd(true, an); if (timer) timer = setTimeout(tick, Math.max(0, sp - an)); };
+    await stepUnit(true, an); if (timer) timer = setTimeout(tick, Math.max(0, sp - an)); };
   timer = setTimeout(tick, 0); }
 function pause() { clearTimeout(timer); timer = null; $("play").textContent = "▶"; }
 
@@ -784,7 +784,7 @@ function guard() {
   if (prefs.dll && dp <= -prefs.dll) hit("Personal daily loss limit hit"); else if (prefs.ptg && dp >= prefs.ptg) hit("Personal daily profit target reached");
   else if (prefs.mdd && peak - (balance() + openPnlAll()) >= prefs.mdd) hit("Max drawdown hit");
 }
-function canTrade() { if (prefs.lockUntil && Date.now() < prefs.lockUntil) { toast("🔒 Personal lockout until " + new Date(prefs.lockUntil).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })); return false; } if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } if (prefs.aplus && !pos.qty && !aplusOk()) return false; return true; }
+function canTrade() {   /* KING_NOLOCK (King, Nov 14): personal lockout removed, this is backtesting */ if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } if (prefs.aplus && !pos.qty && !aplusOk()) return false; return true; }
 const lotsNow = () => Math.max(1, +prefs.lots || 1);
 const autoBr = () => (prefs.autoBr ? { slPts: prefs.slPts, tpPts: prefs.tpPts } : null);
 function market(side, qty) { if (!canTrade()) return; if (prefs.cs && prefs.cs.oneClick === false && !confirm(`${side > 0 ? "Buy" : "Sell"} ${qty || lotsNow()} at market?`)) return; qty = qty || (prefs.byRisk ? Math.max(1, Math.floor((balance() * prefs.riskp / 100) / (prefs.slPts * inst.pt))) : lotsNow()); fill(side, qty, last(), nowT(), autoBr()); }
@@ -1109,10 +1109,13 @@ async function mysteryDay() { if (pos.qty || orders.length) return toast("Close 
 }
 function blindUI() { const on = !!blind; document.body.classList.toggle("blind", on); $("blindbtn").textContent = on ? "Reveal" : "🎲"; $("blindbtn").title = on ? "Show the date" : "Mystery day: a random day with the date hidden until you finish";
   panes.forEach((p) => p.chart.applyOptions({ timeScale: { tickMarkFormatter: on ? (t) => new Date(t * 1000).toISOString().slice(11, 16) : undefined }, localization: { timeFormatter: on ? (t) => new Date(t * 1000).toISOString().slice(11, 16) : undefined } })); refresh(); }
-async function stepCandle() {   // play out one whole candle of the selected chart: stop when the next bar would start a new candle
-  const p = panes[active]; if (!p || !p.candles.length) return stepFwd(); const base = p.sec < 60 ? B["15s"] : B["1m"];
-  for (let n = 0; n < 3000; n++) { const g = await stepFwd(false); if (g === false) break; const nx = base.bars[base.i + 1]; if (!nx || bucket(loc(nx.t), p.sec) !== bucket(loc(nowT()), p.sec)) break; }
+async function stepCandle(sec) {   // KING_STEPTF (King, Nov 14): play out one whole candle of the chosen step (default: the selected chart's timeframe)
+  const p = panes[active]; if (!p || !p.candles.length) return stepFwd(); sec = sec || p.sec; const base = sec < 60 ? B["15s"] : B["1m"];
+  for (let n = 0; n < 30000; n++) { const g = await stepFwd(false); if (g === false) break; const nx = base.bars[base.i + 1]; if (!nx || bucket(loc(nx.t), sec) !== bucket(loc(nowT()), sec)) break; }
   rebuildAll(); }
+function stepSec() { const v = $("stepsz").value, p = panes[active]; return v === "sync" ? (p ? p.sec : 60) : +v; }
+async function stepUnit(ui = true, anim = 0) { const s = stepSec(), p = panes[active]; const baseSec = p && p.sec < 60 ? 15 : 60;
+  if (s <= baseSec) return stepFwd(ui, anim); return stepCandle(s); }
 
 /* ---------------- first-run tour + help ---------------- */
 function helpDlg() { const K = prefs.keys, rows = [["Play / pause", "Space"], ["Step forward / back", "→ / ←"], ["Buy / sell market", (K.buy + " / " + K.sell).toUpperCase()], ["Join bid / ask", (K.joinbid + " / " + K.joinask).toUpperCase()], ["Close / reverse", (K.close + " / " + K.reverse).toUpperCase()], ["Flatten / cancel all", (K.flatten + " / " + K.cancel).toUpperCase()],
@@ -1929,7 +1932,7 @@ async function boot() {
 }
 $("a-in").onclick = async () => { try { kChime(new (window.AudioContext || window.webkitAudioContext)()); } catch (e) {} const { error } = await sb.auth.signInWithPassword({ email: $("a-email").value.trim(), password: $("a-pass").value }); $("a-msg").textContent = error ? error.message : ""; if (!error) boot(); };
 $("a-up").onclick = async () => { const { data, error } = await sb.auth.signUp({ email: $("a-email").value.trim(), password: $("a-pass").value, options: { emailRedirectTo: location.origin + location.pathname } }); $("a-msg").textContent = error ? error.message : data.session ? "" : "Check your email to confirm, then sign in here."; if (data && data.session) boot(); };
-$("logout").onclick = async () => { try { localStorage.removeItem("kz-name"); } catch (e) {} await sb.auth.signOut(); location.reload(); }; $("lockbtn").onclick = lockDlg;
+$("logout").onclick = async () => { try { localStorage.removeItem("kz-name"); } catch (e) {} await sb.auth.signOut(); location.reload(); }; 
 
 /* ---------------- AI themes: your words -> the PC's Claude Code -> a new theme ---------------- */
 const TH_KEYS = ["--bg", "--panel", "--acc", "--acc2", "--txt", "--mut", "--line"], TH_OK = /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\))$/i;
@@ -2114,7 +2117,7 @@ const FX = {
   /* old splash bounce removed (KING_STARTFX replaced the splash) */ }
 document.querySelectorAll(".vtab[data-view]").forEach((b) => (b.onclick = () => view(b.dataset.view)));
 $("start").addEventListener("change", () => { if (!pos.qty && !orders.length) { blind = null; blindUI(); loadReplay(); } });   // picking a date loads it right away
-$("go").onclick = () => { blind = null; blindUI(); loadReplay(); }; $("play").onclick = play; $("step").onclick = () => { pause(); $("stepsz").value === "candle" ? stepCandle() : stepFwd(); };
+$("go").onclick = () => { blind = null; blindUI(); loadReplay(); }; $("play").onclick = play; $("step").onclick = () => { pause(); stepUnit(); };
 $("blindbtn").onclick = () => { if (blind) { const d = blind.day; blind = null; blindUI(); toast("It was " + new Date(d + "T12:00:00Z").toUTCString().slice(0, 16)); } else mysteryDay(); }; $("back").onclick = () => { pause(); stepBack(); };
 /* KING_TEMPLATES (Nov 13): a template is a named snapshot of every setting (charts, chart settings, tools + favorites, layout, timeframes,
    indicators, theme, glass, sounds, panels, trading rules, hotkeys...). Make as many as you want, switch, update, rename, delete.
@@ -2167,7 +2170,11 @@ $("sym").onchange = () => {   // switch instrument right away, at the same repla
   if (pos.qty || orders.length || busyElsewhere()) { $("sym").value = sym; return toast("Close positions and cancel orders before switching instrument"); }
   $("start").value = fmt(loc(cursorT + 61)).replace(" ", "T"); loadReplay();
 };
-$("skipny").onclick = () => skipTo("09:30", "NY open"); $("skipasia").onclick = () => skipTo("20:00", "Asia open");
+$("skipny").onclick = () => skipTo("09:30", "NY open");
+$("skipnext").onclick = () => { const m = lhm(loc(nowT() || 0)); (m >= "09:30" && m < "20:00") ? skipTo("20:00", "Asia open") : skipTo("09:30", "NY open"); };   // KING_SKIPCOL
+$("playday").onclick = async () => { pause(); if (!B["1m"].bars.length) return toast("Load a chart first"); toast("Playing out the day…");   // KING_PLAYDAY: fast to 12:00 New York
+  for (let n = 0; n < 6000; n++) { const m = lhm(loc(nowT())); if (m >= "12:00" && m < "17:00") break; const g = await stepFwd(false); if (g === false || g === undefined) break; }
+  rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast(""); }; $("skipasia").onclick = () => skipTo("20:00", "Asia open");
 $("clr").onclick = () => { drawings.filter((d) => d.state === "armed").forEach(disarmTool); drawings = []; sel = null; repaintAll(); }; $("magnet").onclick = toggleMagnet;
 document.querySelectorAll(".mode").forEach((b) => (b.onclick = () => { document.querySelectorAll(".mode").forEach((x) => x.classList.toggle("on", x === b)); ["scalp", "dom", "order", "friends"].forEach((m) => $("md-" + m).classList.toggle("hidden", m !== b.dataset.mode)); if (b.dataset.mode === "friends") frSide(); if (b.dataset.mode === "scalp" && !prefs.pad.show) { prefs.pad.show = true; padUI(); } refresh(); }));
 document.querySelectorAll(".btab").forEach((b) => (b.onclick = () => { if (b.classList.contains("on") && !prefs.dockClosed) { prefs.dockClosed = true; savePrefs(); return dockUI(); } prefs.dockClosed = false; savePrefs(); dockUI();
@@ -2300,7 +2307,7 @@ $("ad-list").addEventListener("click", async (e) => { if (e.target.id === "ad-la
 $("ad-feat").addEventListener("change", async (e) => { const k = e.target.dataset.feat; if (k) await sb.from("features").update({ enabled: e.target.checked, updated_at: new Date().toISOString() }).eq("key", k); });
 document.addEventListener("keydown", (e) => {
   if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || $("v-trade").classList.contains("hidden") || !$("dlg").classList.contains("hidden")) return; const k = e.key.toLowerCase(), K = prefs.keys;
-  if (e.code === "Space") { e.preventDefault(); play(); } else if (e.key === "ArrowRight") { pause(); $("stepsz").value === "candle" ? stepCandle() : stepFwd(); } else if (e.key === "ArrowLeft") { pause(); stepBack(); }
+  if (e.code === "Space") { e.preventDefault(); play(); } else if (e.key === "ArrowRight") { pause(); stepUnit(); } else if (e.key === "ArrowLeft") { pause(); stepBack(); }
   else if (e.key === "Escape") { setTool("cursor"); sel = null; hideCtx(); repaintAll(); } else if ((e.key === "Delete" || e.key === "Backspace") && sel) { if (sel.state === "armed") disarmTool(sel); drawings = drawings.filter((d) => d !== sel); sel = null; repaintAll(); }
   else if (k === K.buy) market(1); else if (k === K.sell) market(-1); else if (k === K.joinbid) joinBid(); else if (k === K.joinask) joinAsk(); else if (k === K.reverse) reverse(); else if (k === K.flatten) flatten(); else if (k === K.cancel) cancelAll(); else if (k === K.be) beNow(); else if (k === K.close) closeAll();
   else if (k === K.trend) setTool("trend"); else if (k === K.hline) setTool("hline"); else if (k === K.vline) setTool("vline"); else if (k === K.rect) setTool("rect"); else if (k === K.long) setTool("long"); else if (k === K.short) setTool("short"); else if (k === K.measure) setTool("measure");
