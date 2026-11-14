@@ -676,6 +676,8 @@ function initPointer(p) {
   const hold = (on) => p.chart.applyOptions({ handleScroll: !on, handleScale: !on });
   p.el.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.target.closest(".ptitle,.lname")) return; const { x, y } = pt(e); hideCtx();
+    let onAxis = false; try { onAxis = x > p.el.clientWidth - p.chart.priceScale("right").width() - 1 || y > p.el.clientHeight - p.chart.timeScale().height() - 1; } catch (er) {}   // KING_AXISDRAG (Nov 14): dragging the price/time axis only scales the chart
+    if (onAxis) { const l0 = hitLine(p, y); if (!l0) return; }
     if (tool !== "cursor" && tool !== "cross") {
       const a = { t: tOf(p, x), p: pOf(p, y, x) }; if (a.t == null || a.p == null) return;
       if (["hline", "vline", "hray", "text", "long", "short"].includes(tool)) { newDrawing(tool, p, a); if (!e.shiftKey) setTool("cursor"); repaintAll(); e.stopPropagation(); e.preventDefault(); return; }
@@ -712,7 +714,14 @@ function initPointer(p) {
   p.el.addEventListener("pointerup", up); p.el.addEventListener("pointercancel", up);
   p.el.addEventListener("contextmenu", (e) => { e.preventDefault(); const { x, y } = pt(e); setActive(p.i); chartMenu(p, x, y, e.clientX, e.clientY); });
 }
-function repaintAll() { panes.forEach(htfRoom); panes.forEach(paint); }
+function repaintAll() { panes.forEach(htfRoom); panes.forEach(paint); clearTimeout(undoT); undoT = setTimeout(snapDraw, 250); }
+/* KING_UNDO (Nov 14): Ctrl/Cmd+Z undoes the latest drawing change (add, move, edit, delete, clear). Ctrl/Cmd+Shift+Z redoes. */
+let undoT = 0, undoStack = [], redoStack = [], lastSnap = "[]";
+const drawSnap = () => JSON.stringify(drawings.filter((d) => !d.reese && !d.quiz && d.state !== "armed"));
+function snapDraw() { if (typeof drag !== "undefined" && drag || pend) { undoT = setTimeout(snapDraw, 250); return; } const s = drawSnap(); if (s === lastSnap) return; undoStack.push(lastSnap); if (undoStack.length > 60) undoStack.shift(); redoStack = []; lastSnap = s; }
+function undoDraw(redo) { const from = redo ? redoStack : undoStack, to = redo ? undoStack : redoStack; if (!from.length) return toast(redo ? "Nothing to redo" : "Nothing to undo");
+  to.push(drawSnap()); const prev = JSON.parse(from.pop()), keep = drawings.filter((d) => d.reese || d.quiz || d.state === "armed"); drawings = keep.concat(prev); lastSnap = drawSnap(); sel = null; panes.forEach(htfRoom); panes.forEach(paint); }
+addEventListener("keydown", (e) => { if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z") return; const t = e.target; if (t && (t.closest("input,textarea,select,[contenteditable]"))) return; e.preventDefault(); undoDraw(e.shiftKey); });
 function htfRoom(p) {   // keep empty space on the right for the HTF candles so they never sit on top of live candles
   if (p.dead || p.sec >= 86400) return; const n = prefs.ind && !p.noHtf ? (prefs.ind.htfc || []).length : 0, ts = p.chart.timeScale(), sp = ts.options().barSpacing || 6, want = n ? Math.ceil((n * 34 + 26) / sp) + 3 : +((prefs.cs && prefs.cs.mr) ?? 12);
   // KING_NOSNAP (Nov 12): rightOffset only applies while you're parked at the live edge. Setting it scrolls the chart,
