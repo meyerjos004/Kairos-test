@@ -948,7 +948,7 @@ function chartMenu(p, x, y, cx, cy) {
     { t: (drawings.length && drawings.every((d) => d.locked) ? "Unlock" : "Lock") + " all drawings", f: () => { const all = drawings.length && drawings.every((d) => d.locked); drawings.forEach((d) => (d.locked = !all)); repaintAll(); toast(all ? "Drawings unlocked" : "🔒 All drawings locked"); } },
     { t: "Remove all drawings", f: () => { drawings.filter((d) => d.state === "armed").forEach(disarmTool); drawings = []; sel = null; repaintAll(); } }], cx, cy);
 }
-function dlg(html, onOk) { $("dlgbox").innerHTML = html + '<div class="row" style="margin-top:12px"><button id="dl-x">Cancel</button><button id="dl-ok" class="primary">Save</button></div>'; $("dlg").classList.remove("hidden");
+function dlg(html, onOk) { $("dlgbox").classList.remove("wide"); $("dlgbox").innerHTML = html + '<div class="row" style="margin-top:12px"><button id="dl-x">Cancel</button><button id="dl-ok" class="primary">Save</button></div>'; $("dlg").classList.remove("hidden");
   $("dl-x").onclick = () => $("dlg").classList.add("hidden"); $("dl-ok").onclick = () => { onOk(); $("dlg").classList.add("hidden"); }; }
 function toolDlg(d) { dlg(`<h3>${d.side > 0 ? "Long" : "Short"} position</h3><div class="row2"><label>Entry<input id="tdE" type="number" step="0.25" value="${d.entry}"></label><label>Quantity (blank = auto)<input id="tdQ" type="number" value="${d.qty || ""}"></label></div><div class="row2"><label>Stop<input id="tdS" type="number" step="0.25" value="${d.sl}"></label><label>Target<input id="tdT" type="number" step="0.25" value="${d.tp}"></label></div>`,
   () => { d.entry = rnd(+$("tdE").value); d.sl = rnd(+$("tdS").value); d.tp = rnd(+$("tdT").value); d.qty = +$("tdQ").value || null; syncTool(d); repaintAll(); }); }
@@ -1229,13 +1229,12 @@ function reesePop(r) {
   else if (r.result === "journal") verdict = "📸 Here's what Reese posted live this session. Compare it to what you saw.";
   else verdict = "📋 No trade from him here, just his plan. Did yours match?";
   if (xp) addXp(xp);
-  dlg(`<h3>Reese ${r.dir ? "traded" : r.result === "journal" ? "posted" : "planned"} this session</h3><div class="muted small">${r.day} · ${r.session} · ${r.symbol}</div>
+  wideDlg(`<div class="rw-grid"><div>`+`<h3>Reese ${r.dir ? "traded" : r.result === "journal" ? "posted" : "planned"} this session</h3><div class="muted small">${r.day} · ${r.session} · ${r.symbol}</div>
     ${r.dir ? `<div class="shrow"><span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · <b>${r.result}</b></div>` : ""}
     <p class="small">${esc(r.summary)}</p>${(r.quotes || []).length ? `<div class="quotes">${r.quotes.slice(0, 4).map((q) => `<div>“${esc(q)}”</div>`).join("")}</div>` : ""}
     ${reeseMedia(r, true)}${r.video_url ? `<p><button class="small" data-vid="${esc((r.video_url.match(/([A-Za-z0-9_-]{11})/) || [])[1] || "")}" data-title="Reese · ${esc(r.day)} recap" onclick="playVid('${esc(r.video_url)}', 'Reese · ${esc(r.day)} ${r.video_start != null ? "· the trade" : "recap"}', ${+r.video_start || 0}, ${+r.video_end || 0})">▶ ${r.video_start != null ? "Watch this trade" : "Watch his recap"}</button>${r.video_start != null ? ` <button class="small ghost" onclick="playVid('${esc(r.video_url)}', 'Reese · ${esc(r.day)} recap')">Full video</button>` : ""}</p>` : ""}
-    <div class="riskcard">${verdict}${xp ? ` <b>+${xp} XP</b>` : ""}<br>Your trades this session: ${mine.length ? mine.map((t) => `${t.dir > 0 ? "long" : "short"} ${money(+t.pnl)}`).join(", ") : "none"}</div>`, () => {
-    if (r.entry && panes[0]) { const t0 = sessEnd(r) - 3 * 3600; drawings.push({ id: did++, type: "hline", pane: 0, a: { t: t0, p: +r.entry }, label: "Reese entry" }); if (r.exit) drawings.push({ id: did++, type: "hline", pane: 0, a: { t: t0, p: +r.exit }, label: "Reese exit" }); repaintAll(); } });
-  const ok = $("dl-ok"); if (ok) ok.textContent = r.entry ? "Show his levels" : "OK"; fillReeseShots($("dlgbox")); }
+    <div class="riskcard">${verdict}${xp ? ` <b>+${xp} XP</b>` : ""}<br>Your trades this session: ${mine.length ? mine.map((t) => `${t.dir > 0 ? "long" : "short"} ${money(+t.pnl)}`).join(", ") : "none"}</div>`+`</div></div>`, [{ t: "Close" }, ...(r.dir || (r.notes || []).length ? [{ t: "Next → Reese on your chart", primary: true, f: () => reeseOnChart(r) }] : [])]);   // KING_REESEWIN
+  fillReeseShots($("dlgbox")); }
 function addXp(n) { prefs.xp = (prefs.xp || 0) + n; prefs.credits = (prefs.credits || 0) + Math.round(n / 5); savePrefs(); xpUI(); }
 function xpUI() { const x = prefs.xp || 0, lv = Math.floor(Math.sqrt(x / 50)) + 1, nx = 50 * lv * lv, pv = 50 * (lv - 1) * (lv - 1); $("xpbar").innerHTML = `Level <b>${lv}</b> <i class="xpb"><i style="width:${Math.round((100 * (x - pv)) / (nx - pv))}%"></i></i> ${x} XP · ${prefs.credits || 0} credits`; }
 /* ---------------- Fix my mistakes: daily practice built from the mistakes you tag (Duolingo-style) ---------------- */
@@ -2590,8 +2589,9 @@ function csMarks(p) { const C = csG(); const s = paneSym(p), last = p.candles.le
   if (prefs.showReal !== false && realTrades.length) for (const r of realTrades) { if (r.sym && r.sym !== symRoot(s)) continue; const lt = loc(r.t), dayEnd = Math.floor(lt / 86400) * 86400 + 17 * 3600; if (dayEnd > last || bucket(lt, p.sec) < first) continue;
     const rk = r.url || [r.t, r.side, r.pnl, r.entry].join("|"), rk2 = [r.t, r.side, r.pnl].join("|"); if (seenR.has(rk) || seenR.has(rk2)) continue; seenR.add(rk); seenR.add(rk2);
     mk.push({ time: bucket(lt, p.sec), position: r.side < 0 ? "aboveBar" : "belowBar", color: "#f5c542", shape: "circle", text: "Real" + (r.side ? (r.side > 0 ? " L" : " S") : "") + (r.pnl != null ? " " + (r.pnl >= 0 ? "+" : "") + Math.round(r.pnl) : "") }); }
+  for (const m of reeseMk) { const tt = bucket(m.t, p.sec); if (tt <= last) mk.push({ time: tt, position: m.position, color: m.color, shape: m.shape, text: m.text }); }   // KING_REESEWIN
   dayRecap(last);
-  mk.sort((a, b) => a.time - b.time); const key = mk.length + "|" + C.exl + "|" + p.sec; if (p._mkk === key) return; p._mkk = key; p._mk = mk.length; try { p.series.setMarkers(mk); } catch (e) {} }
+  mk.sort((a, b) => a.time - b.time); const key = mk.length + "|" + reeseMk.length + "|" + C.exl + "|" + p.sec; if (p._mkk === key) return; p._mkk = key; p._mk = mk.length; try { p.series.setMarkers(mk); } catch (e) {} }
 // the settings window
 const CSF = { "cs-prevclr": "prevClr", "cs-body": "body", "cs-bord": "bord", "cs-bu": "bu", "cs-bd": "bd", "cs-wick": "wick", "cs-wu": "wu", "cs-wd": "wd", "cs-prec": "prec", "cs-title": "title", "cs-titlek": "titleK", "cs-mstat": "mstat", "cs-vals": "vals", "cs-chg": "chg", "cs-lbg": "lbg", "cs-lbga": "lbga",
   "cs-cd": "cd", "cs-last": "last", "cs-pdc": "pdc", "cs-pdcc": "pdcc", "cs-hl": "hl", "cs-hlc": "hlc", "cs-ba": "ba", "cs-bidc": "bidc", "cs-askc": "askc", "cs-dow": "dow", "cs-df": "df", "cs-hf": "hf", "cs-keepl": "keepC",
@@ -2725,3 +2725,37 @@ function dpWeeks(y, m) { const a = Date.UTC(y, m, 1), z = Date.UTC(y, m + 1, 0),
 function dpLabel() { const b = $("choosedates"); if (!b) return; const v = $("start").value, P = prefs.pl; b.querySelector("span").textContent = P && P.days && P.days.length > 1 ? `${P.name} (${P.i + 1}/${P.days.length})` : v ? new Date(v.slice(0, 10) + "T12:00:00Z").toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) : "Choose dates"; }
 $("choosedates") && ($("choosedates").onclick = dpOpen); $("gotobtn") && ($("gotobtn").onclick = dpOpen);
 $("start").addEventListener("change", dpLabel); setTimeout(() => { try { dpLabel(); } catch (e) {} }, 300);
+
+/* KING_REESEWIN (King, Nov 14): the end-of-session window is a wide bordered window that fits the screen. Next → Reese's trade on YOUR chart:
+   his long/short box, execution arrows, his confluences, and his live notes at their New York times. */
+let reeseMk = [], reeseIds = [];
+function wideDlg(html, btns) { $("dlgbox").classList.add("wide"); $("dlgbox").innerHTML = html + `<div class="row wbtns">${btns.map((b, i) => `<button id="wb${i}" class="${b.primary ? "primary" : ""}">${b.t}</button>`).join("")}</div>`; $("dlg").classList.remove("hidden");
+  btns.forEach((b, i) => $("wb" + i).onclick = () => { $("dlg").classList.add("hidden"); $("dlgbox").classList.remove("wide"); b.f && b.f(); }); }
+function nyClock(day, s) { if (!s) return null; const m = String(s).match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i); if (!m) return null; let h = +m[1]; const ap = (m[3] || "").toLowerCase(); if (ap === "pm" && h < 12) h += 12; if (ap === "am" && h === 12) h = 0;
+  let t = Date.parse(day + "T00:00:00Z") / 1000 + h * 3600 + +m[2] * 60; return t; }   // New York wall clock as fake-UTC (same as loc())
+function reeseFind(r) { const st = sessEnd(r) - (r.session === "NY" ? 7.5 * 3600 : 4.5 * 3600), z = sessEnd(r), bars = B["1m"].bars.filter((b) => { const l = loc(b.t); return l >= st && l < z; });
+  let te = nyClock(r.day, r.entry_t || r.time_et), tx = nyClock(r.day, r.exit_t);
+  const hit = (from, px) => { const b = bars.find((b) => loc(b.t) >= from && b.l <= px && b.h >= px); return b ? loc(b.t) : null; };
+  if (te == null && r.entry) te = hit(st, +r.entry); if (tx == null && r.exit && te != null) tx = hit(te + 60, +r.exit); return { te, tx, st, z }; }
+function reeseClear() { drawings = drawings.filter((d) => !reeseIds.includes(d.id)); reeseIds = []; reeseMk = []; panes.forEach((p) => { p._mkk = null; csMarks(p); }); repaintAll(); const el = $("reesepanel"); if (el) el.remove(); }
+function reeseOnChart(r) { reeseClear(); const p = panes[active] || panes[0]; if (!p) return; const { te, tx } = reeseFind(r), sec = p.sec;
+  if (r.dir && r.entry && te != null) { const s = r.dir > 0 ? 1 : -1, e = +r.entry, ex = r.exit ? +r.exit : null;
+    const tp = r.target ? +r.target : (r.result === "win" && ex ? ex : rnd(e + s * prefs.tpPts)), sl = r.stop ? +r.stop : (r.result === "loss" && ex ? ex : rnd(e - s * prefs.slPts));
+    const d = { id: did++, type: s > 0 ? "long" : "short", pane: p.i, a: { t: te, p: e }, b: { t: tx != null ? tx : te + sec * 30, p: e }, entry: e, sl, tp, side: s, state: "idle", qty: null, reese: true }; drawings.push(d); reeseIds.push(d.id);
+    const conf = (r.confluences || []).length ? r.confluences : [];
+    if (conf.length) { const t = { id: did++, type: "text", pane: p.i, a: { t: te, p: s > 0 ? Math.max(tp, e) : Math.min(tp, e) }, b: { t: te, p: e }, text: "Reese: " + conf.join(" · "), reese: true }; drawings.push(t); reeseIds.push(t.id); }
+    reeseMk.push({ t: te, position: s > 0 ? "belowBar" : "aboveBar", color: "#c08bff", shape: s > 0 ? "arrowUp" : "arrowDown", text: `Reese ${s > 0 ? "BUY" : "SELL"} @ ${px2(e)}` });
+    if (tx != null && ex) reeseMk.push({ t: tx, position: s > 0 ? "aboveBar" : "belowBar", color: "#c08bff", shape: s > 0 ? "arrowDown" : "arrowUp", text: `Reese out @ ${px2(ex)} · ${r.result || ""}` }); }
+  (r.notes || []).forEach((n) => { const t = nyClock(r.day, n.t); if (t != null) reeseMk.push({ t, position: "aboveBar", color: "#8ab4ff", shape: "square", text: "💬 " + String(n.t).replace(/\s+/g, "") }); });
+  panes.forEach((q) => { q._mkk = null; csMarks(q); }); repaintAll();
+  const inData = (t) => p.candles.length && bucket(t, sec) >= p.candles[0].time && bucket(t, sec) <= p.candles[p.candles.length - 1].time;
+  if (te != null && inData(te)) try { p.chart.timeScale().setVisibleRange({ from: bucket(te, sec) - sec * 60, to: bucket(tx != null ? tx : te, sec) + sec * 40 }); } catch (e) {}
+  let el = $("reesepanel"); if (!el) { el = document.createElement("div"); el.id = "reesepanel"; document.body.appendChild(el); }
+  el.innerHTML = `<div class="rp-h"><b>Reese · ${esc(r.day)} · ${esc(r.session)}</b><button id="rp-x" title="Hide Reese's marks">×</button></div>
+    ${r.dir ? `<div class="rp-t"><span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · <b>${esc(r.result || "")}</b>${te != null ? ` <span class="muted">· ${fmt(te).slice(11, 16)} NY</span>` : ""}</div>` : ""}
+    ${(r.confluences || []).length ? `<div class="rp-conf">${r.confluences.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}
+    <div class="small muted">${esc(r.summary || "")}</div>
+    ${(r.notes || []).length ? `<div class="rp-notes">${r.notes.map((n) => `<button class="rp-n" data-nt="${esc(n.t)}"><span>${esc(n.t)}</span> ${esc(n.x)}</button>`).join("")}</div>` : ""}
+    ${te == null && r.dir ? '<div class="tiny muted">His exact entry time isn\'t in the data yet, so the box is placed where price first hit his entry.</div>' : ""}`;
+  $("rp-x").onclick = reeseClear;
+  el.querySelectorAll(".rp-n").forEach((b) => b.onclick = () => { const t = nyClock(r.day, b.dataset.nt); if (t != null) try { p.chart.timeScale().setVisibleRange({ from: bucket(t, sec) - sec * 40, to: bucket(t, sec) + sec * 40 }); } catch (e) {} }); }

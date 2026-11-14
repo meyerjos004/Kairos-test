@@ -663,3 +663,12 @@ body.glass .tools:not(.float),body.glass .tools.float{background:linear-gradient
 .dp-day.off{opacity:.18}.dp-day.in{background:rgba(124,107,255,.35)}.dp-day.end{background:#7c6bff;color:#fff}.dp-foot{justify-content:flex-end;gap:8px;margin-top:10px}
 .dp-mrow{justify-content:flex-start;gap:8px;margin-bottom:6px}.dp-weeks{display:flex;flex-direction:column;gap:8px}.dp-wk{border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .dp-wkb{display:flex;gap:8px;flex-wrap:wrap}.dp-chips{display:flex;gap:6px;flex-wrap:wrap}.dp-chip{padding:6px 10px;border-radius:999px}.dp-chip.on{background:#7c6bff;color:#fff;border-color:#7c6bff}
+
+/* KING_REESEWIN */
+#dlgbox.wide{width:min(980px,94vw);max-height:86vh;overflow:auto;border:1px solid rgba(255,255,255,.18);box-shadow:0 30px 80px rgba(0,0,0,.55)}
+#dlgbox.wide .rshots{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}#dlgbox.wide .rshots img{width:100%;border-radius:8px}
+#dlgbox.wide .wbtns{position:sticky;bottom:-18px;background:inherit;padding:12px 0 2px;justify-content:flex-end;gap:8px}
+#reesepanel{position:fixed;left:84px;bottom:70px;z-index:60;width:min(360px,80vw);max-height:46vh;overflow:auto;background:rgba(16,18,26,.94);border:1px solid rgba(192,139,255,.45);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;backdrop-filter:blur(8px)}
+#reesepanel .rp-h{display:flex;justify-content:space-between;align-items:center}#reesepanel .rp-h button{background:none;border:none;color:var(--mut);font-size:20px}
+.rp-conf{display:flex;flex-wrap:wrap;gap:6px}.rp-conf span{font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(192,139,255,.18);color:#d9c2ff}
+.rp-notes{display:flex;flex-direction:column;gap:4px}.rp-n{text-align:left;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px}.rp-n span{color:#8ab4ff;font-weight:700;margin-right:6px}
