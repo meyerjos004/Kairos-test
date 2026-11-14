@@ -672,3 +672,14 @@ body.glass .tools:not(.float),body.glass .tools.float{background:linear-gradient
 #reesepanel .rp-h{display:flex;justify-content:space-between;align-items:center}#reesepanel .rp-h button{background:none;border:none;color:var(--mut);font-size:20px}
 .rp-conf{display:flex;flex-wrap:wrap;gap:6px}.rp-conf span{font-size:11px;padding:3px 8px;border-radius:999px;background:rgba(192,139,255,.18);color:#d9c2ff}
 .rp-notes{display:flex;flex-direction:column;gap:4px}.rp-n{text-align:left;background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px}.rp-n span{color:#8ab4ff;font-weight:700;margin-right:6px}
+
+.playday.on{color:var(--acc,#a78bfa);animation:pd 0.8s linear infinite}@keyframes pd{50%{opacity:.5}}
+
+/* KING_NOCOLLIDE: Feedback is a normal header item now */
+header.top .fxtop{position:static;transform:none;flex:none}header.top .fxtop:hover{transform:scale(1.04)}header.top .grp.replay{margin-left:auto;min-width:0}
+/* KING_DATEPICK2 calendar timelines */
+.dp-cal{display:flex;flex-direction:column;gap:14px}.dp-half{display:flex;flex-direction:column;gap:4px}
+.dp-mrowl{display:grid;grid-template-columns:44px 1fr;align-items:center;gap:8px}.dp-mrowl .dp-mname{border:none;margin:0;padding:0;text-align:left}
+.dp-days31{display:grid;grid-template-columns:repeat(31,1fr);gap:3px}.dp-days31 .dp-day{padding:5px 0;font-size:10.5px}.dp-gap{display:block}
+.dp-cal.one .dp-days31 .dp-day{padding:12px 0;font-size:13px}.dp-day.we{opacity:.12;background:rgba(255,255,255,.02)}
+#dpick .dp-day.in{background:rgba(124,107,255,.38);color:#fff}#dpick .dp-day.end{background:#7c6bff;color:#fff;box-shadow:0 0 0 1px #b9adff}

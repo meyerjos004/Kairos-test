@@ -36,6 +36,7 @@ function nyOffset(t) {
   const o = Math.round((Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) / 1000 - t) / 60) * 60; offCache.set(h, o); return o;
 }
 const loc = (t) => t + nyOffset(t);
+const BE_BAND = 20; const isBE = (t) => Math.abs(+t.pnl || 0) <= BE_BAND, isW = (t) => (+t.pnl || 0) > BE_BAND, isL = (t) => (+t.pnl || 0) < -BE_BAND;   // KING_BE20 (Will, Nov 14): breakeven = within ±$20
 const fmt = (lt) => new Date(lt * 1000).toISOString().slice(0, 16).replace("T", " ");
 // KING_PERF (Nov 12): lhm + sessDay were ~25% of replay CPU (a Date + toISOString per call); same output, plain math + a per-day cache
 const _p2 = (n) => (n < 10 ? "0" : "") + n;
@@ -300,7 +301,7 @@ function favUI() {
 function replayHome() { const wide = innerWidth > 900, fr = document.querySelector("#favbar .fbreplay"), top = document.querySelector(".grp.replay"), seg = $("play").parentElement, skips = top.querySelector(".skips");
   if (!fr || !top) return; const want = wide ? fr : top; if (seg.parentElement === want) return;
   const box = (id) => $(id).closest(".dd") || $(id);   // selects are wrapped in the custom dropdown; move the wrapper
-  if (wide) { fr.append(seg, box("stepsz"), box("speed")); } else { top.insertBefore(seg, skips); top.appendChild(box("stepsz")); top.appendChild(box("speed")); } }
+  if (wide) { fr.append(seg, box("stepsz"), box("speed"), $("playday")); } else { top.insertBefore(seg, skips); top.appendChild(box("stepsz")); top.appendChild(box("speed")); top.appendChild($("playday")); } }
 addEventListener("resize", () => { try { const w = innerWidth > 900; if (w !== replayHome.w) { replayHome.w = w; favUI(); } } catch (e) {} });
 function toolsUI() { const t = $("tools"), f = prefs.toolsPos; t.classList.toggle("float", !!f); if (f) { t.style.left = Math.min(f.x, innerWidth - 50) + "px"; t.style.top = Math.min(f.y, innerHeight - 120) + "px"; } else { t.style.left = t.style.top = ""; } panes.forEach(paint); }
 function dockH() { const b = document.querySelector("#dock .bbody"); b.style.height = prefs.dockClosed ? "0px" : (prefs.dockH || 150) + "px"; if (prefs.pad.x == null) setTimeout(padUI, 240); }
@@ -1016,7 +1017,7 @@ function refresh() {
   $("b-ord").innerHTML = orders.length ? `<table class="bt"><tr><th>Side</th><th>Type</th><th>Qty</th><th>Price</th><th>Bracket</th><th></th></tr>${orders.map((o) => `<tr><td class="${cls(o.side)}">${o.side > 0 ? "Buy" : "Sell"}</td><td>${o.type}${o.tool ? " (position tool)" : ""}</td><td>${o.qty}</td><td>${px2(o.price)}</td><td>${o.br ? (o.br.slPx != null ? `SL ${px2(o.br.slPx)} / TP ${px2(o.br.tpPx)}` : `SL ${o.br.slPts} / TP ${o.br.tpPts} pts`) : "—"}</td><td><button data-c="${o.id}">Cancel</button></td></tr>`).join("")}</table>` : '<div class="empty">No working orders</div>';
   $("ordn").textContent = orders.length ? "(" + orders.length + ")" : "";
   $("b-hist").innerHTML = hist.length ? `<table class="bt"><tr><th>Time (NY)</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th><th>Result</th><th>R</th><th>P&L</th></tr>${hist.slice().reverse().map((t) => `<tr><td>${fmt(loc(t.t_entry)).slice(5)}</td><td>${t.symbol || ""}</td><td>${t.dir > 0 ? "Long" : "Short"}</td><td>${t.qty}</td><td>${px2(t.entry)}</td><td>${px2(t.exit)}</td><td>${t.outcome}</td><td>${t.r ?? "—"}</td><td class="${cls(t.pnl)}">${money(t.pnl)}</td></tr>`).join("")}</table>` : '<div class="empty">No trades this session</div>';
-  const w = hist.filter((t) => t.pnl > 0).length; $("bstat").textContent = hist.length ? `${hist.length} trades · ${Math.round((100 * w) / hist.length)}% win · net ${money(hist.reduce((s, t) => s + t.pnl, 0))}` : "";
+  const w = hist.filter(isW).length; $("bstat").textContent = hist.length ? `${hist.length} trades · ${Math.round((100 * w) / hist.length)}% win · net ${money(hist.reduce((s, t) => s + t.pnl, 0))}` : "";
   const sl = +$("o-sl").value, q = +$("o-qty").value, tp = +$("o-tp").value || 0; $("o-risk").innerHTML = sl && q ? `Risk <b>${money(sl * q * inst.pt + fee(q))}</b> · reward <b>${money(tp * q * inst.pt)}</b> · <b>${(tp / sl).toFixed(2)}R</b>` : "";
   renderDom();
 }
@@ -1174,9 +1175,9 @@ async function renderStats() {
   let tr = (await db.allTrades()).slice().sort((a, b) => a.t_exit - b.t_exit); const A = $("st-acct").value, S = $("st-sym").value, D = +$("st-range").value;
   if (A === "none") tr = tr.filter((t) => !t.account_id); else if (A) tr = tr.filter((t) => t.account_id === A); if (S) tr = tr.filter((t) => t.symbol === S);
   if (D && tr.length) { const end = tr[tr.length - 1].t_exit; tr = tr.filter((t) => t.t_exit >= end - D * 86400); }
-  const n = tr.length, W = tr.filter((t) => t.pnl > 0), L = tr.filter((t) => t.pnl <= 0), sum = (a) => a.reduce((s, t) => s + (+t.pnl || 0), 0), gw = sum(W), gl = -sum(L);
+  const n = tr.length, W = tr.filter(isW), L = tr.filter(isL), BEs = tr.filter(isBE), sum = (a) => a.reduce((s, t) => s + (+t.pnl || 0), 0), gw = sum(W), gl = -sum(L);
   let run = 0, pk = 0, dd = 0, cw = 0, cl = 0, bw = 0, bl = 0; const eq = [];
-  for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); dd = Math.max(dd, pk - run); if (t.pnl > 0) { cw++; cl = 0; } else { cl++; cw = 0; } bw = Math.max(bw, cw); bl = Math.max(bl, cl); eq.push({ time: t.t_exit, value: +run.toFixed(2) }); }
+  for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); dd = Math.max(dd, pk - run); if (isW(t)) { cw++; cl = 0; } else if (isL(t)) { cl++; cw = 0; } bw = Math.max(bw, cw); bl = Math.max(bl, cl); eq.push({ time: t.t_exit, value: +run.toFixed(2) }); }
   const rs = tr.filter((t) => t.r != null), K = [["Trades", n], ["Win rate", n ? Math.round((100 * W.length) / n) + "%" : "—"], ["Net", money(run)], ["Expectancy / trade", n ? money(run / n) : "—"], ["Avg R", rs.length ? (rs.reduce((s, t) => s + +t.r, 0) / rs.length).toFixed(2) + "R" : "—"],
     ["Profit factor", gl ? (gw / gl).toFixed(2) : n ? "∞" : "—"], ["Avg win", W.length ? money(gw / W.length) : "—"], ["Avg loss", L.length ? money(-gl / L.length) : "—"], ["Worst drop", money(-dd)], ["Best streak", bw + " wins"], ["Worst streak", bl + " losses"]];
   $("st-kpi").innerHTML = K.map(([k, v]) => `<div><span class="muted small">${k}</span><b>${v}</b></div>`).join("");
@@ -1597,7 +1598,7 @@ async function sendChat() { const b = $("chat-in").value.trim().slice(0, 2000); 
 /* ---------------- journal ---------------- */
 let eqC, eqS, jT = [];
 async function loadJournal() {
-  jT = await db.trades($("j-sym").value); const n = jT.length, w = jT.filter((t) => t.pnl > 0), l = jT.filter((t) => t.pnl < 0);
+  jT = await db.trades($("j-sym").value); const n = jT.length, w = jT.filter(isW), l = jT.filter(isL);
   const gp = w.reduce((s, t) => s + +t.pnl, 0), gl = -l.reduce((s, t) => s + +t.pnl, 0); let run = 0, pk = 0, mdd = 0; const eq = [];
   jT.forEach((t, i) => { run += +t.pnl; pk = Math.max(pk, run); mdd = Math.max(mdd, pk - run); eq.push({ time: i + 1, value: run }); });
   const rs = jT.filter((t) => t.r != null), avgR = rs.length ? rs.reduce((s, t) => s + +t.r, 0) / rs.length : 0; const box = (k, v) => `<div><span class="muted small">${k}</span><b>${v}</b></div>`;
@@ -2049,7 +2050,7 @@ function syncTime(p) { const S = prefs.sync || {}; if (syncing || S.time === fal
 function chartSetUI() { const S = prefs.sync || {}; $("cs-ssym").checked = !!S.sym; $("cs-sint").checked = !!S.int; $("cs-scross").checked = S.cross !== false; $("cs-stime").checked = S.time !== false; $("cs-srange").checked = S.range !== false;
   document.querySelectorAll("#cs-sym [data-s]").forEach((b) => b.classList.toggle("on", b.dataset.s === sym)); }
 function symMenu(e) { const r = e.target.getBoundingClientRect(), pe = e.target.closest(".pane"), p = panes.find((q) => q.el === pe) || panes[active], own = p && !(prefs.sync && prefs.sync.sym), cur = own ? paneSym(p) : sym;
-  menu([{ h: own ? `Chart ${p.i + 1} symbol` : "Symbol (all charts)" }, ...["NQ", "ES"].map((s) => ({ t: (s === cur ? "✓ " : "\u2003 ") + s + (s === "NQ" ? " · Nasdaq-100 E-mini" : " · S&P 500 E-mini"), f: () => { if (s === cur) return; if (own) return setPaneSym(p.i, s); $("sym").value = s; $("sym").onchange(); } }))], r.left, r.bottom + 4); }
+  menu([{ h: own ? `Chart ${p.i + 1} symbol` : "Symbol (all charts)" }, ...["NQ", "MNQ", "ES", "MES"].map((s) => ({ t: (s === cur ? "✓ " : "\u2003 ") + s + ({ NQ: " · Nasdaq-100 E-mini", MNQ: " · Micro Nasdaq-100 ($2/pt)", ES: " · S&P 500 E-mini", MES: " · Micro S&P 500 ($5/pt)" })[s], f: () => { if (s === cur) return; if (own) return setPaneSym(p.i, s); $("sym").value = s; $("sym").onchange(); } }))], r.left, r.bottom + 4); }
 async function setPaneSym(i, s) { prefs.syms = prefs.syms || []; panes.forEach((q) => { if (!prefs.syms[q.i]) prefs.syms[q.i] = paneSym(q); }); prefs.syms[i] = s; savePrefs(); const p = panes[i]; if (!p) return;
   if (B["1m"].bars.length) { if (s !== sym && !X[s]) { toast("Loading " + s + "…"); await loadOthers(); toast(""); } if (i === active) setActive(i); rebuildPane(p); drawOpens(); drawOrders(); refresh(); p.chart.timeScale().scrollToRealTime(); }
   panes.forEach(label); }
@@ -2171,9 +2172,12 @@ $("sym").onchange = () => {   // switch instrument right away, at the same repla
 };
 $("skipny").onclick = () => skipTo("09:30", "NY open");
 $("skipnext").onclick = () => { const m = lhm(loc(nowT() || 0)); (m >= "09:30" && m < "20:00") ? skipTo("20:00", "Asia open") : skipTo("09:30", "NY open"); };   // KING_SKIPCOL
-$("playday").onclick = async () => { pause(); if (!B["1m"].bars.length) return toast("Load a chart first"); toast("Playing out the day…");   // KING_PLAYDAY: fast to 12:00 New York
-  for (let n = 0; n < 6000; n++) { const m = lhm(loc(nowT())); if (m >= "12:00" && m < "17:00") break; const g = await stepFwd(false); if (g === false || g === undefined) break; }
-  rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast(""); }; $("skipasia").onclick = () => skipTo("20:00", "Asia open");
+$("playday").onclick = async () => { pause(); if (!B["1m"].bars.length) return toast("Load a chart first");   // KING_PLAYDAY2 (Nov 14): play visibly, fast, to 15:00 New York
+  const now = loc(nowT()), day0 = Math.floor(now / 86400) * 86400; let target = day0 + 15 * 3600; if (now >= target) target += 86400;
+  const btn = $("playday"); btn.classList.add("on"); playOut.stop = false;
+  for (let n = 0; n < 40000 && !playOut.stop; n++) { if (loc(nowT()) >= target) break; const g = await stepFwd(n % 6 === 5); if (g === false || g === undefined) break; if (n % 6 === 5) await new Promise((r) => setTimeout(r, 0)); }
+  rebuildAll(); btn.classList.remove("on"); toast(loc(nowT()) >= target ? "⏩ Played out to 3:00 PM New York" : ""); };
+function playOut() {} playOut.stop = false; $("play").addEventListener("click", () => { playOut.stop = true; }, true); $("skipasia").onclick = () => skipTo("20:00", "Asia open");
 $("clr").onclick = () => { drawings.filter((d) => d.state === "armed").forEach(disarmTool); drawings = []; sel = null; repaintAll(); }; $("magnet").onclick = toggleMagnet;
 document.querySelectorAll(".mode").forEach((b) => (b.onclick = () => { document.querySelectorAll(".mode").forEach((x) => x.classList.toggle("on", x === b)); ["scalp", "dom", "order", "friends"].forEach((m) => $("md-" + m).classList.toggle("hidden", m !== b.dataset.mode)); if (b.dataset.mode === "friends") frSide(); if (b.dataset.mode === "scalp" && !prefs.pad.show) { prefs.pad.show = true; padUI(); } refresh(); }));
 document.querySelectorAll(".btab").forEach((b) => (b.onclick = () => { if (b.classList.contains("on") && !prefs.dockClosed) { prefs.dockClosed = true; savePrefs(); return dockUI(); } prefs.dockClosed = false; savePrefs(); dockUI();
@@ -2689,31 +2693,48 @@ function dpShell(crumbs, body) { $("dpick").innerHTML = `<div class="dp"><div cl
 async function dpTest(days, name) { if (!days.length) return toast("No trading days there"); if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); dpClose();
   if (days.length === 1) { prefs.pl = null; savePrefs(); plUI(); blind = null; blindUI(); $("start").value = days[0] + "T08:30"; await loadReplay(); dpLabel(); return; }
   prefs.pl = { name, days, i: 0 }; savePrefs(); await plGo(0); dpLabel(); }
-function dpSearch(q) { q = q.trim().toLowerCase(); if (!q) return null; let m = -1, y = null, d = null;
-  const mm = DPM.findIndex((n) => q.includes(n.toLowerCase()) || q.split(/[\s,/-]+/).includes(n.slice(0, 3).toLowerCase())); if (mm >= 0) m = mm;
-  const ys = q.match(/\b(20\d\d)\b/); if (ys) y = +ys[1]; const iso = q.match(/(20\d\d)-(\d{1,2})(?:-(\d{1,2}))?/); if (iso) { y = +iso[1]; m = +iso[2] - 1; d = iso[3] ? +iso[3] : null; }
-  if (m >= 0 && d == null) { const dm = q.replace(/20\d\d/, "").match(/\b(\d{1,2})(st|nd|rd|th)?\b/); if (dm) d = +dm[1]; }
-  if (y == null) return null; return { y, m, d }; }
+/* KING_DATEPICK2 (King, Nov 14 round 2): any date format + typos, year → months with "Select specific date range" on top, real calendar timelines, random week here */
+function dpFuzzyMonth(w) { w = w.toLowerCase().replace(/[^a-z]/g, ""); if (w.length < 3) return -1; let best = -1, bd = 9;
+  const lev = (a, b) => { const d = Array.from({ length: a.length + 1 }, (_, i) => [i]); for (let j = 1; j <= b.length; j++) d[0][j] = j; for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++) d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); return d[a.length][b.length]; };
+  DPM.forEach((n, i) => { const full = n.toLowerCase(), cand = Math.min(lev(w, full), lev(w, full.slice(0, Math.max(3, w.length))) + (w.length < full.length ? 0 : 1)); if (cand < bd) { bd = cand; best = i; } });
+  return bd <= Math.max(1, Math.floor(w.length / 3)) ? best : -1; }
+function dpSearch(q) { q = String(q || "").toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, "$1").replace(/[,]/g, " ").trim(); if (!q) return null; let y = null, m = -1, d = null;
+  let k = q.match(/\b(\d{4})[-/.](\d{1,2})(?:[-/.](\d{1,2}))?\b/); if (k) return { y: +k[1], m: +k[2] - 1, d: k[3] ? +k[3] : null };
+  k = q.match(/\b(\d{1,2})[-/.](\d{1,2})[-/.](\d{2,4})\b/); if (k) { let a = +k[1], b = +k[2], yy = +k[3]; if (yy < 100) yy += 2000; if (a > 12) [a, b] = [b, a]; return { y: yy, m: a - 1, d: b }; }
+  k = q.match(/\b(\d{1,2})[-/.](\d{4})\b/); if (k) return { y: +k[2], m: +k[1] - 1, d: null };
+  const ys = q.match(/\b(20\d\d|19\d\d)\b/); if (ys) y = +ys[1]; else { const y2 = q.match(/'(\d\d)\b/); if (y2) y = 2000 + +y2[1]; }
+  for (const w of q.split(/\s+/)) { if (/^[a-z]+$/.test(w)) { const mi = dpFuzzyMonth(w); if (mi >= 0) { m = mi; break; } } }
+  const nums = q.replace(/\b(20\d\d|19\d\d)\b/, "").match(/\b\d{1,2}\b/g); if (m >= 0 && nums) d = +nums[0];
+  if (y == null && m >= 0) { const now = new Date(dpLast()); y = now.getUTCFullYear(); if (Date.UTC(y, m, d || 1) > dpLast()) y--; }
+  if (y == null) return null; if (d != null && (d < 1 || d > 31)) d = null; return { y, m, d }; }
+function dpRandomWeek() { const a = DP.from, z = dpLast() - 7 * 864e5; for (let g = 0; g < 200; g++) { let t = a + Math.random() * (z - a); t = Math.floor(t / 864e5) * 864e5; const wd = new Date(t).getUTCDay(); t -= ((wd + 6) % 7) * 864e5; const days = dpDays(t, t + 4 * 864e5); if (days.length >= 3) return days; } return []; }
 function dpYears() { const y0 = 2021, y1 = new Date(dpLast()).getUTCFullYear(); let ys = ""; for (let y = y1; y >= y0; y--) ys += `<button class="dp-big" data-y="${y}">${y}</button>`;
-  dpShell([["Choose dates", dpYears]], `<div class="dp-search"><input id="dp-q" placeholder="Search for a specific date range, e.g. april 2025" autocomplete="off"><button id="dp-qgo" class="primary">Go</button></div><div class="dp-hint tiny muted">Pick a year</div><div class="dp-grid">${ys}</div>`);
-  const go = () => { const r = dpSearch($("dp-q").value); if (!r) return toast("Try something like “april 2025” or “2025-04-17”"); if (r.m < 0) return dpAsk(r.y); if (r.d) return dpTest([dpIso(Date.UTC(r.y, r.m, r.d))].filter((s) => dpTrading(Date.parse(s + "T00:00:00Z"))), "");
+  dpShell([["Choose dates", dpYears]], `<div class="dp-search"><input id="dp-q" placeholder="Type any date: “jan 1st 2023”, “3/14/24”, “april 2025”, “2025”" autocomplete="off"><button id="dp-qgo" class="primary">Go</button></div>
+    <div class="row dp-mrow"><button id="dp-rw">🎲 Random week</button></div><div class="dp-hint tiny muted">Pick a year</div><div class="dp-grid">${ys}</div>`);
+  const go = () => { const r = dpSearch($("dp-q").value); if (!r) return toast("Couldn't read that date. Try “jan 1 2023” or “2023-01-01”"); if (r.m < 0) return dpMonths(r.y);
+    if (r.d) { const t = Date.UTC(r.y, r.m, r.d); if (!dpTrading(t)) { const nx = dpDays(t, t + 6 * 864e5)[0]; if (!nx) return toast("No trading day near that date"); toast(dpIso(t) + " isn't a trading day, so it opens " + nx); return dpTest([nx], ""); } return dpTest([dpIso(t)], ""); }
     dpWeeks(r.y, r.m); };
   $("dp-qgo").onclick = go; $("dp-q").onkeydown = (e) => { e.stopPropagation(); if (e.key === "Enter") go(); }; setTimeout(() => $("dp-q") && $("dp-q").focus(), 30);
-  $("dpick").querySelectorAll("[data-y]").forEach((b) => b.onclick = () => dpAsk(+b.dataset.y)); }
-function dpAsk(y) { dpShell([["Choose dates", dpYears], [String(y), () => dpAsk(y)]], `<div class="dp-q2"><b>Select specific date ranges in ${y}?</b><div class="tiny muted">Yes shows every day of the year on a timeline. No goes to the months.</div><div class="row"><button id="dp-no">No, show months</button><button id="dp-yes" class="primary">Yes</button></div></div>`);
-  $("dp-yes").onclick = () => dpLine(y, 0, 11, [["Choose dates", dpYears], [String(y), () => dpAsk(y)], ["Timeline", null]]); $("dp-no").onclick = () => dpMonths(y); }
-function dpLine(y, m0, m1, crumbs) { crumbs[crumbs.length - 1][1] = () => dpLine(y, m0, m1, crumbs); let sel = [];
-  let cols = ""; for (let m = m0; m <= m1; m++) { const n = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); let ds = ""; for (let d = 1; d <= n; d++) { const t = Date.UTC(y, m, d), ok = dpTrading(t), wd = new Date(t).getUTCDay();
-      ds += `<button class="dp-day${ok ? "" : " off"}${wd === 1 ? " mon" : ""}" data-t="${t}" ${ok ? "" : "disabled"} title="${dpIso(t)}">${d}</button>`; } cols += `<div class="dp-mcol"><div class="dp-mname">${DPM[m].slice(0, 3)}</div><div class="dp-days">${ds}</div></div>`; }
-  dpShell(crumbs, `<div class="dp-hint tiny muted" id="dp-st">Click a start day, then an end day</div><div class="dp-line">${cols}</div><div class="row dp-foot"><button id="dp-clr">Clear</button><button id="dp-run" class="primary" disabled>Test these days</button></div>`);
-  const paint = () => { const [a, z] = sel.length === 2 ? sel : [sel[0], sel[0]]; $("dpick").querySelectorAll(".dp-day").forEach((b) => { const t = +b.dataset.t; b.classList.toggle("in", sel.length > 0 && t >= a && t <= z); b.classList.toggle("end", t === a || t === z && sel.length === 2); });
-    const n = sel.length ? dpDays(a, z).length : 0; $("dp-st").textContent = !sel.length ? "Click a start day, then an end day" : sel.length === 1 ? `Start ${dpIso(a)}. Now click the end day` : `${dpIso(a)} → ${dpIso(z)} · ${n} trading day${n === 1 ? "" : "s"}`; $("dp-run").disabled = sel.length !== 2; };
-  $("dpick").querySelectorAll(".dp-day:not(.off)").forEach((b) => b.onclick = () => { const t = +b.dataset.t; if (sel.length !== 1) sel = [t]; else sel = [Math.min(sel[0], t), Math.max(sel[0], t)]; paint(); });
-  $("dp-clr").onclick = () => { sel = []; paint(); }; $("dp-run").onclick = () => dpTest(dpDays(sel[0], sel[1]), `${dpIso(sel[0])} → ${dpIso(sel[1])}`); }
+  $("dp-rw").onclick = () => { const d = dpRandomWeek(); dpTest(d, "Random week of " + new Date(d[0] + "T12:00:00Z").toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })); };
+  $("dpick").querySelectorAll("[data-y]").forEach((b) => b.onclick = () => dpMonths(+b.dataset.y)); }
 function dpMonths(y) { let ms = ""; for (let m = 0; m < 12; m++) { const has = dpDays(Date.UTC(y, m, 1), Date.UTC(y, m + 1, 0)).length; ms += `<button class="dp-big" data-m="${m}" ${has ? "" : "disabled"}>${DPM[m]}</button>`; }
-  dpShell([["Choose dates", dpYears], [String(y), () => dpAsk(y)], ["Months", () => dpMonths(y)]], `<div class="dp-hint tiny muted">Pick a month</div><div class="dp-grid m">${ms}</div>`);
+  const cr = [["Choose dates", dpYears], [String(y), () => dpMonths(y)]];
+  dpShell(cr, `<div class="row dp-mrow"><button id="dp-yr" class="primary">Select specific date range</button></div><div class="dp-hint tiny muted">Or pick a month</div><div class="dp-grid m">${ms}</div>`);
+  $("dp-yr").onclick = () => dpLine(y, 0, 11, cr.concat([["Date range", null]]));
   $("dpick").querySelectorAll("[data-m]").forEach((b) => b.onclick = () => dpWeeks(y, +b.dataset.m)); }
-function dpWeeks(y, m) { const a = Date.UTC(y, m, 1), z = Date.UTC(y, m + 1, 0), cr = [["Choose dates", dpYears], [String(y), () => dpAsk(y)], ["Months", () => dpMonths(y)], [DPM[m], () => dpWeeks(y, m)]];
+function dpAsk(y) { dpMonths(y); }
+function dpLine(y, m0, m1, crumbs) { crumbs[crumbs.length - 1][1] = () => dpLine(y, m0, m1, crumbs); let sel = [];
+  const row = (m) => { const n = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(); let ds = ""; for (let d = 1; d <= 31; d++) { if (d > n) { ds += '<i class="dp-gap"></i>'; continue; } const t = Date.UTC(y, m, d), ok = dpTrading(t), wd = new Date(t).getUTCDay(), we = wd === 0 || wd === 6;
+      ds += `<button class="dp-day${ok ? "" : " off"}${we ? " we" : ""}" data-t="${t}" ${ok ? "" : "disabled"} title="${new Date(t).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })}">${d}</button>`; }
+    return `<div class="dp-mrowl"><div class="dp-mname">${DPM[m].slice(0, 3)}</div><div class="dp-days31">${ds}</div></div>`; };
+  let body = ""; if (m0 === m1) body = row(m0); else { body = '<div class="dp-half">'; for (let m = m0; m <= Math.min(m1, 5); m++) body += row(m); body += '</div><div class="dp-half">'; for (let m = Math.max(m0, 6); m <= m1; m++) body += row(m); body += "</div>"; }
+  dpShell(crumbs, `<div class="dp-hint tiny muted" id="dp-st">Click a start day, then an end day</div><div class="dp-cal${m0 === m1 ? " one" : ""}">${body}</div><div class="row dp-foot"><button id="dp-clr">Clear</button><button id="dp-run" class="primary" disabled>Test these days</button></div>`);
+  const paint = () => { const [a, z] = sel.length === 2 ? sel : [sel[0], sel[0]]; $("dpick").querySelectorAll(".dp-day").forEach((b) => { const t = +b.dataset.t; b.classList.toggle("in", sel.length > 0 && t >= a && t <= z); b.classList.toggle("end", t === a || (t === z && sel.length === 2)); });
+    const n = sel.length ? dpDays(a, z).length : 0; $("dp-st").textContent = !sel.length ? "Click a start day, then an end day" : sel.length === 1 ? `Start ${dpNice(a)}. Now click the end day` : `${dpNice(a)} → ${dpNice(z)} · ${n} trading day${n === 1 ? "" : "s"}`; $("dp-run").disabled = sel.length !== 2; };
+  $("dpick").querySelectorAll(".dp-day:not(.off)").forEach((b) => b.onclick = () => { const t = +b.dataset.t; if (sel.length !== 1) sel = [t]; else sel = [Math.min(sel[0], t), Math.max(sel[0], t)]; paint(); });
+  $("dp-clr").onclick = () => { sel = []; paint(); }; $("dp-run").onclick = () => dpTest(dpDays(sel[0], sel[1]), `${dpNice(sel[0])} to ${dpNice(sel[1])}`); }
+function dpNice(t) { const d = new Date(t), n = d.getUTCDate(), s = n % 10 === 1 && n !== 11 ? "st" : n % 10 === 2 && n !== 12 ? "nd" : n % 10 === 3 && n !== 13 ? "rd" : "th"; return `${DPM[d.getUTCMonth()]} ${n}${s}, ${d.getUTCFullYear()}`; }
+function dpWeeks(y, m) { const a = Date.UTC(y, m, 1), z = Date.UTC(y, m + 1, 0), cr = [["Choose dates", dpYears], [String(y), () => dpMonths(y)], [DPM[m], () => dpWeeks(y, m)]];
   const wk = []; let t = a - ((new Date(a).getUTCDay() + 6) % 7) * 864e5; while (t <= z) { const days = dpDays(Math.max(t, a), Math.min(t + 4 * 864e5, z)); if (days.length) wk.push(days); t += 7 * 864e5; }
   const fmtD = (s) => new Date(s + "T12:00:00Z").toLocaleDateString([], { month: "short", day: "numeric", timeZone: "UTC" });
   dpShell(cr, `<div class="row dp-mrow"><button id="dp-tm" class="primary">Test this month</button><button id="dp-ml">Month timeline</button></div><div class="dp-hint tiny muted">Weeks in ${DPM[m]} ${y}</div><div class="dp-weeks">${wk.map((d, i) => `<div class="dp-wk"><div><b>Week ${i + 1}</b><span class="muted"> · ${fmtD(d[0])} – ${fmtD(d[d.length - 1])} · ${d.length} day${d.length === 1 ? "" : "s"}</span></div><div class="dp-wkb"><button data-tw="${i}" class="primary">Test this week</button><button data-cd="${i}">Choose a specific day/days</button></div><div class="dp-chips hidden" id="dp-c${i}">${d.map((s) => `<button class="dp-chip" data-s="${s}">${new Date(s + "T12:00:00Z").toLocaleDateString([], { weekday: "short", day: "numeric", timeZone: "UTC" })}</button>`).join("")}<button class="primary dp-cgo" data-cg="${i}" disabled>Test</button></div></div>`).join("")}</div>`);
