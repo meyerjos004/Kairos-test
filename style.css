@@ -758,3 +758,13 @@ i.qm:hover{background:rgba(167,139,250,.35);color:#fff}
 .s2main h2{font:700 26px Inter,sans-serif;margin:4px 0 14px}.s2sec .setgrid{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}.s2hide{display:none!important}
 .relr{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 @media (max-width:900px){.s2{grid-template-columns:1fr}.s2side{position:static;flex-direction:row;overflow-x:auto}.s2side input{min-width:160px}}
+
+/* KING_SETUP */
+.swbox{width:min(640px,94vw)}.sw-top{display:flex;justify-content:space-between;align-items:center}.sw-dots{display:flex;gap:6px}.sw-dots i{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.15)}.sw-dots i.on{background:var(--acc);width:22px;border-radius:5px}.sw-dots i.done{background:rgba(167,139,250,.55)}
+.swbox h3{font-size:24px;margin:10px 0 4px}.sw-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin:12px 0}
+.sw-opt{display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px 10px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);cursor:pointer;color:inherit}
+.sw-opt.on,.sw-chip.on,.sw-dot.on{outline:2px solid var(--acc);outline-offset:2px}.sw-c{display:flex;gap:4px}.sw-c i{width:14px;height:28px;border-radius:3px}
+.sw-dot{width:40px;height:40px;border-radius:50%;border:0;cursor:pointer}.sw-chips{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.sw-chip{padding:7px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:inherit;cursor:pointer}
+.sw-btns{margin-top:16px;gap:8px}.pixopt,body.pix{font-family:"Courier New",ui-monospace,monospace!important;letter-spacing:.02em}
+body.pix .glass,body.pix .card,body.pix button,body.pix input,body.pix select,body.pix .setc{border-radius:0!important}
+body.pix .glass,body.pix .card,body.pix .setc{box-shadow:4px 4px 0 rgba(0,0,0,.6)!important}

@@ -362,6 +362,17 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_SETUP
+        await E("setupWizard(true)"); await pg.wait_for_timeout(300)
+        check("setup: 8 steps", await E('document.querySelectorAll(".sw-dots i").length') == 8)
+        await pg.click('[data-cc="#26a69a|#ef5350"]'); await pg.wait_for_timeout(150)
+        check("setup: chart colors apply", await E("prefs.up") == "#26a69a")
+        for _ in range(6): await pg.click("#sw-next"); await pg.wait_for_timeout(120)
+        await pg.click('[data-th2="pixel"]'); await pg.wait_for_timeout(150)
+        check("setup: pixel theme", await E('document.body.classList.contains("pix") && prefs.theme === "pixel"'))
+        await pg.click("#sw-next"); await pg.wait_for_timeout(120); await pg.click("#sw-next"); await pg.wait_for_timeout(200)
+        check("setup: done closes + remembers", await E('!document.getElementById("setupw") && !!prefs.setupDone'))
+        await E('applyTheme("kairos"); prefs.up = "#2bd4a0"; prefs.dn = "#ff4d5e"; csApplyAll()')
         # KING_SETTINGS2
         await E('view("settings")'); await pg.wait_for_timeout(400)
         check("settings: 11 categories (admin hidden for non-admins)", await E('document.querySelectorAll(".s2side [data-s2]").length') == 11)

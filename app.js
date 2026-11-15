@@ -391,7 +391,7 @@ function fibList() { const L = (prefs && Array.isArray(prefs.fibLv) && prefs.fib
 const SHARED = ["hline"];   // horizontal lines show on every chart; everything else stays on the chart it was drawn on
 function setTool(t) { tool = t; pend = null; document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === t)); try { tgSync(t); } catch (e) {} panes.forEach((p) => { p.el.style.cursor = t === "cursor" ? "" : "crosshair"; p.chart.applyOptions({ crosshair: { mode: t === "cross" ? 0 : 1 } }); paint(p); }); }
 function newDrawing(type, p, a, b) {
-  const d = { id: did++, type, pane: p.i, a: { ...a }, b: b ? { ...b } : { ...a } };
+  const d = { id: did++, type, pane: p.i, a: { ...a }, b: b ? { ...b } : { ...a } }; if (prefs.toolCol && !["long", "short", "measure"].includes(type)) d.color = prefs.toolCol;   // KING_SETUP default tool color
   if (type === "long" || type === "short") { const s = type === "long" ? 1 : -1;
     { const c = p.candles; if (c && c.length) { const k = Math.max(0, Math.min(c.length - 1, Math.round(idxOf(p, a.t)))); d.a.t = c[k].time; d.a.p = a.p = rnd(c[k].close); a = d.a; } }   // KING_POSSNAP (King, Nov 14): the box starts at the centre of the entry candle and the entry line = that candle's close
     d.b = { t: a.t + p.sec * 30, p: a.p }; d.entry = a.p; d.sl = rnd(a.p - s * prefs.slPts); d.tp = rnd(a.p + s * prefs.tpPts); d.side = s; d.state = "idle"; d.qty = null; }
@@ -3080,6 +3080,7 @@ function settings2() { const v = $("v-settings"); if (!v || v.dataset.s2) return
   const put = (k, c) => c && sec[k].appendChild(c), mk = (k, html) => { const d = document.createElement("div"); d.className = "setc"; d.innerHTML = html; sec[k].appendChild(d); return d; };
   const os = card("KAIROS OS"), live = $("s-live1s") && $("s-live1s").closest("label");
   put("general", os); put("general", card("Data speed"));
+  mk("general", `<h3>Setup</h3><div class="tiny muted">Run the 8-step setup again (colors, favorites, layout, pair, theme…).</div><button class="small" id="s2-setup">Run setup</button>`).querySelector("button").onclick = () => setupWizard(true);
   mk("general", `<h3>Intros &amp; releases</h3><div class="tiny muted">Every intro and release, replayable any time.</div><div class="rel">${RELEASES.map(([v, n, d]) => `<div class="relr"><b>${esc(n)}</b> <span class="muted small">v${esc(v)}</span><div class="small">${esc(d)}</div></div>`).join("")}</div>`).appendChild($("s-intro").parentElement);
   put("look", card("Theme")); put("trade", card("Order pad")); put("keys", card("Hot keys"));
   const rp = mk("replay", `<h3>Playback</h3>`); if (live) rp.appendChild(live);
@@ -3102,3 +3103,49 @@ function settings2() { const v = $("v-settings"); if (!v || v.dataset.s2) return
   side.querySelector(".s2adm").classList.toggle("hidden", !isAdmin); main.querySelector('[data-s2="admin"]').classList.toggle("s2noadm", !isAdmin);
   go(prefs.s2cat && (prefs.s2cat !== "admin" || isAdmin) ? prefs.s2cat : "general"); }
 { const _v = view; view = function (v) { _v(v); if (v === "settings") { settings2(); const a = document.querySelector(".s2side .s2adm"); if (a) a.classList.toggle("hidden", !isAdmin); } }; }
+
+/* KING_SETUP (King, Nov 14): after the intro, an 8-step setup window. Sound is on by default (toggle in Settings → Sounds & haptics).
+   Steps: chart colors, tool colors, favorites bar, chart layout, trade pair, account/session defaults, theme (incl. pixel), connect Notion / Spotify. */
+THEMES.pixel = ["Pixel arcade", { "--bg": "#0d0221", "--panel": "#170a33", "--acc": "#ff2a6d", "--acc2": "#05d9e8", "--txt": "#f2f2f2", "--mut": "#9a8fbf", "--line": "rgba(5,217,232,.18)" }];
+THEMES.pixelgb = ["Pixel GB", { "--bg": "#0f1a0f", "--panel": "#18281a", "--acc": "#9bbc0f", "--acc2": "#8bac0f", "--txt": "#e0f8d0", "--mut": "#88a878", "--line": "rgba(155,188,15,.18)" }];
+{ const _a = applyTheme; applyTheme = function (k) { _a(k); document.body.classList.toggle("pix", /^pixel/.test(prefs.theme || "")); }; }
+const SETUP_STEPS = ["Chart colors", "Tool colors", "Favorites bar", "Chart layout", "Trade pair", "Account & session", "Theme", "Connect"];
+function setupWizard(force) { if (document.getElementById("setupw")) return; if (!force && (prefs.setupDone || DEMO)) return;
+  const el = document.createElement("div"); el.id = "setupw"; el.className = "dlgwrap"; document.body.appendChild(el); let i = 0;
+  const CC = [["#2bd4a0", "#ff4d5e", "Kairos"], ["#26a69a", "#ef5350", "TradingView"], ["#ffffff", "#5b5b66", "Mono"], ["#00e5ff", "#ff2a6d", "Neon"], ["#9bbc0f", "#306230", "Pixel"]];
+  const TC = ["#2962ff", "#c08bff", "#ffc65c", "#2bd4a0", "#ff6b7a", "#ffffff", "#05d9e8"];
+  const favAll = [...document.querySelectorAll("#tools [data-tool]")].map((b) => [b.dataset.tool, b.title || b.dataset.tool]).filter((x, k, a) => x[0] !== "cursor" && a.findIndex((y) => y[0] === x[0]) === k).slice(0, 16);
+  const body = () => { const s = SETUP_STEPS[i]; let h = "";
+    if (i === 0) h = `<p class="small muted">Pick your candles. You can fine-tune them later in chart settings.</p><div class="sw-grid">${CC.map(([u, d, n]) => `<button class="sw-opt ${prefs.up === u && prefs.dn === d ? "on" : ""}" data-cc="${u}|${d}"><span class="sw-c"><i style="background:${u}"></i><i style="background:${d}"></i><i style="background:${u}"></i></span>${n}</button>`).join("")}</div>
+      <div class="row"><label>Up <input type="color" id="sw-up" value="${prefs.up || "#2bd4a0"}"></label><label>Down <input type="color" id="sw-dn" value="${prefs.dn || "#ff4d5e"}"></label></div>`;
+    if (i === 1) h = `<p class="small muted">The default color for new drawings (lines, boxes, fibs).</p><div class="sw-grid">${TC.map((c) => `<button class="sw-dot ${prefs.toolCol === c ? "on" : ""}" data-tc="${c}" style="background:${c}"></button>`).join("")}</div>`;
+    if (i === 2) h = `<p class="small muted">Tap the tools you use most. They sit on the floating favorites bar.</p><div class="sw-chips">${favAll.map(([t, n]) => `<button class="sw-chip ${(prefs.favs || []).includes(t) ? "on" : ""}" data-fv="${t}">${esc(n)}</button>`).join("")}</div>
+      <label class="ck"><input type="checkbox" id="sw-favshow" ${prefs.favShow !== false ? "checked" : ""}> Show the favorites bar</label>`;
+    if (i === 3) h = `<p class="small muted">How many charts, and how they're arranged. 45 layouts live in the layout menu.</p><div class="sw-grid">${[["g1x1", "1 chart"], ["g2x1", "2 side by side"], ["g1x2", "2 stacked"], ["L3", "1 big + 2"], ["g2x2", "4 grid"], ["g3x2", "6 grid"]].map(([k, n]) => `<button class="sw-opt ${prefs.layout === k ? "on" : ""}" data-ly="${k}">${layIcon(k)}<span>${n}</span></button>`).join("")}</div>`;
+    if (i === 4) h = `<p class="small muted">Your main pair. The second chart shows the other one (great for SMT).</p><div class="sw-grid">${[["NQ", "ES"], ["MNQ", "MES"], ["ES", "NQ"], ["MES", "MNQ"]].map(([a, b]) => `<button class="sw-opt ${(prefs.syms || [])[0] === a ? "on" : ""}" data-pr="${a}|${b}"><b>${a}</b> + ${b}</button>`).join("")}</div>`;
+    if (i === 5) h = `<p class="small muted">What a New session starts with.</p><div class="sw-grid">${[["lf25", "LucidFlex 25K"], ["lf50", "LucidFlex 50K"]].map(([k, n]) => `<button class="sw-opt ${(prefs.lastSess || {}).pre === k ? "on" : ""}" data-ac="${k}">${n}</button>`).join("")}</div>
+      <label>Contracts per click<input id="sw-lots" type="number" min="1" value="${prefs.lots || 1}"></label>`;
+    if (i === 6) h = `<div class="sw-grid">${Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="sw-opt ${prefs.theme === id ? "on" : ""} ${/^pixel/.test(id) ? "pixopt" : ""}" data-th2="${id}"><span class="sw-c"><i style="background:${c["--bg"]}"></i><i style="background:${c["--acc"]}"></i><i style="background:${c["--acc2"]}"></i></span>${esc(nm)}</button>`).join("")}</div>`;
+    if (i === 7) h = `<p class="small muted">Optional. You can do this later in Settings → Integrations.</p><div class="sw-grid"><button class="sw-opt" id="sw-notion">📓 Connect Notion<br><span class="tiny muted">your trades go to your journal</span></button><button class="sw-opt" id="sw-spot">🎵 Connect Spotify<br><span class="tiny muted">now playing on your profile</span></button></div>`;
+    el.innerHTML = `<div class="glass dlg pop swbox"><div class="sw-top"><span class="tiny muted">Setup · ${i + 1} of ${SETUP_STEPS.length}</span><div class="sw-dots">${SETUP_STEPS.map((_, k) => `<i class="${k === i ? "on" : k < i ? "done" : ""}"></i>`).join("")}</div></div>
+      <h3>${s}</h3>${h}<div class="row sw-btns"><button id="sw-skip" class="ghost">Skip setup</button><span style="flex:1"></span>${i ? '<button id="sw-back">Back</button>' : ""}<button id="sw-next" class="primary">${i === SETUP_STEPS.length - 1 ? "Done" : "Next"}</button></div></div>`;
+    wire(); };
+  const close = () => { prefs.setupDone = APP_VERSION; savePrefs(); el.remove(); toast("You're set. Change any of this in Settings."); };
+  const wire = () => {
+    $("sw-next").onclick = () => { if (i === 5 && $("sw-lots")) { prefs.lots = Math.max(1, +$("sw-lots").value || 1); } if (i === SETUP_STEPS.length - 1) return close(); i++; savePrefs(); body(); };
+    if ($("sw-back")) $("sw-back").onclick = () => { i--; body(); }; $("sw-skip").onclick = close;
+    el.querySelectorAll("[data-cc]").forEach((b) => (b.onclick = () => { const [u, d] = b.dataset.cc.split("|"); prefs.up = u; prefs.dn = d; try { csApplyAll(); } catch (e) {} body(); }));
+    if ($("sw-up")) { $("sw-up").oninput = (e) => { prefs.up = e.target.value; try { csApplyAll(); } catch (x) {} }; $("sw-dn").oninput = (e) => { prefs.dn = e.target.value; try { csApplyAll(); } catch (x) {} }; }
+    el.querySelectorAll("[data-tc]").forEach((b) => (b.onclick = () => { prefs.toolCol = b.dataset.tc; body(); }));
+    el.querySelectorAll("[data-fv]").forEach((b) => (b.onclick = () => { const t = b.dataset.fv, f = prefs.favs = prefs.favs || []; const k = f.indexOf(t); if (k >= 0) f.splice(k, 1); else f.push(t); try { favUI && favUI(); } catch (e) {} body(); }));
+    if ($("sw-favshow")) $("sw-favshow").onchange = (e) => { prefs.favShow = e.target.checked; try { favUI && favUI(); } catch (x) {} };
+    el.querySelectorAll("[data-ly]").forEach((b) => (b.onclick = () => { try { setLayout(b.dataset.ly); } catch (e) {} body(); }));
+    el.querySelectorAll("[data-pr]").forEach((b) => (b.onclick = async () => { const [a, c] = b.dataset.pr.split("|"); prefs.syms = [a, c, a, c, a, c, a, c]; try { await setPaneSym(0, a); if (panes[1]) await setPaneSym(1, c); } catch (e) {} body(); }));
+    el.querySelectorAll("[data-ac]").forEach((b) => (b.onclick = () => { const P = SESS_PRESETS[b.dataset.ac]; prefs.lastSess = { bal: P[1], mdd: P[2].mdd, dll: P[2].dll, mxw: P[2].mxw, ptg: P[2].ptg, pre: b.dataset.ac }; body(); }));
+    el.querySelectorAll("[data-th2]").forEach((b) => (b.onclick = () => { applyTheme(b.dataset.th2); savePrefs(); body(); }));
+    if ($("sw-notion")) $("sw-notion").onclick = () => { close(); view("settings"); try { document.querySelector('.s2side [data-s2="integ"]').click(); } catch (e) {} };
+    if ($("sw-spot")) $("sw-spot").onclick = () => { prefs.setupDone = APP_VERSION; savePrefs(); try { spConnect(); } catch (e) { toast(e.message); } };
+  };
+  body(); }
+function trySetup() { if (prefs.setupDone || DEMO) return; if (document.getElementById("welcome") || document.getElementById("psetup")) return setTimeout(trySetup, 1500); setupWizard(); }
+setTimeout(trySetup, 4000);
