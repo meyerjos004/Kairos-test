@@ -362,6 +362,17 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_JDETAIL
+        await E("pos.qty && flatten()"); await E("market(1)"); await pg.wait_for_timeout(200); await E("(async () => { for (let i=0;i<5;i++) await stepFwd(); })()"); await E("flatten()"); await pg.wait_for_timeout(600)
+        await E('view("journal")'); await pg.wait_for_timeout(800)
+        check("journal: stats extras hidden", await E('document.getElementById("stats").classList.contains("hidden") && document.getElementById("eqchart").classList.contains("hidden")'))
+        await pg.click("#jrows tr[data-id] td:first-child"); await pg.wait_for_timeout(1500)
+        check("trade detail opens with 7 timeframes + chart", await E('document.querySelectorAll("#jd-tfs [data-tf]").length') == 7 and await E('!!document.querySelector("#jd-chart canvas")'))
+        await pg.click('#jd-tfs [data-tf="5m"]'); await pg.wait_for_timeout(900)
+        check("trade detail switches timeframe", await E('document.querySelector("#jd-tfs .on").dataset.tf') == "5m")
+        await pg.fill("#jd-note", "test note"); await pg.wait_for_timeout(800)
+        check("journal box saves to the trade", await E('jT.some((t) => t.notes === "test note")'))
+        await pg.click("#wb0"); await E('view("trade")')
         # KING_TAX
         check("tax math: $50k single Utah", await E('Math.round(taxEst(50000,{loc:"ut",status:"single"}).total)') == 12686)
         await E('view("tax")'); await pg.wait_for_timeout(500)

@@ -2325,6 +2325,7 @@ $("cs-sym").onclick = (e) => { const b = e.target.closest("[data-s]"); if (!b ||
 $("cs-save").onclick = () => { prefs.sync = { sym: $("cs-ssym").checked, int: $("cs-sint").checked, cross: $("cs-scross").checked, time: $("cs-stime").checked, range: $("cs-srange").checked }; saveSettings(); if (B["1m"].bars.length) loadOthers().then(rebuildAll); else panes.forEach(label); $("chartset").classList.add("hidden"); toast("Chart settings saved"); };
 $("s-save2").onclick = () => { saveSettings(); $("s-msg2").textContent = "Saved"; };
 $("charts").addEventListener("click", (e) => { if (e.target.closest(".lname")) symMenu(e); });
+$("jrows").addEventListener("click", (e) => { if (e.target.closest("input,button,a,textarea,select")) return; const tr = e.target.closest("tr[data-id]"); if (!tr) return; const t = jT.find((x) => String(x.id) === tr.dataset.id); if (t) tradeDetail(t); });   // KING_JDETAIL
 $("jc-grid").onclick = (e) => { const b = e.target.closest("[data-day]"); if (!b) return; jDay = jDay === b.dataset.day ? null : b.dataset.day; loadJournal(); };
 $("jc-prev").onclick = () => { const [y, m] = jMonth.split("-").map(Number), d = new Date(Date.UTC(y, m - 2, 1)); jMonth = d.toISOString().slice(0, 7); jDay = null; calUI(); loadJournal(); };
 $("jc-next").onclick = () => { const [y, m] = jMonth.split("-").map(Number), d = new Date(Date.UTC(y, m, 1)); jMonth = d.toISOString().slice(0, 7); jDay = null; calUI(); loadJournal(); };
@@ -2835,8 +2836,8 @@ $("start").addEventListener("change", dpLabel); setTimeout(() => { try { dpLabel
 /* KING_REESEWIN (King, Nov 14): the end-of-session window is a wide bordered window that fits the screen. Next → Reese's trade on YOUR chart:
    his long/short box, execution arrows, his confluences, and his live notes at their New York times. */
 let reeseMk = [], reeseIds = [];
-function wideDlg(html, btns) { $("dlgbox").classList.add("wide"); $("dlgbox").innerHTML = html + `<div class="row wbtns">${btns.map((b, i) => `<button id="wb${i}" class="${b.primary ? "primary" : ""}">${b.t}</button>`).join("")}</div>`; $("dlg").classList.remove("hidden");
-  btns.forEach((b, i) => $("wb" + i).onclick = () => { $("dlg").classList.add("hidden"); $("dlgbox").classList.remove("wide"); b.f && b.f(); }); }
+function wideDlg(html, btns) { $("dlgbox").classList.remove("jdbox"); $("dlgbox").classList.add("wide"); $("dlgbox").innerHTML = html + `<div class="row wbtns">${btns.map((b, i) => `<button id="wb${i}" class="${b.primary ? "primary" : ""}">${b.t}</button>`).join("")}</div>`; $("dlg").classList.remove("hidden");
+  btns.forEach((b, i) => $("wb" + i).onclick = () => { $("dlg").classList.add("hidden"); $("dlgbox").classList.remove("wide", "jdbox"); b.f && b.f(); }); }
 function nyClock(day, s) { if (!s) return null; const m = String(s).match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i); if (!m) return null; let h = +m[1]; const ap = (m[3] || "").toLowerCase(); if (ap === "pm" && h < 12) h += 12; if (ap === "am" && h === 12) h = 0;
   let t = Date.parse(day + "T00:00:00Z") / 1000 + h * 3600 + +m[2] * 60; return t; }   // New York wall clock as fake-UTC (same as loc())
 function reeseFind(r) { const st = sessEnd(r) - (r.session === "NY" ? 7.5 * 3600 : 4.5 * 3600), z = sessEnd(r), bars = B["1m"].bars.filter((b) => { const l = loc(b.t); return l >= st && l < z; });
@@ -3019,3 +3020,47 @@ async function renderTax() { const el = $("v-tax"); if (!el) return; try { taxIn
   $("tq-add").onclick = () => { const a = +$("tq-amt").value; if (!a) return; o.extra.push({ amt: a, d: $("tq-d").value, note: "Payout " + $("tq-d").value }); save(); };
 }
 { const _v = view; view = function (v) { _v(v); if (v === "tax") renderTax(); }; }
+
+/* KING_JDETAIL (King, Nov 14): Journal = calendar + trades only (the stats extras live on Stats). Click a day → its trades; click a trade →
+   the trade on 15s / 1m / 5m / 15m / 1h / 4h / D (save any as an image), its confluences, what Reese did that day, a journal box, Notion sync. */
+const JD_TF = [["15s", 15, 15 * 60], ["1m", 60, 75 * 60], ["5m", 300, 6 * 3600], ["15m", 900, 16 * 3600], ["1h", 3600, 4 * 86400], ["4h", 14400, 14 * 86400], ["D", 86400, 75 * 86400]];
+let jdC = null;
+async function jdBars(t, tf) { const ds = (INST[t.symbol] || INST.NQ).data, [name, sec, span] = JD_TF.find((x) => x[0] === tf), t0 = t.t_entry - span, t1 = (t.t_exit || t.t_entry) + span;
+  const ms = new Set(); for (let x = t0; x <= t1 + 86400 * 31; x += 86400 * 20) { const m = new Date(x * 1000).toISOString().slice(0, 7); if (x <= t1 + 86400 * 28) ms.add(m); }
+  const raw = (await Promise.all([...ms].sort().map((m) => loadMonth(ds, sec < 60 ? "15s" : "1m", m)))).flat().filter((b) => b.t >= t0 && b.t <= t1).sort((a, b) => a.t - b.t);
+  const out = []; for (const b of raw) { const k = bucket(loc(b.t), sec), lc = out[out.length - 1]; if (lc && lc.time === k) { lc.high = Math.max(lc.high, b.h); lc.low = Math.min(lc.low, b.l); lc.close = b.c; } else out.push({ time: k, open: b.o, high: b.h, low: b.l, close: b.c }); }
+  return { c: out, sec }; }
+async function jdChart(t, tf) { const el = $("jd-chart"); if (!el) return; if (jdC) { try { jdC.remove(); } catch (e) {} jdC = null; }
+  document.querySelectorAll("#jd-tfs button").forEach((b) => b.classList.toggle("on", b.dataset.tf === tf)); el.innerHTML = '<div class="muted small" style="padding:20px">Loading ' + tf + "…</div>";
+  const { c, sec } = await jdBars(t, tf); el.innerHTML = ""; if (!c.length) { el.innerHTML = `<div class="muted small" style="padding:20px">No ${tf} data around this trade${sec < 60 ? " (15s covers NY mornings)" : ""}.</div>`; return; }
+  jdC = LightweightCharts.createChart(el, { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#8b95a7" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, timeScale: { timeVisible: sec < 86400, secondsVisible: sec < 60 }, rightPriceScale: { borderVisible: false } });
+  const s = jdC.addCandlestickSeries({ upColor: prefs.up || "#2bd4a0", downColor: prefs.dn || "#ff4d5e", wickUpColor: prefs.up || "#2bd4a0", wickDownColor: prefs.dn || "#ff4d5e", borderVisible: false }); s.setData(c);
+  const L = (p, col, title) => p != null && s.createPriceLine({ price: +p, color: col, lineWidth: 1, lineStyle: 2, title, axisLabelVisible: true });
+  L(t.entry, "#c9d2df", "Entry"); L(t.stop, "#ff6b7a", "SL"); L(t.target, "#2bd4a0", "TP"); L(t.exit, "#ffc65c", "Exit");
+  const mk = [{ time: bucket(loc(t.t_entry), sec), position: t.dir > 0 ? "belowBar" : "aboveBar", color: "#c08bff", shape: t.dir > 0 ? "arrowUp" : "arrowDown", text: (t.dir > 0 ? "Buy " : "Sell ") + px2(t.entry) }];
+  if (t.t_exit) mk.push({ time: bucket(loc(t.t_exit), sec), position: t.dir > 0 ? "aboveBar" : "belowBar", color: "#ffc65c", shape: "circle", text: "Out " + px2(t.exit) });
+  try { s.setMarkers(mk.sort((a, b) => a.time - b.time)); } catch (e) {}
+  const k = c.findIndex((x) => x.time >= bucket(loc(t.t_entry), sec)); if (k >= 0) jdC.timeScale().setVisibleLogicalRange({ from: k - 45, to: k + 45 }); }
+function jdConf(t) { const tg = (t.tags || []).map(String), out = [];
+  for (const x of tg) { if (x.startsWith("strat:")) out.push("Strategy: " + x.slice(6)); else if (x.startsWith("rules:")) out.push("Checklist " + x.slice(6)); else out.push(x); }
+  return out; }
+function jdReese(t) { const d = sessDay(t.t_entry), rs = (reese || []).filter((r) => r.day === d); if (!rs.length) return `<p class="small muted">No Reese session logged for ${longDate(d)}.</p>`;
+  return rs.map((r) => `<div class="jd-r"><b>${esc(r.session)}</b>${r.dir ? ` · <span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · ${esc(r.result || "")}` : " · no trade logged"}
+    ${(r.confluences || []).length ? `<div class="rp-conf">${r.confluences.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}<div class="small muted">${esc(r.summary || "")}</div>
+    ${tradeNotes(r).slice(0, 6).map((n) => `<div class="tiny"><span class="muted">${esc(n.t)}</span> ${esc(n.x)}</div>`).join("")}</div>`).join(""); }
+async function tradeDetail(t) { if (!reese.length) try { await loadReese(); } catch (e) {}
+  const conf = jdConf(t), side = t.dir > 0 ? "Long" : "Short";
+  wideDlg(`<div class="jd"><div class="jd-h"><h3><span class="${t.dir > 0 ? "pos-up" : "pos-dn"}">${side} ${t.qty} ${esc(t.symbol)}</span> · <span class="${+t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</span>${t.r != null ? ` · ${(+t.r).toFixed(2)}R` : ""}</h3>
+      <span class="muted small">${longDate(sessDay(t.t_entry))} · in ${fmt(loc(t.t_entry)).slice(11, 16)} → out ${t.t_exit ? fmt(loc(t.t_exit)).slice(11, 16) : "—"} NY · ${px2(t.entry)} → ${px2(t.exit)}${t.stop != null ? ` · SL ${px2(t.stop)}` : ""}${t.target != null ? ` · TP ${px2(t.target)}` : ""}</span></div>
+    <div class="seg" id="jd-tfs">${JD_TF.map(([n]) => `<button data-tf="${n}">${n}</button>`).join("")}<button id="jd-png" class="ghost" title="Save this timeframe as an image">📷 Save image</button></div>
+    <div id="jd-chart" class="jd-chart"></div>
+    <div class="jd-cols"><div><h4>Confluences</h4>${conf.length ? `<div class="rp-conf">${conf.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : '<p class="small muted">None tagged. Turn on a strategy checklist before the trade and its ticks are saved here.</p>'}
+      <h4>Reese that day</h4>${jdReese(t)}</div>
+      <div><h4>Journal</h4><textarea id="jd-note" rows="7" placeholder="What did you see? What would you do again or differently?">${esc(typeof t.notes === "string" ? t.notes : "")}</textarea><div class="tiny muted" id="jd-msg">Saves as you type.</div></div></div></div>`,
+    [{ t: "Close" }, { t: "Sync to Notion", f: async () => { try { const r = await notion("sync", { ids: [t.id] }); toast("Sent to Notion" + (r && r.synced != null ? ` (${r.synced})` : "")); } catch (e) { toast("Notion: " + e.message + " (connect Notion in Settings)"); } } },
+     { t: "Replay this trade", primary: true, f: () => { try { view("trade"); takeChallenge({ symbol: t.symbol, start_ts: t.t_entry - 3600 }); } catch (e) { toast(e.message); } } }]);
+  $("dlgbox").classList.add("jdbox");
+  let tm = null; $("jd-note").oninput = (e) => { clearTimeout(tm); tm = setTimeout(() => { t.notes = e.target.value; db.note(t.id, e.target.value); $("jd-msg").textContent = "Saved."; }, 500); };
+  $("jd-tfs").onclick = (e) => { const b = e.target.closest("[data-tf]"); if (b) jdChart(t, b.dataset.tf); };
+  $("jd-png").onclick = () => { if (!jdC) return; const cv = jdC.takeScreenshot(), a = document.createElement("a"); a.href = cv.toDataURL("image/png"); a.download = `trade-${sessDay(t.t_entry)}-${(document.querySelector("#jd-tfs .on") || {}).dataset?.tf || ""}.png`; a.click(); };
+  await jdChart(t, "1m"); }

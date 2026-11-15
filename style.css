@@ -738,3 +738,12 @@ i.qm:hover{background:rgba(167,139,250,.35);color:#fff}
 /* KING_TAX */
 .tax-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;padding:14px}.tax-grid label{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13px}
 .tax-big{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tbk span{display:block;font-size:12px;opacity:.7}.tbk b{font-size:26px}.tax-lines{grid-column:1/-1;display:flex;flex-direction:column;gap:6px;font-size:13px}.tax-lines div{display:flex;justify-content:space-between;gap:10px;border-top:1px solid rgba(255,255,255,.07);padding-top:6px}
+
+/* KING_JDETAIL */
+#jrows tr[data-id]{cursor:pointer}#jrows tr[data-id]:hover td{background:rgba(255,255,255,.03)}
+.jd-h h3{margin:0 0 4px;font-size:20px}.jd #jd-tfs{margin:12px 0 8px}.jd-chart{height:340px;border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden}
+.jd-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:12px}.jd-cols h4{margin:10px 0 6px;font-size:13px;opacity:.8}.jd-cols textarea{width:100%;box-sizing:border-box}
+.jd-r{padding:8px 10px;border:1px solid rgba(255,255,255,.07);border-radius:10px;margin-bottom:6px}
+#dlgbox.jdbox{width:min(1100px,94vw)}
+#jd-tfs button.on{background:rgba(192,139,255,.22);color:#fff;border-radius:8px}
+.jd-cols textarea{background:rgba(255,255,255,.04);color:inherit;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;font:inherit;resize:vertical}
