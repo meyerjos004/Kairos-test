@@ -728,3 +728,9 @@ i.qm:hover{background:rgba(167,139,250,.35);color:#fff}
 #bigban{position:fixed;inset:0;z-index:150;display:none;align-items:center;justify-content:center;pointer-events:none;font:900 clamp(40px,8vw,110px)/1 Inter,sans-serif;letter-spacing:-.02em;text-transform:none;animation:bbin 2.6s ease forwards}
 #bigban.bb-dn{color:#ff3b4f;text-shadow:0 0 40px rgba(255,59,79,.55)}#bigban.bb-up{color:#2bd4a0;text-shadow:0 0 40px rgba(43,212,160,.55)}
 @keyframes bbin{0%{opacity:0;transform:scale(.7)}12%{opacity:1;transform:scale(1.05)}20%{transform:scale(1)}80%{opacity:1}100%{opacity:0}}
+
+/* KING_SESSIONS */
+.ns-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ns-grid label{display:flex;flex-direction:column;gap:4px;font-size:13px}
+.acard{position:relative}.acard.ac-blown{border:1.5px solid #ff4d5e!important}.acard.ac-passed{border:1.5px solid #2bd4a0!important}.acard.ac-funded{background:linear-gradient(160deg,rgba(56,120,255,.28),rgba(30,60,160,.18))!important;border-color:rgba(90,150,255,.5)!important}
+.acard.ac-payout{background:linear-gradient(160deg,rgba(56,120,255,.28),rgba(30,60,160,.18))!important;border:1.5px solid #a855f7!important}.potally{position:absolute;top:10px;right:12px;font:800 12px Inter,sans-serif;color:#d8b4fe;background:rgba(168,85,247,.18);padding:4px 8px;border-radius:999px}
+.acard .ah{padding-right:90px}.blowncard h3{color:#ff4d5e;font-size:28px;margin:0 0 4px}

@@ -862,7 +862,7 @@ function fill(side, qty, price, t, br, toolId) {
   } else { const cq = Math.min(Math.abs(pos.qty), qty); record(cq, price, t, "manual"); const rest = qty - cq; if (rest > 0) fill(side, rest, price, t, br, toolId); }
   drawOrders(); refresh(); repaintAll();
 }
-function record(cq, price, t, outcome) { setTimeout(checkAcctPass, 400); setTimeout(() => { try { const h = hist[hist.length - 1]; if (!h) return; const k = outcome === "loss" ? "hit_sl" : (outcome === "win" || (outcome === "trail" && h.pnl > 0)) ? "hit_tp" : null; if (k) fxEvent(k, h.pnl); } catch (e) {} }, 0);
+function record(cq, price, t, outcome) { setTimeout(checkAcctPass, 400); setTimeout(() => sessCheck().catch(() => {}), 700); setTimeout(() => { try { const h = hist[hist.length - 1]; if (!h) return; const k = outcome === "loss" ? "hit_sl" : (outcome === "win" || (outcome === "trail" && h.pnl > 0)) ? "hit_tp" : null; if (k) fxEvent(k, h.pnl); } catch (e) {} }, 0);
   const side = Math.sign(pos.qty), pnl = (price - pos.avg) * side * cq * inst.pt - fee(cq), r = pos.risk ? ((price - pos.avg) * side) / pos.risk : null;
   if (Math.abs(pos.qty) <= cq && prefs.chkShow) setTimeout(() => { chk = new Set(); chkUI(); }, 0);
   const row = { session_id: sess && sess.id, ...(acct ? { account_id: acct.id } : {}), tags: pos.tags || [], symbol: sym, dir: side, qty: cq, entry: +pos.avg.toFixed(2), stop: pos.sl, target: pos.tp, exit: price, t_entry: pos.t, t_exit: t, outcome, r: r == null ? null : +r.toFixed(2), pnl: +pnl.toFixed(2), fees: fee(cq) };
@@ -1089,7 +1089,7 @@ async function loadAccts() { accts = await db.accounts(); acct = accts.find((a) 
 function applyAcctRules() { if (!acct) return; const r = acct.rules || {}; ["mdd", "dll", "ptg"].forEach((k) => { if (r[k] != null) prefs[k] = +r[k]; }); fillSettings(); }
 async function acctStart() {   // balance and high-water mark for the selected account (from its saved trades)
   if (!acct) { startBal = prefs.bal; acctPeak = 0; return; } const S = acctState(acct, await db.allTrades()); startBal = S.run; acctPeak = S.pk;
-  if (S.blown) toast(acct.name + " is blown. Earn a new eval on the Learn page, or pick another account.");
+  if (S.blown) { lock = { why: "Account Blown", until: Infinity }; toast(acct.name + " is blown. Start a New session from Accounts."); }
 }
 function acctMenu() { const r = $("acctpill").getBoundingClientRect();
   menu([{ h: "Account" }, { t: (acct ? "\u2003 " : "✓ ") + "Replay (no account)", f: () => pickAcct(null) }, ...accts.map((a) => ({ t: (acct && acct.id === a.id ? "✓ " : "\u2003 ") + a.name, k: money(+a.start_bal).replace(/\.00$/, ""), f: () => pickAcct(a.id) })), "-", { t: "Manage accounts…", f: () => view("accounts") }], r.left, r.bottom + 6); }
@@ -1107,11 +1107,13 @@ function acctState(a, all) {   // balance, max-loss line (intraday or end-of-day
 async function renderAccts() {
   const all = await db.allTrades(), rows = await Promise.all(accts.map(async (a) => { const S = acctState(a, all), tr = S.tr, run = S.run, R = a.rules || {}, ddLeft = S.ddLeft, w = S.w, pnl = S.pnl;
     const st = S.blown ? ["Blown", "dn"] : S.passed ? ["Passed", "up"] : R.ptg && pnl >= R.ptg ? ["Target hit, consistency " + Math.round((100 * S.best) / pnl) + "%", ""] : ["Active", ""];
-    return `<div class="acard ${acct && acct.id === a.id ? "on" : ""}" data-id="${a.id}"><div class="ah"><b>${a.name}</b><span class="pill ${st[1]}">${st[0]}</span></div>
+    const po = payoutsOf(a, S), cls = S.blown ? "ac-blown" : a.kind === "funded" ? (po.n ? "ac-payout" : "ac-funded") : S.passed ? "ac-passed" : "";   // KING_SESSIONS card colours
+    if (S.blown && R.blownAt && Date.now() - R.blownAt > 7 * 864e5) return "";
+    return `<div class="acard ${cls} ${acct && acct.id === a.id ? "on" : ""}" data-id="${a.id}">${po.n ? `<div class="potally" title="Payouts">💸 ${po.n} · ${money(po.amt)}</div>` : ""}<div class="ah"><b>${esc(a.name)}</b><span class="pill ${st[1]}">${a.kind === "funded" && !S.blown ? "Funded" : st[0]}</span></div>
       <div class="abig ${pnl >= 0 ? "pos-up" : "pos-dn"}">${money(run)}</div><div class="muted small">${pnl >= 0 ? "+" : ""}${money(pnl)} since start · ${tr.length} trades · ${tr.length ? Math.round((100 * w) / tr.length) : 0}% win</div>
       ${R.ptg ? `<div class="bar"><i style="width:${Math.max(0, Math.min(100, (100 * pnl) / R.ptg))}%"></i></div><div class="tiny muted">Profit target ${money(R.ptg)}</div>` : ""}
       <div class="kvs"><div><span>Drawdown left${R.eod ? " (end of day)" : ""}</span><b>${ddLeft == null ? "off" : money(ddLeft)}</b></div><div><span>Daily loss limit</span><b>${R.dll ? money(R.dll) : "none"}</b></div>${R.cons ? `<div><span>Best day vs total (max ${R.cons}%)</span><b>${pnl > 0 ? Math.round((100 * S.best) / pnl) + "%" : "—"}</b></div>` : ""}${R.maxMini ? `<div><span>Max size</span><b>${R.maxMini} minis / ${R.maxMini * 10} micros</b></div>` : ""}</div>
-      <div class="row"><button data-use="${a.id}" class="small">${acct && acct.id === a.id ? "Selected" : "Use"}</button><button data-edit="${a.id}" class="ghost small">Edit</button><button data-arch="${a.id}" class="ghost small">Archive</button></div></div>`; }));
+      <div class="row"><button data-use="${a.id}" class="small">${acct && acct.id === a.id ? "Selected" : "Use"}</button><button data-edit="${a.id}" class="ghost small">Edit</button><button data-cont="${a.id}" class="ghost small" ${S.blown ? "disabled" : ""}>Continue this account</button><button data-arch="${a.id}" class="ghost small">Archive</button></div></div>`; }));
   $("ac-list").innerHTML = rows.join("") || '<div class="empty">No accounts yet. Make one to track an eval or a funded account separately.</div>';
 }
 function acctDlg(a) { const r = (a && a.rules) || {}; dlg(`<h3>${a ? "Edit account" : "New account"}</h3>${a ? "" : `<label>Start from<select id="acP">${Object.entries(ACCT_PRESETS).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join("")}</select></label>`}
@@ -2259,9 +2261,9 @@ document.querySelectorAll(".mode").forEach((b) => (b.onclick = () => { document.
 document.querySelectorAll(".btab").forEach((b) => (b.onclick = () => { if (b.classList.contains("on") && !prefs.dockClosed) { prefs.dockClosed = true; savePrefs(); return dockUI(); } prefs.dockClosed = false; savePrefs(); dockUI();
   document.querySelectorAll(".btab").forEach((x) => x.classList.toggle("on", x === b)); ["acct", "pos", "ord", "hist"].forEach((k) => $("b-" + k).classList.toggle("hidden", k !== b.dataset.b)); }));
 ["tx-st", "tx-pay", "tx-exp", "tx-w2", "tx-wh"].forEach((k) => ($(k).oninput = taxCalc));
-$("acctpill").onclick = acctMenu; $("ac-new").onclick = () => acctDlg(null);
+$("acctpill").onclick = acctMenu; $("ac-new").onclick = () => newSessionDlg();
 $("ac-list").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const id = b.dataset.use || b.dataset.edit || b.dataset.arch, a = accts.find((x) => x.id === id); if (!a) return;
-  if (b.dataset.use) { pickAcct(id); renderAccts(); } else if (b.dataset.edit) acctDlg(a); else if (confirm("Archive " + a.name + "? Its trades stay in your journal.")) db.updAccount(id, { archived: true }).then(() => { accts = accts.filter((x) => x.id !== id); if (acct && acct.id === id) pickAcct(null); renderAccts(); }); };
+  if (b.dataset.cont) return newSessionDlg(a); if (b.dataset.use) { pickAcct(id); renderAccts(); } else if (b.dataset.edit) acctDlg(a); else if (confirm("Archive " + a.name + "? Its trades stay in your journal.")) db.updAccount(id, { archived: true }).then(() => { accts = accts.filter((x) => x.id !== id); if (acct && acct.id === id) pickAcct(null); renderAccts(); }); };
 ["st-acct", "st-sym", "st-range"].forEach((k) => ($(k).onchange = () => { if (k === "st-acct") { prefs.stAcct = $(k).value; savePrefs(); } renderStats(); }));
 $("ftabs").onclick = (e) => { const b = e.target.closest("[data-f]"); if (b) ftab(b.dataset.f); };
 ["lb-range", "lb-sym"].forEach((k) => ($(k).onchange = renderLB));
@@ -2764,11 +2766,11 @@ function dpIso(t) { return new Date(t).toISOString().slice(0, 10); }
 function dpTrading(t) { const d = new Date(t), wd = d.getUTCDay(), m = d.getUTCMonth(), dd = d.getUTCDate(); return wd >= 1 && wd <= 5 && !(m === 11 && dd === 25) && !(m === 0 && dd === 1) && t >= DP.from && t <= dpLast(); }
 function dpDays(a, z) { const out = []; for (let t = a; t <= z; t += 864e5) if (dpTrading(t)) out.push(dpIso(t)); return out; }
 function dpOpen() { let el = $("dpick"); if (!el) { el = document.createElement("div"); el.id = "dpick"; el.className = "dpwrap hidden"; document.body.appendChild(el); el.onclick = (e) => { if (e.target === el) dpClose(); }; } el.classList.remove("hidden"); dpYears(); }
-function dpClose() { const el = $("dpick"); if (el) el.classList.add("hidden"); }
+function dpClose() { const el = $("dpick"); if (el) el.classList.add("hidden"); DP.onPick = null; }
 function dpShell(crumbs, body) { const ttl = (() => { const c = crumbs.map((x) => x[0]); const y = c.find((x) => /^\d{4}$/.test(x)), m = c.find((x) => DPM.includes(x)); return m ? `${m} ${y || ""}` : y ? (c.includes("Date range") ? `${y} · date range` : y) : "Choose dates"; })();
   $("dpick").innerHTML = `<div class="dp"><div class="dp-title">${esc(ttl.toUpperCase())}</div><div class="dp-top"><div class="dp-crumbs">${crumbs.map((c, i) => `<button class="dp-cr" data-cr="${i}">${esc(c[0])}</button>`).join('<span class="dp-sep">›</span>')}</div><button class="dp-x" title="Close">×</button></div>${body}</div>`;
   $("dpick").querySelector(".dp-x").onclick = dpClose; $("dpick").querySelectorAll(".dp-cr").forEach((b) => b.onclick = () => crumbs[+b.dataset.cr][1]()); }
-async function dpTest(days, name) { if (!days.length) return toast("No trading days there"); if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); dpClose();
+async function dpTest(days, name) { if (!days.length) return toast("No trading days there"); if (DP.onPick) { const cb = DP.onPick; DP.onPick = null; dpClose(); return cb(days, name); } if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); dpClose();
   if (days.length === 1) { prefs.pl = null; savePrefs(); plUI(); blind = null; blindUI(); $("start").value = days[0] + "T08:30"; await loadReplay(); dpLabel(); return; }
   prefs.pl = { name, days, i: 0 }; savePrefs(); await plGo(0); dpLabel(); }
 /* KING_DATEPICK2 (King, Nov 14 round 2): any date format + typos, year → months with "Select specific date range" on top, real calendar timelines, random week here */
@@ -2910,3 +2912,52 @@ function bigBanner(text, kind) { let el = document.getElementById("bigban"); if 
   el.className = "bb-" + kind; el.textContent = text; el.style.display = "flex"; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; try { sfx && sfx(kind === "up" ? "win" : "loss"); } catch (e) {}
   clearTimeout(bigBanner.t); bigBanner.t = setTimeout(() => (el.style.display = "none"), 2600); }
 async function checkAcctPass() { try { if (!acct) return; const S = acctState(acct, await db.allTrades()); if (S.passed && !acct._passShown) { acct._passShown = true; bigBanner("Account passed, good job G", "up"); } if (S.blown && !acct._blownShown) { acct._blownShown = true; bigBanner("Account Blown", "dn"); } } catch (e) {} }
+
+/* KING_SESSIONS (King, Nov 14): "New session" = account settings (Eval / Funded) → choose dates → a new account titled by the date range.
+   Blown: locked for the session, red card, hidden after 7 days. Passed eval → a funded account in the same session (payout after 5 winning days of $150).
+   Cards: blown red outline · passed green outline · funded filled blue · funded with a payout purple outline + payout tally. */
+const SESS_PRESETS = { lf25: ["LucidFlex 25K", 25000, { mdd: 1000, dll: 0, ptg: 1250, mxw: 0, eod: true, cons: 50, lock: true, maxMini: 2 }], lf50: ["LucidFlex 50K", 50000, { mdd: 2000, dll: 0, ptg: 3000, mxw: 0, eod: true, cons: 50, lock: true, maxMini: 4 }] };
+function rangeTitle(days) { if (!days.length) return "Session"; const a = days[0], z = days[days.length - 1], D = (s) => new Date(s + "T12:00:00Z");
+  if (days.length === 1) return `${["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][D(a).getUTCDay()]}, ${longDate(a)}`;
+  const sameMonth = a.slice(0, 7) === z.slice(0, 7), mStart = D(a), mEnd = new Date(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth() + 1, 0));
+  if (sameMonth && dpDays(Date.UTC(mStart.getUTCFullYear(), mStart.getUTCMonth(), 1), mEnd.getTime()).join() === days.join()) return `Month of ${DPM[mStart.getUTCMonth()]}, ${mStart.getUTCFullYear()}`;
+  const wk = (D(z) - D(a)) / 864e5 <= 6 && D(a).getUTCDay() >= 1; if (wk) { const mon = new Date(D(a) - ((D(a).getUTCDay() + 6) % 7) * 864e5).toISOString().slice(0, 10); return `Week of ${longDate(mon)}`; }
+  const short = (s) => { const d = D(s); return `${DPM[d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`; }; return `${short(a)} to ${longDate(z)}`; }
+const fundedAlive = () => accts.filter((a) => a.kind === "funded" && !(a.rules || {}).blownAt);
+async function newSessionDlg(cont) {   // cont = an existing account to continue on new dates
+  const last = prefs.lastSess || null, nf = fundedAlive().length;
+  if (cont) { dpPick((days, name) => continueAcct(cont, days)); return; }
+  const v = (k, d) => (last && last[k] != null ? last[k] : d);
+  wideDlg(`<h3>New session</h3><p class="small muted">Step 1 of 2 · account settings. Next you pick the dates.</p>
+    <div class="ns-grid"><label>Account<select id="ns-kind"><option value="eval">Eval</option><option value="funded" ${nf ? "" : "disabled"}>Funded (${nf} available)</option></select></label>
+      <label>Preset<select id="ns-pre"><option value="lf50">LucidFlex 50K</option><option value="lf25">LucidFlex 25K</option>${last ? '<option value="last" selected>My last settings</option>' : ""}<option value="custom">Custom</option></select></label>
+      <label id="ns-frow" class="hidden">Funded account<select id="ns-fund">${fundedAlive().map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join("")}</select></label>
+      <label>Starting balance ($)<input id="ns-bal" type="number" value="${v("bal", 50000)}"></label><label>Max drawdown ($, end of day)<input id="ns-mdd" type="number" value="${v("mdd", 2000)}"></label>
+      <label>Daily loss limit ($, 0 = none)<input id="ns-dll" type="number" value="${v("dll", 0)}"></label><label>Daily profit target / max win ($, 0 = none)<input id="ns-mxw" type="number" value="${v("mxw", 0)}"></label>
+      <label id="ns-ptgrow">Eval profit target ($)<input id="ns-ptg" type="number" value="${v("ptg", 3000)}"></label></div>
+    <p class="tiny muted">LucidFlex evals: end-of-day trailing max loss, no daily loss limit, 50% consistency, the max loss locks at start − $100 once you're up the target. Funded: payout after 5 winning days of $150+.</p>`,
+    [{ t: "Cancel" }, { t: "Next: choose dates →", primary: true, f: () => { const kind = $("ns-kind").value, fid = $("ns-fund") && $("ns-fund").value, pre = $("ns-pre").value;
+      const R = { bal: +$("ns-bal").value || 50000, mdd: +$("ns-mdd").value || 0, dll: +$("ns-dll").value || 0, mxw: +$("ns-mxw").value || 0, ptg: kind === "eval" ? +$("ns-ptg").value || 0 : 0, pre };
+      prefs.lastSess = R; savePrefs();
+      if (kind === "funded") { const fa = accts.find((a) => a.id === fid); if (!fa) return toast("No funded account available"); dpPick((days) => continueAcct(fa, days)); return; }
+      dpPick((days) => createSessionAcct("eval", R, days)); } }]);
+  const fill = () => { const p = $("ns-pre").value, P = SESS_PRESETS[p]; if (P) { $("ns-bal").value = P[1]; $("ns-mdd").value = P[2].mdd; $("ns-dll").value = P[2].dll; $("ns-mxw").value = P[2].mxw; $("ns-ptg").value = P[2].ptg; } };
+  $("ns-pre").onchange = fill; if (!last) fill();
+  $("ns-kind").onchange = () => { const f = $("ns-kind").value === "funded"; $("ns-frow").classList.toggle("hidden", !f); $("ns-ptgrow").classList.toggle("hidden", f); ["ns-pre", "ns-bal", "ns-mdd", "ns-dll", "ns-mxw"].forEach((id) => ($(id).disabled = f)); }; }
+function dpPick(cb) { DP.onPick = cb; dpOpen(); }
+async function createSessionAcct(kind, R, days, extra) { const P = SESS_PRESETS[R.pre] || null, base = P ? P[2] : {};
+  const rules = { mdd: R.mdd, dll: R.dll, ptg: R.ptg, mxw: R.mxw || 0, eod: base.eod !== false, cons: kind === "eval" ? (base.cons || 0) : 0, lock: base.lock !== false, maxMini: base.maxMini || null, days, ...(extra || {}) };
+  const row = { name: (kind === "funded" ? "Funded · " : "") + rangeTitle(days), kind, start_bal: R.bal, rules };
+  try { const n = await db.newAccount(row); accts.push(n); pickAcct(n.id); prefs.pl = { name: n.name, days, i: 0 }; savePrefs(); await plGo(0); return n; } catch (e) { toast(e.message); } }
+async function continueAcct(a, days) { const r = { ...(a.rules || {}) }; r.days = [...new Set([...(r.days || []), ...days])].sort(); try { await db.updAccount(a.id, { rules: r }); a.rules = r; } catch (e) {}
+  pickAcct(a.id); prefs.pl = { name: a.name, days, i: 0 }; savePrefs(); await plGo(0); }
+/* blown → locked, passed eval → funded in the same session */
+async function sessCheck() { if (!acct) return; const all = await db.allTrades(), S = acctState(acct, all), r = acct.rules || {};
+  if (S.blown && !r.blownAt) { r.blownAt = Date.now(); acct.rules = r; try { await db.updAccount(acct.id, { rules: r }); } catch (e) {} lock = { why: "Account Blown", until: Infinity }; blownCard(acct, S); }
+  if (acct.kind !== "funded" && S.passed && !r.passedAt) { r.passedAt = Date.now(); acct.rules = r; try { await db.updAccount(acct.id, { rules: r }); } catch (e) {}
+    const rest = (prefs.pl && prefs.pl.days ? prefs.pl.days.slice(prefs.pl.i + 1) : []); const R = { bal: +acct.start_bal, mdd: r.mdd, dll: r.dll, ptg: 0, mxw: r.mxw, pre: null };
+    const f = await createSessionAcct("funded", R, rest.length ? rest : [], { fromEval: acct.id, eod: r.eod, lock: r.lock, maxMini: r.maxMini }); if (f) toast("🎉 Funded account created: " + f.name); } }
+function blownCard(a, S) { wideDlg(`<div class="blowncard"><h3>Account Blown</h3><p class="small">${esc(a.name)}</p><div class="kvs"><div><span>Final balance</span><b>${money(S.run)}</b></div><div><span>P&amp;L</span><b class="pos-dn">${money(S.pnl)}</b></div><div><span>Trades</span><b>${S.tr.length}</b></div><div><span>Win rate</span><b>${S.tr.length ? Math.round((100 * S.tr.filter(isW).length) / S.tr.length) : 0}%</b></div></div><p class="tiny muted">Trading is locked for this session. It stays in your list (red) for 7 days.</p></div>`,
+  [{ t: "Close" }, { t: "New session", primary: true, f: () => newSessionDlg() }]); }
+function payoutsOf(a, S) { if (a.kind !== "funded") return { n: 0, amt: 0 }; const byDay = {}; for (const t of S.tr) { const d = sessDay(t.t_exit); byDay[d] = (byDay[d] || 0) + (+t.pnl || 0); }
+  let wins = 0, cyc = 0, n = 0, amt = 0; for (const d of Object.keys(byDay).sort()) { cyc += byDay[d]; if (byDay[d] >= 150) wins++; if (wins >= 5) { if (cyc > 0) { n++; amt += cyc * 0.9; } wins = 0; cyc = 0; } } return { n, amt }; }
