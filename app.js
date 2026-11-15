@@ -252,7 +252,7 @@ function stepBack() {
 }
 function play() { if (timer) return pause(); $("play").textContent = "⏸";
   const tick = async () => { const sp = +$("speed").value, an = prefs.live1s !== false && sp >= 150 ? Math.round(sp * 0.85) : 0;   // KING_1S: most of each step is spent forming the candle
-    await stepUnit(true, an); if (timer) timer = setTimeout(tick, Math.max(0, sp - an)); };
+    await stepUnit(true, an); followLive(); if (timer) timer = setTimeout(tick, Math.max(0, sp - an)); };
   timer = setTimeout(tick, 0); }
 function pause() { clearTimeout(timer); timer = null; $("play").textContent = "▶"; }
 
@@ -975,7 +975,7 @@ function chartMenu(p, x, y, cx, cy) {
   menu([{ h: `${sym} @ ${px2(pr)} · ${q} lot${q > 1 ? "s" : ""}` },
     { t: above ? `Sell limit @ ${px2(pr)}` : `Buy limit @ ${px2(pr)}`, c: above ? "s" : "b", f: () => place(above ? -1 : 1, "limit", pr, q, br) },
     { t: above ? `Buy stop @ ${px2(pr)}` : `Sell stop @ ${px2(pr)}`, c: above ? "b" : "s", f: () => place(above ? 1 : -1, "stop", pr, q, br) },
-    { t: "Start the replay from this candle", f: () => { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); $("start").value = fmt(t + 60).replace(" ", "T"); loadReplay.center = true; loadReplay(); } },
+    { t: "Start the replay from this candle", f: () => { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); if (rewindTo(bucket(t, p.sec) + Math.max(0, p.sec - 60))) return; $("start").value = fmt(t + 60).replace(" ", "T"); loadReplay(); } },
     "-", { t: "Long position here", c: "b", k: prefs.keys.long.toUpperCase(), f: () => { newDrawing("long", p, { t, p: pr }); repaintAll(); } },
     { t: "Short position here", c: "s", k: prefs.keys.short.toUpperCase(), f: () => { newDrawing("short", p, { t, p: pr }); repaintAll(); } },
     { t: "Horizontal line here", k: prefs.keys.hline.toUpperCase(), f: () => { newDrawing("hline", p, { t, p: pr }); repaintAll(); } },
@@ -2238,12 +2238,15 @@ $("sym").onchange = () => {   // switch instrument right away, at the same repla
   $("start").value = fmt(loc(cursorT + 61)).replace(" ", "T"); loadReplay();
 };
 $("skipny").onclick = () => skipTo("09:30", "NY open");
-$("skipnext").onclick = () => { const m = lhm(loc(nowT() || 0)); (m >= "09:30" && m < "20:00") ? skipTo("20:00", "Asia open") : skipTo("09:30", "NY open"); };   // KING_SKIPCOL
-$("playday").onclick = async () => { pause(); if (!B["1m"].bars.length) return toast("Load a chart first");   // KING_PLAYDAY2 (Nov 14): play visibly, fast, to 15:00 New York
-  const now = loc(nowT()), day0 = Math.floor(now / 86400) * 86400; let target = day0 + 15 * 3600; if (now >= target) target += 86400;
-  const btn = $("playday"); btn.classList.add("on"); playOut.stop = false;
-  for (let n = 0; n < 40000 && !playOut.stop; n++) { if (loc(nowT()) >= target) break; const g = await stepFwd(n % 6 === 5); if (g === false || g === undefined) break; if (n % 6 === 5) await new Promise((r) => setTimeout(r, 0)); }
-  rebuildAll(); btn.classList.remove("on"); toast(loc(nowT()) >= target ? "⏩ Played out to 3:00 PM New York" : ""); };
+$("skipnext").onclick = (e) => { const r = e.target.getBoundingClientRect(), m = lhm(loc(nowT() || 0));   // KING_SKIPMENU (King, Nov 14): next session / next day / next week
+  menu([{ h: "Skip ahead" }, { t: m >= "09:30" && m < "20:00" ? "Next session · Asia open 8:00 PM" : "Next session · NY open 9:30 AM", f: () => (m >= "09:30" && m < "20:00" ? skipTo("20:00", "Asia open") : skipTo("09:30", "NY open")) },
+    { t: "Next day · 9:30 AM", f: () => skipUntil((lt, l0) => Math.floor(lt / 86400) > Math.floor(l0 / 86400) && lhm(lt) >= "09:30", "next day") },
+    { t: "Next week · Monday 9:30 AM", f: () => skipUntil((lt, l0) => lt - l0 > 86400 && new Date(lt * 1000).getUTCDay() === 1 && lhm(lt) >= "09:30", "next week") }], r.left, r.bottom + 4); };
+$("playday").onclick = async () => { pause(); if (!B["1m"].bars.length) return toast("Load a chart first");   // KING_PLAYDAY3: 9:30 AM–3 PM only, every candle, following the chart
+  const now = loc(nowT()), m = lhm(now); if (m < "09:30" || m >= "15:00") return toast(m >= "15:00" ? "Already past 3 PM" : "Play out day works from 9:30 AM to 3 PM New York");
+  const target = Math.floor(now / 86400) * 86400 + 15 * 3600, btn = $("playday"); btn.classList.add("on"); playOut.stop = false;
+  for (let n = 0; n < 20000 && !playOut.stop; n++) { if (loc(nowT()) >= target) break; const g = await stepFwd(true); if (g === false || g === undefined) break; followLive(); await new Promise((r) => setTimeout(r, 12)); }
+  btn.classList.remove("on"); if (loc(nowT()) >= target) toast("⏩ Played out to 3:00 PM New York"); };
 function playOut() {} playOut.stop = false; $("play").addEventListener("click", () => { playOut.stop = true; }, true); $("skipasia").onclick = () => skipTo("20:00", "Asia open");
 $("clr").onclick = () => { drawings.filter((d) => d.state === "armed").forEach(disarmTool); drawings = []; sel = null; repaintAll(); }; $("magnet").onclick = toggleMagnet;
 document.querySelectorAll(".mode").forEach((b) => (b.onclick = () => { document.querySelectorAll(".mode").forEach((x) => x.classList.toggle("on", x === b)); ["scalp", "dom", "order", "friends"].forEach((m) => $("md-" + m).classList.toggle("hidden", m !== b.dataset.mode)); if (b.dataset.mode === "friends") frSide(); if (b.dataset.mode === "scalp" && !prefs.pad.show) { prefs.pad.show = true; padUI(); } refresh(); }));
@@ -2862,3 +2865,20 @@ async function reeseOnChart(r) { reeseClear(); let p = panes[active] || panes[0]
 function hkLabels() { const K = prefs.keys || {}, alias = { cursor: "Esc" }; document.querySelectorAll("#tools .tool[data-tool], #favbar .tool[data-tool]").forEach((b) => { const t = b.dataset.tool, k = alias[t] || K[t]; let s = b.querySelector(".hk");
   if (!k) { if (s) s.remove(); return; } if (!s) { s = document.createElement("span"); s.className = "hk"; b.appendChild(s); } const v = k.length === 1 ? k.toUpperCase() : k; if (s.textContent !== v) s.textContent = v; if (!b.classList.contains("hashk")) b.classList.add("hashk"); }); }
 setTimeout(hkLabels, 400); for (const id of ["tools", "favbar"]) { const el = document.getElementById(id); if (el) new MutationObserver(() => { clearTimeout(hkLabels.t); hkLabels.t = setTimeout(hkLabels, 60); }).observe(el, { childList: true, subtree: true }); }
+
+/* KING_FOLLOW (King, Nov 14): while playing, keep the newest candle on screen (time + price) */
+function followLive() { for (const p of panes) { if (!p || p.dead || !p.candles.length) continue; try { const ts = p.chart.timeScale(), r = ts.getVisibleLogicalRange(), n = p.candles.length;
+  if (r && (r.to < n - 1 || r.from > n - 1)) { const w = r.to - r.from; ts.setVisibleLogicalRange({ from: n - 1 - w * 0.8, to: n - 1 + w * 0.2 }); }
+  const c = p.candles[n - 1], y = p.series.priceToCoordinate(c.close), h = p.el.clientHeight; if (y == null || y < 10 || y > h - 40) p.chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} } }
+
+/* KING_REWIND (King, Nov 14): "start the replay from this candle" keeps the exact same screen (no snap, no rescale) and just removes every candle after it */
+function rewindTo(ltEnd) { const b = B["1m"]; if (!b.bars.length || b.i < 0) return false; let k = -1; for (let i = b.i; i >= 0; i--) if (loc(b.bars[i].t) <= ltEnd) { k = i; break; } if (k < 0 || k === b.i) return k === b.i;
+  const keep = panes.map((p) => { try { return { r: p.chart.timeScale().getVisibleLogicalRange(), auto: p.chart.priceScale("right").options().autoScale, pr: p.series.priceScale ? null : null }; } catch (e) { return null; } });
+  panes.forEach((p) => { try { p.el.classList.add("rewinding"); } catch (e) {} });
+  b.i = k; cursorT = b.bars[k].t; const f = B["15s"]; while (f.i >= 0 && f.bars[f.i].t > cursorT + 45) f.i--; advOthers(); rebuildAll();
+  panes.forEach((p, i) => { const s = keep[i]; if (!s || !s.r) return; try { p.chart.timeScale().setVisibleLogicalRange(s.r); if (s.auto === false) p.chart.priceScale("right").applyOptions({ autoScale: false }); } catch (e) {} setTimeout(() => p.el.classList.remove("rewinding"), 260); });
+  toast("⏪ Back to " + fmt(loc(cursorT)).slice(11, 16) + " New York"); setTimeout(() => toast(""), 1800); return true; }
+
+async function skipUntil(ok, name) { pause(); if (!B["1m"].bars.length) return toast("Load a chart first"); toast("Skipping to the " + name + "…"); const l0 = loc(nowT());
+  for (let n = 0; n < 40000; n++) { const got = await stepFwd(false); if (got === false || got === undefined) break; if (ok(loc(nowT()), l0)) break; }
+  rebuildAll(); panes.forEach((p) => { p.chart.timeScale().scrollToRealTime(); p.chart.priceScale("right").applyOptions({ autoScale: true }); }); toast(""); }

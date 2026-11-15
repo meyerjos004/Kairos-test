@@ -707,3 +707,7 @@ i.qm:hover{background:rgba(167,139,250,.35);color:#fff}
 /* KING_HKLABEL */
 .tool.hashk{position:relative;height:38px!important;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
 .tool .hk{font:700 8.5px/1 Inter,sans-serif;letter-spacing:.04em;color:var(--mut);opacity:.75;pointer-events:none}.tool.on .hk{color:inherit;opacity:1}
+
+#playday{width:34px;height:30px}#playday svg{width:22px;height:22px}
+
+.pane.rewinding canvas{animation:rw .26s ease-out}@keyframes rw{0%{filter:brightness(1.6) saturate(.6)}100%{filter:none}}
