@@ -3192,3 +3192,17 @@ async function profileEditor() { if (!me) me = { user_id: "demo", name: "You" };
 function profileView(uid) { const P = profs[uid]; if (!P) return; wideDlg(profCardHtml(P), [{ t: "Close" }]); }
 $("avatar") && ($("avatar").onclick = () => profileEditor());
 document.addEventListener("click", (e) => { const n = e.target.closest("[data-uid].who, .who[data-uid]"); if (n && profs[n.dataset.uid]) profileView(n.dataset.uid); });
+
+/* KING_ADMIN2 (King, Nov 14): feature toggles explain themselves, data on file is a live table (refreshes while Admin is open), all 12 name effects. */
+const FEAT_DESC = { dom: "The price ladder (depth of market) next to the chart for clicking orders in.", drawings: "Lines, boxes, fibs, positions and the rest of the drawing toolbar.",
+  journal: "Journal calendar, trade detail and the Stats page.", model_overlay: "Shows the AI model's trades on the chart next to yours.", multichart: "More than one chart at once (all 45 layouts).",
+  notion: "Send trades to Notion and pull real trades in.", prop_rules: "Account rules: max drawdown, daily loss limit, profit targets, eval → funded.", replay: "Bar replay: play, step, skip, date picker.",
+  sec15: "15-second and 30-second timeframes.", trading: "Order panel, scalp pad and placing trades." };
+let adLiveT = null;
+async function adDataLive() { const el = $("ad-data"); if (!el || DEMO) return; const { data: bf, error } = await sb.from("bar_files").select("symbol,tf,day").order("day"); if (error) { el.textContent = error.message; return; }
+  const g = {}; (bf || []).forEach((r) => (g[r.symbol + "|" + r.tf] = g[r.symbol + "|" + r.tf] || []).push(r.day)); const now = new Date().toISOString().slice(0, 7);
+  el.innerHTML = `<div class="ad-live"><i></i> Live · updated ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" })}</div><table class="bt"><tr><th>Symbol</th><th>TF</th><th>Files</th><th>From</th><th>To</th><th>Missing months</th><th></th></tr>${Object.entries(g).sort().map(([k, d]) => { const [s, tf] = k.split("|"), ms = new Set(d.map((x) => x.slice(0, 7))), a = d[0].slice(0, 7), z = d[d.length - 1].slice(0, 7); let miss = 0;
+    for (let m = a; m <= z; m = addM(m, 1)) if (!ms.has(m)) miss++; const fresh = z >= addM(now, -1); return `<tr><td>${esc(s)}</td><td>${esc(tf)}</td><td>${d.length}</td><td>${a}</td><td>${z}</td><td class="${miss ? "pos-dn" : ""}">${miss || "none"}</td><td>${fresh ? '<span class="pos-up">current</span>' : '<span class="pos-dn">behind</span>'}</td></tr>`; }).join("")}</table>`; }
+{ const _la = loadAdmin; loadAdmin = async function () { await _la(); try { const box = $("ad-feat"); box.querySelectorAll("label.ck").forEach((l) => { const k = l.querySelector("[data-feat]").dataset.feat; if (FEAT_DESC[k] && !l.querySelector(".fdesc")) l.insertAdjacentHTML("beforeend", `<span class="fdesc">${FEAT_DESC[k]}</span>`); }); } catch (e) {}
+  await adDataLive(); clearInterval(adLiveT); adLiveT = setInterval(() => { if ($("app").dataset.v === "admin") adDataLive(); else clearInterval(adLiveT); }, 30000); }; }
+{ const _af = adFx; adFx = async function () { await _af(); const box = $("ad-fx"); if (!box) return; box.querySelectorAll("select[data-fx] option").forEach((o) => { const f = FX12.find((x) => x[0] === o.value); if (f) o.textContent = "✨ " + f[1]; }); }; }

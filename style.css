@@ -798,3 +798,7 @@ body.pix .glass,body.pix .card,body.pix .setc{box-shadow:4px 4px 0 rgba(0,0,0,.6
 .pbadges{display:flex;gap:6px;margin:10px 0;font-size:20px}.pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:10px;border-radius:12px;background:rgba(255,255,255,.04)}.pstats div{text-align:center}.pstats b{display:block;font-size:18px}.pstats span{font-size:11px;opacity:.65}
 .pnp{margin-top:10px;font-size:12.5px;padding:8px 10px;border-radius:10px;background:rgba(30,215,96,.1);border:1px solid rgba(30,215,96,.25)}#avatar{cursor:pointer}
 @media (max-width:800px){.pe{grid-template-columns:1fr}}
+
+/* KING_ADMIN2 */
+#ad-feat label.ck{display:grid;grid-template-columns:auto 1fr;column-gap:8px;margin:8px 0}#ad-feat .fdesc{grid-column:2;font-size:11.5px;opacity:.6}
+.ad-live{display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:6px}.ad-live i{width:8px;height:8px;border-radius:50%;background:#2bd4a0;box-shadow:0 0 8px #2bd4a0;animation:nfxNeon 1.4s infinite}
