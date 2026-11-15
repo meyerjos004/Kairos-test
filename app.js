@@ -1862,10 +1862,10 @@ function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min
   const startPlay = () => { phase = "play";
     play = { t: performance.now(), dur: full ? 1300 : 800, P: panes.map((p) => { const o = { p };
       try { o.data = p.series.data().slice(); const ts = p.chart.timeScale(); o.lr = ts.getVisibleLogicalRange(); o.ps = p.chart.priceScale("right"); o.auto = o.ps.options().autoScale; o.ps.applyOptions({ autoScale: false });
-        o.a = Math.max(0, Math.floor(o.lr ? o.lr.from : 0)); p.series.setData(o.data.slice(0, o.a)); p.series.applyOptions({ visible: true }); if (o.lr) ts.setVisibleLogicalRange(o.lr); } catch (e) { o.bad = 1; }
+        o.a = Math.max(0, Math.floor(o.lr ? o.lr.from : 0)); o.sh = ts.options().shiftVisibleRangeOnNewBar; ts.applyOptions({ shiftVisibleRangeOnNewBar: false }); p.series.setData(o.data.slice(0, o.a)); p.series.applyOptions({ visible: true }); if (o.lr) ts.setVisibleLogicalRange(o.lr); } catch (e) { o.bad = 1; }
       return o; }) };
     A.forEach((a) => { const ang = Math.atan2(a.y - H / 2, a.x - W / 2); a.ex = W / 2 + Math.cos(ang) * (W + H); a.ey = H / 2 + Math.sin(ang) * (W + H); a.job = null; }); };
-  const endPlay = () => { if (!play) return; play.P.forEach((o) => { try { if (!o.bad) { o.p.series.setData(o.data); if (o.lr) o.p.chart.timeScale().setVisibleLogicalRange(o.lr); o.ps.applyOptions({ autoScale: o.auto }); } } catch (e) {} try { o.p.series.applyOptions({ visible: true }); } catch (e) {} }); play = null; };
+  const endPlay = () => { if (!play) return; play.P.forEach((o) => { try { if (o.sh != null) o.p.chart.timeScale().applyOptions({ shiftVisibleRangeOnNewBar: o.sh }); if (!o.bad) { if (o.n !== o.data.length) o.p.series.setData(o.data); if (o.lr) o.p.chart.timeScale().setVisibleLogicalRange(o.lr); o.ps.applyOptions({ autoScale: o.auto }); } } catch (e) {} try { o.p.series.applyOptions({ visible: true }); } catch (e) {} }); play = null; };
   const onSkip = () => { skip = true; };
   const finish = () => { L.forEach((l) => { if (!l.done) { l.done = true; l.p = 1; reveal(l); } }); T.forEach((t) => { if (t.el.style.opacity === "0") t.el.style.opacity = t.prev || ""; });
     if (phase === "build") startPlay(); endPlay(); panes.forEach((p) => { try { p.series.applyOptions({ visible: true }); } catch (e) {} });
@@ -1889,7 +1889,7 @@ function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min
     if (phase === "build" && t > TB + 1.4) L.forEach((l) => { if (!l.done) { l.p = Math.min(1, l.p + dt * 4); if (l.p >= 1) { l.done = true; l.dt = t; reveal(l); done++; } } });
     if (phase === "build" && done >= L.length) startPlay();
     if (phase === "play" && play) { const k = Math.min(1, (performance.now() - play.t) / play.dur), e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
-      play.P.forEach((o) => { if (o.bad) return; try { const n = Math.round(o.a + (o.data.length - o.a) * e); if (n !== o.n) { o.n = n; o.p.series.setData(o.data.slice(0, n)); if (o.lr) o.p.chart.timeScale().setVisibleLogicalRange(o.lr); } } catch (er) { o.bad = 1; } });
+      play.P.forEach((o) => { if (o.bad) return; try { const n = Math.round(o.a + (o.data.length - o.a) * e), from = o.n ?? o.a; if (n > from) { for (let i = from; i < n; i++) o.p.series.update(o.data[i]); o.n = n; } } catch (er) { o.bad = 1; } /* KING_SMOOTHEND: append with update() instead of setData every frame */ });
       if (k >= 1) { endPlay(); phase = "away"; awayT = t; } }
     g.clearRect(0, 0, W, H); g.lineWidth = 1.2; g.strokeStyle = "#5b7cff"; g.shadowColor = "#3b5bff"; g.shadowBlur = 6;
     for (const l of L) if (l.p > 0) stroke(l, l.done ? Math.max(0, 1 - (t - l.dt) / 0.6) * 0.9 : 1);
