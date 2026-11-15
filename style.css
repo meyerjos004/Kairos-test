@@ -711,3 +711,14 @@ i.qm:hover{background:rgba(167,139,250,.35);color:#fff}
 #playday{width:34px;height:30px}#playday svg{width:22px;height:22px}
 
 .pane.rewinding canvas{animation:rw .26s ease-out}@keyframes rw{0%{filter:brightness(1.6) saturate(.6)}100%{filter:none}}
+
+/* KING_WMDAY */
+.wmark{flex-direction:column;gap:2px;line-height:1.05}.wmark .wm2{font-size:.62em}.wmark .wm3{font-size:.62em;font-variant-numeric:tabular-nums}
+.wmark .wtf{display:inline-block;font-size:.55em;border:2px solid rgba(255,255,255,.06);border-radius:8px;padding:2px 8px;vertical-align:middle}
+
+.dp-title{font:900 30px/1.1 Inter,sans-serif;letter-spacing:.02em;margin:0 0 6px;color:#fff}
+.dpbtn{max-width:none!important;overflow:visible!important;text-overflow:clip!important;flex:none}
+#rhtip{position:fixed;z-index:120;display:none;background:#1b1530;border:1px solid #c08bff;color:#fff;font:700 12.5px Inter,sans-serif;padding:5px 9px;border-radius:8px;pointer-events:none}
+/* KING_STATS3: taller, cleaner cards + resizable equity chart */
+#st-kpi>div{min-height:96px;display:flex;flex-direction:column;justify-content:space-between}#st-kpi b .kpis{white-space:normal}
+#st-eq{resize:vertical;overflow:hidden;min-height:220px}

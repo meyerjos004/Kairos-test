@@ -281,7 +281,7 @@ function makePane(i) {
   return p;
 }
 function setActive(i) { active = i; const ps = paneSym(i); if (ps !== sym && X[ps] && swapTo(ps)) { $("sym").value = sym; drawOrders(); try { refresh(); } catch (e) {} panes.forEach(label); } panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
-function label(p) { const tf = prefs.tfs[p.i] || "5m", s = paneSym(p); p.el.querySelector(".lname").textContent = `${s} · ${tf} · CME`; p.el.classList.toggle("tradesym", s === sym && panes.length > 1 && new Set(panes.map(paneSym)).size > 1); p.el.querySelector(".wmark").textContent = `CME ${s} ${tf}`; }
+function label(p) { const tf = prefs.tfs[p.i] || "5m", s = paneSym(p); p.el.querySelector(".lname").textContent = `${s} · ${tf} · CME`; p.el.classList.toggle("tradesym", s === sym && panes.length > 1 && new Set(panes.map(paneSym)).size > 1); wmSet(p, true); }
 function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}">${n === "1D" ? "D" : n}</button>`).join(""); }
 // KING_TFCENTER (Josh, Nov 13): changing interval keeps your place. The moment in the middle of the chart stays in the
 // middle (same width in bars), like TradingView. If you were parked at the live edge you stay there. Settings toggle: keepC.
@@ -713,7 +713,7 @@ function initPointer(p) {
     const l = hitLine(p, y); if (l) { drag = { kind: "line", l }; hold(true); p.el.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault(); return; }
     const h = hitDrawing(p, x, y); if (h && h.d.locked) { sel = h.d; repaintAll(); dtbShow(p); e.stopPropagation(); e.preventDefault(); return; }
     if (h) { sel = h.d; dtbShow(p); drag = { kind: "draw", h, a0: { t: tOf(p, x), p: pOf(p, y) }, snap: JSON.parse(JSON.stringify(h.d)) }; hold(true); p.el.setPointerCapture(e.pointerId); repaintAll(); e.stopPropagation(); e.preventDefault(); return; }
-    if (sel) { sel = null; repaintAll(); }
+    if (sel || !$("dtb").classList.contains("hidden")) { sel = null; hov = null; $("dtb").classList.add("hidden"); repaintAll(); }   // KING_DTBOFF: the bar disappears the moment you click off
   }, true);
   p.el.addEventListener("pointermove", (e) => {
     const { x, y } = pt(e);
@@ -741,7 +741,7 @@ function initPointer(p) {
   p.el.addEventListener("pointerup", up); p.el.addEventListener("pointercancel", up);
   p.el.addEventListener("contextmenu", (e) => { e.preventDefault(); const { x, y } = pt(e); setActive(p.i); chartMenu(p, x, y, e.clientX, e.clientY); });
 }
-function repaintAll() { panes.forEach(htfRoom); panes.forEach(paint); clearTimeout(undoT); undoT = setTimeout(snapDraw, 250); }
+function repaintAll() { panes.forEach(htfRoom); panes.forEach(paint); panes.forEach((q) => wmSet(q)); clearTimeout(undoT); undoT = setTimeout(snapDraw, 250); }
 /* KING_UNDO (Nov 14): Ctrl/Cmd+Z undoes the latest drawing change (add, move, edit, delete, clear). Ctrl/Cmd+Shift+Z redoes. */
 let undoT = 0, undoStack = [], redoStack = [], lastSnap = "[]";
 const drawSnap = () => JSON.stringify(drawings.filter((d) => !d.reese && !d.quiz && d.state !== "armed"));
@@ -1227,7 +1227,7 @@ async function renderStats() {
   let run = 0, pk = 0, dd = 0, cw = 0, cl = 0, bw = 0, bl = 0; const eq = [];
   for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); dd = Math.max(dd, pk - run); if (isW(t)) { cw++; cl = 0; } else if (isL(t)) { cl++; cw = 0; } bw = Math.max(bw, cw); bl = Math.max(bl, cl); eq.push({ time: t.t_exit, value: +run.toFixed(2) }); }
   const rs = tr.filter((t) => t.r != null), best = W.length ? Math.max(...W.map((t) => +t.pnl)) : null, worst = L.length ? Math.min(...L.map((t) => +t.pnl)) : null;   // KING_STATS2 (King, Nov 14): his order, no expectancy / profit factor
-  const K = [["Trades", n ? `${n} <i class="kpis">${W.length}W · ${L.length}L · ${BEs.length}BE · ${Math.round((100 * W.length) / Math.max(1, W.length + L.length))}%</i>` : "0"], ["Net", money(run)], ["Average trade", n ? money(run / n) : "—"], ["Avg win", W.length ? money(gw / W.length) : "—"], ["Avg loss", L.length ? money(-gl / L.length) : "—"],
+  const K = [["Trades", n ? `${n} <i class="kpis">${W.length} W · ${L.length} L · ${BEs.length} BE<br>${Math.round((100 * W.length) / Math.max(1, W.length + L.length))}% win rate</i>` : "0"], ["Net", money(run)], ["Average trade", n ? money(run / n) : "—"], ["Avg win", W.length ? money(gw / W.length) : "—"], ["Avg loss", L.length ? money(-gl / L.length) : "—"],
     ["Best win", best != null ? money(best) : "—"], ["Worst loss", worst != null ? money(worst) : "—"], ["Avg R", rs.length ? (rs.reduce((s, t) => s + +t.r, 0) / rs.length).toFixed(2) + "R" : "—"], ["Best streak", bw + " win" + (bw === 1 ? "" : "s")], ["Worst streak", bl + " loss" + (bl === 1 ? "" : "es")]];
   $("st-kpi").innerHTML = K.map(([k, v]) => `<div><span class="muted small">${k}</span><b>${v}</b></div>`).join("");
   const grp = (key) => { const g = {}; for (const t of tr) for (const k of [].concat(key(t))) { (g[k] = g[k] || []).push(t); } return g; };
@@ -1722,7 +1722,7 @@ const nmsg = (m) => ($("n-msg").textContent = m);
 /* ---------------- prefs / settings / admin ---------------- */
 async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout] && !LAYS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) };
     if (!prefs.syncDef1) { prefs.sync = { sym: false, int: true, cross: true, time: false, range: false }; prefs.syncDef1 = true; }   // KING_SYNCDEF (Nov 14)
-    if (!(prefs.templates || []).length && !prefs.indOff1) { prefs.ind = { ...IND_DEF, ...(d.ind && d.ind.smt ? { smt: d.ind.smt } : {}) }; prefs.indOff1 = true; savePrefs(); } } }   // KING_INDOFF: one-time reset to all-off for users who never saved a template
+  } }   // KING_INDOFF (King, Nov 14): no reset for existing users (Ben, Will, Ryan keep theirs); new users start with everything off via IND_DEF
 function savePrefs() { if (!DEMO && user) sb.from("prefs").upsert({ user_id: user.id, data: prefs, updated_at: new Date().toISOString() }).then(() => {}); }
 const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", joinask: "Join ask", reverse: "Reverse", flatten: "Flatten all", cancel: "Cancel all", close: "Close all", be: "Stop to breakeven", trend: "Trend line", hline: "Horizontal line", vline: "Vertical line", rect: "Zone", long: "Long position", short: "Short position", measure: "Measure" };
 function fillSettings() {
@@ -2759,7 +2759,8 @@ function dpTrading(t) { const d = new Date(t), wd = d.getUTCDay(), m = d.getUTCM
 function dpDays(a, z) { const out = []; for (let t = a; t <= z; t += 864e5) if (dpTrading(t)) out.push(dpIso(t)); return out; }
 function dpOpen() { let el = $("dpick"); if (!el) { el = document.createElement("div"); el.id = "dpick"; el.className = "dpwrap hidden"; document.body.appendChild(el); el.onclick = (e) => { if (e.target === el) dpClose(); }; } el.classList.remove("hidden"); dpYears(); }
 function dpClose() { const el = $("dpick"); if (el) el.classList.add("hidden"); }
-function dpShell(crumbs, body) { $("dpick").innerHTML = `<div class="dp"><div class="dp-top"><div class="dp-crumbs">${crumbs.map((c, i) => `<button class="dp-cr" data-cr="${i}">${esc(c[0])}</button>`).join('<span class="dp-sep">›</span>')}</div><button class="dp-x" title="Close">×</button></div>${body}</div>`;
+function dpShell(crumbs, body) { const ttl = (() => { const c = crumbs.map((x) => x[0]); const y = c.find((x) => /^\d{4}$/.test(x)), m = c.find((x) => DPM.includes(x)); return m ? `${m} ${y || ""}` : y ? (c.includes("Date range") ? `${y} · date range` : y) : "Choose dates"; })();
+  $("dpick").innerHTML = `<div class="dp"><div class="dp-title">${esc(ttl.toUpperCase())}</div><div class="dp-top"><div class="dp-crumbs">${crumbs.map((c, i) => `<button class="dp-cr" data-cr="${i}">${esc(c[0])}</button>`).join('<span class="dp-sep">›</span>')}</div><button class="dp-x" title="Close">×</button></div>${body}</div>`;
   $("dpick").querySelector(".dp-x").onclick = dpClose; $("dpick").querySelectorAll(".dp-cr").forEach((b) => b.onclick = () => crumbs[+b.dataset.cr][1]()); }
 async function dpTest(days, name) { if (!days.length) return toast("No trading days there"); if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); dpClose();
   if (days.length === 1) { prefs.pl = null; savePrefs(); plUI(); blind = null; blindUI(); $("start").value = days[0] + "T08:30"; await loadReplay(); dpLabel(); return; }
@@ -2882,3 +2883,16 @@ function rewindTo(ltEnd) { const b = B["1m"]; if (!b.bars.length || b.i < 0) ret
 async function skipUntil(ok, name) { pause(); if (!B["1m"].bars.length) return toast("Load a chart first"); toast("Skipping to the " + name + "…"); const l0 = loc(nowT());
   for (let n = 0; n < 40000; n++) { const got = await stepFwd(false); if (got === false || got === undefined) break; if (ok(loc(nowT()), l0)) break; }
   rebuildAll(); panes.forEach((p) => { p.chart.timeScale().scrollToRealTime(); p.chart.priceScale("right").applyOptions({ autoScale: true }); }); toast(""); }
+
+/* KING_WMDAY (King, Nov 14): watermark = "CME MES [tf]" / weekday / time (seconds only below 1m) */
+function wmSet(p, force) { const el = p && p.el && p.el.querySelector(".wmark"); if (!el) return; const tf = prefs.tfs[p.i] || "5m", s = paneSym(p), t = nowT();
+  let day = "", hm = ""; if (t) { const lt = loc(t) + (p.sec < 60 ? 0 : 0), d = new Date(lt * 1000); day = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][d.getUTCDay()];
+    const hh = d.getUTCHours(), mm = String(d.getUTCMinutes()).padStart(2, "0"), ss = String(d.getUTCSeconds()).padStart(2, "0"); hm = (clock24() ? String(hh).padStart(2, "0") : ((hh + 11) % 12) + 1) + ":" + mm + (p.sec < 60 ? ":" + ss : ""); }
+  const key = s + tf + day + hm; if (!force && el.dataset.k === key) return; el.dataset.k = key;
+  el.innerHTML = `<div class="wm1">CME ${esc(s)} <span class="wtf">${esc(tf)}</span></div>${day ? `<div class="wm2">${day}</div><div class="wm3">${hm}</div>` : ""}`; }
+
+/* KING_RHOVER (King, Nov 14): hovering Reese's entry/exit arrows shows the exact price */
+setTimeout(function rh() { if (!panes.length) return setTimeout(rh, 800); let tip = document.getElementById("rhtip"); if (!tip) { tip = document.createElement("div"); tip.id = "rhtip"; document.body.appendChild(tip); }
+  panes.forEach((p) => { if (p._rh) return; p._rh = true; p.chart.subscribeCrosshairMove((pr) => { if (!reeseMk.length || !pr || !pr.time || !pr.point) { tip.style.display = "none"; return; }
+    const m = reeseMk.find((x) => bucket(x.t, p.sec) === pr.time && /@/.test(x.text)); if (!m) { tip.style.display = "none"; return; } const r = p.el.getBoundingClientRect();
+    tip.textContent = m.text; tip.style.display = "block"; tip.style.left = r.left + pr.point.x + 14 + "px"; tip.style.top = r.top + pr.point.y - 30 + "px"; }); }); setTimeout(rh, 3000); }, 1500);
