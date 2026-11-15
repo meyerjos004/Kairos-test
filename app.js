@@ -205,7 +205,7 @@ async function ensure15() {   // a pane switched to 15s/30s mid-session: load 15
   toast("Loading 15s data…"); B["15s"].bars = (await Promise.all([...months].sort().map((m) => loadMonth(inst.data, "15s", m)))).flat().sort((a, b) => a.t - b.t);
   let k = -1; for (let j = 0; j < B["15s"].bars.length && B["15s"].bars[j].t <= cursorT; j++) k = j; B["15s"].i = k;
   for (const s of Object.keys(X)) { const f = X[s]["15s"]; if (!f.bars.length) { f.bars = (await Promise.all([...months].sort().map((m) => loadMonth(INST[s].data, "15s", m)))).flat().sort((a, b) => a.t - b.t); f.i = -1; } } advOthers();
-  if (!B["15s"].bars.length) toast("No 15s data around this date (15s covers NY mornings)"); else toast("");
+  if (!B["15s"].bars.length) toast("No 15s data around this date (full days for the last year; older dates have NY mornings only)"); else toast("");
 }
 async function ensureAhead() {
   const b = B["1m"]; if (b.bars.length - b.i > 3000) return; const nx = addM([...months].sort().pop(), 1);
