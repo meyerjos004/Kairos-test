@@ -3224,3 +3224,10 @@ function dlPrompt(force) { if (!force && (prefs.dlAsked === APP_VERSION || DEMO)
   prefs.dlAsked = APP_VERSION; savePrefs();
   wideDlg(`<div class="dlp"><h3>Get KAIROS as an app</h3><p>It's faster, opens full screen, and keeps you signed in. Windows, iPhone and Android.</p><ul class="small"><li>Opens in its own window, no browser tabs</li><li>Loads quicker, data stays cached</li><li>Notifications for your sessions</li></ul></div>`,
     [{ t: "Maybe later" }, { t: "⬇ Get the app", primary: true, f: () => { try { getApp(); } catch (e) { toast(e.message); } } }]); }
+
+/* KING_SCALPPOP (King, Nov 14): the Scalp page in the order panel pops the Scalp Pad out and closes the panel.
+   The pad's dock button is an arrow; docking hides the pad and opens the order panel on the Order page. */
+{ const sm = document.querySelector('.mode[data-mode="scalp"]'); if (sm) sm.addEventListener("click", (e) => { if (!prefs.side) return; e.stopImmediatePropagation(); e.preventDefault();
+    prefs.pad.show = true; prefs.side = false; savePrefs(); padUI(); sideUI(); try { FX.pop($("pad")); } catch (x) {} }, true);
+  const dx = $("padx"); if (dx) { dx.title = "Dock into the order panel"; dx.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h12M12 6l6 6-6 6"/><path d="M20 5v14"/></svg>';
+    dx.onclick = () => { prefs.pad.show = false; prefs.side = true; savePrefs(); padUI(); sideUI(); const om = document.querySelector('.mode[data-mode="order"]'); if (om) om.click(); }; } }

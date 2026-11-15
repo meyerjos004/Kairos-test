@@ -362,6 +362,12 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_SCALPPOP
+        await E("prefs.side = true; sideUI()"); await pg.wait_for_timeout(200); await pg.click('.mode[data-mode="scalp"]'); await pg.wait_for_timeout(250)
+        check("scalp page pops the pad out + closes the panel", await E('!document.getElementById("pad").classList.contains("hidden") && document.getElementById("side").classList.contains("hidden")'))
+        await pg.click("#padx"); await pg.wait_for_timeout(250)
+        check("dock arrow: pad hidden, order panel open on Order", await E('document.getElementById("pad").classList.contains("hidden") && !document.getElementById("side").classList.contains("hidden") && !document.getElementById("md-order").classList.contains("hidden")'))
+        await E("prefs.side = false; sideUI(); prefs.pad.show = true; padUI()")
         # KING_FBKIND
         await pg.click("#fxtop"); await pg.wait_for_timeout(200); await pg.click('.fxb-seg [data-k="idea"]'); await pg.wait_for_timeout(150)
         check("feedback: Idea button tags + colors the card", await E('document.getElementById("fxb-card").dataset.kind') == "idea" and await E('document.getElementById("fxb-go").textContent') == "Send idea")
