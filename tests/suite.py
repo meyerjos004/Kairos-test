@@ -362,6 +362,9 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_POSSNAP
+        r = await E('(() => { const p = panes[active], c = p.candles, k = c.length - 5; const d = newDrawing("long", p, { t: c[k].time + p.sec * 0.4, p: c[k].close + 7 }); const ok = d.a.t === c[k].time && d.entry === rnd(c[k].close); drawings = drawings.filter((z) => z !== d); return ok; })()')
+        check("position box snaps to entry candle centre + close", r)
         # KING_SESSIONS (Nov 14)
         check("titles: week", await E('rangeTitle(["2025-07-07","2025-07-08","2025-07-09","2025-07-10","2025-07-11"])') == "Week of July 7th, 2025")
         check("titles: month", await E('rangeTitle(dpDays(Date.UTC(2022,7,1), Date.UTC(2022,7,31)))') == "Month of August, 2022")

@@ -389,7 +389,9 @@ const SHARED = ["hline"];   // horizontal lines show on every chart; everything 
 function setTool(t) { tool = t; pend = null; document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === t)); try { tgSync(t); } catch (e) {} panes.forEach((p) => { p.el.style.cursor = t === "cursor" ? "" : "crosshair"; p.chart.applyOptions({ crosshair: { mode: t === "cross" ? 0 : 1 } }); paint(p); }); }
 function newDrawing(type, p, a, b) {
   const d = { id: did++, type, pane: p.i, a: { ...a }, b: b ? { ...b } : { ...a } };
-  if (type === "long" || type === "short") { const s = type === "long" ? 1 : -1; d.b = { t: a.t + p.sec * 30, p: a.p }; d.entry = a.p; d.sl = rnd(a.p - s * prefs.slPts); d.tp = rnd(a.p + s * prefs.tpPts); d.side = s; d.state = "idle"; d.qty = null; }
+  if (type === "long" || type === "short") { const s = type === "long" ? 1 : -1;
+    { const c = p.candles; if (c && c.length) { const k = Math.max(0, Math.min(c.length - 1, Math.round(idxOf(p, a.t)))); d.a.t = c[k].time; d.a.p = a.p = rnd(c[k].close); a = d.a; } }   // KING_POSSNAP (King, Nov 14): the box starts at the centre of the entry candle and the entry line = that candle's close
+    d.b = { t: a.t + p.sec * 30, p: a.p }; d.entry = a.p; d.sl = rnd(a.p - s * prefs.slPts); d.tp = rnd(a.p + s * prefs.tpPts); d.side = s; d.state = "idle"; d.qty = null; }
   if (type === "text") d.text = prompt("Note text") || "Note";
   if (type === "channel") d.off = chOff(d);
   if (type === "pitchfork") d.c = { t: d.b.t + Math.max(p.sec, (d.b.t - d.a.t) * 0.4), p: d.a.p - (d.b.p - d.a.p) * 0.6 };
