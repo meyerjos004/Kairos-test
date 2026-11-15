@@ -3277,3 +3277,8 @@ async function heatCard(tr) { let el = $("st-heat"); if (!el) { el = document.cr
     <div class="heatg"><div><div class="tiny muted">Winners' heat (R against)</div>${bars(W, "mae", "#2bd4a0")}</div><div><div class="tiny muted">Losers' best (R in favour)</div>${bars(L, "mfe", "#ff6b7a")}</div></div>
     <p class="small">💡 ${tip}</p><div class="tiny muted">${H.length} trades with a stop measured.</div>`; }
 { const _rs = renderStats; renderStats = async function () { await _rs(); try { let tr = (await db.allTrades()).slice(); const A = $("st-acct").value, S = $("st-sym").value; if (A === "none") tr = tr.filter((t) => !t.account_id); else if (A) tr = tr.filter((t) => t.account_id === A); if (S) tr = tr.filter((t) => t.symbol === S); await heatCard(tr); } catch (e) {} }; }
+
+/* KING_RESUME (night research #5, TradingView session restore): reopening KAIROS lands on the exact candle you left, same symbol + layout */
+function saveResume() { try { if (DEMO || blind || !nowT() || !B["1m"].bars.length) return; const s = fmt(loc(nowT())).replace(" ", "T"); if (prefs.lastStart === s) return; prefs.lastStart = s; prefs.lastSym = $("sym").value; savePrefs(); } catch (e) {} }
+{ const _p = pause; pause = function () { _p(); saveResume(); }; }
+addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveResume(); }); addEventListener("pagehide", saveResume); setInterval(saveResume, 60000);
