@@ -816,3 +816,8 @@ body.pix .glass,body.pix .card,body.pix .setc{box-shadow:4px 4px 0 rgba(0,0,0,.6
 .jd-chart{position:relative}.jd-pos{position:absolute;inset:0;pointer-events:none;z-index:3}
 
 .tfly .tool.fi.hashk{flex-direction:row!important;height:34px!important}.tfly .tool .hk{display:none}
+
+/* KING_A11Y (night audit, Vercel Web Interface Guidelines): visible keyboard focus, tabular numbers everywhere (prices/P&L don't jiggle) */
+body{font-variant-numeric:tabular-nums}
+button:focus-visible,a:focus-visible,[tabindex]:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.tool:focus-visible,.ri:focus-visible{outline-offset:-2px}

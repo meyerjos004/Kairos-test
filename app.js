@@ -3247,3 +3247,11 @@ function dlPrompt(force) { if (!force && (prefs.dlAsked === APP_VERSION || DEMO)
     prefs.pad.show = true; prefs.side = false; savePrefs(); padUI(); sideUI(); try { FX.pop($("pad")); } catch (x) {} }, true);
   const dx = $("padx"); if (dx) { dx.title = "Dock into the order panel"; dx.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h12M12 6l6 6-6 6"/><path d="M20 5v14"/></svg>';
     dx.onclick = () => { prefs.pad.show = false; prefs.side = true; savePrefs(); padUI(); sideUI(); const om = document.querySelector('.mode[data-mode="order"]'); if (om) om.click(); }; } }
+
+/* KING_A11Y: every form control and icon-only button gets an accessible name (screen readers + Vercel audit) */
+function a11yNames(root = document) { root.querySelectorAll("input:not([type=hidden]),select,textarea,button").forEach((el) => {
+  if (el.getAttribute("aria-label") || (el.labels && el.labels.length && el.labels[0].textContent.trim())) return;
+  if (el.tagName === "BUTTON" && el.textContent.trim()) return;
+  const n = el.title || el.placeholder || (el.closest("label") && el.closest("label").textContent.trim()) || el.dataset.tool || el.id.replace(/^[a-z]+-/, "").replace(/[-_]/g, " ");
+  if (n) el.setAttribute("aria-label", n.slice(0, 80)); }); }
+setTimeout(a11yNames, 1500); new MutationObserver(() => { clearTimeout(a11yNames.t); a11yNames.t = setTimeout(a11yNames, 400); }).observe(document.body, { childList: true, subtree: true });
