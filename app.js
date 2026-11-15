@@ -2800,11 +2800,13 @@ function dpSearch(q) { q = String(q || "").toLowerCase().replace(/(\d)(st|nd|rd|
 function dpRandomWeek() { const a = DP.from, z = dpLast() - 7 * 864e5; for (let g = 0; g < 200; g++) { let t = a + Math.random() * (z - a); t = Math.floor(t / 864e5) * 864e5; const wd = new Date(t).getUTCDay(); t -= ((wd + 6) % 7) * 864e5; const days = dpDays(t, t + 4 * 864e5); if (days.length >= 3) return days; } return []; }
 function dpYears() { const y0 = 2021, y1 = new Date(dpLast()).getUTCFullYear(); let ys = ""; for (let y = y1; y >= y0; y--) ys += `<button class="dp-big" data-y="${y}">${y}</button>`;
   dpShell([["Choose dates", dpYears]], `<div class="dp-search"><input id="dp-q" placeholder="Type any date: “jan 1st 2023”, “3/14/24”, “april 2025”, “2025”" autocomplete="off"><button id="dp-qgo" class="primary">Go</button></div>
-    <div class="row dp-mrow"><button id="dp-rw">🎲 Random week</button></div><div class="dp-hint tiny muted">Pick a year</div><div class="dp-grid">${ys}</div>`);
+    <div class="row dp-mrow"><button id="dp-rw">🎲 Random week</button><button id="dp-shot" title="Paste or pick a chart screenshot; KAIROS reads the date and time">📋 From screenshot</button></div><div class="dp-hint tiny muted">Pick a year</div><div class="dp-grid">${ys}</div>`);
   const go = () => { const r = dpSearch($("dp-q").value); if (!r) return toast("Couldn't read that date. Try “jan 1 2023” or “2023-01-01”"); if (r.m < 0) return dpMonths(r.y);
     if (r.d) { const t = Date.UTC(r.y, r.m, r.d); if (!dpTrading(t)) { const nx = dpDays(t, t + 6 * 864e5)[0]; if (!nx) return toast("No trading day near that date"); toast(dpIso(t) + " isn't a trading day, so it opens " + nx); return dpTest([nx], ""); } return dpTest([dpIso(t)], ""); }
     dpWeeks(r.y, r.m); };
   $("dp-qgo").onclick = go; $("dp-q").onkeydown = (e) => { e.stopPropagation(); if (e.key === "Enter") go(); }; setTimeout(() => $("dp-q") && $("dp-q").focus(), 30);
+  $("dp-shot").onclick = async () => { try { const items = await navigator.clipboard.read(); for (const it of items) { const ty = it.types.find((t) => t.startsWith("image/")); if (ty) { dpClose(); return shotToReplay(await it.getType(ty)); } } } catch (e) {}
+    const f = document.createElement("input"); f.type = "file"; f.accept = "image/*"; f.onchange = () => { if (f.files[0]) { dpClose(); shotToReplay(f.files[0]); } }; f.click(); };
   $("dp-rw").onclick = () => { const d = dpRandomWeek(); dpTest(d, "Random week of " + new Date(d[0] + "T12:00:00Z").toLocaleDateString([], { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })); };
   $("dpick").querySelectorAll("[data-y]").forEach((b) => b.onclick = () => dpMonths(+b.dataset.y)); }
 function dpMonths(y) { let ms = ""; for (let m = 0; m < 12; m++) { const has = dpDays(Date.UTC(y, m, 1), Date.UTC(y, m + 1, 0)).length; ms += `<button class="dp-big" data-m="${m}" ${has ? "" : "disabled"}>${DPM[m]}</button>`; }
@@ -3102,7 +3104,7 @@ function settings2() { const v = $("v-settings"); if (!v || v.dataset.s2) return
   relc.querySelector(".relbtn").appendChild($("s-intro").parentElement);   // KING_RELROW (King): the Beta intro button sits in the Beta row
   put("look", card("Theme")); put("trade", card("Order pad")); put("keys", card("Hot keys"));
   const rp = mk("replay", `<h3>Playback</h3>`); if (live) rp.appendChild(live);
-  rp.insertAdjacentHTML("beforeend", `<label class="ck"><input id="s2-follow" type="checkbox" ${prefs.follow !== false ? "checked" : ""}> Follow the newest candle while playing</label><label class="ck"><input id="s2-reese" type="checkbox" ${prefs.reesePop !== false ? "checked" : ""}> Show Reese's trade when one of his sessions ends</label>`);
+  rp.insertAdjacentHTML("beforeend", `<label class="ck"><input id="s2-follow" type="checkbox" ${prefs.follow !== false ? "checked" : ""}> Follow the newest candle while playing</label><label class="ck"><input id="s2-reese" type="checkbox" ${prefs.reesePop !== false ? "checked" : ""}> Show Reese's trade when one of his sessions ends</label><label class="ck"><input id="s2-ghost" type="checkbox" ${prefs.ghosts !== false ? "checked" : ""}> 👻 Ghost trades: show what you did last time on this day</label>`);
   put("sound", card("Feel")); put("sound", card("Trade sounds & effects")); put("sound", card("Sounds per event"));
   const nf = mk("notif", `<h3>Notifications</h3>${[["news", "News days (CPI, FOMC, NFP…) when a replay loads"], ["acct", "Account banners: DLL hit, blown, passed, max win"], ["tips", "Feature tips"]].map(([k, t]) => `<label class="ck"><input type="checkbox" data-nt="${k}" ${(prefs.notif || {})[k] !== false ? "checked" : ""}> ${t}</label>`).join("")}`);
   nf.onchange = (e) => { const k = e.target.dataset.nt; if (!k) return; prefs.notif = { ...(prefs.notif || {}), [k]: e.target.checked }; if (k === "tips" && $("s-tips")) $("s-tips").checked = e.target.checked; savePrefs(); };
@@ -3116,7 +3118,7 @@ function settings2() { const v = $("v-settings"); if (!v || v.dataset.s2) return
   $("s2-q").oninput = (e) => { const q = e.target.value.trim().toLowerCase(); if (!q) return go(prefs.s2cat || "general");
     main.querySelectorAll(".s2sec").forEach((s) => s.classList.remove("hidden")); main.querySelectorAll(".setc").forEach((c) => c.classList.toggle("s2hide", !c.textContent.toLowerCase().includes(q)));
     main.querySelectorAll(".s2sec").forEach((s) => s.classList.toggle("hidden", !s.querySelector(".setc:not(.s2hide)"))); };
-  $("s2-follow").onchange = (e) => { prefs.follow = e.target.checked; savePrefs(); }; $("s2-reese").onchange = (e) => { prefs.reesePop = e.target.checked; savePrefs(); };
+  $("s2-follow").onchange = (e) => { prefs.follow = e.target.checked; savePrefs(); }; $("s2-ghost").onchange = (e) => { prefs.ghosts = e.target.checked; savePrefs(); panes.forEach((p) => { p._mkk = null; p._gk = null; csMarks(p); }); }; $("s2-reese").onchange = (e) => { prefs.reesePop = e.target.checked; savePrefs(); };
   $("s2-csv").onclick = async () => { if (!jT.length) jT = await db.trades(""); exportCsv(); }; $("s2-adm").onclick = () => view("admin");
   side.querySelector(".s2adm").classList.toggle("hidden", !isAdmin); main.querySelector('[data-s2="admin"]').classList.toggle("s2noadm", !isAdmin);
   go(prefs.s2cat && (prefs.s2cat !== "admin" || isAdmin) ? prefs.s2cat : "general"); }
@@ -3282,3 +3284,48 @@ async function heatCard(tr) { let el = $("st-heat"); if (!el) { el = document.cr
 function saveResume() { try { if (DEMO || blind || !nowT() || !B["1m"].bars.length) return; const s = fmt(loc(nowT())).replace(" ", "T"); if (prefs.lastStart === s) return; prefs.lastStart = s; prefs.lastSym = $("sym").value; savePrefs(); } catch (e) {} }
 { const _p = pause; pause = function () { _p(); saveResume(); }; }
 addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") saveResume(); }); addEventListener("pagehide", saveResume); setInterval(saveResume, 60000);
+
+/* KING_GHOSTS (King, Nov 14): your past trades on this same day (earlier backtest sessions + journaled trades) show as faint ghost arrows
+   once the replay reaches them, so you can see what you did last time. Settings → Replay & playback → "Ghost trades". */
+let ghostT = [], ghostLoaded = 0;
+async function ghostLoad(force) { if (!force && Date.now() - ghostLoaded < 60000) return; ghostLoaded = Date.now(); try { ghostT = (await db.allTrades()).filter((t) => t.t_entry); } catch (e) { ghostT = []; } panes.forEach((p) => { p._mkk = null; try { csMarks(p); } catch (e) {} }); }
+function ghostMarks(p, last, first) { if (prefs.ghosts === false || !ghostT.length) return []; const s = paneSym(p), mine = new Set((hist || []).map((t) => t.id).filter(Boolean)), out = [];
+  for (const t of ghostT) { if (mine.has(t.id) || (sess && t.session_id === sess.id)) continue; if (symRoot(t.symbol) !== symRoot(s)) continue;
+    const te = bucket(loc(t.t_entry), p.sec); if (te < first || te > last) continue; const won = +t.pnl > 0;
+    out.push({ time: te, position: t.dir > 0 ? "belowBar" : "aboveBar", color: t.dir > 0 ? "rgba(61,139,255,.55)" : "rgba(255,77,94,.55)", shape: t.dir > 0 ? "arrowUp" : "arrowDown", text: `👻 ${t.dir > 0 ? "B" : "S"} ${px2(t.entry)}` });
+    if (t.t_exit) { const tx = bucket(loc(t.t_exit), p.sec); if (tx <= last) out.push({ time: tx, position: t.dir > 0 ? "aboveBar" : "belowBar", color: won ? "rgba(43,212,160,.55)" : "rgba(255,107,122,.55)", shape: "circle", text: `👻 ${won ? "+" : ""}${money(+t.pnl)}` }); } }
+  return out; }
+{ const _cm = csMarks; csMarks = function (p) { const n0 = ghostMarks.n; _cm(p); try { const last = p.candles.length ? p.candles[p.candles.length - 1].time : -1, first = p.candles.length ? p.candles[0].time : Infinity, g = ghostMarks(p, last, first);
+    if (!g.length && !p._ghostN) return; const key = "g" + g.length + "|" + p._mkk + "|" + p.sec; if (p._gk === key) return; p._gk = key; p._ghostN = g.length;
+    const base = (p.series.markers ? p.series.markers() : []).filter((m) => !String(m.text || "").startsWith("👻")); p.series.setMarkers([...base, ...g].sort((a, b) => a.time - b.time)); } catch (e) {} }; }
+{ const _lr = loadReplay; loadReplay = async function (...a) { const r = await _lr.apply(this, a); ghostLoad(true).catch(() => {}); return r; }; }
+setTimeout(() => ghostLoad(true).catch(() => {}), 3000);
+
+/* KING_SHOT2REPLAY (King, Nov 14, idea K): paste a chart screenshot (Discord, TradingView, X) and KAIROS reads the symbol, date and time from it
+   (free OCR in your browser, nothing uploaded) and loads that moment. Ctrl/Cmd+V anywhere on the Trade page, or Date picker → "From screenshot". */
+function shotParse(txt) { const T = " " + String(txt).replace(/[|]/g, " ").replace(/\s+/g, " ") + " ", M = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
+  const sym = (T.match(/\b(MNQ|MES|NQ|ES)(?:[A-Z]\d{1,4}|1!)?(?![A-Za-z0-9])/i) || [])[1]; const dates = [], y4 = (y) => (y.length === 2 ? 2000 + +y : +y), add = (y, m, d, i) => { if (m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 2015 && y <= 2035) dates.push({ s: `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`, i }); };
+  for (const m of T.matchAll(/\b(20\d\d)[-./](\d{1,2})[-./](\d{1,2})\b/g)) add(+m[1], +m[2], +m[3], m.index);
+  for (const m of T.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(\d{2,4})\b/g)) add(y4(m[3]), +m[1], +m[2], m.index);
+  for (const m of T.matchAll(/\b(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+'?(\d{2,4})\b/gi)) add(y4(m[3]), M[m[1].toLowerCase()], +m[2], m.index);
+  for (const m of T.matchAll(/\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*\.?\s+'?(\d{2,4})\b/gi)) add(y4(m[3]), M[m[2].toLowerCase()], +m[1], m.index);
+  let date = null; if (dates.length) { const cnt = {}; dates.forEach((d) => (cnt[d.s] = (cnt[d.s] || 0) + 1)); date = dates.slice().sort((a, b) => cnt[b.s] - cnt[a.s] || b.s.localeCompare(a.s))[0]; }
+  const times = [...T.matchAll(/\b([01]?\d|2[0-3]):([0-5]\d)(?::[0-5]\d)?\s*(am|pm)?\b/gi)].map((m) => { let h = +m[1]; const ap = (m[3] || "").toLowerCase(); if (ap === "pm" && h < 12) h += 12; if (ap === "am" && h === 12) h = 0; return { s: `${String(h).padStart(2, "0")}:${m[2]}`, i: m.index }; });
+  let time = null; if (times.length) time = date ? times.slice().sort((a, b) => Math.abs(a.i - date.i) - Math.abs(b.i - date.i))[0] : times[0];
+  return { sym: sym ? sym.toUpperCase() : null, date: date ? date.s : null, time: time ? time.s : null }; }
+let tessP = null;
+function tessLoad() { if (window.Tesseract) return Promise.resolve(); if (tessP) return tessP; tessP = new Promise((ok, no) => { const s = document.createElement("script"); s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"; s.onload = ok; s.onerror = () => { tessP = null; no(new Error("Couldn't load the reader")); }; document.head.appendChild(s); }); return tessP; }
+async function shotToReplay(blob) { const url = URL.createObjectURL(blob);
+  wideDlg(`<h3>Load this chart</h3><div class="s2r"><img src="${url}" alt="Pasted chart"><div><p class="small" id="s2r-st">Reading the screenshot…</p>
+    <label>Symbol<select id="s2r-sym"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select></label><label>Date<input id="s2r-d" type="date"></label><label>Time (New York)<input id="s2r-t" type="time" value="09:30"></label>
+    <p class="tiny muted">Read on your computer, nothing is uploaded. Fix anything it got wrong.</p></div></div>`,
+    [{ t: "Cancel" }, { t: "Replay this moment", primary: true, f: async () => { const d = $("s2r-d").value, t = $("s2r-t").value || "09:30"; if (!d) return toast("Pick the date");
+      if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); const [h, m] = t.split(":").map(Number), mm = h * 60 + m - 30, st = `${d}T${String(Math.floor(Math.max(0, mm) / 60)).padStart(2, "0")}:${String(Math.max(0, mm) % 60).padStart(2, "0")}`;
+      $("sym").value = $("s2r-sym").value; $("start").value = st; view("trade"); await loadReplay(); toast(`Loaded ${$("s2r-sym").value} · ${longDate(d)} · 30 min before ${t}`); } }]);
+  $("dlgbox").classList.add("jdbox");
+  try { await tessLoad(); const r = await Tesseract.recognize(blob, "eng"); const P = shotParse(r.data.text); if (!$("s2r-st")) return;
+    if (P.sym) $("s2r-sym").value = P.sym; if (P.date) $("s2r-d").value = P.date; if (P.time) $("s2r-t").value = P.time;
+    $("s2r-st").innerHTML = P.date ? `Found <b>${P.sym || "symbol?"}</b> · <b>${longDate(P.date)}</b>${P.time ? " · <b>" + P.time + "</b>" : ""}. Check it and hit Replay.` : "Couldn't find a date in the picture. Type it in and hit Replay."; }
+  catch (e) { if ($("s2r-st")) $("s2r-st").textContent = "Couldn't read it (" + e.message + "). Type the date in."; } }
+document.addEventListener("paste", (e) => { if ($("app").dataset.v !== "trade" || e.target.closest("input,textarea,[contenteditable]") || !$("dlg").classList.contains("hidden")) return;
+  const it = [...(e.clipboardData || {}).items || []].find((x) => x.type.startsWith("image/")); if (!it) return; e.preventDefault(); shotToReplay(it.getAsFile()); });

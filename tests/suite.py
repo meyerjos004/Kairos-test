@@ -362,6 +362,13 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_SHOT2REPLAY + KING_GHOSTS
+        check("screenshot reader: TradingView style", await E('JSON.stringify(shotParse("NQ1! · 1 · CME   Fri 14 Nov \'26  09:45  21,420.25"))') == '{"sym":"NQ","date":"2026-11-14","time":"09:45"}', await E('JSON.stringify(shotParse("NQ1! · 1 · CME   Fri 14 Nov \'26  09:45  21,420.25"))'))
+        check("screenshot reader: Discord style", await E('JSON.stringify(shotParse("MES Jan 3, 2025 10:32 AM long 5900"))') == '{"sym":"MES","date":"2025-01-03","time":"10:32"}')
+        check("screenshot reader: numeric date", await E('shotParse("ES 2025-06-20 14:05").date') == "2025-06-20")
+        await E("pos.qty && flatten()"); await E("(async () => { await loadReplay(); for (let i=0;i<20;i++) await stepFwd(); market(1); for (let i=0;i<6;i++) await stepFwd(); flatten(); })()"); await pg.wait_for_timeout(600)
+        await E("(async () => { hist = []; sess = null; await ghostLoad(true); await loadReplay(); for (let i=0;i<40;i++) await stepFwd(); })()"); await pg.wait_for_timeout(800)
+        check("ghost trades show on the same day", await E('panes[0].series.markers().some((m) => String(m.text||"").startsWith("👻"))'), await E('ghostT.length + " ghosts; markers " + panes[0].series.markers().length'))
         # KING_HEAT
         await E("pos.qty && flatten()"); await E("(async () => { await loadReplay(); for (let i=0;i<30;i++) await stepFwd(); market(1); for (let i=0;i<10;i++) await stepFwd(); flatten(); })()"); await pg.wait_for_timeout(800)
         await E('view("stats")'); await pg.wait_for_timeout(2500)
