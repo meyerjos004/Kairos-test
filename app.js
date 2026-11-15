@@ -2966,3 +2966,56 @@ function blownCard(a, S) { wideDlg(`<div class="blowncard"><h3>Account Blown</h3
   [{ t: "Close" }, { t: "New session", primary: true, f: () => newSessionDlg() }]); }
 function payoutsOf(a, S) { if (a.kind !== "funded") return { n: 0, amt: 0 }; const byDay = {}; for (const t of S.tr) { const d = sessDay(t.t_exit); byDay[d] = (byDay[d] || 0) + (+t.pnl || 0); }
   let wins = 0, cyc = 0, n = 0, amt = 0; for (const d of Object.keys(byDay).sort()) { cyc += byDay[d]; if (byDay[d] >= 150) wins++; if (wins >= 5) { if (cyc > 0) { n++; amt += cyc * 0.9; } wins = 0; cyc = 0; } } return { n, amt }; }
+
+/* KING_TAX (King, Nov 14): Tax tab. Estimate for prop-firm payouts (1099 contractor income → self-employment tax).
+   2026 figures: IRS Rev. Proc. 2025-32 brackets + standard deduction, SS wage base $184,500, Utah 4.45% flat (S.B. 60), PA 3.07% flat,
+   Sweden: average municipal 32.38%, state 20% above 643,000 kr (skiktgräns), egenavgifter ~28.97% with 25% schablonavdrag. Estimates only. */
+const TAXY = { y: 2026, std: { single: 16100, mfj: 32200, mfs: 16100 },
+  br: { single: [[12400, .10], [50400, .12], [105700, .22], [201775, .24], [256225, .32], [640600, .35], [Infinity, .37]],
+        mfj: [[24800, .10], [100800, .12], [211400, .22], [403550, .24], [512450, .32], [768700, .35], [Infinity, .37]],
+        mfs: [[12400, .10], [50400, .12], [105700, .22], [201775, .24], [256225, .32], [384350, .35], [Infinity, .37]] },
+  ssBase: 184500, addMed: { single: 200000, mfj: 250000, mfs: 125000 } };
+const TAX_DUE = [["Q1", "Jan 1 – Mar 31", "2026-04-15"], ["Q2", "Apr 1 – May 31", "2026-06-15"], ["Q3", "Jun 1 – Aug 31", "2026-09-15"], ["Q4", "Sep 1 – Dec 31", "2027-01-15"]];
+function bracketTax(x, br) { let t = 0, lo = 0; for (const [hi, r] of br) { if (x <= lo) break; t += (Math.min(x, hi) - lo) * r; lo = hi; } return t; }
+function taxEst(inc, o) {   // inc = net trading profit (payouts) for the year, USD
+  const w2 = +o.w2 || 0, st = o.status || "single";
+  if (o.loc === "se") { const fx = +o.fx || 10.5, sek = inc * fx, ega = Math.max(0, sek * 0.75) * 0.2897, base = Math.max(0, sek - ega + (+o.w2 || 0) * fx), mun = base * 0.3238, stt = Math.max(0, base - 643000) * 0.20, tot = (ega + mun + stt) / fx;
+    return { lines: [["Egenavgifter (Swedish social fees, ~28.97% on 75%)", ega / fx], ["Municipal tax (average 32.38%)", mun / fx], ["State tax (20% above 643,000 kr)", stt / fx]], total: tot, fed: 0, se: ega / fx, state: (mun + stt) / fx }; }
+  const seBase = Math.max(0, inc) * 0.9235, ss = Math.min(seBase, Math.max(0, TAXY.ssBase - w2)) * 0.124, med = seBase * 0.029 + Math.max(0, seBase + w2 - TAXY.addMed[st]) * 0.009, se = ss + med;
+  const agi = Math.max(0, inc + w2 - se / 2), ti = Math.max(0, agi - TAXY.std[st]), fedAll = bracketTax(ti, TAXY.br[st]), fedW2 = bracketTax(Math.max(0, w2 - TAXY.std[st]), TAXY.br[st]), fed = Math.max(0, fedAll - fedW2);
+  const sr = o.loc === "pa" ? 0.0307 : 0.0445, state = Math.max(0, inc) * sr;
+  return { lines: [["Self-employment tax (15.3% on 92.35%, Social Security part capped at $184,500)", se], ["Federal income tax (your bracket, after the standard deduction)", fed], [o.loc === "pa" ? "Pennsylvania (3.07% flat; your city may add a local tax)" : "Utah (4.45% flat)", state]], total: se + fed + state, fed, se, state };
+}
+function taxIncome() { const yr = String(TAXY.y), out = { pay: 0, list: [] };
+  try { for (const a of accts || []) { if (a.kind !== "funded") continue; const S = acctState(a, taxIncome.all || []), po = payoutsOf(a, S); if (po.amt) { out.pay += po.amt; out.list.push([a.name, po.amt]); } } } catch (e) {}
+  for (const x of (prefs.tax && prefs.tax.extra) || []) if (String(x.d || "").startsWith(yr)) { out.pay += +x.amt || 0; out.list.push([x.note || "Payout", +x.amt || 0]); }
+  return out; }
+async function renderTax() { const el = $("v-tax"); if (!el) return; try { taxIncome.all = await db.allTrades(); } catch (e) { taxIncome.all = []; }
+  const o = prefs.tax = { loc: "ut", status: "single", w2: 0, fx: 10.5, extra: [], ...(prefs.tax || {}) }, I = taxIncome(), R = taxEst(I.pay - (+o.exp || 0), o), pct = I.pay ? (100 * R.total) / I.pay : 0, keep = I.pay - R.total;
+  const q = TAX_DUE.map(([n, per, due]) => [n, per, due, R.total / 4]), cur = o.loc === "se" ? "Skatteverket (F-skatt, paid monthly)" : "IRS Direct Pay · EFTPS";
+  const HQ = (t) => `<i class="qm" data-help="${esc(t)}">?</i>`;
+  el.innerHTML = `<div class="toolbar"><h2 class="vh">Tax</h2><span class="muted small">Estimates for ${TAXY.y} from your funded payouts. Not tax advice; check with a tax pro.</span></div>
+  <div class="tax-grid"><div class="card"><h3>You</h3>
+    <label>Where you live<select id="tq-loc"><option value="ut">Utah</option><option value="pa">Pennsylvania</option><option value="se">Sweden (estimate)</option></select></label>
+    <label><span>Filing status ${HQ("Single: not married. Married filing jointly (MFJ): one return with your spouse, usually lower tax. Married filing separately (MFS): each spouse files alone.")}</span><select id="tq-st"><option value="single">Single</option><option value="mfj">Married filing jointly</option><option value="mfs">Married filing separately</option></select></label>
+    <label><span>Other job income this year ($) ${HQ("W-2 pay from a regular job. It uses up the lower brackets and part of the Social Security cap, so your trading income is taxed at your top rate.")}</span><input id="tq-w2" type="number" value="${o.w2 || 0}"></label>
+    <label><span>Trading costs this year: evals, resets, data, software ($) ${HQ("These are business expenses. They come off your payouts before tax.")}</span><input id="tq-exp" type="number" value="${o.exp || 0}"></label>
+    ${o.loc === "se" ? `<label>USD → SEK rate<input id="tq-fx" type="number" step="0.01" value="${o.fx}"></label>` : ""}
+    <div class="row"><input id="tq-amt" type="number" placeholder="Add a payout ($)"><input id="tq-d" type="date" value="${new Date().toISOString().slice(0, 10)}"><button id="tq-add" class="small">Add</button></div>
+    <div class="tiny muted">${I.list.length ? I.list.map(([n, a]) => `${esc(n)}: ${money(a)}`).join(" · ") : "No payouts yet. Funded accounts add theirs automatically; add real ones above."}</div></div>
+  <div class="card tax-big"><div class="tbk"><span>Payouts ${TAXY.y}</span><b>${money(I.pay)}</b></div><div class="tbk"><span>Estimated tax</span><b class="pos-dn">${money(R.total)}</b></div><div class="tbk"><span>Profit after costs</span><b>${money(I.pay - (+o.exp || 0))}</b></div><div class="tbk"><span>Set aside</span><b>${pct.toFixed(1)}%</b></div><div class="tbk"><span>You keep</span><b class="pos-up">${money(keep)}</b></div>
+    <div class="tax-lines">${R.lines.map(([n, v]) => `<div><span>${esc(n)}</span><b>${money(v)}</b></div>`).join("")}</div></div>
+  <div class="card"><h3>Self-employment tax ${HQ("Prop-firm payouts are paid to you as a contractor (Form 1099), not wages. Nobody withholds tax, so you pay both halves of Social Security + Medicare yourself: 15.3% on 92.35% of your profit. Half of it is deducted from your income tax.")}</h3>
+    <p class="small">Funded payouts count as <b>contractor income</b>. You owe <b>15.3%</b> self-employment tax (12.4% Social Security up to $184,500 + 2.9% Medicare) on 92.35% of the profit, <b>plus</b> normal income tax. Nothing is withheld, so you pay during the year.</p></div>
+  <div class="card"><h3>${o.loc === "se" ? "When to pay" : "Quarterly payments (Form 1040-ES)"} ${HQ("Pay a quarter of the estimate by each date to avoid an underpayment penalty. The periods aren't equal quarters.")}</h3>
+    ${o.loc === "se" ? `<p class="small">Sweden: with F-skatt you pay preliminary tax monthly (the 12th; the 17th in January and August) to your tax account. Roughly ${money(R.total / 12)} a month at this estimate.</p>` :
+      `<table class="bt"><tr><th></th><th>Income earned</th><th>Due</th><th>Pay</th></tr>${q.map(([n, per, due, amt]) => `<tr><td>${n}</td><td>${per}</td><td>${longDate(due)}</td><td>${money(amt)}</td></tr>`).join("")}</table>`}
+    <p class="tiny muted">Where to pay: ${cur}${o.loc === "ut" ? " · Utah: Taxpayer Access Point (TAP)" : o.loc === "pa" ? " · Pennsylvania: myPATH" : ""}</p></div></div>`;
+  $("tq-loc").value = o.loc; $("tq-st").value = o.status; if (o.loc === "se") $("tq-st").disabled = true;
+  const save = () => { savePrefs(); renderTax(); };
+  $("tq-loc").onchange = (e) => { o.loc = e.target.value; save(); }; $("tq-st").onchange = (e) => { o.status = e.target.value; save(); };
+  $("tq-exp").onchange = (e) => { o.exp = +e.target.value || 0; save(); };
+  $("tq-w2").onchange = (e) => { o.w2 = +e.target.value || 0; save(); }; if ($("tq-fx")) $("tq-fx").onchange = (e) => { o.fx = +e.target.value || 10.5; save(); };
+  $("tq-add").onclick = () => { const a = +$("tq-amt").value; if (!a) return; o.extra.push({ amt: a, d: $("tq-d").value, note: "Payout " + $("tq-d").value }); save(); };
+}
+{ const _v = view; view = function (v) { _v(v); if (v === "tax") renderTax(); }; }

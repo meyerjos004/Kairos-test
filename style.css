@@ -734,3 +734,7 @@ i.qm:hover{background:rgba(167,139,250,.35);color:#fff}
 .acard{position:relative}.acard.ac-blown{border:1.5px solid #ff4d5e!important}.acard.ac-passed{border:1.5px solid #2bd4a0!important}.acard.ac-funded{background:linear-gradient(160deg,rgba(56,120,255,.28),rgba(30,60,160,.18))!important;border-color:rgba(90,150,255,.5)!important}
 .acard.ac-payout{background:linear-gradient(160deg,rgba(56,120,255,.28),rgba(30,60,160,.18))!important;border:1.5px solid #a855f7!important}.potally{position:absolute;top:10px;right:12px;font:800 12px Inter,sans-serif;color:#d8b4fe;background:rgba(168,85,247,.18);padding:4px 8px;border-radius:999px}
 .acard .ah{padding-right:90px}.blowncard h3{color:#ff4d5e;font-size:28px;margin:0 0 4px}
+
+/* KING_TAX */
+.tax-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;padding:14px}.tax-grid label{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13px}
+.tax-big{display:grid;grid-template-columns:1fr 1fr;gap:12px}.tbk span{display:block;font-size:12px;opacity:.7}.tbk b{font-size:26px}.tax-lines{grid-column:1/-1;display:flex;flex-direction:column;gap:6px;font-size:13px}.tax-lines div{display:flex;justify-content:space-between;gap:10px;border-top:1px solid rgba(255,255,255,.07);padding-top:6px}

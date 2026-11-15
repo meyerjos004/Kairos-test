@@ -362,6 +362,11 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_TAX
+        check("tax math: $50k single Utah", await E('Math.round(taxEst(50000,{loc:"ut",status:"single"}).total)') == 12686)
+        await E('view("tax")'); await pg.wait_for_timeout(500)
+        check("Tax tab renders with quarterly table", await E('document.querySelectorAll("#v-tax table.bt tr").length') == 5)
+        await E('view("trade")')
         # KING_POSSNAP
         r = await E('(() => { const p = panes[active], c = p.candles, k = c.length - 5; const d = newDrawing("long", p, { t: c[k].time + p.sec * 0.4, p: c[k].close + 7 }); const ok = d.a.t === c[k].time && d.entry === rnd(c[k].close); drawings = drawings.filter((z) => z !== d); return ok; })()')
         check("position box snaps to entry candle centre + close", r)
