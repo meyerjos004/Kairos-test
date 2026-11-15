@@ -316,7 +316,7 @@ async def main():
         await E("prefs.mask={}; maskUI(); prefs.lockUntil=Date.now()+60000")
         # KING_STEPTF / KING_SKIPCOL / KING_PLAYDAY (Nov 14)
         check("step selector has Sync default + 1m..D, no 1 bar", await E('[...document.querySelectorAll("#stepsz option")].map(o=>o.value).join(",")') == "sync,60,120,180,300,900,1800,3600,14400,86400")
-        check("speed is 1x/30x/60x/120x", await E("[...document.querySelectorAll('#speed option')].map(o=>o.value).join()") == "1,30,60,120")
+        check("speed is 1x/30x/60x/120x", await E("[...document.querySelectorAll('#speed option')].map(o=>o.value).join()") == "1,15,30,60,120,300")
         check("SKIP + Play out day buttons exist (play out day lives on the favorites bar on wide screens)", await E('!!document.getElementById("skipnext") && !!document.getElementById("playday")'))
         await E('panes[active] && pause()'); t0 = await E("nowT()"); await E('document.getElementById("stepsz").value="300"'); await E("stepUnit(false)"); t1 = await E("nowT()")
         check("5m step moves to the next 5m candle", t1 > t0 and (t1 - t0) <= 300, (t0, t1)); await E('document.getElementById("stepsz").value="sync"')

@@ -929,7 +929,7 @@ function linesFor(p) {
     const L = (price, color, title, kind, obj, style = 2) => p.lines.push({ ref: p.series.createPriceLine({ price, color, lineWidth: 2, lineStyle: style, title, axisLabelVisible: true, lineVisible: C.ext !== false }), kind, price, obj });
     const pf = (pts, qty, k) => { if (!C.pnl) return ""; const mode = k === "pos" ? C.pnlp : C.pnlb; if (mode === "pts") return (pts >= 0 ? "+" : "") + pts.toFixed(2) + " pts"; if (mode === "ticks") return (pts >= 0 ? "+" : "") + Math.round(pts / TICK) + " ticks";
       if (mode === "r") return pos.risk ? (pts / pos.risk).toFixed(2) + "R" : "—R"; return money(pts * qty * inst.pt); };
-    if (pos.qty) { const q = Math.abs(pos.qty), sd = Math.sign(pos.qty); L(pos.avg, "#c9d2df", `${pos.qty > 0 ? "LONG" : "SHORT"} ${q}  ${pf(openPnl() / (q * inst.pt), q, "pos")}`, "pos", null, 0);
+    if (pos.qty) { const q = Math.abs(pos.qty), sd = Math.sign(pos.qty), rk = pos.sl != null ? Math.abs(pos.avg - pos.sl) * q * inst.pt : null; L(pos.avg, "#c9d2df", `${pos.qty > 0 ? "LONG" : "SHORT"} ${q}  ${pf(openPnl() / (q * inst.pt), q, "pos")}${rk != null ? "  · risk " + money(rk) : ""}`, "pos", null, 0);   // KING_RISKLINE
       if (pos.sl != null) L(pos.sl, "#ff6b7a", (pos.trail ? "TRAIL " : "SL ") + pf((pos.sl - pos.avg) * sd, q, "br"), "sl");
       if (pos.tp != null) L(pos.tp, "#2bd4a0", "TP " + pf((pos.tp - pos.avg) * sd, q, "br"), "tp"); }
     for (const o of orders) L(o.price, "#7aa7ff", `${o.side > 0 ? "BUY" : "SELL"} ${o.type.toUpperCase()} ${o.qty}${o.tool ? " · auto" : ""}`, "ord", o);
@@ -3037,11 +3037,13 @@ async function jdChart(t, tf) { const el = $("jd-chart"); if (!el) return; if (j
   document.querySelectorAll("#jd-tfs button").forEach((b) => b.classList.toggle("on", b.dataset.tf === tf)); el.innerHTML = '<div class="muted small" style="padding:20px">Loading ' + tf + "…</div>";
   const { c, sec } = await jdBars(t, tf); el.innerHTML = ""; if (!c.length) { el.innerHTML = `<div class="muted small" style="padding:20px">No ${tf} data around this trade${sec < 60 ? " (15s covers NY mornings)" : ""}.</div>`; return; }
   jdC = LightweightCharts.createChart(el, { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#8b95a7" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, timeScale: { timeVisible: sec < 86400, secondsVisible: sec < 60 }, rightPriceScale: { borderVisible: false } });
-  const s = jdC.addCandlestickSeries({ upColor: prefs.up || "#2bd4a0", downColor: prefs.dn || "#ff4d5e", wickUpColor: prefs.up || "#2bd4a0", wickDownColor: prefs.dn || "#ff4d5e", borderVisible: false }); s.setData(c);
+  const C0 = (typeof csG === "function" ? csG() : {}) || {}, up = prefs.up || "#2bd4a0", dn = prefs.dn || "#ff4d5e", clear = "rgba(0,0,0,0)";   // KING_JDPREF: the user's own candle settings
+  const s = jdC.addCandlestickSeries({ upColor: C0.body === false ? clear : up, downColor: C0.body === false ? clear : dn, borderVisible: !!C0.bord, borderUpColor: C0.bu || up, borderDownColor: C0.bd || dn, wickVisible: C0.wick !== false, wickUpColor: C0.wu || up, wickDownColor: C0.wd || dn }); s.setData(c);
   const L = (p, col, title) => p != null && s.createPriceLine({ price: +p, color: col, lineWidth: 1, lineStyle: 2, title, axisLabelVisible: true });
   L(t.entry, "#c9d2df", "Entry"); L(t.stop, "#ff6b7a", "SL"); L(t.target, "#2bd4a0", "TP"); L(t.exit, "#ffc65c", "Exit");
-  const mk = [{ time: bucket(loc(t.t_entry), sec), position: t.dir > 0 ? "belowBar" : "aboveBar", color: "#c08bff", shape: t.dir > 0 ? "arrowUp" : "arrowDown", text: (t.dir > 0 ? "Buy " : "Sell ") + px2(t.entry) }];
-  if (t.t_exit) mk.push({ time: bucket(loc(t.t_exit), sec), position: t.dir > 0 ? "aboveBar" : "belowBar", color: "#ffc65c", shape: "circle", text: "Out " + px2(t.exit) });
+  const BUY = "#3d8bff", SELL = "#ff4d5e";   // KING_JDARROWS (King): buy = blue, sell = red
+  const mk = [{ time: bucket(loc(t.t_entry), sec), position: t.dir > 0 ? "belowBar" : "aboveBar", color: t.dir > 0 ? BUY : SELL, shape: t.dir > 0 ? "arrowUp" : "arrowDown", text: (t.dir > 0 ? "Buy " : "Sell ") + px2(t.entry) }];
+  if (t.t_exit) mk.push({ time: bucket(loc(t.t_exit), sec), position: t.dir > 0 ? "aboveBar" : "belowBar", color: t.dir > 0 ? SELL : BUY, shape: t.dir > 0 ? "arrowDown" : "arrowUp", text: (t.dir > 0 ? "Sell " : "Buy ") + px2(t.exit) });
   try { s.setMarkers(mk.sort((a, b) => a.time - b.time)); } catch (e) {}
   const k = c.findIndex((x) => x.time >= bucket(loc(t.t_entry), sec)); if (k >= 0) jdC.timeScale().setVisibleLogicalRange({ from: k - 45, to: k + 45 });
   /* KING_JDPOS (King): the trade's position box (reward green, risk red) drawn on every timeframe */
@@ -3050,7 +3052,10 @@ async function jdChart(t, tf) { const el = $("jd-chart"); if (!el) return; if (j
     const ts = jdC.timeScale(), xa = ts.timeToCoordinate(bucket(loc(t.t_entry), sec)), xe = t.t_exit ? ts.timeToCoordinate(bucket(loc(t.t_exit), sec)) : null, bw = Math.max(6, ts.width() / 90);
     if (xa == null) return; const x1 = xa, x2 = Math.max(x1 + bw * 3, xe != null ? xe : x1 + bw * 20), ye = s.priceToCoordinate(+t.entry);
     const zone = (p, col) => { if (p == null) return; const y = s.priceToCoordinate(+p); if (y == null || ye == null) return; g.fillStyle = col; g.fillRect(x1, Math.min(y, ye), x2 - x1, Math.abs(y - ye)); };
-    zone(t.target, "rgba(43,212,160,.16)"); zone(t.stop, "rgba(255,107,122,.16)"); if (ye != null) { g.strokeStyle = "rgba(220,226,236,.8)"; g.lineWidth = 1; g.beginPath(); g.moveTo(x1, ye); g.lineTo(x2, ye); g.stroke(); }
+    zone(t.target, "rgba(43,212,160,.16)"); zone(t.stop, "rgba(255,107,122,.16)");
+    const pt = (INST[t.symbol] || inst).pt * (+t.qty || 1), lab = (p, txt, col) => { if (p == null) return; const y = s.priceToCoordinate(+p); if (y == null) return; g.font = "600 11px Inter,sans-serif"; const w = g.measureText(txt).width + 10, yy = Math.max(2, Math.min(el.clientHeight - 18, y - 8)); g.fillStyle = col; g.beginPath(); if (g.roundRect) g.roundRect(x1 + 4, yy, w, 16, 4); else g.rect(x1 + 4, yy, w, 16); g.fill(); g.fillStyle = "#06110c"; g.fillText(txt, x1 + 9, yy + 12); };
+    const risk = t.stop != null ? Math.abs(+t.entry - +t.stop) : null, rew = t.target != null ? Math.abs(+t.target - +t.entry) : null;   // KING_JDLABELS: R and $ on the box
+    if (rew != null) lab(t.target, `Target ${money(rew * pt)}${risk ? " · " + (rew / risk).toFixed(2) + "R" : ""}`, "#2bd4a0"); if (risk != null) lab(t.stop, `Risk ${money(risk * pt)} · 1R`, "#ff8a96"); if (ye != null) { g.strokeStyle = "rgba(220,226,236,.8)"; g.lineWidth = 1; g.beginPath(); g.moveTo(x1, ye); g.lineTo(x2, ye); g.stroke(); }
     if (t.exit != null && xe != null) { const yx = s.priceToCoordinate(+t.exit); if (yx != null && ye != null) { g.setLineDash([4, 4]); g.strokeStyle = +t.pnl >= 0 ? "#2bd4a0" : "#ff6b7a"; g.beginPath(); g.moveTo(x1, ye); g.lineTo(xe, yx); g.stroke(); g.setLineDash([]); } } };
   jdC.timeScale().subscribeVisibleLogicalRangeChange(() => requestAnimationFrame(draw)); new ResizeObserver(() => requestAnimationFrame(draw)).observe(el); setTimeout(draw, 60); el.addEventListener("wheel", () => requestAnimationFrame(draw), { passive: true }); el.addEventListener("pointermove", (e) => { if (e.buttons) requestAnimationFrame(draw); }); }
 function jdConf(t) { const tg = (t.tags || []).map(String), out = [];
