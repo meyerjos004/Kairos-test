@@ -362,6 +362,10 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_FBKIND
+        await pg.click("#fxtop"); await pg.wait_for_timeout(200); await pg.click('.fxb-seg [data-k="idea"]'); await pg.wait_for_timeout(150)
+        check("feedback: Idea button tags + colors the card", await E('document.getElementById("fxb-card").dataset.kind') == "idea" and await E('document.getElementById("fxb-go").textContent') == "Send idea")
+        await pg.click("#fxb-x")
         # KING_PROFILE2
         await E("profileEditor()"); await pg.wait_for_timeout(700)
         check("profile editor: preview + 12 effects", await E('!!document.querySelector("#pe-prev .pcard") && document.querySelectorAll("[data-nf]").length') == 13)

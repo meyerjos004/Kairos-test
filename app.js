@@ -1947,7 +1947,7 @@ const TOUR = [
   { sel: '[data-view="learn"]', t: "Learn", d: "Reese's real trades (every one, from day one), plus take-or-fade drills and daily practice built from your mistakes." },
   { sel: '[data-view="friends"]', t: "The group", d: "Leaderboard, challenges, shared trades and chat with the crew." },
   { sel: '[data-view="settings"]', t: "Make it yours", d: "Themes, hotkeys, and your own sounds for take profits and stop-outs. Found a bug? The fix box goes straight to the build queue." }];
-function tour(i = 0) { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); if (i >= TOUR.length) { prefs.toured = APP_VERSION; savePrefs(); return toast("🎉 You're set. Have fun."); }
+function tour(i = 0) { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); if (i >= TOUR.length) { prefs.toured = APP_VERSION; savePrefs(); toast("🎉 You're set. Have fun."); return setTimeout(dlPrompt, 900); }
   view("trade"); const s = TOUR[i], el = document.querySelector(s.sel); if (!el || !el.offsetParent) return tour(i + 1); const r = el.getBoundingClientRect();
   const sp = document.createElement("div"); sp.className = "tourspot"; Object.assign(sp.style, { left: r.left - 6 + "px", top: r.top - 6 + "px", width: r.width + 12 + "px", height: r.height + 12 + "px" }); document.body.appendChild(sp);
   const bx = document.createElement("div"); bx.className = "tourbox"; bx.innerHTML = `<div class="tk">${i + 1} / ${TOUR.length}</div><b>${s.t}</b><p>${s.d}</p><div class="tdots">${TOUR.map((_, k) => `<i class="${k === i ? "on" : k < i ? "done" : ""}"></i>`).join("")}</div><div class="tb2"><button class="ghost small" data-t="x">Skip</button>${i ? '<button class="small" data-t="b">Back</button>' : ""}<button class="primary small" data-t="n">${i === TOUR.length - 1 ? "Done" : "Next"}</button></div>`;
@@ -2002,7 +2002,7 @@ async function boot() {
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
   document.body.classList.toggle("glass", prefs.glass !== false); applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); speedBestUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
-  if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().catch(() => {}); }   // data loads itself on open (last session you replayed)
+  if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().then(() => { const idle = window.requestIdleCallback || ((f) => setTimeout(f, 300)); idle(() => { ensureAhead().catch(() => {}); db.allTrades().then((t) => { jT = jT.length ? jT : t; }).catch(() => {}); }); }).catch(() => {}); }   // KING_PRELOAD: chart + next month + journal load behind the intro animation   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
   if (DEMO) { $("start").value = "2026-10-14T09:45"; await loadReplay(); for (let i = 0; i < 25; i++) await stepFwd(); }
@@ -2362,7 +2362,7 @@ document.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { $("o-q
 ["o-sl", "o-tp", "o-qty"].forEach((k) => ($(k).oninput = refresh));
 $("o-type").onchange = () => { const t = $("o-type").value; $("o-pxrow").classList.toggle("hidden", t === "market"); if (t === "market") draft = null; else if (last() != null) { draft = { side: oside, type: t, price: rnd(+$("o-px").value || last() - oside * 10) }; $("o-px").value = draft.price; } drawOrders(); };
 $("o-px").oninput = () => { if (draft) { draft.price = rnd(+$("o-px").value); drawOrders(); } };
-$("o-send").onclick = () => { const ty = $("o-type").value, q = +$("o-qty").value || 1, slOn = !$("o-slon") || $("o-slon").checked, tpOn = !$("o-tpon") || $("o-tpon").checked, br = { slPts: slOn ? +$("o-sl").value || 0 : 0, tpPts: tpOn ? +$("o-tp").value || 0 : 0, trail: slOn && $("o-trail").checked ? +$("o-sl").value : 0 };   // KING_BRTOGGLE
+$("o-send").onclick = () => { oSize(); const ty = $("o-type").value, q = +$("o-qty").value || 1, slOn = !$("o-slon") || $("o-slon").checked, tpOn = !$("o-tpon") || $("o-tpon").checked, br = { slPts: slOn ? +$("o-sl").value || 0 : 0, tpPts: tpOn ? +$("o-tp").value || 0 : 0, trail: slOn && $("o-trail").checked ? +$("o-sl").value : 0 };   // KING_BRTOGGLE
   if (ty === "market") { if (canTrade()) fill(oside, q, last(), nowT(), br); return; } const p = draft ? draft.price : +$("o-px").value; if (!p) return toast("Set a price (drag the draft line)");
   place(oside, ty, p, q, br); draft = null; $("o-type").value = "market"; $("o-pxrow").classList.add("hidden"); drawOrders(); };
 $("b-pos").onclick = (e) => { const a = e.target.dataset.a; if (a === "close") closeAll(); if (a === "rev") reverse(); if (a === "be") toBE(); };
@@ -2451,7 +2451,9 @@ function labelPop(d, r) { document.getElementById("lblpop")?.remove(); const el 
   const open = (on) => { $("fxb-card").classList.toggle("hidden", !on); $("fxb-tip").classList.add("hidden"); if (on) { $("fxb-where").textContent = "From: " + where(); setTimeout(() => $("fxb-in").focus(), 30); } };
   $("fxb-b").onclick = () => open($("fxb-card").classList.contains("hidden")); $("fxb-x").onclick = () => open(false);
   $("fxtop").onclick = () => open($("fxb-card").classList.contains("hidden"));   // KING_FIXTOP (Nov 12 walkthrough): the top-bar button opens the same card
-  w.querySelectorAll(".fxb-seg button").forEach((b) => (b.onclick = () => { kind = b.dataset.k; w.querySelectorAll(".fxb-seg button").forEach((x) => x.classList.toggle("on", x === b)); }));
+  const setKind = (k) => { kind = k; $("fxb-card").dataset.kind = k; w.querySelectorAll(".fxb-seg button").forEach((x) => x.classList.toggle("on", x.dataset.k === k));   // KING_FBKIND (King): the buttons tag + color the message
+    $("fxb-in").placeholder = k === "fix" ? "🔧 What's broken? Where is it, and what should it do instead? (Ctrl+V pastes a screenshot)" : "💡 What's your idea? What should it do and why? (Ctrl+V pastes a screenshot)"; $("fxb-go").textContent = k === "fix" ? "Send fix" : "Send idea"; };
+  w.querySelectorAll(".fxb-seg button").forEach((b) => b.addEventListener("pointerdown", (e) => { e.stopPropagation(); setKind(b.dataset.k); })); w.querySelectorAll(".fxb-seg button").forEach((b) => (b.onclick = (e) => { e.stopPropagation(); setKind(b.dataset.k); })); setKind("fix");
   $("fxb-in").onkeydown = (e) => e.stopPropagation();
   /* KING_FIXSHOT (Nov 13): attach a screenshot to a fix (paste the last one from the clipboard, Ctrl+V, or snap the chart) */
   /* KING_FIXSHOT2 (King, Nov 13): up to 3 screenshots; tap one to see it full size, × removes it */
@@ -2989,15 +2991,14 @@ function taxEst(inc, o) {   // inc = net trading profit (payouts) for the year, 
   const sr = o.loc === "pa" ? 0.0307 : 0.0445, state = Math.max(0, inc) * sr;
   return { lines: [["Self-employment tax (15.3% on 92.35%, Social Security part capped at $184,500)", se], ["Federal income tax (your bracket, after the standard deduction)", fed], [o.loc === "pa" ? "Pennsylvania (3.07% flat; your city may add a local tax)" : "Utah (4.45% flat)", state]], total: se + fed + state, fed, se, state };
 }
-function taxIncome() { const yr = String(TAXY.y), out = { pay: 0, list: [] };
-  try { for (const a of accts || []) { if (a.kind !== "funded") continue; const S = acctState(a, taxIncome.all || []), po = payoutsOf(a, S); if (po.amt) { out.pay += po.amt; out.list.push([a.name, po.amt]); } } } catch (e) {}
-  for (const x of (prefs.tax && prefs.tax.extra) || []) if (String(x.d || "").startsWith(yr)) { out.pay += +x.amt || 0; out.list.push([x.note || "Payout", +x.amt || 0]); }
-  return out; }
-async function renderTax() { const el = $("v-tax"); if (!el) return; try { taxIncome.all = await db.allTrades(); } catch (e) { taxIncome.all = []; }
-  const o = prefs.tax = { loc: "ut", status: "single", w2: 0, fx: 10.5, extra: [], ...(prefs.tax || {}) }, I = taxIncome(), R = taxEst(I.pay - (+o.exp || 0), o), pct = I.pay ? (100 * R.total) / I.pay : 0, keep = I.pay - R.total;
+function taxIncome() { const out = { pay: 0, list: [] };   // KING_TAX2 (King): real payouts only, typed in; nothing from backtesting accounts
+  for (const x of taxDraft.extra) { out.pay += +x.amt || 0; out.list.push([x.note || "Payout", +x.amt || 0]); } return out; }
+let taxDraft = { extra: [], exp: 0, w2: 0, fx: 10.5 };
+async function renderTax(fresh) { const el = $("v-tax"); if (!el) return; if (fresh) taxDraft = { extra: [], exp: 0, w2: 0, fx: 10.5 };   // resets every time the tab opens
+  const pt = prefs.tax || {}, o = Object.assign(taxDraft, { loc: pt.loc || "ut", status: pt.status || "single" }), I = taxIncome(), R = taxEst(I.pay - (+o.exp || 0), o), pct = I.pay ? (100 * R.total) / I.pay : 0, keep = I.pay - R.total;
   const q = TAX_DUE.map(([n, per, due]) => [n, per, due, R.total / 4]), cur = o.loc === "se" ? "Skatteverket (F-skatt, paid monthly)" : "IRS Direct Pay · EFTPS";
   const HQ = (t) => `<i class="qm" data-help="${esc(t)}">?</i>`;
-  el.innerHTML = `<div class="toolbar"><h2 class="vh">Tax</h2><span class="muted small">Estimates for ${TAXY.y} from your funded payouts. Not tax advice; check with a tax pro.</span></div>
+  el.innerHTML = `<div class="toolbar"><h2 class="vh">Tax</h2><span class="muted small">Estimates for ${TAXY.y} from your real prop-firm payouts (type them in; this resets every time you open it). Not tax advice; check with a tax pro.</span></div>
   <div class="tax-grid"><div class="card"><h3>You</h3>
     <label>Where you live<select id="tq-loc"><option value="ut">Utah</option><option value="pa">Pennsylvania</option><option value="se">Sweden (estimate)</option></select></label>
     <label><span>Filing status ${HQ("Single: not married. Married filing jointly (MFJ): one return with your spouse, usually lower tax. Married filing separately (MFS): each spouse files alone.")}</span><select id="tq-st"><option value="single">Single</option><option value="mfj">Married filing jointly</option><option value="mfs">Married filing separately</option></select></label>
@@ -3005,7 +3006,7 @@ async function renderTax() { const el = $("v-tax"); if (!el) return; try { taxIn
     <label><span>Trading costs this year: evals, resets, data, software ($) ${HQ("These are business expenses. They come off your payouts before tax.")}</span><input id="tq-exp" type="number" value="${o.exp || 0}"></label>
     ${o.loc === "se" ? `<label>USD → SEK rate<input id="tq-fx" type="number" step="0.01" value="${o.fx}"></label>` : ""}
     <div class="row"><input id="tq-amt" type="number" placeholder="Add a payout ($)"><input id="tq-d" type="date" value="${new Date().toISOString().slice(0, 10)}"><button id="tq-add" class="small">Add</button></div>
-    <div class="tiny muted">${I.list.length ? I.list.map(([n, a]) => `${esc(n)}: ${money(a)}`).join(" · ") : "No payouts yet. Funded accounts add theirs automatically; add real ones above."}</div></div>
+    <div class="tiny muted">${I.list.length ? I.list.map(([n, a]) => `${esc(n)}: ${money(a)}`).join(" · ") : "Add each real payout above."}</div></div>
   <div class="card tax-big"><div class="tbk"><span>Payouts ${TAXY.y}</span><b>${money(I.pay)}</b></div><div class="tbk"><span>Estimated tax</span><b class="pos-dn">${money(R.total)}</b></div><div class="tbk"><span>Profit after costs</span><b>${money(I.pay - (+o.exp || 0))}</b></div><div class="tbk"><span>Set aside</span><b>${pct.toFixed(1)}%</b></div><div class="tbk"><span>You keep</span><b class="pos-up">${money(keep)}</b></div>
     <div class="tax-lines">${R.lines.map(([n, v]) => `<div><span>${esc(n)}</span><b>${money(v)}</b></div>`).join("")}</div></div>
   <div class="card"><h3>Self-employment tax ${HQ("Prop-firm payouts are paid to you as a contractor (Form 1099), not wages. Nobody withholds tax, so you pay both halves of Social Security + Medicare yourself: 15.3% on 92.35% of your profit. Half of it is deducted from your income tax.")}</h3>
@@ -3015,13 +3016,13 @@ async function renderTax() { const el = $("v-tax"); if (!el) return; try { taxIn
       `<table class="bt"><tr><th></th><th>Income earned</th><th>Due</th><th>Pay</th></tr>${q.map(([n, per, due, amt]) => `<tr><td>${n}</td><td>${per}</td><td>${longDate(due)}</td><td>${money(amt)}</td></tr>`).join("")}</table>`}
     <p class="tiny muted">Where to pay: ${cur}${o.loc === "ut" ? " · Utah: Taxpayer Access Point (TAP)" : o.loc === "pa" ? " · Pennsylvania: myPATH" : ""}</p></div></div>`;
   $("tq-loc").value = o.loc; $("tq-st").value = o.status; if (o.loc === "se") $("tq-st").disabled = true;
-  const save = () => { savePrefs(); renderTax(); };
-  $("tq-loc").onchange = (e) => { o.loc = e.target.value; save(); }; $("tq-st").onchange = (e) => { o.status = e.target.value; save(); };
+  const save = () => renderTax();
+  $("tq-loc").onchange = (e) => { o.loc = e.target.value; prefs.tax = { loc: o.loc, status: o.status }; savePrefs(); save(); }; $("tq-st").onchange = (e) => { o.status = e.target.value; prefs.tax = { loc: o.loc, status: o.status }; savePrefs(); save(); };
   $("tq-exp").onchange = (e) => { o.exp = +e.target.value || 0; save(); };
   $("tq-w2").onchange = (e) => { o.w2 = +e.target.value || 0; save(); }; if ($("tq-fx")) $("tq-fx").onchange = (e) => { o.fx = +e.target.value || 10.5; save(); };
   $("tq-add").onclick = () => { const a = +$("tq-amt").value; if (!a) return; o.extra.push({ amt: a, d: $("tq-d").value, note: "Payout " + $("tq-d").value }); save(); };
 }
-{ const _v = view; view = function (v) { _v(v); if (v === "tax") renderTax(); }; }
+{ const _v = view; view = function (v) { _v(v); if (v === "tax") renderTax(true); }; }
 
 /* KING_JDETAIL (King, Nov 14): Journal = calendar + trades only (the stats extras live on Stats). Click a day → its trades; click a trade →
    the trade on 15s / 1m / 5m / 15m / 1h / 4h / D (save any as an image), its confluences, what Reese did that day, a journal box, Notion sync. */
@@ -3132,7 +3133,7 @@ function setupWizard(force) { if (document.getElementById("setupw")) return; if 
     el.innerHTML = `<div class="glass dlg pop swbox"><div class="sw-top"><span class="tiny muted">Setup · ${i + 1} of ${SETUP_STEPS.length}</span><div class="sw-dots">${SETUP_STEPS.map((_, k) => `<i class="${k === i ? "on" : k < i ? "done" : ""}"></i>`).join("")}</div></div>
       <h3>${s}</h3>${h}<div class="row sw-btns"><button id="sw-skip" class="ghost">Skip setup</button><span style="flex:1"></span>${i ? '<button id="sw-back">Back</button>' : ""}<button id="sw-next" class="primary">${i === SETUP_STEPS.length - 1 ? "Done" : "Next"}</button></div></div>`;
     wire(); };
-  const close = () => { prefs.setupDone = APP_VERSION; savePrefs(); el.remove(); toast("You're set. Change any of this in Settings."); };
+  const close = () => { prefs.setupDone = APP_VERSION; savePrefs(); el.remove(); if (prefs.toured !== APP_VERSION) setTimeout(() => { view("trade"); tour(); }, 500); else toast("You're set. Change any of this in Settings."); };   // KING_FLOW: intro → setup → tour → get the app
   const wire = () => {
     $("sw-next").onclick = () => { if (i === 5 && $("sw-lots")) { prefs.lots = Math.max(1, +$("sw-lots").value || 1); } if (i === SETUP_STEPS.length - 1) return close(); i++; savePrefs(); body(); };
     if ($("sw-back")) $("sw-back").onclick = () => { i--; body(); }; $("sw-skip").onclick = close;
@@ -3206,3 +3207,20 @@ async function adDataLive() { const el = $("ad-data"); if (!el || DEMO) return; 
 { const _la = loadAdmin; loadAdmin = async function () { await _la(); try { const box = $("ad-feat"); box.querySelectorAll("label.ck").forEach((l) => { const k = l.querySelector("[data-feat]").dataset.feat; if (FEAT_DESC[k] && !l.querySelector(".fdesc")) l.insertAdjacentHTML("beforeend", `<span class="fdesc">${FEAT_DESC[k]}</span>`); }); } catch (e) {}
   await adDataLive(); clearInterval(adLiveT); adLiveT = setInterval(() => { if ($("app").dataset.v === "admin") adDataLive(); else clearInterval(adLiveT); }, 30000); }; }
 { const _af = adFx; adFx = async function () { await _af(); const box = $("ad-fx"); if (!box) return; box.querySelectorAll("select[data-fx] option").forEach((o) => { const f = FX12.find((x) => x[0] === o.value); if (f) o.textContent = "✨ " + f[1]; }); }; }
+
+/* KING_RISK2 (King, Nov 14): size by contracts, risk $ or risk % (qty comes from the stop distance). SL/TP set in the order panel
+   after entry now apply to the open position (and the toggles add/remove them). */
+function oSize() { const by = $("o-sizeby") ? $("o-sizeby").value : "ct"; prefs.sizeBy = by; if (by === "ct") return; const sl = +$("o-sl").value || 0, v = +$("o-riskv").value || 0; if (!sl || !v) return;
+  const usd = by === "pct" ? (balance() * v) / 100 : v, q = Math.max(1, Math.floor(usd / (sl * inst.pt))); $("o-qty").value = q; try { riskUI(); } catch (e) {} }
+function oSizeUI() { const by = $("o-sizeby").value; $("o-riskrow").classList.toggle("hidden", by === "ct"); $("o-risklbl").textContent = by === "pct" ? "Risk (% of balance)" : "Risk ($)";
+  if (by === "pct" && +$("o-riskv").value > 10) $("o-riskv").value = prefs.riskp || 1; if (by === "usd" && +$("o-riskv").value < 10) $("o-riskv").value = 200; oSize(); }
+if ($("o-sizeby")) { $("o-sizeby").value = prefs.sizeBy || "ct"; $("o-sizeby").onchange = () => { oSizeUI(); savePrefs(); }; ["o-riskv", "o-sl"].forEach((id) => $(id).addEventListener("input", oSize)); oSizeUI(); }
+function oLiveBr() { if (!pos.qty) return; const sd = Math.sign(pos.qty), slOn = $("o-slon").checked, tpOn = $("o-tpon").checked, sl = +$("o-sl").value || 0, tp = +$("o-tp").value || 0;
+  pos.sl = slOn && sl ? rnd(pos.avg - sd * sl) : null; pos.tp = tpOn && tp ? rnd(pos.avg + sd * tp) : null; pos.risk = pos.sl != null ? Math.abs(pos.avg - pos.sl) : pos.risk; drawOrders(); refresh(); }
+["o-sl", "o-tp"].forEach((id) => $(id).addEventListener("change", oLiveBr)); ["o-slon", "o-tpon"].forEach((id) => $(id).addEventListener("change", oLiveBr));
+
+/* KING_FLOW (King, Nov 14): 1.0 order = intro (click through) → setup → tour → "get the app" prompt (encouraged, once per version). */
+function dlPrompt(force) { if (!force && (prefs.dlAsked === APP_VERSION || DEMO)) return; if (window.matchMedia("(display-mode: standalone)").matches || /Electron/.test(navigator.userAgent)) return;
+  prefs.dlAsked = APP_VERSION; savePrefs();
+  wideDlg(`<div class="dlp"><h3>Get KAIROS as an app</h3><p>It's faster, opens full screen, and keeps you signed in. Windows, iPhone and Android.</p><ul class="small"><li>Opens in its own window, no browser tabs</li><li>Loads quicker, data stays cached</li><li>Notifications for your sessions</li></ul></div>`,
+    [{ t: "Maybe later" }, { t: "⬇ Get the app", primary: true, f: () => { try { getApp(); } catch (e) { toast(e.message); } } }]); }
