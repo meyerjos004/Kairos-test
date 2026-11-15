@@ -196,7 +196,7 @@ async function loadReplay() { try { execs.length = 0; } catch (e) {}
   try { sess = await db.newSession({ name: sym + " " + fmt(loc(t0)), symbol: sym, start_ts: t0, cursor_ts: t0, tf: prefs.tfs[0], account_start: startBal, risk_pct: prefs.riskp, rules: { dll: prefs.dll, mdd: prefs.mdd, ptg: prefs.ptg }, ...(acct ? { account_id: acct.id } : {}) }); }
   catch (e) { return toast("Could not start a session: " + e.message); }
   hist = []; lock = null; alerts = []; rebuildAll(); drawAlerts();
-  { const ev = econOn(new Date(loc(t0) * 1000).toISOString().slice(0, 10)); if (ev.length) setTimeout(() => toast("📅 News today: " + ev.map((e) => `${e.name} ${e.hm} ET`).join(", ")), 900); } panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast(""); prefs.sym = sym; savePrefs();
+  { const ev = (prefs.notif || {}).news === false ? [] : econOn(new Date(loc(t0) * 1000).toISOString().slice(0, 10)); if (ev.length) setTimeout(() => toast("📅 News today: " + ev.map((e) => `${e.name} ${e.hm} ET`).join(", ")), 900); } panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); toast(""); prefs.sym = sym; savePrefs();
   try { if (!builtOnce) buildFx(true); builtOnce = true; } catch (e) {}   // KING_STARTFX + KING_FXONCE (Nov 14): the cursor build only plays when the site loads, never on replay-from-candle, take/fade, setups or date picks
   panes.forEach((p) => { try { p.chart.priceScale("right").applyOptions({ autoScale: true }); if (loadReplay.center) { const r = p.chart.timeScale().getVisibleLogicalRange(); if (r) p.chart.timeScale().scrollToPosition((r.to - r.from) / 2, false); } } catch (e) {} }); loadReplay.center = false;   // KING_SNAP
 }
@@ -1275,7 +1275,7 @@ async function loadReese() { if (DEMO) { reese = [{ id: "r1", day: "2026-10-15",
   const { data } = await sb.from("reese_trades").select("*").order("day"); reese = data || []; }
 const seen = () => new Set(prefs.seenSess || []);
 function sessEnd(r) { const [, z] = RSES[r.session] || RSES.NY; const base = Date.parse(r.day + "T00:00:00Z") / 1000, [hh, mm] = z.split(":").map(Number); return base + hh * 3600 + mm * 60; }   // New York wall-clock as fake-UTC (same as loc())
-function reeseCheck(prevLt, curLt) {   // called while stepping: a Reese session just ended on the replay clock
+function reeseCheck(prevLt, curLt) { if (prefs.reesePop === false) return;   // called while stepping: a Reese session just ended on the replay clock
   for (const r of reese) { const e = sessEnd(r); if (prevLt < e && curLt >= e) { const k = r.day + "|" + r.session, sn = seen(); if (!sn.has(k)) { sn.add(k); prefs.seenSess = [...sn]; savePrefs(); } reesePop(r); } } }
 
 /* Reese media: his Discord screenshots + what he said during that session (members-only bucket) */
@@ -2882,7 +2882,7 @@ function hkLabels() { const K = prefs.keys || {}, alias = { cursor: "Esc" }; doc
 setTimeout(hkLabels, 400); for (const id of ["tools", "favbar"]) { const el = document.getElementById(id); if (el) new MutationObserver(() => { clearTimeout(hkLabels.t); hkLabels.t = setTimeout(hkLabels, 60); }).observe(el, { childList: true, subtree: true }); }
 
 /* KING_FOLLOW (King, Nov 14): while playing, keep the newest candle on screen (time + price) */
-function followLive() { for (const p of panes) { if (!p || p.dead || !p.candles.length) continue; try { const ts = p.chart.timeScale(), r = ts.getVisibleLogicalRange(), n = p.candles.length;
+function followLive() { if (prefs.follow === false) return; for (const p of panes) { if (!p || p.dead || !p.candles.length) continue; try { const ts = p.chart.timeScale(), r = ts.getVisibleLogicalRange(), n = p.candles.length;
   if (r && (r.to < n - 1 || r.from > n - 1)) { const w = r.to - r.from; ts.setVisibleLogicalRange({ from: n - 1 - w * 0.8, to: n - 1 + w * 0.2 }); }
   const c = p.candles[n - 1], y = p.series.priceToCoordinate(c.close), h = p.el.clientHeight; if (y == null || y < 10 || y > h - 40) p.chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} } }
 
@@ -2914,7 +2914,7 @@ setTimeout(function rh() { if (!panes.length) return setTimeout(rh, 800); let ti
 ["o-slon", "o-tpon"].forEach((id) => { const c = $(id); if (c) c.onchange = () => { const inp = $(id === "o-slon" ? "o-sl" : "o-tp"); inp.disabled = !c.checked; inp.style.opacity = c.checked ? "" : ".35"; }; });
 
 /* KING_BANNER: big on-screen result banners */
-function bigBanner(text, kind) { let el = document.getElementById("bigban"); if (!el) { el = document.createElement("div"); el.id = "bigban"; document.body.appendChild(el); }
+function bigBanner(text, kind) { if ((prefs.notif || {}).acct === false) return; let el = document.getElementById("bigban"); if (!el) { el = document.createElement("div"); el.id = "bigban"; document.body.appendChild(el); }
   el.className = "bb-" + kind; el.textContent = text; el.style.display = "flex"; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; try { sfx && sfx(kind === "up" ? "win" : "loss"); } catch (e) {}
   clearTimeout(bigBanner.t); bigBanner.t = setTimeout(() => (el.style.display = "none"), 2600); }
 async function checkAcctPass() { try { if (!acct) return; const S = acctState(acct, await db.allTrades()); if (S.passed && !acct._passShown) { acct._passShown = true; bigBanner("Account passed, good job G", "up"); } if (S.blown && !acct._blownShown) { acct._blownShown = true; bigBanner("Account Blown", "dn"); } } catch (e) {} }
@@ -3064,3 +3064,41 @@ async function tradeDetail(t) { if (!reese.length) try { await loadReese(); } ca
   $("jd-tfs").onclick = (e) => { const b = e.target.closest("[data-tf]"); if (b) jdChart(t, b.dataset.tf); };
   $("jd-png").onclick = () => { if (!jdC) return; const cv = jdC.takeScreenshot(), a = document.createElement("a"); a.href = cv.toDataURL("image/png"); a.download = `trade-${sessDay(t.t_entry)}-${(document.querySelector("#jd-tfs .on") || {}).dataset?.tf || ""}.png`; a.click(); };
   await jdChart(t, "1m"); }
+
+/* KING_SETTINGS2 (King, Nov 14): Apple-style settings. 11 categories down the left, one category on the right.
+   The existing cards move into place (same ids, same handlers), new cards fill the gaps. */
+const SET_CATS = [["general", "General", "#8e8e93", "⚙️"], ["look", "Appearance & themes", "#5e5ce6", "🎨"], ["trade", "Trading & order pad", "#30d158", "📈"], ["replay", "Replay & playback", "#ff9f0a", "⏯"],
+  ["keys", "Hotkeys", "#64d2ff", "⌨️"], ["sound", "Sounds & haptics", "#ff375f", "🔊"], ["notif", "Notifications", "#ff453a", "🔔"], ["profile", "Profile & account", "#0a84ff", "👤"],
+  ["integ", "Integrations", "#bf5af2", "🔗"], ["data", "Data & privacy", "#32d74b", "🛡"], ["admin", "Admin", "#ffd60a", "🔑"]];
+const RELEASES = [["0.9.4", "Beta", "Sessions (eval → funded), tax tab, trade detail on 7 timeframes, 45 layouts, new stats, undo/redo."], ["1.0", "KAIROS 1.0", "The intro + feature tour (rendering)."]];
+function settings2() { const v = $("v-settings"); if (!v || v.dataset.s2) return; v.dataset.s2 = 1; const cols = v.querySelector(".cols"), nav = v.querySelector(".setnav"); if (!cols || !nav) return;
+  const card = (h3) => [...v.querySelectorAll(".setc")].find((c) => { const h = c.querySelector("h3"); return h && h.textContent.trim() === h3; });
+  const sec = {}; const side = document.createElement("aside"); side.className = "s2side"; const main = document.createElement("div"); main.className = "s2main";
+  side.innerHTML = `<input id="s2-q" placeholder="Search settings">` + SET_CATS.map(([k, n, c, i]) => `<button data-s2="${k}" class="${k === "admin" ? "s2adm" : ""}"><span class="s2i" style="background:${c}">${i}</span>${esc(n)}</button>`).join("");
+  const wrap = document.createElement("div"); wrap.className = "s2"; wrap.append(side, main); cols.appendChild(wrap);   // attach first so $() finds moved cards
+  for (const [k, n] of SET_CATS) { const s = document.createElement("section"); s.className = "s2sec hidden"; s.dataset.s2 = k; s.innerHTML = `<h2>${esc(n)}</h2><div class="setgrid"></div>`; main.appendChild(s); sec[k] = s.querySelector(".setgrid"); }
+  const put = (k, c) => c && sec[k].appendChild(c), mk = (k, html) => { const d = document.createElement("div"); d.className = "setc"; d.innerHTML = html; sec[k].appendChild(d); return d; };
+  const os = card("KAIROS OS"), live = $("s-live1s") && $("s-live1s").closest("label");
+  put("general", os); put("general", card("Data speed"));
+  mk("general", `<h3>Intros &amp; releases</h3><div class="tiny muted">Every intro and release, replayable any time.</div><div class="rel">${RELEASES.map(([v, n, d]) => `<div class="relr"><b>${esc(n)}</b> <span class="muted small">v${esc(v)}</span><div class="small">${esc(d)}</div></div>`).join("")}</div>`).appendChild($("s-intro").parentElement);
+  put("look", card("Theme")); put("trade", card("Order pad")); put("keys", card("Hot keys"));
+  const rp = mk("replay", `<h3>Playback</h3>`); if (live) rp.appendChild(live);
+  rp.insertAdjacentHTML("beforeend", `<label class="ck"><input id="s2-follow" type="checkbox" ${prefs.follow !== false ? "checked" : ""}> Follow the newest candle while playing</label><label class="ck"><input id="s2-reese" type="checkbox" ${prefs.reesePop !== false ? "checked" : ""}> Show Reese's trade when one of his sessions ends</label>`);
+  put("sound", card("Feel")); put("sound", card("Trade sounds & effects")); put("sound", card("Sounds per event"));
+  const nf = mk("notif", `<h3>Notifications</h3>${[["news", "News days (CPI, FOMC, NFP…) when a replay loads"], ["acct", "Account banners: DLL hit, blown, passed, max win"], ["tips", "Feature tips"]].map(([k, t]) => `<label class="ck"><input type="checkbox" data-nt="${k}" ${(prefs.notif || {})[k] !== false ? "checked" : ""}> ${t}</label>`).join("")}`);
+  nf.onchange = (e) => { const k = e.target.dataset.nt; if (!k) return; prefs.notif = { ...(prefs.notif || {}), [k]: e.target.checked }; if (k === "tips" && $("s-tips")) $("s-tips").checked = e.target.checked; savePrefs(); };
+  put("profile", card("You")); put("integ", $("notioncard")); put("data", card("Privacy"));
+  mk("data", `<h3>Your data</h3><div class="tiny muted">Your trades, journal and settings are saved to your account. Export a copy any time.</div><div class="row2"><button class="small" id="s2-csv">Export trades (CSV)</button></div>`);
+  mk("admin", `<h3>Admin</h3><div class="tiny muted">Invites, features, data on file, name effects.</div><button class="small primary" id="s2-adm">Open Admin</button>`);
+  [...v.querySelectorAll(".setc")].forEach((c) => { if (!main.contains(c)) put("general", c); });   // anything not mapped stays reachable
+  v.querySelectorAll(".setg").forEach((s) => s.remove()); nav.querySelectorAll("a[data-sg]").forEach((a) => a.remove());
+  const go = (k) => { side.querySelectorAll("[data-s2]").forEach((b) => b.classList.toggle("on", b.dataset.s2 === k)); main.querySelectorAll(".s2sec").forEach((s) => s.classList.toggle("hidden", s.dataset.s2 !== k)); prefs.s2cat = k; };
+  side.onclick = (e) => { const b = e.target.closest("[data-s2]"); if (b) { $("s2-q").value = ""; main.querySelectorAll(".setc").forEach((c) => c.classList.remove("s2hide")); go(b.dataset.s2); } };
+  $("s2-q").oninput = (e) => { const q = e.target.value.trim().toLowerCase(); if (!q) return go(prefs.s2cat || "general");
+    main.querySelectorAll(".s2sec").forEach((s) => s.classList.remove("hidden")); main.querySelectorAll(".setc").forEach((c) => c.classList.toggle("s2hide", !c.textContent.toLowerCase().includes(q)));
+    main.querySelectorAll(".s2sec").forEach((s) => s.classList.toggle("hidden", !s.querySelector(".setc:not(.s2hide)"))); };
+  $("s2-follow").onchange = (e) => { prefs.follow = e.target.checked; savePrefs(); }; $("s2-reese").onchange = (e) => { prefs.reesePop = e.target.checked; savePrefs(); };
+  $("s2-csv").onclick = async () => { if (!jT.length) jT = await db.trades(""); exportCsv(); }; $("s2-adm").onclick = () => view("admin");
+  side.querySelector(".s2adm").classList.toggle("hidden", !isAdmin); main.querySelector('[data-s2="admin"]').classList.toggle("s2noadm", !isAdmin);
+  go(prefs.s2cat && (prefs.s2cat !== "admin" || isAdmin) ? prefs.s2cat : "general"); }
+{ const _v = view; view = function (v) { _v(v); if (v === "settings") { settings2(); const a = document.querySelector(".s2side .s2adm"); if (a) a.classList.toggle("hidden", !isAdmin); } }; }

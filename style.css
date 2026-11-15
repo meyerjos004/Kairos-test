@@ -747,3 +747,14 @@ i.qm:hover{background:rgba(167,139,250,.35);color:#fff}
 #dlgbox.jdbox{width:min(1100px,94vw)}
 #jd-tfs button.on{background:rgba(192,139,255,.22);color:#fff;border-radius:8px}
 .jd-cols textarea{background:rgba(255,255,255,.04);color:inherit;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;font:inherit;resize:vertical}
+
+/* KING_SETTINGS2: Apple-style */
+.s2{display:grid;grid-template-columns:260px 1fr;gap:22px;align-items:start}
+.s2side{position:sticky;top:64px;display:flex;flex-direction:column;gap:2px;padding:10px;border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)}
+.s2side input{margin-bottom:8px;border-radius:10px}
+.s2side button{display:flex;align-items:center;gap:10px;text-align:left;background:none;border:0;padding:7px 8px;border-radius:9px;color:var(--txt);font:500 13.5px Inter,sans-serif;cursor:pointer}
+.s2side button:hover{background:rgba(255,255,255,.05)}.s2side button.on{background:rgba(10,132,255,.9);color:#fff}
+.s2i{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:13px;flex:none;box-shadow:inset 0 0 0 .5px rgba(255,255,255,.25)}
+.s2main h2{font:700 26px Inter,sans-serif;margin:4px 0 14px}.s2sec .setgrid{grid-template-columns:repeat(auto-fill,minmax(360px,1fr))}.s2hide{display:none!important}
+.relr{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+@media (max-width:900px){.s2{grid-template-columns:1fr}.s2side{position:static;flex-direction:row;overflow-x:auto}.s2side input{min-width:160px}}
