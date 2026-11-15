@@ -693,3 +693,6 @@ header.top .fxtop{position:static;transform:none;flex:none}header.top .fxtop:hov
 .lsync .sw{width:36px;height:20px;border-radius:999px;background:rgba(255,255,255,.14);position:relative;transition:.2s}.lsync .sw::after{content:"";position:absolute;left:3px;top:3px;width:14px;height:14px;border-radius:50%;background:#9aa;transition:.2s}
 .lsync input:checked+.sw{background:#e9e9ee}.lsync input:checked+.sw::after{left:19px;background:#111}
 #laymenu{width:400px;z-index:90}
+
+/* KING_LEARN2 */
+.lesson{font-size:14px;line-height:1.55}.lesson li{margin:6px 0}.gw{cursor:pointer}.gw .gwb{display:none;gap:8px;margin-top:10px;flex-wrap:wrap}.gw.open .gwb{display:flex}.gw:hover{border-color:rgba(167,139,250,.35)}
