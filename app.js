@@ -2857,3 +2857,8 @@ async function reeseOnChart(r) { reeseClear(); let p = panes[active] || panes[0]
 (() => { let tip = null; const show = (q) => { if (!tip) { tip = document.createElement("div"); tip.id = "qmtip"; document.body.appendChild(tip); } tip.textContent = q.dataset.help; tip.style.display = "block"; const r = q.getBoundingClientRect(); tip.style.left = Math.min(innerWidth - 300, r.left) + "px"; tip.style.top = r.bottom + 6 + "px"; };
   document.addEventListener("mouseover", (e) => { const q = e.target.closest && e.target.closest("i.qm[data-help]"); if (q) show(q); else if (tip) tip.style.display = "none"; });
   document.addEventListener("click", (e) => { const q = e.target.closest && e.target.closest("i.qm[data-help]"); if (q) { e.stopPropagation(); show(q); } }, true); })();
+
+/* KING_HKLABEL (King, Nov 14): show each tool's hotkey right under its icon (not just on hover) */
+function hkLabels() { const K = prefs.keys || {}, alias = { cursor: "Esc" }; document.querySelectorAll("#tools .tool[data-tool], #favbar .tool[data-tool]").forEach((b) => { const t = b.dataset.tool, k = alias[t] || K[t]; let s = b.querySelector(".hk");
+  if (!k) { if (s) s.remove(); return; } if (!s) { s = document.createElement("span"); s.className = "hk"; b.appendChild(s); } const v = k.length === 1 ? k.toUpperCase() : k; if (s.textContent !== v) s.textContent = v; if (!b.classList.contains("hashk")) b.classList.add("hashk"); }); }
+setTimeout(hkLabels, 400); for (const id of ["tools", "favbar"]) { const el = document.getElementById(id); if (el) new MutationObserver(() => { clearTimeout(hkLabels.t); hkLabels.t = setTimeout(hkLabels, 60); }).observe(el, { childList: true, subtree: true }); }

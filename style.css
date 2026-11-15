@@ -703,3 +703,7 @@ i.qm{display:inline-grid;place-items:center;width:15px;height:15px;border-radius
 i.qm:hover{background:rgba(167,139,250,.35);color:#fff}
 #qmtip{position:fixed;z-index:200;max-width:280px;background:#161925;border:1px solid rgba(255,255,255,.14);border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.45;pointer-events:none;box-shadow:0 12px 30px rgba(0,0,0,.4)}
 #st-kpi b .kpis{display:block;font:500 11.5px/1.3 Inter,sans-serif;color:var(--mut);margin-top:4px;letter-spacing:0}
+
+/* KING_HKLABEL */
+.tool.hashk{position:relative;height:38px!important;display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.tool .hk{font:700 8.5px/1 Inter,sans-serif;letter-spacing:.04em;color:var(--mut);opacity:.75;pointer-events:none}.tool.on .hk{color:inherit;opacity:1}
