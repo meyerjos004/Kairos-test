@@ -710,6 +710,7 @@ function initPointer(p) {
       if (["hline", "vline", "hray", "text", "long", "short"].includes(tool)) { newDrawing(tool, p, a); if (!e.shiftKey) setTool("cursor"); repaintAll(); e.stopPropagation(); e.preventDefault(); return; }
       pend = { pane: p.i, d: { id: 0, type: tool, pane: p.i, a }, b: a }; hold(true); p.el.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault(); return;
     }
+    if (pos.qty && (pos.sl == null || pos.tp == null) && paneSym(p) === sym) { const py = yOf(p, pos.avg); if (py != null && Math.abs(py - y) < 7 && !hitLine(p, y)) { drag = { kind: "newbr" }; hold(true); p.el.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault(); return; } }   // KING_DRAGBR: drag a stop or target out of the position line
     const l = hitLine(p, y); if (l) { drag = { kind: "line", l }; hold(true); p.el.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault(); return; }
     const h = hitDrawing(p, x, y); if (h && h.d.locked) { sel = h.d; repaintAll(); dtbShow(p); e.stopPropagation(); e.preventDefault(); return; }
     if (h) { sel = h.d; dtbShow(p); drag = { kind: "draw", h, a0: { t: tOf(p, x), p: pOf(p, y) }, snap: JSON.parse(JSON.stringify(h.d)) }; hold(true); p.el.setPointerCapture(e.pointerId); repaintAll(); e.stopPropagation(); e.preventDefault(); return; }
@@ -720,6 +721,7 @@ function initPointer(p) {
     if (pend && pend.pane === p.i) { const t = tOf(p, x), pr = pOf(p, y, x); if (t != null && pr != null) pend.b = { t, p: pr }; paint(p); return; }
     if (!drag) { if (tool === "cursor") { const l = hitLine(p, y), h = !l && hitDrawing(p, x, y); p.el.style.cursor = l ? "ns-resize" : h ? (h.d.locked ? "pointer" : h.h === "move" ? "move" : h.h === "w" ? "ew-resize" : "pointer") : ""; const nh = h ? h.d : null; if (nh !== hov) { hov = nh; repaintAll(); dtbShow(p); } } return; }
     const pr = pOf(p, y, x), tt = tOf(p, x); if (pr == null || tt == null) return;
+    if (drag.kind === "newbr") { const k = (pr - pos.avg) * Math.sign(pos.qty) > 0 ? "tp" : "sl"; if (pos[k] != null || Math.abs(pr - pos.avg) < TICK) return; pos[k] = rnd(pr); if (k === "sl") pos.risk = Math.abs(pos.avg - pos.sl); drawOrders(); const nl = p.lines.find((z) => z.kind === k); if (nl) drag = { kind: "line", l: nl }; return; }
     if (drag.kind === "line") { const l = drag.l; l.price = pr; l.ref.applyOptions({ price: pr }); if (l.kind === "sl") pos.sl = pr; else if (l.kind === "tp") pos.tp = pr; else if (l.obj) l.obj.price = pr; if (l.kind === "draft") $("o-px").value = pr; return; }
     const { h, snap, a0 } = drag, d = h.d, dp = pr - a0.p, dt = tt - a0.t;
     if (d.type === "long" || d.type === "short") {
@@ -818,8 +820,12 @@ function guard() {
   if (features.prop_rules === false || lockedNow() || !nowT()) return; if (guard.busy) return; const dp = dayRpl() + openPnlAll();
   let peak = sess ? +sess.account_start : prefs.bal, run = peak; for (const t of hist) { run += +t.pnl || 0; peak = Math.max(peak, run); }
   const hit = (why) => { const blk = prefs.act === "block" || why.startsWith("Max"); lock = { why, until: blk ? (why.startsWith("Max") ? Infinity : endOfTradingDay(nowT())) : nowT() + 1 }; guard.busy = true; try { if (pos.qty) closeAll(why); orders = []; for (const s of otherSyms()) withSym(s, () => { if (pos.qty) closeAll(why); orders = []; }); } finally { guard.busy = false; } drawOrders(); if (!blk) lock = null; toast("🔒 " + why); refresh(); };
-  if (prefs.dll && dp <= -prefs.dll) hit("Personal daily loss limit hit"); else if (prefs.ptg && dp >= prefs.ptg) hit("Personal daily profit target reached");
-  else if (prefs.mdd && peak - (balance() + openPnlAll()) >= prefs.mdd) hit("Max drawdown hit");
+  /* KING_GUARD2 (King, Nov 14): DLL = flat + no more trades that replay day, red "DLL hit". Max DD = flat + account blown for the session, red "Account Blown".
+     Daily profit target = ask "continue this trade or exit?" (no auto-close) + "MAX WINNNNN" */
+  if (prefs.dll && dp <= -prefs.dll) { if (!lockedNow()) { hit("DLL hit"); lock = { why: "DLL hit: no more trades this replay day", until: endOfTradingDay(nowT()) }; bigBanner("DLL hit", "dn"); } }
+  else if (prefs.mdd && peak - (balance() + openPnlAll()) >= prefs.mdd) { if (!lockedNow()) { hit("Max drawdown hit · Account Blown"); lock = { why: "Account Blown", until: Infinity }; bigBanner("Account Blown", "dn"); } }
+  else if (prefs.ptg && dp >= prefs.ptg && guard.ptgDay !== sessDay(nowT())) { guard.ptgDay = sessDay(nowT()); bigBanner("MAX WINNNNN", "up"); prefs.winDays = (prefs.winDays || 0) + 1; savePrefs();
+    if (pos.qty) { pause(); dlg(`<h3>Daily profit target hit 🎯</h3><p class="small">You're up ${money(dp)} today. Keep this trade running, or take it now?</p>`, () => { closeAll("Profit target"); refresh(); }); const ok = $("dl-ok"), x = $("dl-x"); if (ok) ok.textContent = "Exit now"; if (x) x.textContent = "Continue the trade"; } }
 }
 function canTrade() {   /* KING_NOLOCK (King, Nov 14): personal lockout removed, this is backtesting */ if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } if (prefs.aplus && !pos.qty && !aplusOk()) return false; return true; }
 const lotsNow = () => Math.max(1, +prefs.lots || 1);
@@ -856,7 +862,7 @@ function fill(side, qty, price, t, br, toolId) {
   } else { const cq = Math.min(Math.abs(pos.qty), qty); record(cq, price, t, "manual"); const rest = qty - cq; if (rest > 0) fill(side, rest, price, t, br, toolId); }
   drawOrders(); refresh(); repaintAll();
 }
-function record(cq, price, t, outcome) { setTimeout(() => { try { const h = hist[hist.length - 1]; if (!h) return; const k = outcome === "loss" ? "hit_sl" : (outcome === "win" || (outcome === "trail" && h.pnl > 0)) ? "hit_tp" : null; if (k) fxEvent(k, h.pnl); } catch (e) {} }, 0);
+function record(cq, price, t, outcome) { setTimeout(checkAcctPass, 400); setTimeout(() => { try { const h = hist[hist.length - 1]; if (!h) return; const k = outcome === "loss" ? "hit_sl" : (outcome === "win" || (outcome === "trail" && h.pnl > 0)) ? "hit_tp" : null; if (k) fxEvent(k, h.pnl); } catch (e) {} }, 0);
   const side = Math.sign(pos.qty), pnl = (price - pos.avg) * side * cq * inst.pt - fee(cq), r = pos.risk ? ((price - pos.avg) * side) / pos.risk : null;
   if (Math.abs(pos.qty) <= cq && prefs.chkShow) setTimeout(() => { chk = new Set(); chkUI(); }, 0);
   const row = { session_id: sess && sess.id, ...(acct ? { account_id: acct.id } : {}), tags: pos.tags || [], symbol: sym, dir: side, qty: cq, entry: +pos.avg.toFixed(2), stop: pos.sl, target: pos.tp, exit: price, t_entry: pos.t, t_exit: t, outcome, r: r == null ? null : +r.toFixed(2), pnl: +pnl.toFixed(2), fees: fee(cq) };
@@ -2348,7 +2354,7 @@ document.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { $("o-q
 ["o-sl", "o-tp", "o-qty"].forEach((k) => ($(k).oninput = refresh));
 $("o-type").onchange = () => { const t = $("o-type").value; $("o-pxrow").classList.toggle("hidden", t === "market"); if (t === "market") draft = null; else if (last() != null) { draft = { side: oside, type: t, price: rnd(+$("o-px").value || last() - oside * 10) }; $("o-px").value = draft.price; } drawOrders(); };
 $("o-px").oninput = () => { if (draft) { draft.price = rnd(+$("o-px").value); drawOrders(); } };
-$("o-send").onclick = () => { const ty = $("o-type").value, q = +$("o-qty").value || 1, br = { slPts: +$("o-sl").value || 0, tpPts: +$("o-tp").value || 0, trail: $("o-trail").checked ? +$("o-sl").value : 0 };
+$("o-send").onclick = () => { const ty = $("o-type").value, q = +$("o-qty").value || 1, slOn = !$("o-slon") || $("o-slon").checked, tpOn = !$("o-tpon") || $("o-tpon").checked, br = { slPts: slOn ? +$("o-sl").value || 0 : 0, tpPts: tpOn ? +$("o-tp").value || 0 : 0, trail: slOn && $("o-trail").checked ? +$("o-sl").value : 0 };   // KING_BRTOGGLE
   if (ty === "market") { if (canTrade()) fill(oside, q, last(), nowT(), br); return; } const p = draft ? draft.price : +$("o-px").value; if (!p) return toast("Set a price (drag the draft line)");
   place(oside, ty, p, q, br); draft = null; $("o-type").value = "market"; $("o-pxrow").classList.add("hidden"); drawOrders(); };
 $("b-pos").onclick = (e) => { const a = e.target.dataset.a; if (a === "close") closeAll(); if (a === "rev") reverse(); if (a === "be") toBE(); };
@@ -2896,3 +2902,11 @@ setTimeout(function rh() { if (!panes.length) return setTimeout(rh, 800); let ti
   panes.forEach((p) => { if (p._rh) return; p._rh = true; p.chart.subscribeCrosshairMove((pr) => { if (!reeseMk.length || !pr || !pr.time || !pr.point) { tip.style.display = "none"; return; }
     const m = reeseMk.find((x) => bucket(x.t, p.sec) === pr.time && /@/.test(x.text)); if (!m) { tip.style.display = "none"; return; } const r = p.el.getBoundingClientRect();
     tip.textContent = m.text; tip.style.display = "block"; tip.style.left = r.left + pr.point.x + 14 + "px"; tip.style.top = r.top + pr.point.y - 30 + "px"; }); }); setTimeout(rh, 3000); }, 1500);
+
+["o-slon", "o-tpon"].forEach((id) => { const c = $(id); if (c) c.onchange = () => { const inp = $(id === "o-slon" ? "o-sl" : "o-tp"); inp.disabled = !c.checked; inp.style.opacity = c.checked ? "" : ".35"; }; });
+
+/* KING_BANNER: big on-screen result banners */
+function bigBanner(text, kind) { let el = document.getElementById("bigban"); if (!el) { el = document.createElement("div"); el.id = "bigban"; document.body.appendChild(el); }
+  el.className = "bb-" + kind; el.textContent = text; el.style.display = "flex"; el.style.animation = "none"; void el.offsetWidth; el.style.animation = ""; try { sfx && sfx(kind === "up" ? "win" : "loss"); } catch (e) {}
+  clearTimeout(bigBanner.t); bigBanner.t = setTimeout(() => (el.style.display = "none"), 2600); }
+async function checkAcctPass() { try { if (!acct) return; const S = acctState(acct, await db.allTrades()); if (S.passed && !acct._passShown) { acct._passShown = true; bigBanner("Account passed, good job G", "up"); } if (S.blown && !acct._blownShown) { acct._blownShown = true; bigBanner("Account Blown", "dn"); } } catch (e) {} }

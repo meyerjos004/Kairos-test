@@ -722,3 +722,9 @@ i.qm:hover{background:rgba(167,139,250,.35);color:#fff}
 /* KING_STATS3: taller, cleaner cards + resizable equity chart */
 #st-kpi>div{min-height:96px;display:flex;flex-direction:column;justify-content:space-between}#st-kpi b .kpis{white-space:normal}
 #st-eq{resize:vertical;overflow:hidden;min-height:220px}
+
+.brck{display:flex;align-items:center;gap:6px}.brck input{width:auto!important}
+
+#bigban{position:fixed;inset:0;z-index:150;display:none;align-items:center;justify-content:center;pointer-events:none;font:900 clamp(40px,8vw,110px)/1 Inter,sans-serif;letter-spacing:-.02em;text-transform:none;animation:bbin 2.6s ease forwards}
+#bigban.bb-dn{color:#ff3b4f;text-shadow:0 0 40px rgba(255,59,79,.55)}#bigban.bb-up{color:#2bd4a0;text-shadow:0 0 40px rgba(43,212,160,.55)}
+@keyframes bbin{0%{opacity:0;transform:scale(.7)}12%{opacity:1;transform:scale(1.05)}20%{transform:scale(1)}80%{opacity:1}100%{opacity:0}}

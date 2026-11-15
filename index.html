@@ -125,10 +125,10 @@
         </div>
         <div id="md-order" class="mpanel hidden">
           <div class="seg wide2"><button id="o-buy" class="on b">Buy</button><button id="o-sell" class="s">Sell</button></div>
-          <label>Type<select id="o-type"><option value="market">Market</option><option value="limit">Limit</option><option value="stop">Stop</option><option value="stoplimit">Stop limit</option></select></label>
+          <label>Type<select id="o-type"><option value="market">Market</option><option value="limit">Limit</option></select></label>
           <div id="o-pxrow" class="hidden"><label>Price (drag the draft line on the chart)<input id="o-px" type="number" step="0.25"></label></div>
           <label>Quantity<div class="stepper"><button data-q="-1">−</button><input id="o-qty" type="number" min="1" value="1"><button data-q="1">+</button></div></label>
-          <div class="row2"><label>Stop loss (pts)<input id="o-sl" type="number" step="0.25" value="15"></label><label>Take profit (pts)<input id="o-tp" type="number" step="0.25" value="45"></label></div>
+          <div class="row2"><label><span class="brck"><input id="o-slon" type="checkbox" checked> Stop loss (pts)</span><input id="o-sl" type="number" step="0.25" value="15"></label><label><span class="brck"><input id="o-tpon" type="checkbox" checked> Take profit (pts)</span><input id="o-tp" type="number" step="0.25" value="45"></label></div><div class="tiny muted">Turn either off and drag it out of the position line on the chart once you're in.</div>
           <label class="ck"><input id="o-trail" type="checkbox"> Trailing stop</label>
           <div id="o-risk" class="riskcard"></div>
           <button id="o-send" class="primary wide">Submit order</button>
