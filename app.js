@@ -2728,6 +2728,8 @@ function profileSetup(force) { if (document.getElementById("psetup")) return; if
     if (!DEMO && me) { const { error } = await sb.from("profiles").update({ name: n, username: u }).eq("user_id", me.user_id); try { localStorage.setItem("kz-name", String(n)); } catch (e) {} if (error) return ($("ps-msg").textContent = /duplicate|unique/i.test(error.message) ? "That username is taken" : /column/i.test(error.message) ? "Usernames turn on after the next update" : "Couldn't save: " + error.message); }
     if (me) { me.name = n; me.username = u; names[me.user_id] = n; profs[me.user_id] = me; } if ($("s-name")) $("s-name").value = n; el.remove(); toast("Profile saved"); }; }
 $("s-prof") && ($("s-prof").onclick = () => profileSetup(true));
+{ const b = $("s-prof"); if (b) b.insertAdjacentHTML("afterend", ' <button class="small" id="s-prof2" style="margin-top:8px">Customize profile…</button>'); }
+$("s-prof2") && ($("s-prof2").onclick = () => profileEditor());
 async function adFx() { const box = $("ad-fx"); if (!box || DEMO || !isAdmin) return; const { data } = await sb.from("profiles").select("*"); const opts = ["", "none", ...new Set(NAME_FX.map((x) => x[1]))];
   box.innerHTML = (data || []).map((p) => `<div class="row"><span style="flex:3">${nmFx(p.name, p.user_id)} <span class="muted">${p.username ? "@" + esc(p.username) : "(no username yet)"}</span></span><select data-fx="${p.user_id}" style="flex:2">${opts.map((o) => `<option value="${o}" ${(p.name_fx || "") === o ? "selected" : ""}>${o === "" ? "Auto (keywords)" : o === "none" ? "No effect" : o}</option>`).join("")}</select></div>`).join("") || "No profiles yet";
   box.querySelectorAll("[data-fx]").forEach((s) => (s.onchange = async () => { const { error } = await sb.from("profiles").update({ name_fx: s.value || null }).eq("user_id", s.dataset.fx); toast(error ? "Couldn't save: " + error.message : "Effect saved"); if (!error && profs[s.dataset.fx]) profs[s.dataset.fx].name_fx = s.value || null; })); }
@@ -3149,3 +3151,44 @@ function setupWizard(force) { if (document.getElementById("setupw")) return; if 
   body(); }
 function trySetup() { if (prefs.setupDone || DEMO) return; if (document.getElementById("welcome") || document.getElementById("psetup")) return setTimeout(trySetup, 1500); setupWizard(); }
 setTimeout(trySetup, 4000);
+
+/* KING_PROFILE2 (King, Nov 14): profile = avatar frame (unlocks by level), animated banner, title, badges, name effect (12, unlocks by level),
+   stats showcase card, Spotify now playing. Friends see it (profiles table). Admin can give anyone any effect. */
+const FX12 = [["neon", "Neon pulse", 1], ["ice", "Ice", 2], ["fire", "Fire", 3], ["gold", "Gold shimmer", 4], ["chrome", "Chrome", 5], ["rainbow", "Rainbow wave", 6], ["glitch", "Glitch", 8], ["tron", "Tron light trail", 10], ["lightning", "Lightning", 12], ["matrix", "Matrix rain", 14], ["holo", "Holographic", 17], ["galaxy", "Galaxy", 20]];
+for (const [k] of FX12) NAME_FX.push(["~" + k, k, ""]);   // "~" keys never match a real name, so these are pick-only
+const FRAMES = [["none", "None", 1], ["bronze", "Bronze", 2], ["silver", "Silver", 5], ["gold", "Gold", 10], ["neon", "Neon", 15], ["holo", "Holo", 20]];
+const BANNERS = [["aurora", "Aurora"], ["grid", "Synth grid"], ["ember", "Ember"], ["galaxy", "Galaxy"], ["waves", "Waves"], ["mono", "Mono"]];
+const myLevel = () => Math.floor(Math.sqrt((prefs.xp || 0) / 50)) + 1;
+async function myBadges() { let tr = []; try { tr = await db.allTrades(); } catch (e) {} const B = [];
+  const wins = tr.filter(isW).length, days = {}; for (const t of tr) { const d = sessDay(t.t_exit || t.t_entry); days[d] = (days[d] || 0) + (+t.pnl || 0); } const greenDays = Object.values(days).filter((v) => v > 0).length;
+  if (tr.length) B.push(["first", "🎯", "First trade"]); if (tr.length >= 100) B.push(["c100", "💯", "100 trades"]); if (wins >= 25) B.push(["w25", "🏹", "25 wins"]); if (greenDays >= 5) B.push(["g5", "🟩", "5 green days"]);
+  if ((accts || []).some((a) => a.kind === "funded")) B.push(["funded", "🏦", "Funded"]); if ((accts || []).some((a) => { try { return payoutsOf(a, acctState(a, tr)).n; } catch (e) { return 0; } })) B.push(["payout", "💸", "Payout"]);
+  if ((prefs.winDays || 0) >= 1) B.push(["maxwin", "🏆", "Max win day"]); if ((reese || []).length && (prefs.seenSess || []).length >= 10) B.push(["reese", "📚", "Reese student"]);
+  const net = tr.reduce((s, t) => s + (+t.pnl || 0), 0), wr = tr.length ? Math.round((100 * wins) / tr.length) : 0; return { B, stats: { trades: tr.length, wr, net, greenDays } }; }
+const TITLES = (lv, B) => [["", "No title"], ["Rookie", "Rookie"], ...(lv >= 3 ? [["Scalper", "Scalper"]] : []), ...(lv >= 6 ? [["Sniper", "Sniper"]] : []), ...(lv >= 10 ? [["Veteran", "Veteran"]] : []),
+  ...(B.some((b) => b[0] === "funded") ? [["Funded trader", "Funded trader"]] : []), ...(B.some((b) => b[0] === "payout") ? [["Paid", "Paid"]] : []), ...(B.some((b) => b[0] === "reese") ? [["Reese student", "Reese student"]] : [])];
+function profCardHtml(P, extra) { const nm = P.name || "trader", st = (P.showcase || {}), np = P.now_playing;
+  return `<div class="pcard"><div class="pban ban-${esc(P.banner || "aurora")}"></div><div class="pbody"><div class="pav fr-${esc(P.frame || "none")}">${esc((nm[0] || "?").toUpperCase())}</div>
+    <div class="pnm">${nmFx(nm, P.user_id)} <span class="plv">Lv ${P.level || 1}</span></div>${P.title ? `<div class="ptitle">${esc(P.title)}</div>` : ""}${P.username ? `<div class="tiny muted">@${esc(P.username)}</div>` : ""}
+    <div class="pbadges">${(P.badges || []).map((b) => { const x = (extra && extra.find((y) => y[0] === b)) || [b, "🏅", b]; return `<span title="${esc(x[2])}">${x[1]}</span>`; }).join("")}</div>
+    <div class="pstats"><div><b>${st.trades ?? "—"}</b><span>trades</span></div><div><b>${st.wr != null ? st.wr + "%" : "—"}</b><span>win rate</span></div><div><b>${st.greenDays ?? "—"}</b><span>green days</span></div></div>
+    ${np && np.name ? `<div class="pnp">🎵 <b>${esc(np.name)}</b> <span class="muted">${esc(np.artist || "")}</span></div>` : ""}</div></div>`; }
+async function profileEditor() { if (!me) me = { user_id: "demo", name: "You" }; const lv = myLevel(), { B, stats } = await myBadges();
+  const draft = { ...me, level: lv, badges: B.map((b) => b[0]), showcase: stats };
+  try { if (jget("kz-sp")) { const r = await spApi("/me/player/currently-playing").catch(() => null); if (r && r.item) draft.now_playing = { name: r.item.name, artist: (r.item.artists || []).map((a) => a.name).join(", ") }; } } catch (e) {}
+  const opt = (arr, cur, key) => arr.map(([k, n, need]) => { const lock = need && lv < need; return `<button class="pe-o ${cur === k ? "on" : ""} ${lock ? "lock" : ""}" data-${key}="${k}" ${lock ? `disabled title="Unlocks at level ${need}"` : ""}>${esc(n)}${lock ? ` · Lv ${need}` : ""}</button>`; }).join("");
+  const draw = () => { $("pe-prev").innerHTML = profCardHtml(draft, B); };
+  wideDlg(`<h3>Your profile</h3><div class="pe"><div id="pe-prev"></div><div class="pe-opts">
+    <h4>Name effect</h4><div class="pe-row">${opt([["", "Auto", 0], ...FX12], draft.name_fx || "", "nf")}</div>
+    <h4>Avatar frame</h4><div class="pe-row">${opt(FRAMES, draft.frame || "none", "fr")}</div>
+    <h4>Banner</h4><div class="pe-row">${opt(BANNERS, draft.banner || "aurora", "bn")}</div>
+    <h4>Title</h4><div class="pe-row">${opt(TITLES(lv, B), draft.title || "", "tt")}</div>
+    <p class="tiny muted">Level ${lv}. Badges come from what you do (first trade, 5 green days, funded, payout…). Spotify shows what's playing when it's connected.</p></div></div>`,
+    [{ t: "Cancel" }, { t: "Save", primary: true, f: async () => { const row = { name_fx: draft.name_fx || null, frame: draft.frame || null, banner: draft.banner || null, title: draft.title || null, badges: draft.badges, showcase: draft.showcase, now_playing: draft.now_playing || null, level: lv };
+      Object.assign(me, row); if (profs[me.user_id]) Object.assign(profs[me.user_id], row); if (!DEMO) { const { error } = await sb.from("profiles").update(row).eq("user_id", me.user_id); if (error) return toast("Couldn't save: " + error.message); } toast("Profile saved"); } }]);
+  const box = $("dlgbox"); box.onclick = (e) => { const b = e.target.closest(".pe-o"); if (!b || b.disabled) return; const [k, v] = Object.entries(b.dataset)[0]; const map = { nf: "name_fx", fr: "frame", bn: "banner", tt: "title" };
+    draft[map[k]] = v; b.parentElement.querySelectorAll(".pe-o").forEach((x) => x.classList.toggle("on", x === b)); if (k === "nf") { profs[draft.user_id] = { ...(profs[draft.user_id] || {}), name_fx: v || null }; } draw(); };
+  draw(); }
+function profileView(uid) { const P = profs[uid]; if (!P) return; wideDlg(profCardHtml(P), [{ t: "Close" }]); }
+$("avatar") && ($("avatar").onclick = () => profileEditor());
+document.addEventListener("click", (e) => { const n = e.target.closest("[data-uid].who, .who[data-uid]"); if (n && profs[n.dataset.uid]) profileView(n.dataset.uid); });

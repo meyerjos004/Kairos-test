@@ -362,6 +362,13 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_PROFILE2
+        await E("profileEditor()"); await pg.wait_for_timeout(700)
+        check("profile editor: preview + 12 effects", await E('!!document.querySelector("#pe-prev .pcard") && document.querySelectorAll("[data-nf]").length') == 13)
+        check("effects unlock by level (most locked at Lv1)", await E('document.querySelectorAll("[data-nf].lock").length') >= 10)
+        await pg.click('[data-bn="galaxy"]'); await pg.wait_for_timeout(150)
+        check("banner preview updates", await E('!!document.querySelector("#pe-prev .ban-galaxy")'))
+        await pg.click("#wb0")
         # KING_SETUP
         await E("setupWizard(true)"); await pg.wait_for_timeout(300)
         check("setup: 8 steps", await E('document.querySelectorAll(".sw-dots i").length') == 8)
