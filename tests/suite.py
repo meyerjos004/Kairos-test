@@ -362,6 +362,11 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_HEAT
+        await E("pos.qty && flatten()"); await E("(async () => { await loadReplay(); for (let i=0;i<30;i++) await stepFwd(); market(1); for (let i=0;i<10;i++) await stepFwd(); flatten(); })()"); await pg.wait_for_timeout(800)
+        await E('view("stats")'); await pg.wait_for_timeout(2500)
+        check("stats: heat card renders", await E('!!document.getElementById("st-heat") && document.querySelectorAll("#st-heat .heatk b").length') == 4, await E('(document.getElementById("st-heat")||{}).textContent'))
+        await E('view("trade")')
         # KING_A11Y
         await pg.wait_for_timeout(600)
         check("a11y: every visible form control has a name", await E('[...document.querySelectorAll("input:not([type=hidden]),select,textarea")].filter((e) => e.offsetParent && !e.getAttribute("aria-label") && !(e.labels && e.labels.length)).length') == 0, await E('[...document.querySelectorAll("input:not([type=hidden]),select,textarea")].filter((e) => e.offsetParent && !e.getAttribute("aria-label") && !(e.labels && e.labels.length)).map(e=>e.id).slice(0,5).join()'))

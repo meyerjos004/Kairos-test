@@ -3255,3 +3255,25 @@ function a11yNames(root = document) { root.querySelectorAll("input:not([type=hid
   const n = el.title || el.placeholder || (el.closest("label") && el.closest("label").textContent.trim()) || el.dataset.tool || el.id.replace(/^[a-z]+-/, "").replace(/[-_]/g, " ");
   if (n) el.setAttribute("aria-label", n.slice(0, 80)); }); }
 setTimeout(a11yNames, 1500); new MutationObserver(() => { clearTimeout(a11yNames.t); a11yNames.t = setTimeout(a11yNames, 400); }).observe(document.body, { childList: true, subtree: true });
+
+/* KING_HEAT (night research #2, FX Replay drawdown analytics): how far trades go against you (MAE) and how much they offered (MFE), in R, over real bars */
+async function heatFor(trs) { const out = [];
+  for (const t of trs) { if (t.stop == null || !t.t_entry || !t.t_exit) continue; const risk = Math.abs(+t.entry - +t.stop); if (!risk) continue;
+    const ds = (INST[t.symbol] || INST.NQ).data, ms = [...new Set([t.t_entry, t.t_exit].map((x) => new Date(x * 1000).toISOString().slice(0, 7)))];
+    const bars = (await Promise.all(ms.map((m) => loadMonth(ds, "1m", m)))).flat(); let up = 0, dn = 0, any = false;
+    for (const b of bars) { if (b.t < t.t_entry - 59 || b.t > t.t_exit) continue; any = true; const fav = t.dir > 0 ? b.h - t.entry : t.entry - b.l, adv = t.dir > 0 ? t.entry - b.l : b.h - t.entry; up = Math.max(up, fav); dn = Math.max(dn, adv); }
+    if (any) out.push({ t, mae: dn / risk, mfe: up / risk, won: isW(t) }); }
+  return out; }
+async function heatCard(tr) { let el = $("st-heat"); if (!el) { el = document.createElement("div"); el.id = "st-heat"; el.className = "card heatc"; const eq = $("st-eq"); if (!eq) return; eq.insertAdjacentElement("afterend", el); }
+  el.innerHTML = `<h4>Heat: how far trades go against you <i class="qm" data-help="MAE = the most a trade went against you before it closed. MFE = the most it went in your favour. Both in R (1R = your stop distance), from the real 1-minute bars.">?</i></h4><div class="muted small">Measuring…</div>`;
+  const H = await heatFor(tr.slice(-300)); if (!H.length) { el.innerHTML = el.innerHTML.replace("Measuring…", "Needs trades with a stop loss."); return; }
+  const avg = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0), W = H.filter((h) => h.won), L = H.filter((h) => !h.won && isL(h.t));
+  const wMae = avg(W.map((h) => h.mae)), wMax = W.length ? Math.max(...W.map((h) => h.mae)) : 0, p90 = W.length ? W.map((h) => h.mae).sort((a, b) => a - b)[Math.floor(W.length * 0.9) - (W.length > 9 ? 0 : 0)] || wMax : 0;
+  const lMfe = avg(L.map((h) => h.mfe)), gaveBack = L.filter((h) => h.mfe >= 1).length, wMfe = avg(W.map((h) => h.mfe));
+  const tip = W.length >= 8 && p90 < 0.8 ? `9 out of 10 of your winners never went past <b>−${p90.toFixed(2)}R</b>. A tighter stop around ${(p90 + 0.1).toFixed(1)}R would have kept most of them.` : L.length && gaveBack / L.length > 0.3 ? `<b>${Math.round((100 * gaveBack) / L.length)}%</b> of your losers were up 1R+ first. A move-to-breakeven rule at 1R would have saved them.` : W.length && wMfe > 2.5 ? `Your winners ran <b>${wMfe.toFixed(1)}R</b> on average. A bigger target could pay more.` : "Keep logging stops; the picture sharpens past 20 trades.";
+  const bars = (arr, k, col) => { const b = [0, 0, 0, 0, 0, 0]; arr.forEach((h) => b[Math.min(5, Math.floor(h[k] / 0.5))]++); const mx = Math.max(1, ...b); return `<div class="hbars">${b.map((n, i) => `<div><i style="height:${Math.round((60 * n) / mx)}px;background:${col}"></i><span>${i * 0.5}${i === 5 ? "+" : ""}</span></div>`).join("")}</div>`; };
+  el.innerHTML = `<h4>Heat: how far trades go against you <i class="qm" data-help="MAE = the most a trade went against you before it closed. MFE = the most it went in your favour. Both in R (1R = your stop distance), from the real 1-minute bars.">?</i></h4>
+    <div class="heatk"><div><span>Winners: avg heat</span><b>−${wMae.toFixed(2)}R</b></div><div><span>Winners: worst heat</span><b>−${wMax.toFixed(2)}R</b></div><div><span>Losers: best they got</span><b>+${lMfe.toFixed(2)}R</b></div><div><span>Winners: best they got</span><b>+${wMfe.toFixed(2)}R</b></div></div>
+    <div class="heatg"><div><div class="tiny muted">Winners' heat (R against)</div>${bars(W, "mae", "#2bd4a0")}</div><div><div class="tiny muted">Losers' best (R in favour)</div>${bars(L, "mfe", "#ff6b7a")}</div></div>
+    <p class="small">💡 ${tip}</p><div class="tiny muted">${H.length} trades with a stop measured.</div>`; }
+{ const _rs = renderStats; renderStats = async function () { await _rs(); try { let tr = (await db.allTrades()).slice(); const A = $("st-acct").value, S = $("st-sym").value; if (A === "none") tr = tr.filter((t) => !t.account_id); else if (A) tr = tr.filter((t) => t.account_id === A); if (S) tr = tr.filter((t) => t.symbol === S); await heatCard(tr); } catch (e) {} }; }
