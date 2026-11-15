@@ -106,11 +106,14 @@ function fakeSubs(x, n) { const up = x.c >= x.o, pts = up ? [x.o, x.l, x.h, x.c]
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function animBars(jobs, ms) {   // jobs: [{p, x, subs}] -> grow each pane's newest candle through its sub-bars, then lock in the real bar
   const frames = Math.max(2, Math.min(40, Math.floor(ms / 30))); let done = 0;
+  for (const j of jobs) { const k = bucket(loc(j.x.t), j.p.sec), lc = j.p.candles[j.p.candles.length - 1]; j.snap = lc && lc.time === k ? { ...lc } : null; j.n0 = j.p.candles.length; }   // KING_ANIMCLEAN: remember the candle before the animation
   for (let f = 1; f <= frames; f++) { for (const j of jobs) { const n = Math.max(1, Math.round((j.subs.length * f) / frames)); const s0 = j.subs.slice(0, n);
       const part = { t: j.x.t, o: j.x.o, h: Math.max(...s0.map((z) => z.h), j.x.o), l: Math.min(...s0.map((z) => z.l), j.x.o), c: s0[s0.length - 1].c };
       if (j.p.dead) continue; j.p.series.update(pushBar(j.p, part)); }
     if (f < frames) await sleep(ms / frames); if (!timer) break; }
-  for (const j of jobs) if (!j.p.dead) j.p.series.update(pushBar(j.p, j.x)); done = 1; return done; }
+  for (const j of jobs) { if (j.p.dead) continue; const c = j.p.candles;   // the sub-bar animation never leaves wicks the real bar doesn't have (a 1s tick outside the 1m range used to stick, e.g. a huge first candle)
+    if (j.snap) Object.assign(c[c.length - 1], j.snap); else if (c.length > j.n0) c.length = j.n0;
+    j.p.series.update(pushBar(j.p, j.x)); } done = 1; return done; }
 function demoMonth(sym, tf, ym) {
   if (tf === "15s") { const out = []; for (const b of demoMonth(sym, "1m", ym)) { const h = new Date(loc(b.t) * 1000).getUTCHours(), mi = new Date(loc(b.t) * 1000).getUTCMinutes(); if (!((h === 9 && mi >= 20) || h === 10 || h === 11)) continue;
       const pts = [b.o, b.o + (b.h - b.o) * 0.6, b.l + (b.c - b.l) * 0.4, b.c]; for (let k = 0; k < 4; k++) { const o = k ? pts[k - 1] : b.o, c = pts[k]; out.push({ t: b.t + 15 * k, o: rnd(o), h: rnd(Math.max(o, c, k === 1 ? b.h : -1e9)), l: rnd(Math.min(o, c, k === 2 ? b.l : 1e9)), c: rnd(c) }); } } return out; }
