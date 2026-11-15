@@ -1198,6 +1198,18 @@ function mcDraw(cv, r, o) { const W = (cv.width = cv.clientWidth * 2), H = (cv.h
   const ln = (v, c) => { g.strokeStyle = c; g.setLineDash([8, 6]); g.lineWidth = 2; g.beginPath(); g.moveTo(0, Y(v)); g.lineTo(W, Y(v)); g.stroke(); g.setLineDash([]); };
   ln(0, "rgba(255,255,255,.18)"); if (o.ptg) ln(o.ptg, "rgba(74,222,128,.7)"); if (o.mdd) ln(-o.mdd, "rgba(248,113,113,.7)");
   for (const p of r.fan) { g.strokeStyle = p.res === "pass" ? "rgba(74,222,128,.28)" : p.res === "blown" ? "rgba(248,113,113,.38)" : "rgba(185,140,255,.25)"; g.lineWidth = 2; g.beginPath(); p.forEach((v, i) => (i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v)))); g.stroke(); } }
+/* KING_STATS2: how your backtesting compares to live (your journal) */
+function cmpUI(tr) { const el = $("st-cmp"); if (!el) return; const R = realTrades.filter((r) => r.pnl != null);
+  if (!R.length) { el.innerHTML = '<div class="small muted">Connect your Notion journal (Accounts → Notion) and your live trades show up here next to your backtests.</div>'; return; }
+  const f = (a, k) => a.filter((t) => k(t)), S = (a) => { const n = a.length, w = f(a, isW).length, l = f(a, isL).length, net = a.reduce((s, t) => s + (+t.pnl || 0), 0), days = new Set(a.map((t) => new Date(((t.t_entry || t.t) || 0) * 1000).toISOString().slice(0, 10))).size;
+    return { n, wr: w + l ? Math.round((100 * w) / (w + l)) : 0, avg: n ? net / n : 0, aw: w ? f(a, isW).reduce((s, t) => s + +t.pnl, 0) / w : 0, al: l ? f(a, isL).reduce((s, t) => s + +t.pnl, 0) / l : 0, perDay: days ? n / days : 0 }; };
+  const b = S(tr), r = S(R), row = (k, x, y, fm, why) => `<tr><td>${k}</td><td>${fm(x)}</td><td>${fm(y)}</td><td class="${Math.abs(y - x) > Math.abs(x) * 0.2 ? "pos-dn" : "muted"}">${why(x, y)}</td></tr>`;
+  el.innerHTML = `<table class="bt"><tr><th></th><th>Backtest</th><th>Live</th><th>Difference</th></tr>
+    ${row("Win rate", b.wr, r.wr, (v) => v + "%", (x, y) => (y < x - 5 ? "You win less live" : y > x + 5 ? "You win more live" : "About the same"))}
+    ${row("Average trade", b.avg, r.avg, money, (x, y) => (y < x ? money(y - x) + " per trade live" : "Live is better"))}
+    ${row("Avg win", b.aw, r.aw, money, (x, y) => (y < x * 0.8 ? "Cutting winners early live?" : "OK"))}
+    ${row("Avg loss", b.al, r.al, money, (x, y) => (y < x * 1.2 ? "Bigger losses live: stops moved?" : "OK"))}
+    ${row("Trades per day", b.perDay, r.perDay, (v) => v.toFixed(1), (x, y) => (y > x * 1.3 ? "Overtrading live" : y < x * 0.7 ? "Fewer trades live" : "About the same"))}</table>`; }
 function mcUI(tr) { const el = $("st-mc"); if (!el) return; const pnls = tr.map((t) => +t.pnl || 0); const a = accts.find((x) => x.id === $("st-acct").value), R = (a && a.rules) || {};
   const o = { ptg: +($("mc-ptg") && $("mc-ptg").value) || R.ptg || prefs.ptg || 3000, mdd: +($("mc-mdd") && $("mc-mdd").value) || R.mdd || prefs.mdd || 2000, max: 200, paths: 2000 };
   if (pnls.length < 10) { el.innerHTML = `<div class="small muted">Needs at least 10 trades in this filter (you have ${pnls.length}). It reshuffles your real results to estimate your odds.</div>`; return; }
@@ -1214,8 +1226,9 @@ async function renderStats() {
   const n = tr.length, W = tr.filter(isW), L = tr.filter(isL), BEs = tr.filter(isBE), sum = (a) => a.reduce((s, t) => s + (+t.pnl || 0), 0), gw = sum(W), gl = -sum(L);
   let run = 0, pk = 0, dd = 0, cw = 0, cl = 0, bw = 0, bl = 0; const eq = [];
   for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); dd = Math.max(dd, pk - run); if (isW(t)) { cw++; cl = 0; } else if (isL(t)) { cl++; cw = 0; } bw = Math.max(bw, cw); bl = Math.max(bl, cl); eq.push({ time: t.t_exit, value: +run.toFixed(2) }); }
-  const rs = tr.filter((t) => t.r != null), K = [["Trades", n], ["Win rate", n ? Math.round((100 * W.length) / n) + "%" : "—"], ["Net", money(run)], ["Expectancy / trade", n ? money(run / n) : "—"], ["Avg R", rs.length ? (rs.reduce((s, t) => s + +t.r, 0) / rs.length).toFixed(2) + "R" : "—"],
-    ["Profit factor", gl ? (gw / gl).toFixed(2) : n ? "∞" : "—"], ["Avg win", W.length ? money(gw / W.length) : "—"], ["Avg loss", L.length ? money(-gl / L.length) : "—"], ["Worst drop", money(-dd)], ["Best streak", bw + " wins"], ["Worst streak", bl + " losses"]];
+  const rs = tr.filter((t) => t.r != null), best = W.length ? Math.max(...W.map((t) => +t.pnl)) : null, worst = L.length ? Math.min(...L.map((t) => +t.pnl)) : null;   // KING_STATS2 (King, Nov 14): his order, no expectancy / profit factor
+  const K = [["Trades", n ? `${n} <i class="kpis">${W.length}W · ${L.length}L · ${BEs.length}BE · ${Math.round((100 * W.length) / Math.max(1, W.length + L.length))}%</i>` : "0"], ["Net", money(run)], ["Average trade", n ? money(run / n) : "—"], ["Avg win", W.length ? money(gw / W.length) : "—"], ["Avg loss", L.length ? money(-gl / L.length) : "—"],
+    ["Best win", best != null ? money(best) : "—"], ["Worst loss", worst != null ? money(worst) : "—"], ["Avg R", rs.length ? (rs.reduce((s, t) => s + +t.r, 0) / rs.length).toFixed(2) + "R" : "—"], ["Best streak", bw + " win" + (bw === 1 ? "" : "s")], ["Worst streak", bl + " loss" + (bl === 1 ? "" : "es")]];
   $("st-kpi").innerHTML = K.map(([k, v]) => `<div><span class="muted small">${k}</span><b>${v}</b></div>`).join("");
   const grp = (key) => { const g = {}; for (const t of tr) for (const k of [].concat(key(t))) { (g[k] = g[k] || []).push(t); } return g; };
   const table = (g, order) => { const ks = order ? order.filter((k) => g[k]) : Object.keys(g).sort((a, b) => sum(g[b]) - sum(g[a])); if (!ks.length) return '<div class="empty">No trades yet</div>'; const mx = Math.max(...ks.map((k) => Math.abs(sum(g[k])))) || 1;
@@ -1230,13 +1243,15 @@ async function renderStats() {
   const rs2 = tr.filter((t) => t.r != null).map((t) => +t.r), bins = [[-9, -1.5], [-1.5, -0.75], [-0.75, -0.25], [-0.25, 0.25], [0.25, 1], [1, 2], [2, 3], [3, 99]], lab = ["≤-1.5R", "-1R", "-0.5R", "~0", "+0.5R", "+1.5R", "+2.5R", "3R+"];
   const cnt = bins.map(([a, b]) => rs2.filter((r) => r > a && r <= b).length), mxc = Math.max(1, ...cnt);
   $("st-rd").innerHTML = rs2.length ? `<div class="rbars">${cnt.map((c, i) => `<div><i style="height:${Math.round((80 * c) / mxc)}px" class="${i < 3 ? "dn" : i > 3 ? "up" : ""}"></i><b>${c}</b><span>${lab[i]}</span></div>`).join("")}</div>` : '<div class="empty">No trades with R yet</div>';
-  mcUI(tr); try { lfUI(tr); } catch (e) {}
+  mcUI(tr);
   $("st-rule").innerHTML = table(grp((t) => (t.rules_ok === true ? "Followed rules" : t.rules_ok === false ? "Broke rules" : "Not rated")), ["Followed rules", "Broke rules", "Not rated"]);
   const after = []; for (let i = 1; i < tr.length; i++) { const a = tr[i - 1], b = tr[i]; if (a.pnl < 0 && b.t_entry - a.t_exit < 600) after.push(b); }
   const sizeUp = tr.filter((t, i) => i && tr[i - 1].pnl < 0 && t.qty > tr[i - 1].qty).length, aw = after.filter((t) => t.pnl > 0).length;
   $("st-tilt").innerHTML = `<div class="kvs"><div><span>Re-entries within 10 min of a loss</span><b>${after.length}${after.length ? " · " + Math.round((100 * aw) / after.length) + "% win · " + money(sum(after)) : ""}</b></div><div><span>Size went up right after a loss</span><b>${sizeUp}</b></div></div>` + table(grp((t) => (t.mistakes && t.mistakes.length ? t.mistakes : [])));
-  if (!stC) { stC = LightweightCharts.createChart($("st-eq"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontFamily: "Inter, sans-serif" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } }); stC.s = stC.addAreaSeries({ lineColor: "#5ee6b8", topColor: "rgba(94,230,184,.25)", bottomColor: "rgba(94,230,184,0)", lineWidth: 2, lineType: 2, pointMarkersVisible: false, crosshairMarkerRadius: 3 }); }
-  const seen = new Set(); stC.s.setData(eq.filter((p) => (seen.has(p.time) ? false : seen.add(p.time)))); stC.timeScale().fitContent();
+  if (!stC) { stC = LightweightCharts.createChart($("st-eq"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontFamily: "Inter, sans-serif" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } }); stC.s = stC.addBaselineSeries({ baseValue: { type: "price", price: 0 }, topLineColor: "#2bd4a0", topFillColor1: "rgba(43,212,160,.55)", topFillColor2: "rgba(43,212,160,.04)", bottomLineColor: "#ff5d6c", bottomFillColor1: "rgba(255,93,108,.04)", bottomFillColor2: "rgba(255,93,108,.55)", lineWidth: 2, lineType: 2, pointMarkersVisible: false, crosshairMarkerRadius: 3 }); }
+  const seen = new Set(), eqd = eq.filter((p) => (seen.has(p.time) ? false : seen.add(p.time))); stC.s.setData(eqd); stC.timeScale().fitContent();
+  { const hi = Math.max(200, ...eqd.map((p) => Math.abs(p.value))); stC.s.applyOptions({ autoscaleInfoProvider: (o) => { const r = o(); if (r && r.priceRange) { r.priceRange.minValue = Math.min(r.priceRange.minValue, -200); r.priceRange.maxValue = Math.max(r.priceRange.maxValue, 200); } return r; } }); }   // KING_STATS2: colour builds from ±$200
+  try { cmpUI(tr); } catch (e) {}
   /* KING_EMPTYEQ: say so instead of a blank box */ let em = $("st-eq").querySelector(".eqempty"); if (!em) { em = document.createElement("div"); em.className = "eqempty muted"; em.textContent = "Your equity curve shows up here after your first trade in this filter."; $("st-eq").appendChild(em); } em.style.display = tr.length ? "none" : "";
 }
 
@@ -2837,3 +2852,8 @@ async function reeseOnChart(r) { reeseClear(); let p = panes[active] || panes[0]
     ${te == null && r.dir ? '<div class="tiny muted">His exact entry time isn\'t in the data yet, so the box is placed where price first hit his entry.</div>' : ""}`;
   $("rp-x").onclick = reeseClear;
   el.querySelectorAll(".rp-n").forEach((b) => b.onclick = () => { const t = nyClock(r.day, b.dataset.nt); if (t != null) try { p.chart.timeScale().setVisibleRange({ from: bucket(t, sec) - sec * 40, to: bucket(t, sec) + sec * 40 }); } catch (e) {} }); }
+
+/* KING_QM: "?" help circles (hover or tap) */
+(() => { let tip = null; const show = (q) => { if (!tip) { tip = document.createElement("div"); tip.id = "qmtip"; document.body.appendChild(tip); } tip.textContent = q.dataset.help; tip.style.display = "block"; const r = q.getBoundingClientRect(); tip.style.left = Math.min(innerWidth - 300, r.left) + "px"; tip.style.top = r.bottom + 6 + "px"; };
+  document.addEventListener("mouseover", (e) => { const q = e.target.closest && e.target.closest("i.qm[data-help]"); if (q) show(q); else if (tip) tip.style.display = "none"; });
+  document.addEventListener("click", (e) => { const q = e.target.closest && e.target.closest("i.qm[data-help]"); if (q) { e.stopPropagation(); show(q); } }, true); })();

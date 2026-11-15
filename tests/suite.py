@@ -456,7 +456,7 @@ async def main():
             await pg.click('.csnav [data-cst="%s"]' % t); await pg.wait_for_timeout(80)
         check("upgrade: chart settings tabs all open", await E("!document.querySelector('[data-csp=sym]').classList.contains('hidden') && document.getElementById('cs-grid').value === 'both'"))
         await pg.click("#cs-x"); await E("view('stats')"); await pg.wait_for_timeout(500)
-        check("upgrade: LucidFlex check renders", await E("document.getElementById('st-lf').innerHTML.length > 20"))
+        check("stats: backtest vs live card renders", await E("document.getElementById('st-cmp').innerHTML.length > 20"))
         await E("view('trade')")
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
