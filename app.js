@@ -254,7 +254,7 @@ function stepBack() {
   const b = B["1m"]; if (b.i <= 0) return; b.i--; cursorT = b.bars[b.i].t; const f = B["15s"]; while (f.i >= 0 && f.bars[f.i].t > cursorT) f.i--; advOthers(); rebuildAll();
 }
 function play() { if (timer) return pause(); $("play").textContent = "⏸";
-  const tick = async () => { const sp = +$("speed").value, an = prefs.live1s !== false && sp >= 150 ? Math.round(sp * 0.85) : 0;   // KING_1S: most of each step is spent forming the candle
+  const tick = async () => { const mult = +$("speed").value || 1, sp = Math.max(40, Math.round((stepSec() * 1000) / mult)) /* KING_SPEED2: real-time multiples, 1x = 60 s per 1m candle, 30x = 2 s, 60x = 1 s, 120x = 0.5 s; same on every timeframe */, an = prefs.live1s !== false && sp >= 150 ? Math.round(sp * 0.85) : 0;   // KING_1S: most of each step is spent forming the candle
     await stepUnit(true, an); followLive(); if (timer) timer = setTimeout(tick, Math.max(0, sp - an)); };
   timer = setTimeout(tick, 0); }
 function pause() { clearTimeout(timer); timer = null; $("play").textContent = "▶"; }
@@ -2881,7 +2881,7 @@ async function reeseOnChart(r) { reeseClear(); let p = panes[active] || panes[0]
   document.addEventListener("click", (e) => { const q = e.target.closest && e.target.closest("i.qm[data-help]"); if (q) { e.stopPropagation(); show(q); } }, true); })();
 
 /* KING_HKLABEL (King, Nov 14): show each tool's hotkey right under its icon (not just on hover) */
-function hkLabels() { const K = prefs.keys || {}, alias = { cursor: "Esc" }; document.querySelectorAll("#tools .tool[data-tool], #favbar .tool[data-tool]").forEach((b) => { const t = b.dataset.tool, k = alias[t] || K[t]; let s = b.querySelector(".hk");
+function hkLabels() { const K = prefs.keys || {}, alias = { cursor: "Esc" }; document.querySelectorAll("#tools .tool[data-tool], #favbar .tool[data-tool]").forEach((b) => { if (b.classList.contains("fi") || b.closest(".tfly")) { const o = b.querySelector(".hk"); if (o) o.remove(); b.classList.remove("hashk"); return; }   /* KING_HKFLY: flyout rows already show their key */ const t = b.dataset.tool, k = alias[t] || K[t]; let s = b.querySelector(".hk");
   if (!k) { if (s) s.remove(); return; } if (!s) { s = document.createElement("span"); s.className = "hk"; b.appendChild(s); } const v = k.length === 1 ? k.toUpperCase() : k; if (s.textContent !== v) s.textContent = v; if (!b.classList.contains("hashk")) b.classList.add("hashk"); }); }
 setTimeout(hkLabels, 400); for (const id of ["tools", "favbar"]) { const el = document.getElementById(id); if (el) new MutationObserver(() => { clearTimeout(hkLabels.t); hkLabels.t = setTimeout(hkLabels, 60); }).observe(el, { childList: true, subtree: true }); }
 
@@ -3043,12 +3043,21 @@ async function jdChart(t, tf) { const el = $("jd-chart"); if (!el) return; if (j
   const mk = [{ time: bucket(loc(t.t_entry), sec), position: t.dir > 0 ? "belowBar" : "aboveBar", color: "#c08bff", shape: t.dir > 0 ? "arrowUp" : "arrowDown", text: (t.dir > 0 ? "Buy " : "Sell ") + px2(t.entry) }];
   if (t.t_exit) mk.push({ time: bucket(loc(t.t_exit), sec), position: t.dir > 0 ? "aboveBar" : "belowBar", color: "#ffc65c", shape: "circle", text: "Out " + px2(t.exit) });
   try { s.setMarkers(mk.sort((a, b) => a.time - b.time)); } catch (e) {}
-  const k = c.findIndex((x) => x.time >= bucket(loc(t.t_entry), sec)); if (k >= 0) jdC.timeScale().setVisibleLogicalRange({ from: k - 45, to: k + 45 }); }
+  const k = c.findIndex((x) => x.time >= bucket(loc(t.t_entry), sec)); if (k >= 0) jdC.timeScale().setVisibleLogicalRange({ from: k - 45, to: k + 45 });
+  /* KING_JDPOS (King): the trade's position box (reward green, risk red) drawn on every timeframe */
+  const cv = document.createElement("canvas"); cv.className = "jd-pos"; el.appendChild(cv); const g = cv.getContext("2d");
+  const draw = () => { const W = el.clientWidth, H = el.clientHeight, D = devicePixelRatio || 1; cv.width = W * D; cv.height = H * D; cv.style.width = W + "px"; cv.style.height = H + "px"; g.setTransform(D, 0, 0, D, 0, 0); g.clearRect(0, 0, W, H);
+    const ts = jdC.timeScale(), xa = ts.timeToCoordinate(bucket(loc(t.t_entry), sec)), xe = t.t_exit ? ts.timeToCoordinate(bucket(loc(t.t_exit), sec)) : null, bw = Math.max(6, ts.width() / 90);
+    if (xa == null) return; const x1 = xa, x2 = Math.max(x1 + bw * 3, xe != null ? xe : x1 + bw * 20), ye = s.priceToCoordinate(+t.entry);
+    const zone = (p, col) => { if (p == null) return; const y = s.priceToCoordinate(+p); if (y == null || ye == null) return; g.fillStyle = col; g.fillRect(x1, Math.min(y, ye), x2 - x1, Math.abs(y - ye)); };
+    zone(t.target, "rgba(43,212,160,.16)"); zone(t.stop, "rgba(255,107,122,.16)"); if (ye != null) { g.strokeStyle = "rgba(220,226,236,.8)"; g.lineWidth = 1; g.beginPath(); g.moveTo(x1, ye); g.lineTo(x2, ye); g.stroke(); }
+    if (t.exit != null && xe != null) { const yx = s.priceToCoordinate(+t.exit); if (yx != null && ye != null) { g.setLineDash([4, 4]); g.strokeStyle = +t.pnl >= 0 ? "#2bd4a0" : "#ff6b7a"; g.beginPath(); g.moveTo(x1, ye); g.lineTo(xe, yx); g.stroke(); g.setLineDash([]); } } };
+  jdC.timeScale().subscribeVisibleLogicalRangeChange(() => requestAnimationFrame(draw)); new ResizeObserver(() => requestAnimationFrame(draw)).observe(el); setTimeout(draw, 60); el.addEventListener("wheel", () => requestAnimationFrame(draw), { passive: true }); el.addEventListener("pointermove", (e) => { if (e.buttons) requestAnimationFrame(draw); }); }
 function jdConf(t) { const tg = (t.tags || []).map(String), out = [];
   for (const x of tg) { if (x.startsWith("strat:")) out.push("Strategy: " + x.slice(6)); else if (x.startsWith("rules:")) out.push("Checklist " + x.slice(6)); else out.push(x); }
   return out; }
 function jdReese(t) { const d = sessDay(t.t_entry), rs = (reese || []).filter((r) => r.day === d); if (!rs.length) return `<p class="small muted">No Reese session logged for ${longDate(d)}.</p>`;
-  return rs.map((r) => `<div class="jd-r"><b>${esc(r.session)}</b>${r.dir ? ` · <span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · ${esc(r.result || "")}` : " · no trade logged"}
+  return rs.map((r) => `<div class="jd-r"><b>${esc(r.session)}</b>${r.dir ? ` · <span class="${r.dir > 0 ? "pos-up" : "pos-dn"}">${r.dir > 0 ? "Long" : "Short"}</span>${r.entry ? " @ " + px2(+r.entry) : ""}${r.exit ? " → " + px2(+r.exit) : ""} · ${esc(r.result || "")}` : tradeNotes(r).length ? " · <span class=\"muted\">traded (details from his messages below; exact levels fill in from his screenshots)</span>" : " · no trade mentioned"}
     ${(r.confluences || []).length ? `<div class="rp-conf">${r.confluences.map((c) => `<span>${esc(c)}</span>`).join("")}</div>` : ""}<div class="small muted">${esc(r.summary || "")}</div>
     ${tradeNotes(r).slice(0, 6).map((n) => `<div class="tiny"><span class="muted">${esc(n.t)}</span> ${esc(n.x)}</div>`).join("")}</div>`).join(""); }
 async function tradeDetail(t) { if (!reese.length) try { await loadReese(); } catch (e) {}
@@ -3084,7 +3093,8 @@ function settings2() { const v = $("v-settings"); if (!v || v.dataset.s2) return
   const os = card("KAIROS OS"), live = $("s-live1s") && $("s-live1s").closest("label");
   put("general", os); put("general", card("Data speed"));
   mk("general", `<h3>Setup</h3><div class="tiny muted">Run the 8-step setup again (colors, favorites, layout, pair, theme…).</div><button class="small" id="s2-setup">Run setup</button>`).querySelector("button").onclick = () => setupWizard(true);
-  mk("general", `<h3>Intros &amp; releases</h3><div class="tiny muted">Every intro and release, replayable any time.</div><div class="rel">${RELEASES.map(([v, n, d]) => `<div class="relr"><b>${esc(n)}</b> <span class="muted small">v${esc(v)}</span><div class="small">${esc(d)}</div></div>`).join("")}</div>`).appendChild($("s-intro").parentElement);
+  const relc = mk("general", `<h3>Intros &amp; releases</h3><div class="tiny muted">Every intro and release, replayable any time.</div><div class="rel">${RELEASES.map(([v, n, d]) => `<div class="relr"><b>${esc(n)}</b> <span class="muted small">v${esc(v)}</span><div class="small">${esc(d)}</div>${v === "1.0" ? '<button class="small" disabled>Coming with 1.0</button>' : '<div class="row2 relbtn"></div>'}</div>`).join("")}</div>`);
+  relc.querySelector(".relbtn").appendChild($("s-intro").parentElement);   // KING_RELROW (King): the Beta intro button sits in the Beta row
   put("look", card("Theme")); put("trade", card("Order pad")); put("keys", card("Hot keys"));
   const rp = mk("replay", `<h3>Playback</h3>`); if (live) rp.appendChild(live);
   rp.insertAdjacentHTML("beforeend", `<label class="ck"><input id="s2-follow" type="checkbox" ${prefs.follow !== false ? "checked" : ""}> Follow the newest candle while playing</label><label class="ck"><input id="s2-reese" type="checkbox" ${prefs.reesePop !== false ? "checked" : ""}> Show Reese's trade when one of his sessions ends</label>`);
@@ -3137,8 +3147,9 @@ function setupWizard(force) { if (document.getElementById("setupw")) return; if 
   const wire = () => {
     $("sw-next").onclick = () => { if (i === 5 && $("sw-lots")) { prefs.lots = Math.max(1, +$("sw-lots").value || 1); } if (i === SETUP_STEPS.length - 1) return close(); i++; savePrefs(); body(); };
     if ($("sw-back")) $("sw-back").onclick = () => { i--; body(); }; $("sw-skip").onclick = close;
-    el.querySelectorAll("[data-cc]").forEach((b) => (b.onclick = () => { const [u, d] = b.dataset.cc.split("|"); prefs.up = u; prefs.dn = d; try { csApplyAll(); } catch (e) {} body(); }));
-    if ($("sw-up")) { $("sw-up").oninput = (e) => { prefs.up = e.target.value; try { csApplyAll(); } catch (x) {} }; $("sw-dn").oninput = (e) => { prefs.dn = e.target.value; try { csApplyAll(); } catch (x) {} }; }
+    const follow = () => { prefs.cs = { ...(prefs.cs || {}), bu: null, bd: null, wu: null, wd: null }; };   // KING_SETUPCOL: outlines + wicks default to the body colors
+    el.querySelectorAll("[data-cc]").forEach((b) => (b.onclick = () => { const [u, d] = b.dataset.cc.split("|"); prefs.up = u; prefs.dn = d; follow(); try { csApplyAll(); } catch (e) {} body(); }));
+    if ($("sw-up")) { $("sw-up").oninput = (e) => { prefs.up = e.target.value; follow(); try { csApplyAll(); } catch (x) {} }; $("sw-dn").oninput = (e) => { prefs.dn = e.target.value; follow(); try { csApplyAll(); } catch (x) {} }; }
     el.querySelectorAll("[data-tc]").forEach((b) => (b.onclick = () => { prefs.toolCol = b.dataset.tc; body(); }));
     el.querySelectorAll("[data-fv]").forEach((b) => (b.onclick = () => { const t = b.dataset.fv, f = prefs.favs = prefs.favs || []; const k = f.indexOf(t); if (k >= 0) f.splice(k, 1); else f.push(t); try { favUI && favUI(); } catch (e) {} body(); }));
     if ($("sw-favshow")) $("sw-favshow").onchange = (e) => { prefs.favShow = e.target.checked; try { favUI && favUI(); } catch (x) {} };

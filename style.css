@@ -812,3 +812,7 @@ body.pix .glass,body.pix .card,body.pix .setc{box-shadow:4px 4px 0 rgba(0,0,0,.6
 .fxb-card[data-kind="idea"] .fxb-seg [data-k="idea"]{background:rgba(255,198,92,.22);border-color:#ffc65c;color:#fff}
 .fxb-card[data-kind="fix"] textarea{border-color:rgba(255,107,74,.45);background:rgba(255,107,74,.05)}.fxb-card[data-kind="idea"] textarea{border-color:rgba(255,198,92,.45);background:rgba(255,198,92,.05)}
 .fxb-card[data-kind="fix"]{box-shadow:0 18px 50px rgba(0,0,0,.55),inset 3px 0 0 #ff6b4a}.fxb-card[data-kind="idea"]{box-shadow:0 18px 50px rgba(0,0,0,.55),inset 3px 0 0 #ffc65c}
+
+.jd-chart{position:relative}.jd-pos{position:absolute;inset:0;pointer-events:none;z-index:3}
+
+.tfly .tool.fi.hashk{flex-direction:row!important;height:34px!important}.tfly .tool .hk{display:none}

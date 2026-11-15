@@ -31,7 +31,7 @@ async def main():
         # step / play / back
         t0 = await E("nowT()"); await pg.keyboard.press("ArrowRight"); t1 = await E("nowT()"); check("arrow right steps", t1 > t0)
         await pg.keyboard.press("ArrowLeft"); check("arrow left steps back", await E("nowT()") < t1)
-        await pg.click("#play"); await pg.wait_for_timeout(1200); await pg.click("#play"); check("play advances", await E("nowT()") > t1)
+        await E("document.getElementById('speed').value='120'"); await pg.click("#play"); await pg.wait_for_timeout(1500); await pg.click("#play"); check("play advances", await E("nowT()") > t1)
         # timeframes + layouts
         for tf in ["15s","30s","1m","15m","1h","4h","1D","5m"]:
             await E(f"setPaneTf(active,'{tf}')"); await pg.wait_for_timeout(250); n = await E("panes[active].candles.length"); check(f"timeframe {tf} draws", n > 0, n)
@@ -316,7 +316,7 @@ async def main():
         await E("prefs.mask={}; maskUI(); prefs.lockUntil=Date.now()+60000")
         # KING_STEPTF / KING_SKIPCOL / KING_PLAYDAY (Nov 14)
         check("step selector has Sync default + 1m..D, no 1 bar", await E('[...document.querySelectorAll("#stepsz option")].map(o=>o.value).join(",")') == "sync,60,120,180,300,900,1800,3600,14400,86400")
-        check("100x speed removed", await E('![...document.querySelectorAll("#speed option")].some(o=>o.value==="10")'))
+        check("speed is 1x/30x/60x/120x", await E("[...document.querySelectorAll('#speed option')].map(o=>o.value).join()") == "1,30,60,120")
         check("SKIP + Play out day buttons exist (play out day lives on the favorites bar on wide screens)", await E('!!document.getElementById("skipnext") && !!document.getElementById("playday")'))
         await E('panes[active] && pause()'); t0 = await E("nowT()"); await E('document.getElementById("stepsz").value="300"'); await E("stepUnit(false)"); t1 = await E("nowT()")
         check("5m step moves to the next 5m candle", t1 > t0 and (t1 - t0) <= 300, (t0, t1)); await E('document.getElementById("stepsz").value="sync"')
@@ -362,6 +362,9 @@ async def main():
         check("rewind keeps the same view", await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())") == r0)
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
+        # KING_HKFLY
+        check("flyout rows have no stacked hotkey label", await E('document.querySelectorAll(".tfly .tool .hk").length') == 0)
+        check("1x speed = 60 s per 1m candle", await E('(() => { document.getElementById("stepsz").value = "sync"; return Math.round((stepSec() * 1000) / 1); })()') == (await E("panes[active].sec")) * 1000)
         # KING_SCALPPOP
         await E("prefs.side = true; sideUI()"); await pg.wait_for_timeout(200); await pg.click('.mode[data-mode="scalp"]'); await pg.wait_for_timeout(250)
         check("scalp page pops the pad out + closes the panel", await E('!document.getElementById("pad").classList.contains("hidden") && document.getElementById("side").classList.contains("hidden")'))
