@@ -843,3 +843,19 @@ button:focus-visible,a:focus-visible,[tabindex]:focus-visible,summary:focus-visi
 .tf.on .tfk{opacity:.85}
 #tfpop{position:fixed;z-index:60;left:50%;top:38%;transform:translate(-50%,-50%);min-width:96px;padding:12px 18px;border-radius:14px;background:rgba(17,17,22,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(167,139,250,.35);color:var(--txt);font:800 28px/1 Inter,sans-serif;font-variant-numeric:tabular-nums;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.45);pointer-events:none}
 #tfpop.hidden{display:none}
+
+/* KING_FAVLOOK (fix 7): icons centered in their buttons, a touch bigger, faintest outline */
+.favbar .fbtools{align-items:center}
+.favbar .tool{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:1px solid rgba(255,255,255,.055);border-radius:8px;background:transparent}
+.favbar .tool:hover{border-color:rgba(255,255,255,.12)}
+.favbar .tool.on{border-color:color-mix(in srgb,var(--acc) 55%,transparent)}
+.favbar .tool svg{width:21px!important;height:21px!important}
+.favbar .tool .hk{line-height:1}
+/* KING_FAVDOCK (fix 9): docked in the timeframe row */
+.favbar.docked{position:static;transform:none;z-index:auto;flex:none;height:36px;padding:0 4px;margin:0 8px;gap:4px;background:transparent!important;border:0!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.favbar.docked::after{display:none!important}
+.favbar.docked .fgrip{display:none}
+.favbar.docked .tool{width:34px;height:34px}
+.favbar.docked .tool:not(:has(.hk)) svg{width:20px!important;height:20px!important}
+.favbar.docked .tool:has(.hk) svg{width:18px!important;height:18px!important}
+.favbar.docked .fbreplay{height:34px}

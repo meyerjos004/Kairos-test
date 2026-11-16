@@ -343,7 +343,19 @@ const TOOLNAMES = { pitchfork: "Pitchfork", arrow: "Arrow", channel: "Parallel c
 function favUI() {
   const fb = $("favbar"), wide = innerWidth > 900; replayHome(); fb.classList.toggle("hidden", !(prefs.favShow || wide)); fb.classList.toggle("nofav", !prefs.favShow); $("favbtn").classList.toggle("on", !!prefs.favShow);
   fb.querySelector(".fbtools").innerHTML = prefs.favs.map((t) => { const src = document.querySelector('#tools .tfly [data-tool="' + t + '"]') || document.querySelector('#tools [data-tool="' + t + '"]'); return src ? `<button data-tool="${t}" class="tool ${src.className.replace(/\btool\b|\bon\b|\bfi\b|\btgm\b/g, "").trim()} ${t === tool ? "on" : ""}" title="${src.title}">${(src.querySelector(".ti") || src).innerHTML}</button>` : ""; }).join("") || '<span class="tiny muted" style="padding:0 8px">Right-click a tool to add it here</span>';
-  if (prefs.favPos) { fb.style.left = Math.min(prefs.favPos.x, innerWidth - 80) + "px"; fb.style.top = Math.min(prefs.favPos.y, innerHeight - 40) + "px"; fb.style.transform = "none"; }
+  favDock();
+  if (!fb.classList.contains("docked") && prefs.favPos) { fb.style.left = Math.min(prefs.favPos.x, innerWidth - 80) + "px"; fb.style.top = Math.min(prefs.favPos.y, innerHeight - 40) + "px"; fb.style.transform = "none"; }
+  else if (!fb.classList.contains("docked") && innerWidth > 900) requestAnimationFrame(() => { fb.style.transform = "none"; fb.style.left = Math.max(8, (innerWidth - fb.offsetWidth) / 2) + "px"; });
+}
+// KING_FAVDOCK (fix 9): on desktop the favorites bar lives in the timeframe row, centered in the free space so it grows outward.
+// Falls back to floating if the row is too narrow; right-click → "Float it" / "Dock to top bar".
+function favDock() { const fb = $("favbar"), tb = document.querySelector("#v-trade .tbar") || document.querySelector(".tbar"); if (!fb || !tb) return; const tsp = tb.querySelector(".tsp:not(.tsp2)");
+  const want = innerWidth > 900 && prefs.favDock !== false && tsp;
+  if (want) { if (fb.parentElement !== tb) { const sp = tb.querySelector(".tsp2") || Object.assign(document.createElement("div"), { className: "tsp tsp2" }); tb.insertBefore(sp, tsp); tb.insertBefore(fb, tsp); }
+    fb.classList.add("docked"); fb.style.left = fb.style.top = fb.style.transform = "";
+    if (tb.scrollWidth > tb.clientWidth + 2) want2float(); else fb.classList.remove("tight"); return; }
+  want2float();
+  function want2float() { if (fb.parentElement !== document.body) { document.body.insertBefore(fb, $("qzbar")); const sp = tb.querySelector(".tsp2"); if (sp) sp.remove(); } fb.classList.remove("docked"); fb.classList.toggle("tight", want); }
 }
 // KING_FAVREPLAY (Nov 12 walkthrough): play/pause, bar/candle and speed live on the tool favorites bar on desktop
 // (the bar stays up even with tool favorites off). On a phone they stay in the top bar, where the favorites bar is hidden.
@@ -351,7 +363,7 @@ function replayHome() { const wide = innerWidth > 900, fr = document.querySelect
   if (!fr || !top) return; const want = wide ? fr : top; if (seg.parentElement === want) return;
   const box = (id) => $(id).closest(".dd") || $(id);   // selects are wrapped in the custom dropdown; move the wrapper
   if (wide) { fr.append(seg, box("stepsz"), box("speed"), $("playday")); } else { top.insertBefore(seg, skips); top.appendChild(box("stepsz")); top.appendChild(box("speed")); top.appendChild($("playday")); } }
-addEventListener("resize", () => { try { const w = innerWidth > 900; if (w !== replayHome.w) { replayHome.w = w; favUI(); } } catch (e) {} });
+addEventListener("resize", () => { try { const w = innerWidth > 900; if (w !== replayHome.w) { replayHome.w = w; favUI(); } else favDock(); } catch (e) {} });
 function toolsUI() { const t = $("tools"), f = prefs.toolsPos; t.classList.toggle("float", !!f); if (f) { t.style.left = Math.min(f.x, innerWidth - 50) + "px"; t.style.top = Math.min(f.y, innerHeight - 120) + "px"; } else { t.style.left = t.style.top = ""; } panes.forEach(paint); }
 function dockH() { const b = document.querySelector("#dock .bbody"); b.style.height = prefs.dockClosed ? "0px" : (prefs.dockH || 150) + "px"; if (prefs.pad.x == null) setTimeout(padUI, 240); }
 function grip(el, onMove, onEnd) {   // pointer drag helper
@@ -2271,7 +2283,7 @@ $("tools").addEventListener("contextmenu", (e) => { const b = e.target.closest("
   if (b) { const t = b.dataset.tool, on = prefs.favs.includes(t); items.push({ t: (on ? "Remove " : "Add ") + (TOOLNAMES[t] || t) + (on ? " from" : " to") + " favorites", f: () => { prefs.favs = on ? prefs.favs.filter((x) => x !== t) : [...prefs.favs, t]; prefs.favShow = true; savePrefs(); favUI(); } }); }
   items.push({ t: prefs.toolsPos ? "Dock toolbar on the left" : "Float toolbar (drag the grip)", f: () => { prefs.toolsPos = prefs.toolsPos ? null : { x: 70, y: 140 }; savePrefs(); toolsUI(); } }); menu(items, e.clientX, e.clientY); });
 $("favbtn").onclick = () => { prefs.favShow = !prefs.favShow; savePrefs(); favUI(); };
-$("favbar").addEventListener("contextmenu", (e) => { const b = e.target.closest("[data-tool]"); e.preventDefault(); menu([{ h: "Favorites" }, b ? { t: "Remove " + (TOOLNAMES[b.dataset.tool] || b.dataset.tool), f: () => { prefs.favs = prefs.favs.filter((x) => x !== b.dataset.tool); savePrefs(); favUI(); } } : null, { t: "Hide favorites bar", f: () => { prefs.favShow = false; savePrefs(); favUI(); } }], e.clientX, e.clientY); });
+$("favbar").addEventListener("contextmenu", (e) => { const b = e.target.closest("[data-tool]"); e.preventDefault(); menu([{ h: "Favorites" }, b ? { t: "Remove " + (TOOLNAMES[b.dataset.tool] || b.dataset.tool), f: () => { prefs.favs = prefs.favs.filter((x) => x !== b.dataset.tool); savePrefs(); favUI(); } } : null, innerWidth > 900 ? { t: $("favbar").classList.contains("docked") ? "Float it" : "Dock to top bar", f: () => { prefs.favDock = !$("favbar").classList.contains("docked"); if (prefs.favDock) delete prefs.favPos; savePrefs(); favUI(); } } : null, { t: "Hide favorites bar", f: () => { prefs.favShow = false; savePrefs(); favUI(); } }], e.clientX, e.clientY); });
 grip($("favgrip"), (e, st) => { const fb = $("favbar"), r = fb.getBoundingClientRect(); if (!st.r) st.r = r; fb.style.transform = "none"; fb.style.left = Math.max(0, Math.min(innerWidth - r.width, st.r.left + e.clientX - st.x)) + "px"; fb.style.top = Math.max(0, Math.min(innerHeight - r.height, st.r.top + e.clientY - st.y)) + "px"; },
   () => { const r = $("favbar").getBoundingClientRect(); prefs.favPos = { x: r.left, y: r.top }; savePrefs(); });
 grip($("toolgrip"), (e, st) => { const t = $("tools"); if (!prefs.toolsPos) { prefs.toolsPos = { x: e.clientX - 20, y: e.clientY - 10 }; toolsUI(); } if (!st.r) st.r = t.getBoundingClientRect(); t.style.left = Math.max(0, Math.min(innerWidth - 50, st.r.left + e.clientX - st.x)) + "px"; t.style.top = Math.max(0, Math.min(innerHeight - 100, st.r.top + e.clientY - st.y)) + "px"; },
