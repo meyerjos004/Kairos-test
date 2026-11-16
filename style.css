@@ -859,3 +859,24 @@ button:focus-visible,a:focus-visible,[tabindex]:focus-visible,summary:focus-visi
 .favbar.docked .tool:not(:has(.hk)) svg{width:20px!important;height:20px!important}
 .favbar.docked .tool:has(.hk) svg{width:18px!important;height:18px!important}
 .favbar.docked .fbreplay{height:34px}
+
+/* KING_PIXTHEMES (fix 8) */
+body.pix{font-family:"Pixelify Sans","Courier New",ui-monospace,monospace!important;letter-spacing:.01em}
+body.pix button,body.pix input,body.pix select,body.pix textarea{font-family:inherit!important}
+body.pix .num,body.pix [class*="pnl"],body.pix .stat b{font-variant-numeric:tabular-nums}
+/* Blocky: beveled blocks */
+body[data-pxt="pixelblock"] .glass,body[data-pxt="pixelblock"] .card,body[data-pxt="pixelblock"] .setc,body[data-pxt="pixelblock"] button.primary,body[data-pxt="pixelblock"] .tb,body[data-pxt="pixelblock"] .favbar .tool{box-shadow:inset 2px 2px 0 rgba(255,255,255,.10),inset -2px -2px 0 rgba(0,0,0,.45)!important;border:2px solid #0b0906!important}
+body[data-pxt="pixelblock"] header.top,body[data-pxt="pixelblock"] .tbar,body[data-pxt="pixelblock"] .rail{background-image:linear-gradient(rgba(255,255,255,.025) 50%,transparent 0);background-size:8px 8px}
+/* Pixel grid: glowing lines over a faint grid */
+body[data-pxt="pixelgrid"]{background-image:linear-gradient(rgba(77,243,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(77,243,255,.05) 1px,transparent 1px);background-size:24px 24px}
+body[data-pxt="pixelgrid"] .glass,body[data-pxt="pixelgrid"] .card,body[data-pxt="pixelgrid"] .setc{border:1px solid rgba(77,243,255,.45)!important;box-shadow:0 0 10px rgba(77,243,255,.18),inset 0 0 12px rgba(77,243,255,.06)!important}
+body[data-pxt="pixelgrid"] button.primary,body[data-pxt="pixelgrid"] .tfs .on{box-shadow:0 0 8px rgba(77,243,255,.5)!important}
+/* 8-bit console: chunky offset shadows, thick borders */
+body[data-pxt="pixel8"] .glass,body[data-pxt="pixel8"] .card,body[data-pxt="pixel8"] .setc{border:3px solid var(--txt)!important;box-shadow:5px 5px 0 #000!important}
+body[data-pxt="pixel8"] button.primary,body[data-pxt="pixel8"] .buy,body[data-pxt="pixel8"] .sell{border:2px solid #000!important;box-shadow:3px 3px 0 #000!important}
+/* Terminal: CRT green, VT323, scanlines */
+body[data-pxt="pixelterm"]{font-family:"VT323","Courier New",monospace!important;font-size:17px}
+body[data-pxt="pixelterm"] .glass,body[data-pxt="pixelterm"] .card,body[data-pxt="pixelterm"] .setc{border:1px solid rgba(57,255,106,.4)!important;box-shadow:none!important}
+body[data-pxt="pixelterm"] *{text-shadow:0 0 4px rgba(57,255,106,.25)}
+body[data-pxt="pixelterm"]::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px)}
+@media (prefers-reduced-motion:reduce){body[data-pxt="pixelterm"]::after{display:none}}

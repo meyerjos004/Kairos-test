@@ -588,6 +588,12 @@ async def main():
         await E("prefs.favDock = false; savePrefs(); favUI()"); await pg.wait_for_timeout(250)
         check("fav bar: Float it puts it back on the page, centered", await E("(()=>{const f=$('favbar'),r=f.getBoundingClientRect();return f.parentElement===document.body && Math.abs((r.left+r.right)/2-innerWidth/2)<4})()"))
         await E("delete prefs.favDock; savePrefs(); favUI()")
+        # KING_PIXTHEMES (8)
+        for th in ["pixelblock", "pixelgrid", "pixel8", "pixelterm"]:
+            await E(f"applyTheme('{th}')")
+            check(f"pixel theme {th}: on, pixel class + look set", await E(f"prefs.theme === '{th}' && document.body.classList.contains('pix') && document.body.dataset.pxt === '{th}'"))
+        await E("applyTheme('kairos')")
+        check("pixel themes: back to Kairos clears the pixel look", await E("!document.body.classList.contains('pix') && !document.body.dataset.pxt"))
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())

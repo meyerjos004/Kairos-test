@@ -3179,7 +3179,13 @@ function settings2() { const v = $("v-settings"); if (!v || v.dataset.s2) return
    Steps: chart colors, tool colors, favorites bar, chart layout, trade pair, account/session defaults, theme (incl. pixel), connect Notion / Spotify. */
 THEMES.pixel = ["Pixel arcade", { "--bg": "#0d0221", "--panel": "#170a33", "--acc": "#ff2a6d", "--acc2": "#05d9e8", "--txt": "#f2f2f2", "--mut": "#9a8fbf", "--line": "rgba(5,217,232,.18)" }];
 THEMES.pixelgb = ["Pixel GB", { "--bg": "#0f1a0f", "--panel": "#18281a", "--acc": "#9bbc0f", "--acc2": "#8bac0f", "--txt": "#e0f8d0", "--mut": "#88a878", "--line": "rgba(155,188,15,.18)" }];
-{ const _a = applyTheme; applyTheme = function (k) { _a(k); document.body.classList.toggle("pix", /^pixel/.test(prefs.theme || "")); }; }
+// KING_PIXTHEMES (fix 8, King picked all 4): original pixel looks. Fonts: Pixelify Sans + VT323 (both OFL, loaded only when a pixel theme is on).
+THEMES.pixelblock = ["Blocky", { "--bg": "#17140f", "--panel": "#262017", "--acc": "#7ccf43", "--acc2": "#b07a3c", "--txt": "#f1ead8", "--mut": "#a89a80", "--line": "rgba(124,207,67,.20)" }];
+THEMES.pixelgrid = ["Pixel grid", { "--bg": "#02060b", "--panel": "#06101b", "--acc": "#4df3ff", "--acc2": "#ff9a3c", "--txt": "#e6fbff", "--mut": "#6f93a6", "--line": "rgba(77,243,255,.22)" }];
+THEMES.pixel8 = ["8-bit console", { "--bg": "#000000", "--panel": "#161616", "--acc": "#e83a5f", "--acc2": "#3cbcfc", "--txt": "#fcfcfc", "--mut": "#a6a6a6", "--line": "rgba(252,252,252,.16)" }];
+THEMES.pixelterm = ["Terminal", { "--bg": "#000800", "--panel": "#001300", "--acc": "#39ff6a", "--acc2": "#1fae45", "--txt": "#b9ffc8", "--mut": "#5aa76c", "--line": "rgba(57,255,106,.20)" }];
+function pixFonts() { if (document.getElementById("pixfonts")) return; const l = document.createElement("link"); l.id = "pixfonts"; l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;600&family=VT323&display=swap"; document.head.appendChild(l); }
+{ const _a = applyTheme; applyTheme = function (k) { _a(k); const px = /^pixel/.test(prefs.theme || ""); document.body.classList.toggle("pix", px); document.body.dataset.pxt = px ? prefs.theme : ""; if (px) pixFonts(); }; }
 const SETUP_STEPS = ["Chart colors", "Tool colors", "Favorites bar", "Chart layout", "Trade pair", "Account & session", "Theme", "Connect"];
 function setupWizard(force) { if (document.getElementById("setupw")) return; if (!force && (prefs.setupDone || DEMO)) return;
   const el = document.createElement("div"); el.id = "setupw"; el.className = "dlgwrap"; document.body.appendChild(el); let i = 0;
