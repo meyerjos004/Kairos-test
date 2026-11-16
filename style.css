@@ -836,3 +836,10 @@ button:focus-visible,a:focus-visible,[tabindex]:focus-visible,summary:focus-visi
 .indx em{font-style:normal;color:var(--mut)}
 .indx:hover{transform:translateY(-1px)} .indx:active{transform:scale(.98)} .indx:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
 .legend .ileg{pointer-events:auto;cursor:context-menu}
+
+/* KING_TFKEYS */
+.tf{display:inline-flex;flex-direction:column;align-items:center;gap:1px;line-height:1.1}
+.tf .tfk{font:700 8px/1 Inter,sans-serif;letter-spacing:.04em;color:var(--mut);opacity:.55;pointer-events:none}
+.tf.on .tfk{opacity:.85}
+#tfpop{position:fixed;z-index:60;left:50%;top:38%;transform:translate(-50%,-50%);min-width:96px;padding:12px 18px;border-radius:14px;background:rgba(17,17,22,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid rgba(167,139,250,.35);color:var(--txt);font:800 28px/1 Inter,sans-serif;font-variant-numeric:tabular-nums;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.45);pointer-events:none}
+#tfpop.hidden{display:none}

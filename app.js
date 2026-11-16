@@ -285,7 +285,26 @@ function makePane(i) {
 }
 function setActive(i) { active = i; const ps = paneSym(i); if (ps !== sym && X[ps] && swapTo(ps)) { $("sym").value = sym; drawOrders(); try { refresh(); } catch (e) {} panes.forEach(label); } panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
 function label(p) { const tf = prefs.tfs[p.i] || "5m", s = paneSym(p); p.el.querySelector(".lname").textContent = `${s} · ${tf} · CME`; p.el.classList.toggle("tradesym", s === sym && panes.length > 1 && new Set(panes.map(paneSym)).size > 1); wmSet(p, true); }
-function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}">${n === "1D" ? "D" : n}</button>`).join(""); }
+function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}" title="${n === "1D" ? "Daily" : n} · type ${tfCode(n)}">${n === "1D" ? "D" : n}<span class="tfk">${tfCode(n)}</span></button>`).join(""); }
+/* KING_TFKEYS (fix 6): Tradesea/TradingView-style interval typing. Type 5 → 5m, 15 → 15m, 1h / 60 → 1h, 4h / 240 → 4h, 15s, D. Hints sit under each timeframe. */
+function tfCode(n) { return n === "1D" ? "D" : n.endsWith("s") ? n.toUpperCase() : n.endsWith("h") ? n.toUpperCase() : n.replace("m", ""); }
+let tfBuf = "", tfBufT = 0;
+function tfParse(b) { b = b.toLowerCase(); if (b === "d") return "1D"; const m = b.match(/^(\d{1,3})([smhd]?)$/); if (!m) return null; const n = +m[1], u = m[2] || "m";
+  const sec = u === "s" ? n : u === "m" ? n * 60 : u === "h" ? n * 3600 : n * 86400, hit = TFS.find(([, v]) => v === sec); return hit ? hit[0] : null; }
+function tfPop(txt) { let el = $("tfpop"); if (!el) { el = document.createElement("div"); el.id = "tfpop"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = txt; el.classList.toggle("hidden", !txt); }
+function tfApply() { clearTimeout(tfBufT); const b = tfBuf; tfBuf = ""; tfPop(""); if (!b) return; const tf = tfParse(b);
+  if (!tf || (tf.endsWith("s") && features.sec15 === false)) return toast(`No ${b} chart. Try 15S, 1, 5, 15, 1H, 4H or D`); setPaneTf(active, tf); }
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || e.target.isContentEditable || $("v-trade").classList.contains("hidden") || !$("dlg").classList.contains("hidden")) return;
+  const k = e.key, stop = () => { e.preventDefault(); e.stopImmediatePropagation(); };
+  if (!tfBuf) { if (/^[1-9]$/.test(k)) { stop(); tfBuf = k; } else if ((k === "d" || k === "D") && !Object.values(prefs.keys || {}).includes("d")) { stop(); tfBuf = "d"; return tfApply(); } else return; }
+  else if (/^[0-9]$/.test(k) && /^\d{1,2}$/.test(tfBuf)) { stop(); tfBuf += k; }
+  else if (/^[smhdSMHD]$/.test(k)) { stop(); tfBuf += k.toLowerCase(); return tfApply(); }
+  else if (k === "Enter") { stop(); return tfApply(); }
+  else if (k === "Backspace") { stop(); tfBuf = tfBuf.slice(0, -1); if (!tfBuf) return tfPop(""); }
+  else if (k === "Escape") { stop(); tfBuf = ""; clearTimeout(tfBufT); return tfPop(""); }
+  else { tfBuf = ""; tfPop(""); return; }
+  tfPop(tfBuf.toUpperCase()); clearTimeout(tfBufT); tfBufT = setTimeout(tfApply, 1200); }, true);
 // KING_TFCENTER (Josh, Nov 13): changing interval keeps your place. The moment in the middle of the chart stays in the
 // middle (same width in bars), like TradingView. If you were parked at the live edge you stay there. Settings toggle: keepC.
 function tfAnchor(p) { try { const n = p.candles.length, r = p.chart.timeScale().getVisibleLogicalRange(); if (!n || !r) return null; const w = r.to - r.from;
