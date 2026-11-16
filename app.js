@@ -1892,7 +1892,7 @@ function splash(force) {   // launch intro (Settings → "Intro animation when t
 const APP_VERSION = "0.9.4", APP_LABEL = "Beta";   // moved up so the release intro can read it at launch
 /* KING_RELEASE10 (Nov 16): the KAIROS 1.0 release intro. Plays once, the first time someone opens 1.x (no skipping), then lives in
    Settings → Intros & releases. A note from Josh comes first (that click also lets the video play with sound). The video ends on the
-   KAIROS OS 1.0 title and holds there until the first click, then the app opens. Test: add ?release=1 to the URL. */
+   KAIROS OS 1.0 title and holds there until the first click, then the 10-stop feature tour (releaseTour, coming), then the app. Test: add ?release=1 to the URL. */
 const REL_VIDEO = "brand/intro-1.0.mp4", REL_HOLD = "brand/intro-1.0-hold.jpg";
 function releaseDue() { try { if (/[?&]release=1\b/.test(location.search)) return true; } catch (e) {}
   return /^1\./.test(APP_VERSION) && prefs.releaseSeen !== "1.0" && !navigator.webdriver && !DEMO; }
@@ -1905,7 +1905,10 @@ function releaseIntro(replay) {
   document.body.appendChild(el);
   const note = el.querySelector(".rnote"), vid = el.querySelector(".rvid"), hold = el.querySelector(".rhold"), hint = el.querySelector(".rhint");
   let stage = "note", ended = false;
-  const finish = () => { if (ended) return; ended = true; if (!replay) { prefs.releaseSeen = "1.0"; savePrefs(); }
+  const finish = () => { if (ended) return; ended = true;
+    if (typeof releaseTour === "function" && !replay) { stage = "tour"; hint.hidden = true; return releaseTour(el, () => { ended = false; stage = "hold"; finish2(); }); }   // the 10 stops plug in here (not built yet)
+    finish2(); };
+  const finish2 = () => { if (!replay) { prefs.releaseSeen = "1.0"; savePrefs(); }
     el.classList.add("out"); try { vid.pause(); } catch (e) {} setTimeout(() => el.remove(), 800);
     setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 300); };
   const toHold = () => { if (stage === "hold") return; stage = "hold"; if (!(vid.readyState >= 2 && vid.ended)) hold.hidden = false;
