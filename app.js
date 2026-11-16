@@ -1919,7 +1919,7 @@ function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min
   const onSkip = () => { skip = true; };
   const finish = () => { L.forEach((l) => { if (!l.done) { l.done = true; l.p = 1; reveal(l); } }); T.forEach((t) => { if (t.el.style.opacity === "0") t.el.style.opacity = t.prev || ""; });
     if (phase === "build") startPlay(); endPlay(); panes.forEach((p) => { try { p.series.applyOptions({ visible: true }); } catch (e) {} });
-    cv.style.opacity = "0"; setTimeout(() => cv.remove(), 300); removeEventListener("pointerdown", onSkip, true); };
+    cv.style.opacity = "0"; setTimeout(() => { cv.remove(); dispatchEvent(new Event("kz-built")); }, 300); removeEventListener("pointerdown", onSkip, true); };
   addEventListener("pointerdown", onSkip, true);
   const guard = setTimeout(() => { skip = true; }, 10000);
   const fr = () => { const now = performance.now(), t = (now - t0) / 1000, dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;
@@ -2036,6 +2036,7 @@ function fxUI() { const box = $("s-fx"); if (!box) return; const C = fxCfg();
     <label class="tiny">Start (s)<input type="number" min="0" step="0.5" value="${s.start || 0}" data-fxs="${k}"></label><label class="tiny">Length (s)<input type="number" min="0.5" max="30" step="0.5" value="${s.len || 8}" data-fxl="${k}"></label>
     <label class="small ghost fxup">Upload<input type="file" accept="audio/*,video/mp4" data-fxu="${k}" hidden></label><button class="small" data-fxp="${k}" ${fxHave[k] ? "" : "disabled"}>▶</button><button class="small ghost" data-fxx="${k}" ${fxHave[k] ? "" : "disabled"}>×</button></div>`; }).join("")
     + `<div class="row2"><label class="ck"><input type="checkbox" id="fx-on" ${C.on !== false ? "checked" : ""}> Effects (confetti on take profit, shake on a stop, glow while it runs)</label><label class="tiny">"Running" fires at<input type="number" id="fx-pct" min="20" max="95" step="5" value="${C.runPct || 60}">% of the way</label></div>`; }
+const KZ_VIEW0 = (() => { try { return sessionStorage.getItem("kz-view"); } catch (e) { return null; } })();   // KING_SAMESCREEN: read before boot can change it
 async function boot() {
   if (DEMO) { user = { id: "demo", email: "demo" }; const d = document.createElement("div"); d.className = "demo"; d.textContent = "DEMO · made-up prices · nothing is saved"; document.body.appendChild(d); }
   else {
@@ -2059,7 +2060,12 @@ async function boot() {
   refresh(); fxLoadHave().then(fxUI).catch(() => {}); if ($("s-ver")) $("s-ver").textContent = `Beta · version ${APP_VERSION}${window.KAIROS_DESKTOP ? " · desktop app " + window.KAIROS_DESKTOP.version : ""}. 1.0 is the full release.`;
   const qp = new URLSearchParams(location.search); if (qp.has("welcome") || (!DEMO && !prefs.welcomed)) afterIntro(() => setTimeout(() => welcomeIntro(), DEMO ? 300 : 600)); else if (qp.has("tour")) setTimeout(tour, 600);
   else if (!DEMO && me && !me.username && !prefs.psLater) setTimeout(() => profileSetup(), 4000);   // friends who already went through the welcome get it once too
+  sameScreen();
 }
+// KING_SAMESCREEN (fix 11): a reload plays the intro/build animation, then puts you back on the screen you were on (same tab).
+function sameScreen() { const sv = KZ_VIEW0; if (!sv || sv === "trade" || !$("v-" + sv) || location.hash.startsWith("#notion=")) return;
+  const go = () => { if (!document.body.classList.contains("v-trade")) return; view(sv); };   // the person already moved on → leave them there
+  afterIntro(() => setTimeout(() => { if ($("kbuild")) addEventListener("kz-built", go, { once: true }); else go(); }, 60)); }
 $("a-in").onclick = async () => { try { kChime(new (window.AudioContext || window.webkitAudioContext)()); } catch (e) {} const { error } = await sb.auth.signInWithPassword({ email: $("a-email").value.trim(), password: $("a-pass").value }); $("a-msg").textContent = error ? error.message : ""; if (!error) boot(); };
 $("a-up").onclick = async () => { const { data, error } = await sb.auth.signUp({ email: $("a-email").value.trim(), password: $("a-pass").value, options: { emailRedirectTo: location.origin + location.pathname } }); $("a-msg").textContent = error ? error.message : data.session ? "" : "Check your email to confirm, then sign in here."; if (data && data.session) boot(); };
 $("logout").onclick = async () => { try { localStorage.removeItem("kz-name"); } catch (e) {} await sb.auth.signOut(); location.reload(); }; 
@@ -3386,3 +3392,5 @@ async function shotToReplay(blob) { const url = URL.createObjectURL(blob);
   catch (e) { if ($("s2r-st")) $("s2r-st").textContent = "Couldn't read it (" + e.message + "). Type the date in."; } }
 document.addEventListener("paste", (e) => { if ($("app").dataset.v !== "trade" || e.target.closest("input,textarea,[contenteditable]") || !$("dlg").classList.contains("hidden")) return;
   const it = [...(e.clipboardData || {}).items || []].find((x) => x.type.startsWith("image/")); if (!it) return; e.preventDefault(); shotToReplay(it.getAsFile()); });
+
+{ const _vw = view; view = function (v) { _vw(v); try { sessionStorage.setItem("kz-view", v); } catch (e) {} }; }   // KING_SAMESCREEN

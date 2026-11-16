@@ -594,6 +594,10 @@ async def main():
             check(f"pixel theme {th}: on, pixel class + look set", await E(f"prefs.theme === '{th}' && document.body.classList.contains('pix') && document.body.dataset.pxt === '{th}'"))
         await E("applyTheme('kairos')")
         check("pixel themes: back to Kairos clears the pixel look", await E("!document.body.classList.contains('pix') && !document.body.dataset.pxt"))
+        # KING_SAMESCREEN (11): reload comes back to the same screen
+        await E("view('stats')"); await pg.reload(); await pg.wait_for_timeout(3500)
+        check("reload returns to the same screen (stats)", await E("document.body.classList.contains('v-stats')"), await E("document.body.className"))
+        await E("view('trade')"); await pg.wait_for_timeout(300)
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
