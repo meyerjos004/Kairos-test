@@ -1889,7 +1889,36 @@ function splash(force) {   // launch intro (Settings → "Intro animation when t
   let ended = false; const end = () => { if (ended) return; ended = true; tm.forEach(clearTimeout); el.classList.add("out"); setTimeout(() => el.remove(), 750);
     setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 250); };
   el.addEventListener("pointerdown", end); addEventListener("keydown", function k(e) { if (e.key === "Escape" || e.key === " " || e.key === "Enter") { removeEventListener("keydown", k); end(); } }); }
-splash();
+const APP_VERSION = "0.9.4", APP_LABEL = "Beta";   // moved up so the release intro can read it at launch
+/* KING_RELEASE10 (Nov 16): the KAIROS 1.0 release intro. Plays once, the first time someone opens 1.x (no skipping), then lives in
+   Settings → Intros & releases. A note from Josh comes first (that click also lets the video play with sound). The video ends on the
+   KAIROS OS 1.0 title and holds there until the first click, then the app opens. Test: add ?release=1 to the URL. */
+const REL_VIDEO = "brand/intro-1.0.mp4", REL_HOLD = "brand/intro-1.0-hold.jpg";
+function releaseDue() { try { if (/[?&]release=1\b/.test(location.search)) return true; } catch (e) {}
+  return /^1\./.test(APP_VERSION) && prefs.releaseSeen !== "1.0" && !navigator.webdriver && !DEMO; }
+function releaseIntro(replay) {
+  if (document.getElementById("krel")) return true; if (!replay && !releaseDue()) return false;
+  introOn = true; const el = document.createElement("div"); el.id = "krel";
+  el.innerHTML = `<div class="rnote" role="button" tabindex="0"><p>Pay attention, there's some good stuff here.</p><b>-Josh</b><span class="rgo">Click to start</span></div>
+    <video class="rvid" playsinline preload="auto" poster="" src="${REL_VIDEO}"></video><img class="rhold" alt="KAIROS OS 1.0" src="${REL_HOLD}" hidden>
+    <div class="rhint" hidden>Click anywhere to enter</div>`;
+  document.body.appendChild(el);
+  const note = el.querySelector(".rnote"), vid = el.querySelector(".rvid"), hold = el.querySelector(".rhold"), hint = el.querySelector(".rhint");
+  let stage = "note", ended = false;
+  const finish = () => { if (ended) return; ended = true; if (!replay) { prefs.releaseSeen = "1.0"; savePrefs(); }
+    el.classList.add("out"); try { vid.pause(); } catch (e) {} setTimeout(() => el.remove(), 800);
+    setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 300); };
+  const toHold = () => { if (stage === "hold") return; stage = "hold"; if (!(vid.readyState >= 2 && vid.ended)) hold.hidden = false;
+    setTimeout(() => { hint.hidden = false; requestAnimationFrame(() => hint.classList.add("on")); }, 1400); };
+  const start = () => { if (stage !== "note") return; stage = "play"; note.classList.add("out"); vid.classList.add("on");
+    vid.muted = prefs.sound === false; const p = vid.play(); if (p && p.catch) p.catch(() => { vid.muted = true; vid.play().catch(toHold); }); };
+  vid.addEventListener("ended", toHold); vid.addEventListener("error", () => { if (stage !== "note") toHold(); });
+  el.addEventListener("click", () => { if (stage === "note") start(); else if (stage === "hold") finish(); else if (replay) toHold(); });
+  addEventListener("keydown", function relKey(e) { if (!document.body.contains(el)) return removeEventListener("keydown", relKey);
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (stage === "note") start(); else if (stage === "hold") finish(); }
+    else if (e.key === "Escape" && replay) finish(); });
+  setTimeout(() => note.focus(), 50); return true; }
+if (!releaseIntro()) splash();
 /* chart build (KING_BUILD v2): colored cursors swim in and build every piece of the screen except the candles; each piece pops in as its
    outline finishes. When the scaffolding is done the candles play themselves into existence left to right and the cursors swim away. */
 let builtOnce = false;
@@ -1971,7 +2000,6 @@ function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min
     requestAnimationFrame(fr); };
   requestAnimationFrame(fr); }
 /* ---------------- KAIROS OS Beta: welcome cinematic (first time you're let in) + onboarding tour ---------------- */
-const APP_VERSION = "0.9.4", APP_LABEL = "Beta";
 function wAudio() { try { const ac = new (window.AudioContext || window.webkitAudioContext)(), M = ac.createGain(); M.gain.value = 0.9; M.connect(ac.destination);
   const len = ac.sampleRate * 3, ir = ac.createBuffer(2, len, ac.sampleRate); for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4); }
   const V = ac.createConvolver(); V.buffer = ir; const vg = ac.createGain(); vg.gain.value = 0.5; V.connect(vg); vg.connect(M); return { ac, M, V }; } catch (e) { return null; } }
@@ -3172,7 +3200,7 @@ const SET_CATS = [["general", "General", "#8e8e93", "⚙️"], ["look", "Appeara
   ["integ", "Integrations", "#bf5af2", "🔗"], ["data", "Data & privacy", "#32d74b", "🛡"], ["admin", "Admin", "#ffd60a", "🔑"]];
 // KING_RELLIB (fix 21): release history. [version, name, date, one line, what's new]
 const RELEASES = [
-  ["1.0", "KAIROS 1.0", "", "The intro + feature tour (rendering).", []],
+  ["1.0", "KAIROS 1.0", "", "The release intro. The feature tour comes next.", []],
   ["next", "Next update", "On test now", "Fix list round 5.", ["Type a timeframe: 1 5 Enter, 1 h, 4 h, d (keys shown on the buttons)", "Favorites bar docks into the timeframe row", "Four pixel themes: Blocky, Pixel grid, 8-bit console, Terminal", "Reload brings you back to the screen you were on", "Spotify: playlist pages, song art, search, shuffle, volume; ask for Spotify access in the app", "Media window resizes from every side and corner", "Phone: the news popup no longer covers the order pad", "Replay from a past candle asks: staying accountable or cheating?", "Right-click an indicator → red ✕ to remove it", "Huge histories load faster (charts keep 15k candles and load more as you scroll left)"]],
   ["0.9.4", "Beta", "Nov 14, 2026", "Sessions (eval → funded), tax tab, trade detail on 7 timeframes, 45 layouts, new stats, undo/redo.", ["New session wizard: Eval or Funded with LucidFlex presets, auto-titled accounts", "Tax tab: Utah / PA / Sweden, filing status, quarterly dates + amounts", "Journal: calendar + trade detail on 15s to D charts", "Layouts: 1 to 8 charts, 45 arrangements, sync toggles", "Stats: equity curve, heat card (MAE/MFE in R), best win / worst loss", "Ghost trades: see what you did last time on this day", "Screenshot → replay that exact moment", "Apple-style Settings with search", "Profiles: name effects, frames, banners, badges", "Undo / redo for drawings (Ctrl/Cmd+Z)"]],
   ["0.9.3", "Beta", "Nov 14, 2026", "Choose dates, Reese end-of-day window, Learn lessons, Play out day.", ["Choose dates: years, search any date, month + week timelines", "Reese's trades, arrows and notes on your own chart after the session", "Learn: real lessons and guided weeks", "Play out day to 3 PM", "Hotkey letters under every tool", "Breakevens count within ±$20", "MNQ + MES contracts"]],
@@ -3187,8 +3215,9 @@ function settings2() { const v = $("v-settings"); if (!v || v.dataset.s2) return
   const os = card("KAIROS OS"), live = $("s-live1s") && $("s-live1s").closest("label");
   put("general", os); put("general", card("Data speed"));
   mk("general", `<h3>Setup</h3><div class="tiny muted">Run the 8-step setup again (colors, favorites, layout, pair, theme…).</div><button class="small" id="s2-setup">Run setup</button>`).querySelector("button").onclick = () => setupWizard(true);
-  const relc = mk("general", `<h3>Intros &amp; releases</h3><div class="tiny muted">Every intro and release, replayable any time.</div><div class="rel">${RELEASES.map(([v, n, dt, d, w], i) => `<div class="relr"><b>${esc(n)}</b> <span class="muted small">${v === "next" ? "" : "v" + esc(v)}${dt ? " · " + esc(dt) : ""}</span><div class="small">${esc(d)}</div>${v === "1.0" ? '<button class="small" disabled>Coming with 1.0</button>' : `<div class="row2">${w.length ? `<button class="small" data-relw="${i}">What's new</button>` : ""}${v === APP_VERSION ? '<span class="relbtn"></span>' : ""}</div>`}</div>`).join("")}</div>`);
+  const relc = mk("general", `<h3>Intros &amp; releases</h3><div class="tiny muted">Every intro and release, replayable any time.</div><div class="rel">${RELEASES.map(([v, n, dt, d, w], i) => `<div class="relr"><b>${esc(n)}</b> <span class="muted small">${v === "next" ? "" : "v" + esc(v)}${dt ? " · " + esc(dt) : ""}</span><div class="small">${esc(d)}</div>${v === "1.0" ? '<button class="small" data-relplay>Play the 1.0 intro</button>' : `<div class="row2">${w.length ? `<button class="small" data-relw="${i}">What's new</button>` : ""}${v === APP_VERSION ? '<span class="relbtn"></span>' : ""}</div>`}</div>`).join("")}</div>`);
   relc.querySelector(".relbtn").appendChild($("s-intro").parentElement);   // KING_RELROW (King): the Beta intro button sits in the current release's row
+  relc.querySelectorAll("[data-relplay]").forEach((b) => (b.onclick = () => releaseIntro(true)));   // KING_RELEASE10
   relc.querySelectorAll("[data-relw]").forEach((b) => (b.onclick = () => { const [v, n, dt, , w] = RELEASES[+b.dataset.relw]; wideDlg(`<h2 style="margin:0 0 4px">What's new · ${esc(n)}${v === "next" ? "" : " v" + esc(v)}</h2><div class="muted small" style="margin-bottom:12px">${esc(dt)}</div><ul class="relw">${w.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`, [{ t: "Close", primary: true }]); }));
   put("look", card("Theme")); put("trade", card("Order pad")); put("keys", card("Hot keys"));
   const rp = mk("replay", `<h3>Playback</h3>`); if (live) rp.appendChild(live);
