@@ -2756,6 +2756,12 @@ function dayRecap(last) { if (!realTrades.length || prefs.showReal === false) re
       <h4 style="margin:12px 0 6px">Where you went off the model</h4><div class="recap-dev">${dev.map((x) => `<div>${x}</div>`).join("") || '<div class="muted">Nothing to compare</div>'}</div><div class="tiny muted" style="margin-top:8px">Real R uses your risk setting (${money(risk)} = 1R) unless your journal has an R column.</div>`, () => {});
     $("dl-ok").textContent = "Done"; $("dl-x").classList.add("hidden"); };
   setTimeout(() => { if (tEl.onclick) { tEl.onclick = null; tEl.style.cursor = ""; } }, 9000); }
+/* KING_ROLLMK: futures roll seams. Finds jumps in Mar/Jun/Sep/Dec where the gap between one bar's close and the next bar's open is far bigger than normal bar ranges (data-driven, no hardcoded dates). */
+function rollMarks(p) { const c = p.candles, n = c.length; if (n < 50) return []; const ck = n + "|" + c[0].time + "|" + c[n - 1].time; if (p._rk === ck) return p._rm; p._rk = ck;
+  const rg = []; for (let i = Math.max(1, n - 400); i < n; i++) rg.push(c[i].high - c[i].low); rg.sort((a, b) => a - b); const med = rg[rg.length >> 1] || 1, out = [];
+  for (let i = 1; i < n; i++) { const g = Math.abs(c[i].open - c[i - 1].close); if (g < Math.max(8 * med, 6)) continue; const d = new Date(c[i].time * 1000), mo = d.getUTCMonth() + 1, day = d.getUTCDate(); if (mo % 3 || day < 5 || day > 21) continue;
+    out.push({ time: c[i].time, position: "aboveBar", color: "#c08bff", shape: "square", text: "ROLL " + (c[i].open > c[i - 1].close ? "+" : "−") + g.toFixed(2) }); }
+  return (p._rm = out); }
 function csMarks(p) { const C = csG(); const s = paneSym(p), last = p.candles.length ? p.candles[p.candles.length - 1].time : -1;
   const mk = !C.exm ? [] : execs.filter((x) => x.sym === s).map((x) => ({ time: bucket(loc(x.t), p.sec), position: x.side > 0 ? "belowBar" : "aboveBar", color: x.side > 0 ? "#2bd4a0" : "#ff6b7a", shape: x.side > 0 ? "arrowUp" : "arrowDown", text: C.exl ? `${x.side > 0 ? "B" : "S"} ${x.qty} @ ${px2(x.price)}` : "" })).filter((m) => m.time <= last);
   const first = p.candles.length ? p.candles[0].time : Infinity, seenR = new Set();   // KING_REALMARKS: skip trades before the loaded data (they piled on the first candle) + duplicates
@@ -2763,6 +2769,7 @@ function csMarks(p) { const C = csG(); const s = paneSym(p), last = p.candles.le
     const rk = r.url || [r.t, r.side, r.pnl, r.entry].join("|"), rk2 = [r.t, r.side, r.pnl].join("|"); if (seenR.has(rk) || seenR.has(rk2)) continue; seenR.add(rk); seenR.add(rk2);
     mk.push({ time: bucket(lt, p.sec), position: r.side < 0 ? "aboveBar" : "belowBar", color: "#f5c542", shape: "circle", text: "Real" + (r.side ? (r.side > 0 ? " L" : " S") : "") + (r.pnl != null ? " " + (r.pnl >= 0 ? "+" : "") + Math.round(r.pnl) : "") }); }
   for (const m of reeseMk) { const tt = bucket(m.t, p.sec); if (tt <= last) mk.push({ time: tt, position: m.position, color: m.color, shape: m.shape, text: m.text }); }   // KING_REESEWIN
+  if (prefs.rollMk !== false) for (const m of rollMarks(p)) if (m.time <= last) mk.push(m);   // KING_ROLLMK
   dayRecap(last);
   mk.sort((a, b) => a.time - b.time); const key = mk.length + "|" + reeseMk.length + "|" + C.exl + "|" + p.sec; if (p._mkk === key) return; p._mkk = key; p._mk = mk.length; try { p.series.setMarkers(mk); } catch (e) {} }
 // the settings window
