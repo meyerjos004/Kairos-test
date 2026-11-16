@@ -598,6 +598,16 @@ async def main():
         await E("view('stats')"); await pg.reload(); await pg.wait_for_timeout(3500)
         check("reload returns to the same screen (stats)", await E("document.body.classList.contains('v-stats')"), await E("document.body.className"))
         await E("view('trade')"); await pg.wait_for_timeout(300)
+        # KING_SPOTREQ (13): demo request flow
+        await E("window.REWIND = Object.assign(window.REWIND||{}, {spotify:'x'}); localStorage.removeItem('kz-sp'); spReqMine = undefined; prefs.media.show=true; prefs.media.tab='sp'; mediaUI()"); await pg.wait_for_timeout(500)
+        check("spotify request: ask link shows when not connected", await E("!!document.getElementById('spr-t')"))
+        await E("document.getElementById('spr-t').click(); document.getElementById('spr-n').value='Ryan Test'; document.getElementById('spr-e').value='nope'; document.getElementById('spr-s').click()"); await pg.wait_for_timeout(200)
+        check("spotify request: bad email is caught", "look right" in await E("document.getElementById('spr-m').textContent"))
+        await E("document.getElementById('spr-e').value='ryan@example.com'; document.getElementById('spr-s').click()"); await pg.wait_for_timeout(300)
+        check("spotify request: sent card shows the email", "ryan@example.com" in await E("document.getElementById('spreq').textContent"))
+        await E("prefs.media.show=false; mediaUI()")
+        # KING_PHONETOAST (15) is checked in the phone pass via CSS: toast sits at the top on narrow screens
+        check("phone toast rule present", "KING_PHONETOAST" in open(ROOT + "/style.css").read())
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())

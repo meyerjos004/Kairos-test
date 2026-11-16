@@ -1546,8 +1546,10 @@ async function spNow() { const box = $("sp-now"); if (!box) return; try { const 
     : '<div><i>Nothing playing on your Spotify right now. Pick a playlist below, or press play in your Spotify app and the controls show up here.</i></div>'; } catch (e) { box.innerHTML = ""; } }
 async function spUI() { const el = $("m-sp"); if (!el.querySelector("#sp-frame")) el.innerHTML = '<div id="sp-body"></div><div id="sp-frame"></div>';
   const body = $("sp-body"); if (!MCFG().spotify) { body.innerHTML = needSetup("Spotify"); return; }
-  if (!jget("kz-sp")) { body.innerHTML = `<div class="mempty"><b>Your music, next to the chart</b><span>Sign in with your own Spotify to see your playlists and control what's playing.</span><button class="primary small" id="sp-in">Connect Spotify</button></div>`; $("sp-in").onclick = spConnect; return; }
-  try { spMe = spMe || (await spApi("/me")); spPls = spPls || (await spApi("/me/playlists?limit=50")).items || []; } catch (e) { body.innerHTML = `<div class="mempty"><span>${esc(e.message)}</span><button class="small" id="sp-in">Reconnect Spotify</button></div>`; $("sp-in").onclick = () => { jset("kz-sp", null); spMe = spPls = null; spConnect(); }; return; }
+  if (!jget("kz-sp")) { body.innerHTML = `<div class="mempty"><b>Your music, next to the chart</b><span>Sign in with your own Spotify to see your playlists and control what's playing.</span><button class="primary small" id="sp-in">Connect Spotify</button></div><div id="spreq"></div>`; $("sp-in").onclick = spConnect; spReqCard(false); return; }
+  try { spMe = spMe || (await spApi("/me")); spPls = spPls || (await spApi("/me/playlists?limit=50")).items || []; } catch (e) { const nr = e.status === 403 || /not registered|developer dashboard|user may not/i.test(e.message);
+    body.innerHTML = `<div class="mempty"><span>${nr ? "Spotify says you're not on KAIROS's Spotify list yet." : esc(e.message)}</span><button class="small" id="sp-in">Reconnect Spotify</button></div><div id="spreq"></div>`; $("sp-in").onclick = () => { jset("kz-sp", null); spMe = spPls = null; spConnect(); }; spReqCard(nr); return; }
+  spReqDone();
   body.innerHTML = `<div class="mwho"><span>🎧 ${esc(spMe.display_name || spMe.id)}</span><button class="pb tiny" id="sp-out">Sign out</button></div><div class="spnow" id="sp-now"></div><div id="sp-list">
     <div class="plgrid">${spPls.filter(Boolean).map((p) => `<button class="pl" data-pl="${p.id}"><img loading="lazy" src="${esc((p.images && p.images[0] && p.images[0].url) || "")}" alt=""><b>${esc(p.name)}</b></button>`).join("")}</div></div>${spHasStream() ? "" : '<div class="tiny muted">Previews only? Sign out and connect again once to play full songs (Premium).</div>'}`;
   if (spView) spOpenPl(spView); spPlayer();
@@ -3394,3 +3396,25 @@ document.addEventListener("paste", (e) => { if ($("app").dataset.v !== "trade" |
   const it = [...(e.clipboardData || {}).items || []].find((x) => x.type.startsWith("image/")); if (!it) return; e.preventDefault(); shotToReplay(it.getAsFile()); });
 
 { const _vw = view; view = function (v) { _vw(v); try { sessionStorage.setItem("kz-view", v); } catch (e) {} }; }   // KING_SAMESCREEN
+
+/* KING_SPOTREQ (fix 13): Spotify is in dev mode, so King adds each friend by hand. Friends send their name + Spotify email here;
+   a database trigger queues a Mac relay job that texts King the Spotify dashboard link. The card hides once Spotify connects. */
+let spReqMine;
+async function spReqGet() { if (spReqMine !== undefined) return spReqMine; if (DEMO) return (spReqMine = null);
+  const { data } = await sb.from("spotify_requests").select("status,full_name,spotify_email").eq("user_id", user.id).maybeSingle(); return (spReqMine = data || null); }
+async function spReqCard(open) { const el = $("spreq"); if (!el) return; const r = await spReqGet().catch(() => null);
+  if (r && r.status === "pending") { el.innerHTML = `<div class="spreq sent"><b>Request sent ✓</b><span>King is adding <i>${esc(r.spotify_email)}</i>. Tap Connect Spotify again in a bit.</span></div>`; return; }
+  if (r && r.status === "added") { el.innerHTML = ""; return; }
+  el.innerHTML = `<div class="spreq${open ? " open" : ""}"><button class="linkb" id="spr-t">Not on the Spotify list yet? Ask King to add you</button>
+    <div class="spr-f"><span class="tiny muted">KAIROS's Spotify is invite-only for now. Send the email you use for Spotify and King adds you.</span>
+    <input id="spr-n" placeholder="Full name" autocomplete="name" maxlength="80"><input id="spr-e" type="email" placeholder="Spotify email" autocomplete="email" maxlength="120">
+    <div class="row"><button class="primary small" id="spr-s">Send request</button><span class="tiny" id="spr-m"></span></div></div></div>`;
+  if (me && me.name && !$("spr-n").value) $("spr-n").value = me.name;
+  $("spr-t").onclick = () => el.querySelector(".spreq").classList.toggle("open");
+  $("spr-s").onclick = async () => { const n = $("spr-n").value.trim(), em = $("spr-e").value.trim(), m = $("spr-m");
+    if (n.length < 2) return (m.textContent = "Add your full name"); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return (m.textContent = "That email doesn't look right");
+    $("spr-s").disabled = true; m.textContent = "Sending…";
+    if (DEMO) { spReqMine = { status: "pending", full_name: n, spotify_email: em }; return spReqCard(); }
+    const { error } = await sb.from("spotify_requests").upsert({ full_name: n, spotify_email: em, status: "pending" }, { onConflict: "user_id", ignoreDuplicates: true });
+    if (error) { $("spr-s").disabled = false; return (m.textContent = error.message); } spReqMine = { status: "pending", full_name: n, spotify_email: em }; sfx("win"); spReqCard(); }; }
+async function spReqDone() { try { const r = await spReqGet(); if (r && r.status === "pending" && !DEMO) { await sb.from("spotify_requests").update({ status: "added", added_at: new Date().toISOString() }).eq("user_id", user.id); spReqMine = { ...r, status: "added" }; } } catch (e) {} }
