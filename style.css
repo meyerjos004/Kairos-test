@@ -948,3 +948,50 @@ input:focus,select:focus{border-color:color-mix(in srgb,var(--acc) 55%,transpare
 /* focus ring only when using the keyboard, never after a click */
 button:focus:not(:focus-visible),a:focus:not(:focus-visible),[tabindex]:focus:not(:focus-visible){outline:none}
 .seg button.on:not(.b):not(.s){background:var(--sel);color:var(--txt)}
+
+/* KING_AUDIT: full-screen audit fixes (Nov 16). Numbers match /claude/kairos-audit-nov16.md */
+/* 2 · Stats weekly review: compact tiles instead of a 1500px label…number row */
+#st-week .kvs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px}
+#st-week .kvs div{flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:6px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+#st-week .kvs span{font-size:11.5px}
+#st-week .kvs b{font:600 17px/1.2 Inter,sans-serif;font-variant-numeric:tabular-nums}
+#st-week .kvs b .small{font-size:11.5px;font-weight:500}
+/* 4 · Settings: Save sits on the title row (still sticky), content uses the width */
+#v-settings .setnav{height:0;padding:0;margin:0;background:none;overflow:visible;justify-content:flex-end;top:8px;pointer-events:none}
+#v-settings .setnav #s-save{pointer-events:auto;transform:translateY(12px)}
+.s2main h2{padding-right:96px}
+.s2sec .setgrid{grid-template-columns:repeat(auto-fit,minmax(360px,1fr));max-width:1180px}
+/* 5 · Settings list: soft selected row (the solid violet bar fought the coloured icons) */
+.s2side button.on{background:var(--sel-acc2);color:var(--txt)}
+/* 6 · Journal: title + filters on top like Stats; numbers right-aligned in the trades table */
+#v-journal .tbl th:nth-child(n+4):nth-child(-n+8),#v-journal .tbl td:nth-child(n+4):nth-child(-n+8){text-align:right;font-variant-numeric:tabular-nums}
+#v-journal .tbl th:nth-child(9),#v-journal .tbl td:nth-child(9){padding-left:28px}
+/* 7 · Accounts: empty state is a real call to action; the replay-account card lines up with the title */
+.acempty{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:16px 18px;border:1px dashed rgba(255,255,255,.12);border-radius:14px;color:var(--mut);font-size:13px}
+.acempty b{color:var(--txt);font-weight:600}.acempty button{margin-left:auto}
+#v-accounts .acdef{margin-left:14px}
+/* 8 · Tables: numbers right-aligned with even digits (leaderboard, by-hour/session/weekday, setups) */
+table.lb th:nth-child(n+3),table.lb td:nth-child(n+3){text-align:right;font-variant-numeric:tabular-nums}
+table.bt td{font-variant-numeric:tabular-nums}
+/* 10 · Integrations: the old green glowing "connection dot" style was leaking into the headings; rows now read Name … [Connect X] */
+.setc .conn{color:var(--txt);filter:none;font-size:13px}
+.setc .conn>b{font:600 14px Inter,sans-serif;color:var(--txt)}
+.setc .conn .wide{width:auto;align-self:flex-start;box-shadow:none}
+.setc .conn.crow{flex-direction:row;align-items:center;justify-content:space-between}
+/* 11 · Phone: journal calendar fits 7 columns (week totals and the trades line hide), settings categories are one clean scroll row */
+@media (max-width:600px){
+ .jcgrid{grid-template-columns:repeat(7,1fr);gap:3px}.jcgrid .jcw,.jcgrid .jch:nth-child(8){display:none}
+ .jcd{min-height:52px;padding:4px 3px;align-items:center;text-align:center}.jcd .tiny{display:none}.jcd b{font-size:10.5px;letter-spacing:-.2px}
+ .s2side{gap:6px;padding:8px;flex-wrap:nowrap;scrollbar-width:none}.s2side::-webkit-scrollbar{display:none}
+ .s2side input{flex:none;min-width:130px;margin:0}
+ .s2side button{flex:none;white-space:nowrap;font-size:13px;padding:6px 10px}.s2side .s2i{display:none}
+ #ltabs,#ftabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}#ltabs button,#ftabs button{white-space:nowrap;flex:none}
+}
+/* 12 · Readability: the faintest grey (top-bar labels Bal / RP&L / UP&L / DD left, table headers, chat names, "lots") was 3.2–3.5:1; now 4.5:1+ */
+:root{--mut2:#7d8799}
+.kv label{color:var(--mut)}
+.tf .tfk{opacity:.95}
+/* 13 · Stats: the Heat card stuck out 14px past every other card on both sides */
+#v-stats>#st-heat{margin-left:14px;margin-right:14px}
+/* 6b · Journal: calendar card lines up with the title and the table */
+#v-journal>.jcal{margin-left:14px;margin-right:14px}
