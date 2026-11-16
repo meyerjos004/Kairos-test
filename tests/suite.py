@@ -629,6 +629,12 @@ async def main():
         await E("document.querySelector('[data-relw]').click()"); await pg.wait_for_timeout(200)
         check("What's new opens a list", await E("document.querySelectorAll('#dlgbox .relw li').length") >= 3)
         await pg.click("#wb0"); await E("view('trade')")
+        # KING_CONF: confidence 1-5 on the rating card, saved as a conf:N tag, Stats card
+        await E("revQ=[]; prefs.review=true; reviewCard(window.__cft={id:'cft1',dir:1,pnl:50,tags:['x'],qty:1,entry:1,exit:2})"); await pg.wait_for_timeout(150)
+        check("conf: rating card shows 1-5", await E("document.querySelectorAll('#review [data-cf]').length") == 5)
+        await E("document.querySelector('#review [data-cf=\"4\"]').click(); document.getElementById('rv-save').click()")
+        check("conf: saved as conf:4 tag, other tags kept", await E("window.__cft.tags.join(',')") == "x,conf:4")
+        check("conf: Stats card exists", await E("!!document.getElementById('st-conf')"))
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
