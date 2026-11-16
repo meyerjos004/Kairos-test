@@ -920,3 +920,6 @@ body[data-pxt="pixelterm"]::after{content:"";position:fixed;inset:0;pointer-even
 .relr .row2{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}.relbtn{display:contents}
 
 .kvs b i{font-style:normal}
+/* KING_DAYPLAN */
+#pl-bias{gap:8px}#pl-bias button.on{border-color:var(--acc);color:var(--acc);background:rgba(167,139,250,.14)}
+#dlgbox label textarea{display:block;width:100%;margin-top:4px;background:rgba(255,255,255,.03);color:var(--txt);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 10px;font:inherit;font-size:13px;resize:vertical}
