@@ -644,6 +644,11 @@ async def main():
         await E("view('stats')"); await pg.wait_for_timeout(600)
         check("weekrev: weekly review card renders", await E("(document.getElementById('st-week')||{}).innerHTML.length") > 20)
         await E("view('trade')")
+        # KING_UIPASS: selected states use fills, never an accent outline
+        await E("view('trade')"); await pg.wait_for_timeout(200)
+        check("uipass: rail tab has no inset outline", await E("getComputedStyle(document.querySelector('.ri.vtab.on')).boxShadow==='none'"))
+        check("uipass: rail tab shows accent pill", await E("getComputedStyle(document.querySelector('.ri.vtab.on'),'::before').content!=='none'"))
+        check("uipass: selected tool has no accent border", await E("(()=>{const t=document.querySelector('.tool.on');if(!t)return true;const c=getComputedStyle(t);return c.outlineStyle==='none'||c.outlineWidth==='0px'})()"))
         check("conf: Stats card exists", await E("!!document.getElementById('st-conf')"))
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
