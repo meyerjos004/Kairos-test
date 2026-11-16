@@ -363,7 +363,11 @@ async def main():
         ok = await E("rewindTo(panes[0].candles[panes[0].candles.length-6].time + Math.max(0, panes[0].sec-60))")
         await pg.wait_for_timeout(120)
         check("rewind removes later candles", ok and await E("panes[0].candles.length") < n0, (n0, await E("panes[0].candles.length")))
-        r1 = await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())"); check("rewind keeps the same view", r1 == r0, (r0, r1, await E("[panes[0].candles.length, panes[0].full, panes[0].cap, panes.length, JSON.stringify(prefs.sync), prefs.layout, active, panes[0].sec]")))
+        for _ in range(10):  # the view restore can land a frame or two late (flaky before Nov 16)
+            r1 = await E("JSON.stringify(panes[0].chart.timeScale().getVisibleLogicalRange())")
+            if r1 == r0: break
+            await pg.wait_for_timeout(100)
+        check("rewind keeps the same view", r1 == r0, (r0, r1, await E("[panes[0].candles.length, panes[0].full, panes[0].cap, panes.length, JSON.stringify(prefs.sync), prefs.layout, active, panes[0].sec]")))
         await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
         await E("hideCtx()")
         # KING_SHOT2REPLAY + KING_GHOSTS
