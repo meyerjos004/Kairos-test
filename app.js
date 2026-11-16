@@ -1526,15 +1526,23 @@ function spPlayer() { if (spSdk || !spHasStream() || DEMO) return Promise.resolv
     if (!document.getElementById("sp-sdk")) { const sc = document.createElement("script"); sc.id = "sp-sdk"; sc.src = "https://sdk.scdn.co/spotify-player.js"; document.head.appendChild(sc); } }); }
 function spNowFromSdk(st) { const box = $("sp-now"), it = st.track_window && st.track_window.current_track; if (!box || !it) return;
   box.innerHTML = `<img src="${esc((it.album.images[it.album.images.length - 1] || it.album.images[0] || {}).url || "")}" alt=""><div><b>${esc(it.name)}</b><i>${esc(it.artists.map((a) => a.name).join(", "))} · on KAIROS</i></div><span class="spc"><button class="pb" data-sp="previous">⏮</button><button class="pb" data-sp="${st.paused ? "play" : "pause"}">${st.paused ? "▶" : "⏸"}</button><button class="pb" data-sp="next">⏭</button></span>`;
-  document.querySelectorAll("#sp-body .sptr").forEach((r) => r.classList.toggle("on", r.dataset.uri === it.uri)); }
+  document.querySelectorAll("#sp-body .sptr").forEach((r) => r.classList.toggle("on", r.dataset.uri === it.uri)); spVolUI(); }
 async function spTracks(id) { let j; try { j = await spApi(`/playlists/${id}/items?limit=100`); } catch (e) { j = await spApi(`/playlists/${id}/tracks?limit=100`); }
   return (j.items || []).map((x) => x.item || x.track).filter((t) => t && t.uri && t.type !== "episode"); }
 async function spOpenPl(id) { const pl = (spPls || []).find((p) => p && p.id === id) || { name: "Playlist" }; spView = id; const box = $("sp-list"); if (!box) return;
-  box.innerHTML = `<div class="sphead"><button class="pb" id="sp-back">‹ Playlists</button><b>${esc(pl.name)}</b></div><div class="muted tiny">Loading songs…</div>`; $("sp-back").onclick = spBack;
-  let tr = []; try { tr = await spTracks(id); } catch (e) { box.querySelector(".muted").textContent = e.message; return; }
-  box.innerHTML = `<div class="sphead"><button class="pb" id="sp-back">‹ Playlists</button><b>${esc(pl.name)}</b><button class="pb" id="sp-all" title="Play from the top">▶ Play</button></div>
-    <div class="sptracks">${tr.map((t, i) => `<button class="sptr" data-uri="${t.uri}" data-i="${i}"><span class="n">${i + 1}</span><span class="t"><b>${esc(t.name)}</b><i>${esc((t.artists || []).map((a) => a.name).join(", "))}</i></span><span class="d">${Math.floor(t.duration_ms / 60000)}:${String(Math.floor((t.duration_ms % 60000) / 1000)).padStart(2, "0")}</span></button>`).join("") || '<div class="muted tiny">No songs here</div>'}</div>`;
-  $("sp-back").onclick = spBack; $("sp-all").onclick = () => spStart(id, tr[0] && tr[0].uri);
+  // KING_SPWIN (fix 14): Spotify-style playlist page: big art, name, count, play + shuffle, search, song art on every row
+  const art = (pl.images && pl.images[0] && pl.images[0].url) || "", owner = pl.owner && (pl.owner.display_name || pl.owner.id);
+  const head = (n) => `<button class="pb spback" id="sp-back">‹ Playlists</button><div class="sphero">${art ? `<img src="${esc(art)}" alt="">` : '<div class="spnoart">♪</div>'}<div class="sphi"><span class="tiny muted">Playlist</span><b>${esc(pl.name)}</b><span class="tiny muted">${owner ? esc(owner) + " · " : ""}${n == null ? "…" : n + " songs"}</span></div></div>`;
+  box.innerHTML = head(null) + `<div class="muted tiny">Loading songs…</div>`; $("sp-back").onclick = spBack;
+  let tr = []; try { tr = await spTracks(id); } catch (e) { box.querySelector(".muted:last-child").textContent = e.message; return; }
+  const dur = (ms) => `${Math.floor(ms / 60000)}:${String(Math.floor((ms % 60000) / 1000)).padStart(2, "0")}`, sm = (t) => { const im = (t.album && t.album.images) || []; return (im[im.length - 1] || im[0] || {}).url || ""; };
+  box.innerHTML = head(tr.length) + `<div class="spact"><button class="spplay" id="sp-all" title="Play from the top" aria-label="Play">▶</button><button class="pb spshuf ${prefs.media.spShuf ? "on" : ""}" id="sp-shuf" title="Shuffle" aria-pressed="${!!prefs.media.spShuf}">⇄ Shuffle</button><input id="sp-q" class="spq" type="search" placeholder="Search in playlist" aria-label="Search in playlist"></div>
+    <div class="sptracks">${tr.map((t, i) => `<button class="sptr" data-uri="${t.uri}" data-i="${i}" data-q="${esc((t.name + " " + (t.artists || []).map((a) => a.name).join(" ")).toLowerCase())}"><span class="n">${i + 1}</span><img loading="lazy" src="${esc(sm(t))}" alt=""><span class="t"><b>${esc(t.name)}</b><i>${esc((t.artists || []).map((a) => a.name).join(", "))}</i></span><span class="d">${dur(t.duration_ms)}</span></button>`).join("") || '<div class="muted tiny">No songs here</div>'}</div>`;
+  $("sp-back").onclick = spBack;
+  const shuf = async (on) => { try { await spApi(`/me/player/shuffle?state=${on}${spDev ? "&device_id=" + spDev : ""}`, { method: "PUT" }); } catch (e) {} };
+  $("sp-all").onclick = async () => { const first = prefs.media.spShuf && tr.length ? tr[Math.floor(Math.random() * tr.length)] : tr[0]; await spStart(id, first && first.uri); shuf(!!prefs.media.spShuf); };
+  $("sp-shuf").onclick = (e) => { prefs.media.spShuf = !prefs.media.spShuf; savePrefs(); e.currentTarget.classList.toggle("on", prefs.media.spShuf); e.currentTarget.setAttribute("aria-pressed", prefs.media.spShuf); shuf(prefs.media.spShuf); };
+  $("sp-q").oninput = (e) => { const q = e.target.value.trim().toLowerCase(); box.querySelectorAll(".sptr").forEach((r) => r.classList.toggle("hidden", !!q && !r.dataset.q.includes(q))); };
   box.querySelector(".sptracks").onclick = (e) => { const r = e.target.closest(".sptr"); if (r) spStart(id, r.dataset.uri); }; }
 function spBack() { spView = null; spUI(); }
 async function spStart(plId, uri) { const dev = await spPlayer();
@@ -1543,7 +1551,7 @@ async function spStart(plId, uri) { const dev = await spPlayer();
   catch (e) { toast(e.status === 403 ? "Full songs need Spotify Premium. Playing the preview." : "Spotify: " + e.message); spPlay("playlist", plId); } }
 async function spNow() { const box = $("sp-now"); if (!box) return; try { const p = await spApi("/me/player"); const it = p && p.item;
   box.innerHTML = it ? `<img src="${esc((it.album && it.album.images[2] || it.album.images[0] || {}).url || "")}" alt=""><div><b>${esc(it.name)}</b><i>${esc((it.artists || []).map((a) => a.name).join(", "))} · on ${esc(p.device ? p.device.name : "Spotify")}</i></div><span class="spc"><button class="pb" data-sp="previous">⏮</button><button class="pb" data-sp="${p.is_playing ? "pause" : "play"}">${p.is_playing ? "⏸" : "▶"}</button><button class="pb" data-sp="next">⏭</button></span>`
-    : '<div><i>Nothing playing on your Spotify right now. Pick a playlist below, or press play in your Spotify app and the controls show up here.</i></div>'; } catch (e) { box.innerHTML = ""; } }
+    : '<div><i>Nothing playing on your Spotify right now. Pick a playlist below, or press play in your Spotify app and the controls show up here.</i></div>'; } catch (e) { box.innerHTML = ""; } spVolUI(); }
 async function spUI() { const el = $("m-sp"); if (!el.querySelector("#sp-frame")) el.innerHTML = '<div id="sp-body"></div><div id="sp-frame"></div>';
   const body = $("sp-body"); if (!MCFG().spotify) { body.innerHTML = needSetup("Spotify"); return; }
   if (!jget("kz-sp")) { body.innerHTML = `<div class="mempty"><b>Your music, next to the chart</b><span>Sign in with your own Spotify to see your playlists and control what's playing.</span><button class="primary small" id="sp-in">Connect Spotify</button></div><div id="spreq"></div>`; $("sp-in").onclick = spConnect; spReqCard(false); return; }
@@ -3418,3 +3426,20 @@ async function spReqCard(open) { const el = $("spreq"); if (!el) return; const r
     const { error } = await sb.from("spotify_requests").upsert({ full_name: n, spotify_email: em, status: "pending" }, { onConflict: "user_id", ignoreDuplicates: true });
     if (error) { $("spr-s").disabled = false; return (m.textContent = error.message); } spReqMine = { status: "pending", full_name: n, spotify_email: em }; sfx("win"); spReqCard(); }; }
 async function spReqDone() { try { const r = await spReqGet(); if (r && r.status === "pending" && !DEMO) { await sb.from("spotify_requests").update({ status: "added", added_at: new Date().toISOString() }).eq("user_id", user.id); spReqMine = { ...r, status: "added" }; } } catch (e) {} }
+
+/* KING_SPWIN (fix 14): Spotify volume + resize the media window from every side and corner */
+let spVolT;
+function spVolUI() { const box = $("sp-now"); if (!box || !box.querySelector(".spc") || box.querySelector(".spvol")) return; const v = prefs.media.spVol ?? 70;
+  const l = document.createElement("label"); l.className = "spvol"; l.title = "Volume"; l.innerHTML = `<span aria-hidden="true">${v ? "🔊" : "🔇"}</span><input type="range" min="0" max="100" value="${v}" aria-label="Spotify volume">`; box.appendChild(l);
+  l.querySelector("input").oninput = (e) => { const n = +e.target.value; prefs.media.spVol = n; l.firstChild.textContent = n ? "🔊" : "🔇"; clearTimeout(spVolT);
+    spVolT = setTimeout(async () => { savePrefs(); try { if (spSdk && spSdk.setVolume) await spSdk.setVolume(n / 100); else await spApi(`/me/player/volume?volume_percent=${n}`, { method: "PUT" }); } catch (x) {} }, 120); }; }
+(function mediaEdges() { const m = $("media"); if (!m || m.querySelector(".medge")) return;
+  ["n", "s", "e", "w", "ne", "nw", "se", "sw"].forEach((d) => { const h = document.createElement("div"); h.className = "medge medge-" + d; h.dataset.e = d; m.appendChild(h);
+    grip(h, (e, st) => { if (prefs.media.pop) return; if (!st.r) st.r = m.getBoundingClientRect(); const r = st.r, dx = e.clientX - st.x, dy = e.clientY - st.y, MW = 300, MH = 220;
+      let L = r.left, T = r.top, W = r.width, H = r.height;
+      if (d.includes("e")) W = Math.min(innerWidth - L - 4, Math.max(MW, r.width + dx));
+      if (d.includes("w")) { W = Math.max(MW, r.width - dx); L = Math.max(4, r.right - W); W = r.right - L; }
+      if (d.includes("s")) H = Math.min(innerHeight - T - 4, Math.max(MH, r.height + dy));
+      if (d.includes("n")) { H = Math.max(MH, r.height - dy); T = Math.max(4, r.bottom - H); H = r.bottom - T; }
+      prefs.media.big = false; m.classList.remove("big"); Object.assign(m.style, { left: L + "px", top: T + "px", right: "auto" }); prefs.media.w = W; prefs.media.h = H; mediaLook(); },
+    () => { const r = m.getBoundingClientRect(); prefs.media.x = r.left; prefs.media.y = r.top; savePrefs(); }); }); })();
