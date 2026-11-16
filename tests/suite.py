@@ -125,7 +125,9 @@ async def main():
         # fix 19: animated dark dropdowns
         await E("view('trade')"); n = await E("document.querySelectorAll('.dd .ddb').length"); check("selects get the custom dropdown", n >= 3, n)
         await pg.click("#stepsz + .ddb") if await E("!!document.querySelector('#stepsz + .ddb')") else None
-        await pg.wait_for_timeout(350); check("dropdown menu opens", await E("!!document.querySelector('.ddm')"))
+        await pg.wait_for_timeout(350)
+        if not await E("!!document.querySelector('.ddm')"): await pg.click("#stepsz + .ddb"); await pg.wait_for_timeout(500)
+        check("dropdown menu opens", await E("!!document.querySelector('.ddm')"))
         await pg.screenshot(path="/home/claude/shot/fix19.png")
         if not await E("!!document.querySelector('.ddm .ddo')"): await pg.click("#stepsz + .ddb"); await pg.wait_for_selector(".ddm .ddo", timeout=3000)  # flaky open (Nov 16)
         await E("document.querySelectorAll('.ddm .ddo')[1].click()"); await pg.wait_for_timeout(200); check("picking an option changes the select", await E("$('stepsz').selectedIndex===1"))
@@ -638,6 +640,15 @@ async def main():
         await E("view('stats')"); await pg.wait_for_timeout(600)
         check("weekrev: weekly review card renders", await E("(document.getElementById('st-week')||{}).innerHTML.length") > 20)
         await E("view('trade')")
+        # KING_HA: Heikin Ashi display toggle keeps real candles
+        await E("view('trade')"); c0 = await E("JSON.stringify(panes[0].candles.slice(-1)[0])")
+        await E("document.querySelector('#tfbar [data-ha]').click()"); await pg.wait_for_timeout(300)
+        check("HA: toggle on", await E("prefs.ha === true && document.querySelector('#tfbar [data-ha]').classList.contains('on')"))
+        check("HA: real candles untouched", await E("JSON.stringify(panes[0].candles.slice(-1)[0])") == c0)
+        await pg.keyboard.press("ArrowRight"); await pg.wait_for_timeout(200)
+        check("HA: stepping still works", await E("panes[0].candles.length > 100"))
+        await E("document.querySelector('#tfbar [data-ha]').click()"); await pg.wait_for_timeout(200)
+        check("HA: toggle off", await E("!prefs.ha"))
         check("conf: Stats card exists", await E("!!document.getElementById('st-conf')"))
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()

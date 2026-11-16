@@ -273,8 +273,9 @@ function makePane(i) {
     localization: { timeFormatter: hoverDate },
     grid: gridOpts(), rightPriceScale: { borderColor: "rgba(255,255,255,.06)" },
     timeScale: { borderColor: "rgba(255,255,255,.06)", timeVisible: true, secondsVisible: true, rightOffset: 12 }, crosshair: { mode: 0, vertLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" }, horzLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" } }, autoSize: true });
-  const series = chart.addCandlestickSeries({ upColor: prefs.up, downColor: prefs.dn, borderVisible: false, wickUpColor: prefs.up, wickDownColor: prefs.dn, priceFormat: { type: "price", precision: 2, minMove: TICK } });
-  const p = { i, el, chart, series, sec: paneSec(i), candles: [], lines: [], opens: [], cv: el.querySelector("canvas.overlay") };
+  const rawSeries = chart.addCandlestickSeries({ upColor: prefs.up, downColor: prefs.dn, borderVisible: false, wickUpColor: prefs.up, wickDownColor: prefs.dn, priceFormat: { type: "price", precision: 2, minMove: TICK } });
+  const series = haWrap(rawSeries); /* KING_HA: Heikin Ashi is display only; candles, fills and stops keep real prices */
+  const p = { i, el, chart, series, rawSeries, sec: paneSec(i), candles: [], lines: [], opens: [], cv: el.querySelector("canvas.overlay") };
   p.mode = 0; p.auto = true;
   el.addEventListener("pointerdown", () => setActive(i), true);
   chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { syncTime(p); paint(p); moreHistory(p, r); clearTimeout(p.hrT); p.hrT = setTimeout(() => htfRoom(p), 120); }); new ResizeObserver(() => paint(p)).observe(el);
@@ -285,7 +286,15 @@ function makePane(i) {
 }
 function setActive(i) { active = i; const ps = paneSym(i); if (ps !== sym && X[ps] && swapTo(ps)) { $("sym").value = sym; drawOrders(); try { refresh(); } catch (e) {} panes.forEach(label); } panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
 function label(p) { const tf = prefs.tfs[p.i] || "5m", s = paneSym(p); p.el.querySelector(".lname").textContent = `${s} · ${tf} · CME`; p.el.classList.toggle("tradesym", s === sym && panes.length > 1 && new Set(panes.map(paneSym)).size > 1); wmSet(p, true); }
-function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}" title="${n === "1D" ? "Daily" : n} · type ${tfCode(n)}">${n === "1D" ? "D" : n}<span class="tfk">${tfCode(n)}</span></button>`).join(""); }
+/* KING_HA: Heikin Ashi candles (display only). The wrapped series converts bars on setData/update; everything else passes through. */
+function haBar(c, prev) { const close = (c.open + c.high + c.low + c.close) / 4, open = prev ? (prev.open + prev.close) / 2 : (c.open + c.close) / 2; return { time: c.time, open, high: Math.max(c.high, open, close), low: Math.min(c.low, open, close), close }; }
+function haWrap(raw) { const st = { prev: null, cur: null }, ov = {}, rs = raw.setData.bind(raw), ru = raw.update.bind(raw);
+  return new Proxy(raw, { set(t, k, v) { ov[k] = v; return true; }, get(t, k) { if (k in ov) return ov[k];
+    if (k === "setData") return (d) => { st.prev = st.cur = null; if (!prefs.ha) return rs(d); const out = []; for (const c of d) { const h = haBar(c, st.cur); st.prev = st.cur; st.cur = h; out.push(h); } return rs(out); };
+    if (k === "update") return (c) => { if (!prefs.ha) return ru(c); if (st.cur && c.time === st.cur.time) { st.cur = haBar(c, st.prev); } else { st.prev = st.cur; st.cur = haBar(c, st.prev); } return ru(st.cur); };
+    const v = t[k]; return typeof v === "function" ? v.bind(t) : v; } }); }
+function haToggle() { prefs.ha = !prefs.ha; savePrefs(); panes.forEach((p) => { try { p.series.setData(p.candles); } catch (e) {} }); tfUI(); toast(prefs.ha ? "Heikin Ashi on (display only, fills use real prices)" : "Normal candles"); }
+function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}" title="${n === "1D" ? "Daily" : n} · type ${tfCode(n)}">${n === "1D" ? "D" : n}<span class="tfk">${tfCode(n)}</span></button>`).join("") + `<button class="tf ${prefs.ha ? "on" : ""}" data-ha="1" title="Heikin Ashi candles (display only, fills use real prices)">HA</button>`; }
 /* KING_TFKEYS (fix 6): Tradesea/TradingView-style interval typing. Type 5 → 5m, 15 → 15m, 1h / 60 → 1h, 4h / 240 → 4h, 15s, D. Hints sit under each timeframe. */
 function tfCode(n) { return n === "1D" ? "D" : n.endsWith("s") ? n.toUpperCase() : n.endsWith("h") ? n.toUpperCase() : n.replace("m", ""); }
 let tfBuf = "", tfBufT = 0;
@@ -2416,7 +2425,7 @@ $("co-weeks").onclick = async (e) => { const b = e.target.closest("[data-wk]"); 
   const d = new Date(b.dataset.wk + "T12:00:00Z"); if (b.dataset.at === "sun") d.setUTCDate(d.getUTCDate() - 1); $("sym").value = "NQ"; $("start").value = d.toISOString().slice(0, 10) + (b.dataset.at === "sun" ? "T17:59" : "T09:29"); view("trade"); await loadReplay(); };
 $("ev-list").onclick = (e) => { const b = e.target.closest("[data-buy]"); if (b) buyEval(b.dataset.buy); };
 $("dockbtn").onclick = () => { prefs.dockClosed = !prefs.dockClosed; savePrefs(); dockUI(); };
-$("tfbar").onclick = (e) => { const b = e.target.closest(".tf"); if (b) setPaneTf(active, b.dataset.tf); };
+$("tfbar").onclick = (e) => { const b = e.target.closest(".tf"); if (!b) return; if (b.dataset.ha) return haToggle(); setPaneTf(active, b.dataset.tf); };
 $("ranges").onclick = (e) => { const b = e.target.closest("[data-r]"); if (b) showRange(+b.dataset.r); };
 
 $("sc-pct").onclick = () => setScale("pct"); $("sc-log").onclick = () => setScale("log"); $("sc-auto").onclick = () => setScale("auto");
