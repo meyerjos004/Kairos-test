@@ -127,6 +127,7 @@ async def main():
         await pg.click("#stepsz + .ddb") if await E("!!document.querySelector('#stepsz + .ddb')") else None
         await pg.wait_for_timeout(350); check("dropdown menu opens", await E("!!document.querySelector('.ddm')"))
         await pg.screenshot(path="/home/claude/shot/fix19.png")
+        if not await E("!!document.querySelector('.ddm .ddo')"): await pg.click("#stepsz + .ddb"); await pg.wait_for_selector(".ddm .ddo", timeout=3000)  # flaky open (Nov 16)
         await E("document.querySelectorAll('.ddm .ddo')[1].click()"); await pg.wait_for_timeout(200); check("picking an option changes the select", await E("$('stepsz').selectedIndex===1"))
         await E("$('stepsz').selectedIndex=0; $('stepsz').dispatchEvent(new Event('change'))")
         # per-chart symbols: chart 2 can watch ES while chart 1 trades NQ
