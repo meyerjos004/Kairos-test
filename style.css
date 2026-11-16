@@ -914,3 +914,7 @@ body[data-pxt="pixelterm"]::after{content:"";position:fixed;inset:0;pointer-even
 .spnow .spc{display:flex;flex-direction:row;align-items:center;gap:2px;flex:none}
 .spvol input[type=range]{width:72px!important;min-width:0;flex:none;margin:0!important}
 .spnow{flex-wrap:nowrap}
+
+/* KING_RELLIB */
+.relw{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:14px;line-height:1.4}.relw li::marker{color:var(--acc)}
+.relr .row2{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}.relbtn{display:contents}

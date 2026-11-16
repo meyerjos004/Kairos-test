@@ -623,6 +623,12 @@ async def main():
         await pg.mouse.move(mb[0], mb[1]); await pg.mouse.down(); await pg.mouse.move(mb[0]-80, mb[1], steps=5); await pg.mouse.up(); await pg.wait_for_timeout(150)
         check("media window: drag the left edge to widen", await E("$('media').offsetWidth") >= mb[2] + 60, [mb[2], await E("$('media').offsetWidth")])
         await E("prefs.media.show=false; delete prefs.media.w; delete prefs.media.h; mediaUI(); jset('kz-sp', null)")
+        # KING_RELLIB (21): release history with What's new
+        await E("view('settings')"); await pg.wait_for_timeout(300)
+        check("release library lists every release", await E("document.querySelectorAll('.rel .relr').length") >= 5)
+        await E("document.querySelector('[data-relw]').click()"); await pg.wait_for_timeout(200)
+        check("What's new opens a list", await E("document.querySelectorAll('#dlgbox .relw li').length") >= 3)
+        await pg.click("#wb0"); await E("view('trade')")
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
