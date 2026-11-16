@@ -277,7 +277,7 @@ function makePane(i) {
   const p = { i, el, chart, series, sec: paneSec(i), candles: [], lines: [], opens: [], cv: el.querySelector("canvas.overlay") };
   p.mode = 0; p.auto = true;
   el.addEventListener("pointerdown", () => setActive(i), true);
-  chart.timeScale().subscribeVisibleLogicalRangeChange(() => { syncTime(p); paint(p); clearTimeout(p.hrT); p.hrT = setTimeout(() => htfRoom(p), 120); }); new ResizeObserver(() => paint(p)).observe(el);
+  chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { syncTime(p); paint(p); moreHistory(p, r); clearTimeout(p.hrT); p.hrT = setTimeout(() => htfRoom(p), 120); }); new ResizeObserver(() => paint(p)).observe(el);
   chart.subscribeCrosshairMove((pr) => { syncCross(p, pr); if (pr.point) p.hover = { point: pr.point }; const d = pr.seriesData && pr.seriesData.get(series);
     el.querySelector(".ohlc").innerHTML = d ? `O <b>${px2(d.open)}</b> H <b>${px2(d.high)}</b> L <b>${px2(d.low)}</b> C <b class="${d.close >= d.open ? "pos-up" : "pos-dn"}">${px2(d.close)}</b>` : ""; });
   initPointer(p); setTimeout(() => { try { csApply(p); } catch (e) {} }, 0);
@@ -353,8 +353,17 @@ function rebuildPane(p) {
   const f = S["15s"], lastM = p.sec >= 60 && need15 && src.i >= 0 && f.i >= 0 && hasFine(src.bars[src.i].t, S) ? src.bars[src.i].t : null;   // fix 16: current minute from 15s only
   for (let j = 0; j <= src.i && j < src.bars.length; j++) { if (lastM != null && src.bars[j].t === lastM) break; pushBar(p, src.bars[j]); }
   if (lastM != null) { let k = f.i; while (k > 0 && f.bars[k - 1].t >= lastM) k--; for (; k <= f.i; k++) if (f.bars[k].t >= lastM) pushBar(p, f.bars[k]); }
+  p.full = p.candles.length; p.cap = p.cap || CAP; if (p.keepT != null) { let a = 0; while (a < p.candles.length && p.candles[a].time < p.keepT) a++; p.candles = p.candles.slice(a); } else if (p.candles.length > p.cap) p.candles = p.candles.slice(-p.cap);   // KING_CAP: the chart only holds the newest bars (fast updates); older ones load when you scroll to the edge
   p.series.setData(p.candles); label(p); indFull(p); extMarkers(p); paint(p);
 }
+/* KING_CAP (fix 4): Lightweight Charts redoes work across the whole series on every update(), so 194k loaded 1m bars made each animation frame ~200 ms.
+   Keep CAP candles in the chart; when you scroll to the left edge, load another CAP and keep the view where it was. */
+const CAP = 15000;
+function moreHistory(p, r) { if (p.loadingMore || !p.full || p.full <= p.candles.length || !r || r.from > 40) return; p.loadingMore = true;
+  const i0 = Math.max(0, Math.floor(r.from)), t0 = p.candles[i0] && p.candles[i0].time, frac = r.from - i0, span = r.to - r.from, n0 = p.candles.length;
+  p.cap = (p.cap || CAP) + CAP; rebuildPane(p);
+  const add = p.candles.length - n0; if (t0 != null) try { p.chart.timeScale().setVisibleLogicalRange({ from: i0 + add + frac, to: i0 + add + frac + span }); } catch (e) {}
+  setTimeout(() => { p.loadingMore = false; }, 250); }
 function watchScales() {
   for (const p of panes) { if (!p.candles.length) continue; const ref = p.candles[p.candles.length - 1].close, ts = p.chart.timeScale();
     const sig = (p.series.priceToCoordinate(ref) || 0).toFixed(1) + "|" + (p.series.priceToCoordinate(ref + 10) || 0).toFixed(1) + "|" + (ts.logicalToCoordinate(p.candles.length - 1) || 0).toFixed(1) + "|" + ts.width();
@@ -746,7 +755,7 @@ function initPointer(p) {
     drag = null; repaintAll();
   };
   p.el.addEventListener("pointerup", up); p.el.addEventListener("pointercancel", up);
-  p.el.addEventListener("contextmenu", (e) => { e.preventDefault(); const { x, y } = pt(e); setActive(p.i); chartMenu(p, x, y, e.clientX, e.clientY); });
+  p.el.addEventListener("contextmenu", (e) => { e.preventDefault(); const { x, y } = pt(e); setActive(p.i); const lg = e.target.closest("[data-ind]"); if (lg) return indX(lg.dataset.ind, e.clientX, e.clientY); const hit = indNear(p, x, y); if (hit) return indX(hit, e.clientX, e.clientY); chartMenu(p, x, y, e.clientX, e.clientY); });   // KING_INDDEL: right-click an indicator → red ✕
 }
 function repaintAll() { panes.forEach(htfRoom); panes.forEach(paint); panes.forEach((q) => wmSet(q)); clearTimeout(undoT); undoT = setTimeout(snapDraw, 250); }
 /* KING_UNDO (Nov 14): Ctrl/Cmd+Z undoes the latest drawing change (add, move, edit, delete, clear). Ctrl/Cmd+Shift+Z redoes. */
@@ -783,10 +792,19 @@ function oscAt(p, i) {   // Wilder RSI + ATR, kept as running state so each repl
   o.g[i] = i < n ? (o.g[i - 1] * (i - 1) + Math.max(ch, 0)) / i : (o.g[i - 1] * (n - 1) + Math.max(ch, 0)) / n;
   o.l[i] = i < n ? (o.l[i - 1] * (i - 1) + Math.max(-ch, 0)) / i : (o.l[i - 1] * (n - 1) + Math.max(-ch, 0)) / n;
   o.tr[i] = i < na ? (o.tr[i - 1] * i + tr) / (i + 1) : (o.tr[i - 1] * (na - 1) + tr) / na; }
+/* KING_INDDEL (fix 3): right-click an indicator line or its legend name → red ✕ → left-click removes it */
+function indLabel(k) { const I = indCfg(); if (k === "rsi") return "RSI " + I.rsi.len; if (k === "atr") return "ATR " + I.atr.len; if (k === "bb") return "Bollinger Bands"; const m = I.ma.find((z) => z.k === k); return m ? m.type.toUpperCase() + " " + m.len : k; }
+function indNear(p, x, y) { if (!p.ind) return null; const l = p.chart.timeScale().coordinateToLogical(x); if (l == null) return null; const i = Math.max(0, Math.min(p.candles.length - 1, Math.round(l))); let best = null, bd = 8;
+  for (const [k, o] of Object.entries(p.ind)) { const v = o.v && o.v[i]; if (v == null) continue; const yy = p.series.priceToCoordinate(v); if (yy == null) continue; const d = Math.abs(yy - y); if (d < bd) { bd = d; best = /^bb/.test(k) ? "bb" : k; } } return best; }
+function indOff(k) { const I = indCfg(); if (k === "rsi") I.rsi.on = false; else if (k === "atr") I.atr.on = false; else if (k === "bb") I.bb.on = false; else { const m = I.ma.find((z) => z.k === k); if (m) m.on = false; } savePrefs(); panes.forEach(indFull); }
+function indX(k, cx, cy) { document.querySelectorAll(".indx").forEach((z) => z.remove()); const b = document.createElement("button"); b.className = "indx"; b.title = "Remove " + indLabel(k); b.setAttribute("aria-label", "Remove " + indLabel(k)); b.innerHTML = `<span>✕</span><em>${esc(indLabel(k))}</em>`;
+  b.style.left = Math.min(innerWidth - 160, cx + 6) + "px"; b.style.top = Math.max(6, cy - 14) + "px"; document.body.appendChild(b);
+  const gone = () => { b.remove(); removeEventListener("pointerdown", away, true); removeEventListener("keydown", esc_); }, away = (e) => { if (!b.contains(e.target)) gone(); }, esc_ = (e) => { if (e.key === "Escape") gone(); };
+  b.onclick = (e) => { e.stopPropagation(); indOff(k); gone(); toast("Removed " + indLabel(k)); }; setTimeout(() => { addEventListener("pointerdown", away, true); addEventListener("keydown", esc_); }, 0); }
 function oscLegend(p) { const I = indCfg(), el = p.el.querySelector(".ivals"); if (!el) return; const i = p.candles.length - 1, o = p.osc; if (i < 1 || !o) { el.innerHTML = ""; return; }
-  const parts = []; if (I.rsi.on) { const rs = o.l[i] ? o.g[i] / o.l[i] : 100, r = o.l[i] ? 100 - 100 / (1 + rs) : 100; parts.push(`RSI ${I.rsi.len} <b class="${r >= 70 ? "pos-dn" : r <= 30 ? "pos-up" : ""}">${r.toFixed(1)}</b>`); }
-  if (I.atr.on) parts.push(`ATR ${I.atr.len} <b>${o.tr[i].toFixed(2)}</b>`);
-  for (const m of I.ma) if (m.on && p.ind && p.ind[m.k]) { const v = p.ind[m.k].v[i]; if (v != null) parts.push(`<span style="color:${m.color}">${m.type.toUpperCase()} ${m.len}</span> <b>${px2(v)}</b>`); }
+  const parts = []; if (I.rsi.on) { const rs = o.l[i] ? o.g[i] / o.l[i] : 100, r = o.l[i] ? 100 - 100 / (1 + rs) : 100; parts.push(`<span class="ileg" data-ind="rsi">RSI ${I.rsi.len}</span> <b class="${r >= 70 ? "pos-dn" : r <= 30 ? "pos-up" : ""}">${r.toFixed(1)}</b>`); }
+  if (I.atr.on) parts.push(`<span class="ileg" data-ind="atr">ATR ${I.atr.len}</span> <b>${o.tr[i].toFixed(2)}</b>`);
+  for (const m of I.ma) if (m.on && p.ind && p.ind[m.k]) { const v = p.ind[m.k].v[i]; if (v != null) parts.push(`<span class="ileg" data-ind="${m.k}" style="color:${m.color}">${m.type.toUpperCase()} ${m.len}</span> <b>${px2(v)}</b>`); }
   el.innerHTML = parts.join(" · "); }
 function indFull(p) { if (!p || p.dead) return; indSeries(p); const I = indCfg(), n = p.candles.length; p.osc = null;
   for (const [k, z] of Object.entries(p.ind)) { z.v = []; const out = []; for (let i = 0; i < n; i++) { const v = indVal(p, k, i); z.v[i] = v; if (v != null) out.push({ time: p.candles[i].time, value: v }); } z.s.setData(out); }
@@ -986,7 +1004,8 @@ function chartMenu(p, x, y, cx, cy) {
   menu([{ h: `${sym} @ ${px2(pr)} · ${q} lot${q > 1 ? "s" : ""}` },
     { t: above ? `Sell limit @ ${px2(pr)}` : `Buy limit @ ${px2(pr)}`, c: above ? "s" : "b", f: () => place(above ? -1 : 1, "limit", pr, q, br) },
     { t: above ? `Buy stop @ ${px2(pr)}` : `Sell stop @ ${px2(pr)}`, c: above ? "b" : "s", f: () => place(above ? 1 : -1, "stop", pr, q, br) },
-    { t: "Start the replay from this candle", f: () => { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); if (rewindTo(bucket(t, p.sec) + Math.max(0, p.sec - 60))) return; $("start").value = fmt(t + 60).replace(" ", "T"); loadReplay(); } },
+    { t: "Start the replay from this candle", f: () => { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); const go = () => { rewinds++; if (rewindTo(bucket(t, p.sec) + Math.max(0, p.sec - 60))) return; $("start").value = fmt(t + 60).replace(" ", "T"); loadReplay(); };   /* KING_HONEST (fix 2): replaying from a past candle asks first */
+      wideDlg(`<h3>Going back in time?</h3><p>You've already seen what happens after this candle.</p><p><b>Staying accountable or cheating your backtesting?</b></p><div class="tiny muted">Rewinds this session: ${rewinds}</div>`, [{ t: "No, cancel" }, { t: "Yes, I'm staying accountable", primary: true, f: go }]); } },
     "-", { t: "Long position here", c: "b", k: prefs.keys.long.toUpperCase(), f: () => { newDrawing("long", p, { t, p: pr }); repaintAll(); } },
     { t: "Short position here", c: "s", k: prefs.keys.short.toUpperCase(), f: () => { newDrawing("short", p, { t, p: pr }); repaintAll(); } },
     { t: "Horizontal line here", k: prefs.keys.hline.toUpperCase(), f: () => { newDrawing("hline", p, { t, p: pr }); repaintAll(); } },
@@ -2892,12 +2911,13 @@ function followLive() { if (prefs.follow === false) return; for (const p of pane
   if (r && (r.to < n - 1 || r.from > n - 1)) { const w = r.to - r.from; ts.setVisibleLogicalRange({ from: n - 1 - w * 0.8, to: n - 1 + w * 0.2 }); }
   const c = p.candles[n - 1], y = p.series.priceToCoordinate(c.close), h = p.el.clientHeight; if (y == null || y < 10 || y > h - 40) p.chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {} } }
 
+let rewinds = 0;   // KING_HONEST: rewinds this session
 /* KING_REWIND (King, Nov 14): "start the replay from this candle" keeps the exact same screen (no snap, no rescale) and just removes every candle after it */
 function rewindTo(ltEnd) { const b = B["1m"]; if (!b.bars.length || b.i < 0) return false; let k = -1; for (let i = b.i; i >= 0; i--) if (loc(b.bars[i].t) <= ltEnd) { k = i; break; } if (k < 0 || k === b.i) return k === b.i;
   const keep = panes.map((p) => { try { return { r: p.chart.timeScale().getVisibleLogicalRange(), auto: p.chart.priceScale("right").options().autoScale, pr: p.series.priceScale ? null : null }; } catch (e) { return null; } });
   panes.forEach((p) => { try { p.el.classList.add("rewinding"); } catch (e) {} });
-  b.i = k; cursorT = b.bars[k].t; const f = B["15s"]; while (f.i >= 0 && f.bars[f.i].t > cursorT + 45) f.i--; advOthers(); rebuildAll();
-  panes.forEach((p, i) => { const s = keep[i]; if (!s || !s.r) return; try { p.chart.timeScale().setVisibleLogicalRange(s.r); if (s.auto === false) p.chart.priceScale("right").applyOptions({ autoScale: false }); } catch (e) {} setTimeout(() => p.el.classList.remove("rewinding"), 260); });
+  b.i = k; cursorT = b.bars[k].t; const f = B["15s"]; while (f.i >= 0 && f.bars[f.i].t > cursorT + 45) f.i--; advOthers(); panes.forEach((p) => { p.keepT = p.candles.length ? p.candles[0].time : null; }); rebuildAll(); panes.forEach((p) => { p.keepT = null; });   // KING_CAP: same window start, so the view doesn't jump
+  panes.forEach((p, i) => { const s = keep[i]; if (!s || !s.r) return; try { p.chart.timeScale().setVisibleLogicalRange(s.r); requestAnimationFrame(() => { try { p.chart.timeScale().setVisibleLogicalRange(s.r); } catch (e) {} });   /* KING_CAP: the chart re-anchors after the data change; set it again next frame */ if (s.auto === false) p.chart.priceScale("right").applyOptions({ autoScale: false }); } catch (e) {} setTimeout(() => p.el.classList.remove("rewinding"), 260); });
   toast("⏪ Back to " + fmt(loc(cursorT)).slice(11, 16) + " New York"); setTimeout(() => toast(""), 1800); return true; }
 
 async function skipUntil(ok, name) { pause(); if (!B["1m"].bars.length) return toast("Load a chart first"); toast("Skipping to the " + name + "…"); const l0 = loc(nowT());
