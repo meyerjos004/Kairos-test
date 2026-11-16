@@ -652,6 +652,12 @@ async def main():
         # KING_ROLLMK: a fake roll gap in a quarter month gets a ROLL marker
         rm = await E("(()=>{const p={candles:[]};let t=Date.UTC(2025,2,12)/1000,px=5000;for(let i=0;i<120;i++){const o=i===60?px+50:px;p.candles.push({time:t,open:o,high:o+2,low:o-2,close:o+0.5});px=o+0.5;t+=60}return rollMarks(p).map(m=>m.text)})()")
         check("roll: seam found once", len(rm) == 1 and rm[0].startswith("ROLL +"), rm)
+        # KING_DAYPLAN
+        await E("view('trade'); document.getElementById('planbtn').click()"); await pg.wait_for_timeout(200)
+        await E("document.querySelector('#pl-bias [data-b=\"Long\"]').click(); const m=document.getElementById('pl-max'); m.value='3'; m.dispatchEvent(new Event('input'))")
+        await E("[...document.querySelectorAll('#dlgbox .wbtns button')].pop().click()"); await pg.wait_for_timeout(200)
+        check("plan: saved for today", await E("(prefs.plans||{})[planDay()].bias") == "Long")
+        check("plan: button shows bias", "Long" in (await E("document.getElementById('planlbl').textContent")))
         check("conf: Stats card exists", await E("!!document.getElementById('st-conf')"))
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()

@@ -3473,3 +3473,19 @@ function spVolUI() { const box = $("sp-now"); if (!box || !box.querySelector(".s
       if (d.includes("n")) { H = Math.max(MH, r.height - dy); T = Math.max(4, r.bottom - H); H = r.bottom - T; }
       prefs.media.big = false; m.classList.remove("big"); Object.assign(m.style, { left: L + "px", top: T + "px", right: "auto" }); prefs.media.w = W; prefs.media.h = H; mediaLook(); },
     () => { const r = m.getBoundingClientRect(); prefs.media.x = r.left; prefs.media.y = r.top; savePrefs(); }); }); })();
+
+/* KING_DAYPLAN: a plan per replay day (bias, key levels, max trades, note). Stored in prefs.plans[day]; the button shows the bias, and the toast warns once when you pass your max trades. */
+function planDay() { try { return sessDay(nowT()); } catch (e) { return ""; } }
+function planLbl() { const el = $("planlbl"); if (!el) return; const pl = (prefs.plans || {})[planDay()]; el.textContent = pl && pl.bias ? "Plan: " + pl.bias + (pl.max ? " · max " + pl.max : "") : "Plan"; }
+function planDlg() { const d = planDay(), pl = (prefs.plans || {})[d] || {};
+  wideDlg(`<h3>Day plan · ${esc(d)}</h3><p class="small muted">Decide before the open. You can check it any time from the Plan button.</p>
+    <div class="row" id="pl-bias">${["Long", "Short", "Neutral"].map((b) => `<button class="small ${pl.bias === b ? "on" : ""}" data-b="${b}">${b}</button>`).join("")}</div>
+    <label class="small">Key levels<input id="pl-lv" value="${esc(pl.lv || "")}" placeholder="PDH 21650, PDL 21480, overnight high"></label>
+    <label class="small">Max trades today<input id="pl-max" type="number" min="0" max="20" value="${pl.max || ""}"></label>
+    <label class="small">If… then…<textarea id="pl-note" rows="3" placeholder="If NY opens above PDH and holds, look for longs at the first pullback">${esc(pl.note || "")}</textarea></label>`,
+    [{ t: "Cancel" }, { t: "Save plan", primary: 1, f: () => { prefs.plans = prefs.plans || {}; prefs.plans[d] = { bias: planDlg.b || pl.bias || "", lv: planDlg.v.lv, max: +planDlg.v.max || 0, note: planDlg.v.note }; savePrefs(); planLbl(); toast("Plan saved for " + d); } }]);
+  planDlg.b = pl.bias || ""; planDlg.v = { lv: pl.lv || "", max: pl.max || "", note: pl.note || "" };
+  $("pl-bias").onclick = (e) => { const b = e.target.closest("[data-b]"); if (!b) return; planDlg.b = b.dataset.b; $("pl-bias").querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); };
+  $("pl-lv").oninput = (e) => (planDlg.v.lv = e.target.value); $("pl-max").oninput = (e) => (planDlg.v.max = e.target.value); $("pl-note").oninput = (e) => (planDlg.v.note = e.target.value); }
+if ($("planbtn")) $("planbtn").onclick = planDlg;
+setInterval(() => { try { planLbl(); const pl = (prefs.plans || {})[planDay()]; if (!pl || !pl.max) return; const n = hist.filter((t) => sessDay(t.t_exit) === planDay()).length; if (n > pl.max && planLbl.w !== planDay()) { planLbl.w = planDay(); toast(`That's trade ${n}. Your plan said max ${pl.max} today.`); } } catch (e) {} }, 2000);
