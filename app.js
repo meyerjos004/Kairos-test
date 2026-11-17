@@ -1912,7 +1912,7 @@ function releaseIntro(replay) {
     el.classList.add("out"); try { vid.pause(); } catch (e) {} setTimeout(() => el.remove(), 800);
     setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 300); };
   const toHold = () => { if (stage === "hold") return; stage = "hold"; if (!(vid.readyState >= 2 && vid.ended)) hold.hidden = false;
-    setTimeout(() => { hint.hidden = false; requestAnimationFrame(() => hint.classList.add("on")); }, 1400); };
+    setTimeout(() => { hint.hidden = false; requestAnimationFrame(() => hint.classList.add("on")); }, 3500); };   // King: hint fades in later
   const start = () => { if (stage !== "note") return; stage = "play"; note.classList.add("out"); vid.classList.add("on");
     vid.muted = prefs.sound === false; const p = vid.play(); if (p && p.catch) p.catch(() => { vid.muted = true; vid.play().catch(toHold); }); };
   vid.addEventListener("ended", toHold); vid.addEventListener("error", () => { if (stage !== "note") toHold(); });
@@ -3218,9 +3218,10 @@ function settings2() { const v = $("v-settings"); if (!v || v.dataset.s2) return
   const os = card("KAIROS OS"), live = $("s-live1s") && $("s-live1s").closest("label");
   put("general", os); put("general", card("Data speed"));
   mk("general", `<h3>Setup</h3><div class="tiny muted">Run the 8-step setup again (colors, favorites, layout, pair, theme…).</div><button class="small" id="s2-setup">Run setup</button>`).querySelector("button").onclick = () => setupWizard(true);
-  const relc = mk("general", `<h3>Intros &amp; releases</h3><div class="tiny muted">Every intro and release, replayable any time.</div><div class="rel">${RELEASES.map(([v, n, dt, d, w], i) => `<div class="relr"><b>${esc(n)}</b> <span class="muted small">${v === "next" ? "" : "v" + esc(v)}${dt ? " · " + esc(dt) : ""}</span><div class="small">${esc(d)}</div>${v === "1.0" ? '<button class="small" data-relplay>Play the 1.0 intro</button>' : `<div class="row2">${w.length ? `<button class="small" data-relw="${i}">What's new</button>` : ""}${v === APP_VERSION ? '<span class="relbtn"></span>' : ""}</div>`}</div>`).join("")}</div>`);
+  const relc = mk("general", `<h3>Intros &amp; releases</h3><div class="tiny muted">Every intro and release, replayable any time.</div><div class="rel">${RELEASES.map(([v, n, dt, d, w], i) => `<div class="relr"><b>${esc(n)}</b> <span class="muted small">${v === "next" ? "" : "v" + esc(v)}${dt ? " · " + esc(dt) : ""}</span><div class="small">${esc(d)}</div>${v === "1.0" ? '<button class="small" data-relplay>Play the 1.0 intro</button> <button class="small" data-reltour ' + (typeof releaseTour === "function" ? "" : 'disabled title="The 10 stops come next"') + '>Take the tour</button>' : `<div class="row2">${w.length ? `<button class="small" data-relw="${i}">What's new</button>` : ""}${v === APP_VERSION ? '<span class="relbtn"></span>' : ""}</div>`}</div>`).join("")}</div>`);
   relc.querySelector(".relbtn").appendChild($("s-intro").parentElement);   // KING_RELROW (King): the Beta intro button sits in the current release's row
   relc.querySelectorAll("[data-relplay]").forEach((b) => (b.onclick = () => releaseIntro(true)));   // KING_RELEASE10
+  relc.querySelectorAll("[data-reltour]").forEach((b) => (b.onclick = () => { if (typeof releaseTour === "function") releaseTour(null, () => {}); }));
   relc.querySelectorAll("[data-relw]").forEach((b) => (b.onclick = () => { const [v, n, dt, , w] = RELEASES[+b.dataset.relw]; wideDlg(`<h2 style="margin:0 0 4px">What's new · ${esc(n)}${v === "next" ? "" : " v" + esc(v)}</h2><div class="muted small" style="margin-bottom:12px">${esc(dt)}</div><ul class="relw">${w.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`, [{ t: "Close", primary: true }]); }));
   put("look", card("Theme")); put("trade", card("Order pad")); put("keys", card("Hot keys"));
   const rp = mk("replay", `<h3>Playback</h3>`); if (live) rp.appendChild(live);
