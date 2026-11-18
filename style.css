@@ -1016,4 +1016,5 @@ table.bt td{font-variant-numeric:tabular-nums}
 #krel .rhint{position:absolute;z-index:3;left:0;right:0;bottom:6vh;text-align:center;font:500 13px/1 Inter,system-ui,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:rgba(236,235,243,.0);transition:color 2.4s ease}
 #krel .rhint.on{color:rgba(236,235,243,.62);animation:rhp 2.6s ease-in-out 1.2s infinite}@keyframes rhp{50%{color:rgba(236,235,243,.32)}}
 @media (orientation:portrait){#krel .rvid,#krel .rhold{object-fit:contain}}
+#krel.tall .rvid,#krel.tall .rhold{object-fit:cover}   /* KING_VERTINTRO: the vertical cut fills a phone screen */
 @media (prefers-reduced-motion:reduce){#krel .rnote{animation:none}#krel .rhint.on{animation:none}}

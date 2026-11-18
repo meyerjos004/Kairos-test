@@ -1893,12 +1893,14 @@ const APP_VERSION = "0.9.4", APP_LABEL = "Beta";   // moved up so the release in
 /* KING_RELEASE10 (Nov 16): the KAIROS 1.0 release intro. Plays once, the first time someone opens 1.x (no skipping), then lives in
    Settings → Intros & releases. A note from Josh comes first (that click also lets the video play with sound). The video ends on the
    KAIROS OS 1.0 title and holds there until the first click, then the 10-stop feature tour (releaseTour, coming), then the app. Test: add ?release=1 to the URL. */
-const REL_VIDEO = "brand/intro-1.0.mp4", REL_HOLD = "brand/intro-1.0-hold.jpg";
+/* KING_VERTINTRO (Nov 17): phones held upright get the vertical cut (v2, King's pick); everything else keeps the 16:9 one. */
+const REL_TALL = (() => { try { return innerHeight > innerWidth && Math.min(innerWidth, screen.width || innerWidth) <= 820; } catch (e) { return false; } })();
+const REL_VIDEO = REL_TALL ? "brand/intro-1.0-vertical.mp4" : "brand/intro-1.0.mp4", REL_HOLD = REL_TALL ? "brand/intro-1.0-vertical-hold.jpg" : "brand/intro-1.0-hold.jpg";
 function releaseDue() { try { if (/[?&]release=1\b/.test(location.search)) return true; } catch (e) {}
   return /^1\./.test(APP_VERSION) && prefs.releaseSeen !== "1.0" && !navigator.webdriver && !DEMO; }
 function releaseIntro(replay) {
   if (document.getElementById("krel")) return true; if (!replay && !releaseDue()) return false;
-  introOn = true; const el = document.createElement("div"); el.id = "krel";
+  introOn = true; const el = document.createElement("div"); el.id = "krel"; if (REL_TALL) el.classList.add("tall");
   el.innerHTML = `<div class="rnote" role="button" tabindex="0"><p>Pay attention, there's some good stuff here.</p><b>-Josh</b><span class="rgo">Click to start</span></div>
     <video class="rvid" playsinline preload="auto" poster="" src="${REL_VIDEO}"></video><img class="rhold" alt="KAIROS OS 1.0" src="${REL_HOLD}" hidden>
     <div class="rhint" hidden>Click anywhere to enter</div>`;
