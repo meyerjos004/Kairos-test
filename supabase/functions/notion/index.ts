@@ -51,6 +51,53 @@ function mapRow(pg: any) {
     pnl: g(/p ?& ?l|pnl|profit|result \$|net|\$ ?result|gain/i), r: g(/\br\b|r ?multiple|^rr$|r:r/i), qty: g(/qty|quantity|contracts|size|lots/i) };
 }
 
+
+// KING_JOURNAL (Nov 18): full-fidelity journal import (every property, typed) + push KAIROS live entries back into the same database
+const typed = (v: any): any => {
+  if (!v) return null;
+  switch (v.type) {
+    case "title": case "rich_text": return (v[v.type] || []).map((t: any) => t.plain_text).join("");
+    case "number": return v.number; case "checkbox": return !!v.checkbox;
+    case "select": return v.select?.name || null; case "status": return v.status?.name || null;
+    case "multi_select": return (v.multi_select || []).map((x: any) => x.name);
+    case "date": return v.date?.start || null; case "url": return v.url; case "email": return v.email; case "phone_number": return v.phone_number;
+    case "files": return (v.files || []).map((f: any) => ({ name: f.name, url: f.file?.url || f.external?.url, ext: !!f.external }));
+    case "relation": return (v.relation || []).map((r: any) => r.id);
+    case "people": return (v.people || []).map((p: any) => p.name || p.id);
+    case "formula": { const f = v.formula || {}; return f.type === "date" ? (f.date?.start || null) : f[f.type] ?? null; }
+    case "rollup": { const r = v.rollup || {}; return r.type === "number" ? r.number : r.type === "array" ? (r.array || []).map(typed) : null; }
+    case "created_time": return v.created_time; case "last_edited_time": return v.last_edited_time;
+    default: return null;
+  }
+};
+async function dsOf(token: string, dbId: string) {   // properties + a query path that works on old and new Notion databases
+  try { const db = await notion(token, `databases/${dbId}`); if (db.properties && Object.keys(db.properties).length) return { props: db.properties, title: title(db), q: (b: any) => notion(token, `databases/${dbId}/query`, "POST", b) }; } catch (_) { /* new API below */ }
+  const db = await notion2(token, `databases/${dbId}`); const ds = db?.data_sources?.[0]?.id; if (!ds) throw new Error("Couldn't open that database");
+  const d = await notion2(token, `data_sources/${ds}`); return { props: d.properties || {}, title: title(db), q: (b: any) => notion2(token, `data_sources/${ds}/query`, "POST", b) };
+}
+const schemaOf = (props: any) => Object.fromEntries(Object.entries(props).map(([k, v]: any) => [k, { type: v.type, options: (v[v.type]?.options || []).map((o: any) => ({ name: o.name, color: o.color })) }]));
+async function copyFiles(uid: string, pageId: string, key: string, files: any[]) {   // Notion file links expire after an hour: keep our own copy
+  const out: any[] = [];
+  for (let i = 0; i < files.length && i < 12; i++) { const f = files[i]; if (!f?.url) continue;
+    if (f.ext) { out.push({ name: f.name, url: f.url }); continue; }
+    try { const r = await fetch(f.url); if (!r.ok) continue; const b = new Uint8Array(await r.arrayBuffer()); if (b.length > 8e6) continue;
+      const ext = (f.name.match(/\.(\w{2,5})$/) || [, "png"])[1].toLowerCase(); const path = `${uid}/notion/${pageId}/${key.replace(/[^\w]/g, "_")}-${i}.${ext}`;
+      await SB.storage.from("journal").upload(path, b, { upsert: true, contentType: r.headers.get("content-type") || "image/" + ext }); out.push({ name: f.name, path });
+    } catch (_) { /* skip one bad file */ } }
+  return out;
+}
+const toProp = (type: string, v: any) => {   // KAIROS value -> Notion property value (only the types a person types into)
+  const rt = (s: any) => [{ text: { content: String(s ?? "").slice(0, 1990) } }];
+  switch (type) {
+    case "title": return { title: rt(v || "Trade") }; case "rich_text": return { rich_text: rt(v) };
+    case "number": return { number: v === "" || v == null || isNaN(+v) ? null : +v };
+    case "select": return { select: v ? { name: String(v) } : null }; case "status": return v ? { status: { name: String(v) } } : undefined;
+    case "multi_select": return { multi_select: (Array.isArray(v) ? v : []).map((n: string) => ({ name: n })) };
+    case "date": return { date: v ? { start: v } : null }; case "url": return { url: v || null }; case "checkbox": return { checkbox: !!v };
+    default: return undefined;
+  }
+};
+
 async function syncTrades(uid: string, link: any, ids?: string[]) {
   let q = SB.from("trades").select("*").eq("user_id", uid).is("notion_page", null).order("t_exit").limit(50);
   if (ids && ids.length) q = q.in("id", ids);
@@ -76,7 +123,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({})); const act = body.action;
     const { data: link } = await SB.from("notion_links").select("*").eq("user_id", user.id).maybeSingle();
     if (act === "status") return J({ connected: !!link, workspace: link?.workspace, db_url: link?.db_url, db: !!link?.db_id, auto_sync: link?.auto_sync ?? true,
-      oauth: !!Deno.env.get("NOTION_CLIENT_ID"), source: link?.source_db_id || null, source_title: link?.source_title || null });
+      oauth: !!Deno.env.get("NOTION_CLIENT_ID"), source: link?.source_db_id || null, source_title: link?.source_title || null, journal: link?.journal_db_id || null, journal_title: link?.journal_title || null });
     if (act === "oauth_url") {
       const cid = Deno.env.get("NOTION_CLIENT_ID"); if (!cid) return J({ error: "Notion login isn't set up yet, use the token option" }, 400);
       const state = crypto.randomUUID(); await SB.from("notion_oauth_states").insert({ state, user_id: user.id });
@@ -104,6 +151,27 @@ Deno.serve(async (req) => {
       } catch (_) { /* older workspaces: the first list is enough */ }
       return J({ dbs: list.filter((d: any) => d.id.replace(/-/g, "") !== own) });
     }
+    if (act === "jschema") { const d = await dsOf(link.token, String(body.db_id)); return J({ ok: true, title: d.title, schema: schemaOf(d.props) }); }
+    if (act === "jimport") {   // one page (100 rows) per call; the app loops with next_cursor so big journals never time out
+      const d = await dsOf(link.token, String(body.db_id)); const r = await d.q({ page_size: 100, start_cursor: body.cursor || undefined, sorts: [{ timestamp: "created_time", direction: "ascending" }] });
+      const relT: Record<string, string> = {}; const rows: any[] = [];
+      for (const pg of r.results || []) { const props: any = {};
+        for (const [k, v] of Object.entries(pg.properties || {}) as any) {
+          let val = typed(v);
+          if (v.type === "files" && val?.length) val = await copyFiles(user.id, pg.id, k, val);
+          if (v.type === "relation" && val?.length) { val = await Promise.all(val.slice(0, 5).map(async (id: string) => { if (!(id in relT)) { try { relT[id] = title(await notion(link.token, "pages/" + id)); } catch (_) { relT[id] = ""; } } return { id, title: relT[id] }; })); }
+          props[k] = val; }
+        rows.push({ id: pg.id, url: pg.url, created: pg.created_time, edited: pg.last_edited_time, cover: pg.cover?.file?.url || pg.cover?.external?.url || null, props }); }
+      return J({ ok: true, rows, next_cursor: r.has_more ? r.next_cursor : null, schema: body.cursor ? undefined : schemaOf(d.props) });
+    }
+    if (act === "jpush") {   // create or update one page in the user's chosen journal database; only properties that already exist there
+      const d = await dsOf(link.token, String(body.db_id)); const props: any = {}; const vals = body.values || {};
+      for (const [k, v] of Object.entries(vals)) { const sp = d.props[k]; if (!sp) continue; const pv = sp.type === "date" && typeof v === "string" && v.includes("T") && !/[zZ]|[+-]\d\d:?\d\d$/.test(v) ? { date: { start: v, time_zone: String(body.tz || "America/New_York") } } : toProp(sp.type, v); if (pv !== undefined) props[k] = pv; }
+      const page = body.page_id ? await notion(link.token, "pages/" + body.page_id, "PATCH", { properties: props })
+        : await notion(link.token, "pages", "POST", { parent: { database_id: String(body.db_id) }, properties: props });
+      return J({ ok: true, page_id: page.id, url: page.url });
+    }
+    if (act === "jset") { await SB.from("notion_links").update({ journal_db_id: body.db_id || null, journal_title: body.title || null, updated_at: new Date().toISOString() }).eq("user_id", user.id); return J({ ok: true }); }
     if (act === "set_source") {
       const id = String(body.db_id || ""); if (id && id.replace(/-/g, "") === (link.db_id || "").replace(/-/g, "")) return J({ error: "That's the KAIROS backtest database. Pick your real-trade journal." }, 400);
       await SB.from("notion_links").update({ source_db_id: id || null, source_title: body.title || null, updated_at: new Date().toISOString() }).eq("user_id", user.id);
