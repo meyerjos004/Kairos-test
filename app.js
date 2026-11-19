@@ -1858,7 +1858,7 @@ const KTIPS = ["Hold the corner triangle on any tool button to see every tool in
 /* KING_STARTFX (Nov 12): every launch / reload plays a short take on the welcome cinematic (no tap gate, a random opening line),
    then the charts get "built" by swimming cursors. Lines from Codex; {name} = your first name (cached from the last visit). */
 const KLINES = ["THE SESSION RETURNS", "BACK TO THE SCREEN", "TIME TO REPLAY", "THE MARKETS AWAIT", "FOCUS RESETS", "PICK UP THE THREAD", "ANOTHER SESSION", "REPLAY BEGINS",
-  "THE CLOCK RESUMES", "MARKETS IN MOTION", "TIME, REVISITED", "THE TAPE IS LIVE", "BACK IN SEQUENCE", "A NEW SESSION", "THE CHARTS ARE READY", "RETURN TO THE TAPE",
+  "THE CLOCK RESUMES", "MARKETS IN MOTION", "TIME, REVISITED", "LIQUIDITY IS RESTING", "BACK IN SEQUENCE", "A NEW SESSION", "THE CHARTS ARE READY", "BACK IN THE KILL ZONE",
   "HISTORY, IN MOTION", "THE NEXT MOVE", "ON THE CLOCK", "SESSION RELOADED", "BACK TO THE BARS", "THE SIGNAL RETURNS",
   "{name}, BACK TO THE CHARTS", "{name}, TIME TO REPLAY", "{name}, PICK UP THE THREAD", "{name}, THE SESSION RESUMES"];
 let introOn = false; const introWait = [];

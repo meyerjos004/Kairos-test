@@ -16,7 +16,7 @@ window.kairosPrank = function (done) {
   document.body.appendChild(el); requestAnimationFrame(() => el.classList.add("in"));
   // the reveal: KAIROS cancels its own paywall in a terminal, one line at a time
   const term = el.querySelector(".kp-term"), box = el.querySelector(".kp-lines");
-  const LINES = [["$", "kairos billing --cancel-everything"], [">", "paywall.exe has been deleted."], [">", "no trial. no card. no catch."], [">", "this one was built for the four of us."], [">", "welcome in. the tape is waiting."]];
+  const LINES = [["$", "kairos billing --cancel-everything"], [">", "paywall.exe has been deleted."], [">", "no trial. no card. no catch."], [">", "this one was built for the four of us."], [">", "welcome in. buy-side is resting. go get it."]];
   const typeLine = (i) => { if (i >= LINES.length) return setTimeout(end, 2000); const [p, txt] = LINES[i], row = document.createElement("div"); row.className = "kp-tline" + (p === ">" ? " out" : "");
     row.innerHTML = `<span class="kp-who">${p === "$" ? "kairos-os:~$" : "&gt;"}</span> <span class="kp-typed"></span><span class="kp-cur">▋</span>`; box.querySelectorAll(".kp-cur").forEach((c) => c.remove()); box.appendChild(row);
     const out = row.querySelector(".kp-typed"); let k = 0; const tick = () => { out.textContent = txt.slice(0, ++k); if (k < txt.length) setTimeout(tick, p === "$" ? 45 + Math.random() * 60 : 22 + Math.random() * 25); else setTimeout(() => typeLine(i + 1), p === "$" ? 600 : 420); }; setTimeout(tick, i ? 0 : 500); };
