@@ -1157,3 +1157,6 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 }
 /* KING_MWBTNS: dialog button rows wrap on phones instead of squashing labels */
 @media (max-width:640px){.wbtns{flex-wrap:wrap}.wbtns button{flex:1 1 auto;white-space:nowrap}}
+/* KING_BFORM: coach / template-helper message box matches the app (was a default gray monospace box) */
+.bform textarea{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:10px;padding:9px 12px;color:var(--txt);font:inherit;font-size:14px;line-height:1.4;resize:none;min-height:40px}
+.bform textarea:focus{border-color:rgba(167,139,250,.55);outline:none}.bform textarea::placeholder{color:var(--mut)}
