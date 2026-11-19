@@ -97,7 +97,8 @@ const nyHour = (lt) => new Date(lt * 1000).getUTCHours();
 function rowLive(e) { const d = e.data || {}; const day = String(d.date || "").slice(0, 10) || String(e.updated_at).slice(0, 10);
   let hr = null; const ds = String(d.date || ""), m = ds.match(/T(\d\d):(\d\d)/);
   if (m) hr = /[zZ]|[+-]\d\d:?\d\d$/.test(ds) ? +new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(new Date(ds)) % 24 : +m[1];
-  return { id: e.id, book: e.book, e, d, day, hr, ts: Date.parse(day + "T12:00:00Z") / 1000 + (hr || 0) * 60, pnl: num(d.pnl), risk: num(d.risk), r0: null, base: null }; }
+  const at = (J.cfg.accounts.find((a) => a.name === (Array.isArray(d.account) ? (d.account[0] && (d.account[0].title || d.account[0])) : d.account)) || {}).type;
+  return { id: e.id, book: e.book === "live" && at === "Backtest" ? "backtest" : e.book, e, d, day, hr, ts: Date.parse(day + "T12:00:00Z") / 1000 + (hr || 0) * 60, pnl: num(d.pnl), risk: num(d.risk), r0: null, base: null }; }
 function rowBt(t) { const e = refEntry("backtest", t.id); const lt = loc(t.t_entry); const pv = (INST[t.symbol] || {}).pt || 20;
   const risk = t.stop != null ? Math.abs(t.entry - t.stop) * pv * (+t.qty || 1) : t.r ? Math.abs(t.pnl / t.r) : null; const ka = J.kacc.find((a) => a.id === t.account_id);
   const base = { name: `${t.symbol} ${t.dir > 0 ? "Long" : "Short"} ${t.qty}`, date: new Date(lt * 1000).toISOString().slice(0, 16), symbol: String(t.symbol).replace(/^M/, ""), position: t.dir > 0 ? "Long" : "Short", pnl: +t.pnl, risk, account: ka ? ka.name : "Backtest", notes: t.notes || "", confluences: (t.tags || []).filter((x) => !/^conf:/.test(x)), mentality: t.mistakes || [] };
@@ -139,6 +140,7 @@ async function open() {
   try { const [bt, ka] = await Promise.all([db.allTrades(), db.accounts().catch(() => [])]); J.bt = bt || []; J.kacc = ka || []; } catch (e) {}
   try { if (typeof reese !== "undefined") { if (!reese.length) await loadReese(); J.rs = reese || []; } } catch (e) {}
   render(); jSync().then(() => render()).catch(() => {}); backupUI(); $j("tj-sync").textContent = "";
+  if (J.cfg.notionSrc && !DEMO && Date.now() - (J._np || 0) > 120e3) { J._np = Date.now(); $j("tj-sync").textContent = "Checking Notion…"; pullNotion().then((r) => { $j("tj-sync").textContent = r.add + r.upd ? `Notion: ${r.add} new, ${r.upd} updated` : ""; }).catch((e) => { $j("tj-sync").textContent = "Notion: " + e.message; }); }
 }
 function render() { if (!J.cfg) return; const rows = allRows(); const fr = filtered(rows); J._rows = rows; J._fr = fr;
   $j("tj-books").innerHTML = Object.entries(BOOKS).map(([k, [n, c]]) => `<button class="jbook${J.books.has(k) ? " on" : ""}" data-b="${k}" style="--bc:${c}"><i></i>${n}<b>${rows.filter((r) => r.book === k).length}</b></button>`).join("");
@@ -229,8 +231,8 @@ function editor(f, v) { const a = `data-f="${f.k}"`;
   if (f.t === "check") return `<input type="checkbox" ${a} ${v ? "checked" : ""}>`;
   if (f.t === "link") return `<div class="row"><input type="url" ${a} value="${esc(v || "")}" placeholder="Paste a TradingView link">${v ? `<a href="${esc(v)}" target="_blank" rel="noopener">Open</a>` : ""}</div>`;
   return `<input ${a} value="${esc(Array.isArray(v) ? v.join(", ") : v || "")}" placeholder="Empty">`; }
-function setVal(k, v) { const s = J.sel; s.e.data = { ...s.e.data, [k]: v }; if (s.isNew) { s.isNew = false; s.created = true; } saveEntry(s.e); if (s.e.book === "live") pushSoon(s.e); }
-let _pt; function pushSoon(e) { if (!J.cfg.notionDb || DEMO) return; clearTimeout(_pt); _pt = setTimeout(() => pushNotion(e).catch((er) => toast("Notion: " + er.message)), 4000); }
+function setVal(k, v) { const s = J.sel; s.e.data = { ...s.e.data, [k]: v }; if (s.isNew) { s.isNew = false; s.created = true; } saveEntry(s.e); if (s.e.book === "live" || s.e.src_id) pushSoon(s.e); }
+let _pt; function pushSoon(e) { if (!J.cfg.notionDb) return; clearTimeout(_pt); _pt = setTimeout(() => pushNotion(e).catch((er) => toast("Notion: " + er.message)), 4000); }
 async function pushNotion(e) { const vals = {}; for (const f of J.cfg.fields) { const p = f.notion || (J.cfg.notionMap || {})[f.k]; if (!p) continue; let v = e.data[f.k]; if (f.t === "date" && v) v = String(v).length > 10 ? String(v) + ":00" : v; vals[p] = v; }
   const r = await notion("jpush", { db_id: J.cfg.notionDb, page_id: e.src_id || undefined, values: vals, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }); if (r.page_id && e.src_id !== r.page_id) { e.src_id = r.page_id; saveEntry(e); } }
 function tagPicker(el) { const f = field(el.dataset.f), multi = el.dataset.t === "multi"; const cur0 = cur()[f.k]; let sel = cur0 == null ? [] : Array.isArray(cur0) ? [...cur0] : [cur0];
@@ -312,24 +314,30 @@ function rowFromNotion(nr, map) { const d = {}; for (const [name, v] of Object.e
     if (f.t === "files") { d[f.k] = (v || []).map((x) => ({ path: x.path, url: x.url, name: x.name })); continue; }
     if (f.t === "multi" && !Array.isArray(v)) { d[f.k] = v ? [v] : []; continue; } d[f.k] = v; }
   if (!d.date) d.date = nr.created; return d; }
+async function pullNotion(say) {   // two-way: Notion -> KAIROS (only pages changed since the last pull). KAIROS -> Notion happens on every edit (pushNotion).
+  const dbid = J.cfg.notionSrc; if (!dbid) return { add: 0, upd: 0 }; const started = nowIso(); let cursor = null, map = null, n = 0, add = 0, upd = 0;
+  const bySrc = new Map([...J.ent.values()].filter((e) => e.src_id).map((e) => [e.src_id, e]));
+  if (!J.cfg.notionPulled) { const s0 = await notion("jschema", { db_id: dbid }); map = mergeSchema(s0.schema); } else map = Object.fromEntries(J.cfg.fields.filter((f) => f.notion).map((f) => [f.notion, f]));
+  do { const res = await notion("jimport", { db_id: dbid, cursor, since: J.cfg.notionPulled || undefined }); if (res.schema) map = mergeSchema(res.schema); const batch = [];
+    for (const nr of res.rows) { n++; const ex = bySrc.get(nr.id); const data = rowFromNotion(nr, map);
+      if (ex) { if (ex.data._edited === nr.edited || ex.dirty) continue; ex.data = { ...ex.data, ...data, _edited: nr.edited }; ex.updated_at = nowIso(); ex.dirty = true; batch.push(ex); upd++; }
+      else { const e = { id: uid(), book: J.cfg.notionBook || "live", src: "notion", src_id: nr.id, data: { ...data, _edited: nr.edited }, updated_at: nowIso(), dirty: true, scope: scope() }; bySrc.set(nr.id, e); batch.push(e); add++; } }
+    batch.forEach((e) => J.ent.set(e.id, e)); await L.putMany(batch); say && say(`Read ${n} trades… (${add} new, ${upd} updated)`); cursor = res.next_cursor; } while (cursor);
+  J.cfg.notionPulled = new Date(Date.parse(started) - 120e3).toISOString(); saveCfg(); if (add || upd) { render(); jSync().catch(() => {}); backupSoon(); } return { add, upd };
+}
 async function notionDlg() {
   let st; try { st = await notion("status"); } catch (e) { return wideDlg(`<h3>Notion</h3><p class="muted">${DEMO ? "Notion is off in the demo." : esc(e.message)}</p>`, [{ t: "Close" }]); }
   if (!st.connected) return wideDlg(`<h3>Connect Notion</h3><p>Connect your Notion in <b>Settings → Notion</b> first, then come back here. In Notion, share your trades database with KAIROS (••• → Connections → KAIROS).</p>`, [{ t: "Close" }, { t: "Open Settings", primary: 1, f: () => view("settings") }]);
   const r = await notion("dbs");
   wideDlg(`<h3>Bring in your Notion journal</h3><p class="muted small">KAIROS copies every trade, every property, your tag colors and your chart images. Your Notion stays the same. Running it again only adds what's new or changed.</p>
     <div class="cols2"><label>Database<select id="nj-db"><option value="">Pick your trades database…</option>${r.dbs.map((d) => `<option value="${d.id}"${d.id === J.cfg.notionDb ? " selected" : ""}>${esc(d.title)}</option>`).join("")}</select></label>
-    <label>Put the trades in<select id="nj-book"><option value="live">Live journal</option><option value="backtest">Backtest journal</option></select></label></div>
+    <label>Put the trades in<select id="nj-book"><option value="live">Live journal</option><option value="backtest">Backtest journal</option></select></label></div><p class="muted small">Backtests and live trades in the same Notion database? Import into Live, then in Customize → Accounts set your backtest accounts to type <b>Backtest</b>. Their trades move to the Backtest journal.</p>
     <label class="ck"><input type="checkbox" id="nj-push" ${J.cfg.notionDb ? "checked" : ""}> Send trades I add in KAIROS back to this database</label><div id="nj-msg" class="muted small"></div>`,
     [{ t: "Close" }, { t: "Import", primary: 1, f: () => {} }]);
   $j("wb1").onclick = async () => { const dbid = $j("nj-db").value, book = $j("nj-book").value; if (!dbid) return ($j("nj-msg").textContent = "Pick a database first.");
     const title = $j("nj-db").selectedOptions[0].textContent; J.cfg.notionDb = $j("nj-push").checked ? dbid : null; J.cfg.notionTitle = title; saveCfg(); notion("jset", { db_id: J.cfg.notionDb, title }).catch(() => {});
-    $j("wb1").disabled = true; let cursor = null, map = null, n = 0, add = 0, upd = 0; const bySrc = new Map([...J.ent.values()].filter((e) => e.src_id).map((e) => [e.src_id, e]));
-    try { do { const res = await notion("jimport", { db_id: dbid, cursor }); if (res.schema) map = mergeSchema(res.schema); const batch = [];
-        for (const nr of res.rows) { n++; const ex = bySrc.get(nr.id); const data = rowFromNotion(nr, map);
-          if (ex) { if (ex.data._edited === nr.edited) continue; ex.data = { ...data, _edited: nr.edited }; ex.updated_at = nowIso(); ex.dirty = true; batch.push(ex); upd++; }
-          else { const e = { id: uid(), book, src: "notion", src_id: nr.id, data: { ...data, _edited: nr.edited }, updated_at: nowIso(), dirty: true, scope: scope() }; bySrc.set(nr.id, e); batch.push(e); add++; } }
-        batch.forEach((e) => J.ent.set(e.id, e)); await L.putMany(batch); $j("nj-msg").textContent = `Read ${n} trades… (${add} new, ${upd} updated)`; cursor = res.next_cursor; } while (cursor);
-      saveCfg(); render(); jSync().catch(() => {}); backupSoon(); $j("nj-msg").textContent = `Done: ${add} new, ${upd} updated, ${n} total in Notion.`; $j("wb1").textContent = "Import again";
+    J.cfg.notionSrc = dbid; J.cfg.notionBook = book; J.cfg.notionPulled = null; saveCfg(); $j("wb1").disabled = true;
+    try { const r = await pullNotion((m) => ($j("nj-msg").textContent = m)); $j("nj-msg").textContent = `Done: ${r.add} new, ${r.upd} updated. KAIROS now checks Notion for changes every time you open the journal.`; $j("wb1").textContent = "Import again";
     } catch (e) { $j("nj-msg").textContent = "Notion: " + e.message; } $j("wb1").disabled = false; };
 }
 
@@ -410,5 +418,5 @@ function bkDlg() { const fsApi = !!window.showDirectoryPicker;
     [{ t: "Close" }, { t: "Restore from a file", f: () => {} }, { t: "Download a copy now", f: () => downloadBackup() }, ...(fsApi ? [{ t: "Choose backup folder", primary: 1, f: () => pickFolder() }] : [])]);
   $j("wb1").onclick = () => $j("bk-file").click(); $j("bk-file").onchange = (e) => { $j("dlg").classList.add("hidden"); e.target.files[0] && restoreFile(e.target.files[0]); }; }
 
-J.open = () => { wire(); return open(); }; J.render = render; J.backupNow = backupNow; J.snapshot = snapshot; J.viewerHtml = viewerHtml; J.mergeSchema = mergeSchema; J.rowFromNotion = rowFromNotion; J.openTrade = openTrade; J.agg = agg; J.applyTpl = applyTpl; J.restoreFile = restoreFile; J.saveEntry = saveEntry; J.allRows = allRows; J.groupBy = groupBy;
+J.open = () => { wire(); return open(); }; J.render = render; J.backupNow = backupNow; J.snapshot = snapshot; J.viewerHtml = viewerHtml; J.mergeSchema = mergeSchema; J.pullNotion = pullNotion; J.rowFromNotion = rowFromNotion; J.openTrade = openTrade; J.agg = agg; J.applyTpl = applyTpl; J.restoreFile = restoreFile; J.saveEntry = saveEntry; J.allRows = allRows; J.groupBy = groupBy;
 })();

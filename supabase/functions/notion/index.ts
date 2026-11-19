@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
     }
     if (act === "jschema") { const d = await dsOf(link.token, String(body.db_id)); return J({ ok: true, title: d.title, schema: schemaOf(d.props) }); }
     if (act === "jimport") {   // one page (100 rows) per call; the app loops with next_cursor so big journals never time out
-      const d = await dsOf(link.token, String(body.db_id)); const r = await d.q({ page_size: 100, start_cursor: body.cursor || undefined, sorts: [{ timestamp: "created_time", direction: "ascending" }] });
+      const d = await dsOf(link.token, String(body.db_id)); const r = await d.q({ page_size: 100, start_cursor: body.cursor || undefined, sorts: [{ timestamp: "created_time", direction: "ascending" }], ...(body.since ? { filter: { timestamp: "last_edited_time", last_edited_time: { on_or_after: String(body.since) } } } : {}) });   // since: only pages changed after the last pull (two-way sync)
       const relT: Record<string, string> = {}; const rows: any[] = [];
       for (const pg of r.results || []) { const props: any = {};
         for (const [k, v] of Object.entries(pg.properties || {}) as any) {

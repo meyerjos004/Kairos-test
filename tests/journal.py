@@ -67,6 +67,19 @@ async def main():
         check("notion: formulas skipped (KAIROS computes them)", "Outcome" not in json.dumps(m['d']), m['d'])
         check("notion: values mapped", m['d'].get('n_news')==["CPI"] and m['d'].get('pnl')==-120 and m['d'].get('account')=="Apex 1" and m['d'].get('name')=="Ben trade", m['d'])
         check("notion: tag colors copied", m['ifvg']=="red"); check("notion: accounts created", m['acct'])
+        # two-way Notion: pull only changed pages, push edits back, backtest accounts split out of a mixed journal
+        r=await E("""(async()=>{const calls=[];window.notion=async(a,x)=>{calls.push([a,x]);if(a==='jschema')return{schema:{"Name":{type:"title"},"Net P/L":{type:"number"},"Account":{type:"relation"}}};
+          if(a==='jimport')return{rows:[{id:'pg1',edited:'e1',created:'2026-03-01T15:00:00Z',props:{"Name":"Mixed bt",'Net P/L':200,'Account':[{id:'x',title:'BT acct'}]}}],next_cursor:null};if(a==='jpush')return{page_id:x.page_id||'pg1'};return{}};
+          JN.cfg.notionSrc='db1';JN.cfg.notionDb='db1';JN.cfg.notionPulled=null;const r1=await JN.pullNotion();const since1=JN.cfg.notionPulled;const r2=await JN.pullNotion();
+          JN.cfg.accounts.find(a=>a.name==='BT acct').type='Backtest';JN.render();const row=JN.allRows().find(x=>x.d.name==='Mixed bt');
+          return{r1,r2,since:!!since1,usedSince:calls.filter(c=>c[0]==='jimport')[1][1].since===since1,book:row&&row.book}})()""")
+        check("notion sync: first pull imports", r['r1']['add']==1, r)
+        check("notion sync: next pull asks only for changes", r['usedSince'] and r['r2']['add']==0, r)
+        check("notion sync: Backtest-type account moves trades to Backtest journal", r['book']=="backtest", r)
+        p2=await E("""(async()=>{const calls=[];window.notion=async(a,x)=>{calls.push([a,x]);return{page_id:'pg1'}};const row=JN.allRows().find(x=>x.d.name==='Mixed bt');JN.openTrade(row.id);
+          document.querySelector('.tpbig input[data-f=pnl]').value='250';document.querySelector('.tpbig input[data-f=pnl]').dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,4600));
+          document.getElementById('tj-page').classList.add('hidden');return calls.filter(c=>c[0]==='jpush').map(c=>[c[1].page_id,c[1].values['Net P/L']])})()""")
+        check("notion sync: editing in KAIROS updates the same Notion page", p2==[["pg1",250]], p2)
         await E("JN.applyTpl('ben')"); check("template: Ben's fields", await E("['Key take away','MTF (5m-15m)','HTF (1h-4h)','Corrections','Application'].every(n=>JN.cfg.fields.some(f=>f.n===n))"))
         await pg.click("#tj-custom"); await W(200); check("customize: opens with field list", await E("document.querySelectorAll('#dlgbox [data-fi]').length")>10)
         await pg.click('#dlgbox [data-fo]'); await W(150); check("customize: options editor with colors", await E("document.querySelectorAll('#dlgbox [data-oc]').length")>9)
