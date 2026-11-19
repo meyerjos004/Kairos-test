@@ -44,7 +44,13 @@ async def main():
             check(f"draw {t}", await E("drawings.length") == n0 + 1)
         for t in ["hline","vline","long","short","text"]:
             if t == "text": await E("window.prompt=()=>'note'; 1")
-            n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.click(cx+20, cy-20); await pg.wait_for_timeout(100); check(f"place {t}", await E("drawings.length") >= n0 + 1)
+            # KING_FLAKY: each tool clicks its own empty spot (short used to land on the long box and select it) and we poll up to 1s
+            i = ["hline","vline","long","short","text"].index(t); n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.click(cx-150+i*70, cy+60-i*30)
+            ok = False
+            for _ in range(10):
+                await pg.wait_for_timeout(100)
+                if await E("drawings.length") >= n0 + 1: ok = True; break
+            check(f"place {t}", ok)
         await pg.keyboard.press("Escape"); await E("sel = drawings[drawings.length-1]; 1"); await pg.keyboard.press("Delete"); check("delete selected drawing", True)
         # position tool arm -> fills
         await E("cancelAll(); flatten(); drawings=[]; 1"); await E("(()=>{const p=panes[0],lp=last(),d=newDrawing('long',p,{t:loc(nowT()),p:rnd(lp-3)}); d.entry=rnd(lp-3); d.sl=rnd(lp-11); d.tp=rnd(lp+13); armTool(d);})()")
