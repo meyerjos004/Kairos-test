@@ -1145,5 +1145,6 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
  .jfr[data-fi]>:nth-child(1){grid-area:g}.jfr[data-fi]>:nth-child(2){grid-area:n}.jfr[data-fi]>:nth-child(3){grid-area:t}
  .jfr[data-fi]>:nth-child(4){grid-area:o;display:block}.jfr[data-fi]>:nth-child(5){grid-area:s;display:flex}.jfr[data-fi]>:nth-child(6){grid-area:q;display:flex}.jfr[data-fi]>:nth-child(7){grid-area:d}
  .jfr[data-fi] input:not([type=checkbox]),.jfr[data-fi] select{width:100%;min-width:0}
- .jflist{max-height:58vh}
+ .jflist{max-height:42vh}
+ #dlg .row button{white-space:nowrap}
 }
