@@ -170,7 +170,7 @@ const WR = {
     let h = `<div class="jcal">${["S", "M", "T", "W", "T", "F", "S", "Wk"].map((d) => `<i>${d}</i>`).join("")}`, wk = 0, wn = 0; for (let i = 0; i < first.getUTCDay(); i++) h += "<span></span>";
     for (let d = 1; d <= days; d++) { const k = m + "-" + String(d).padStart(2, "0"), rs = by[k] || [], a = agg(rs); wk += a.net; wn += a.n;
       h += `<button class="jcd ${rs.length ? (a.net > 0 ? "up" : a.net < 0 ? "dn" : "be") : ""}${J.day === k ? " on" : ""}" data-day="${k}"><em>${d}</em>${rs.length ? `<b class="jfull">${fmtMoney(a.net)}</b><b class="jshort">${kM(a.net)}</b><small>${rs.length}</small>` : ""}</button>`;
-      if ((first.getUTCDay() + d) % 7 === 0 || d === days) { if (d === days) for (let i = (first.getUTCDay() + d) % 7; i && i < 7; i++) h += "<span></span>"; h += `<div class="jcw ${pc(wk)}">${wn ? fmtMoney(wk) : ""}</div>`; wk = 0; wn = 0; } }
+      if ((first.getUTCDay() + d) % 7 === 0 || d === days) { if (d === days) for (let i = (first.getUTCDay() + d) % 7; i && i < 7; i++) h += "<span></span>"; h += `<div class="jcw ${pc(wk)}">${wn ? `<span class="jfull">${fmtMoney(wk)}</span><span class="jshort">${kM(wk)}</span>` : ""}</div>`; wk = 0; wn = 0; } }
     $j("jw-calendar").innerHTML = h + "</div>"; },
   monthly(fr) { const ys = [...new Set(fr.map((r) => r.day.slice(0, 4)))].sort(); if (!J.yr) J.yr = ys[ys.length - 1] || String(new Date().getFullYear()); $j("tj-yrt").textContent = J.yr;
     const ms = Array.from({ length: 12 }, (_, i) => agg(fr.filter((r) => r.day.startsWith(J.yr + "-" + String(i + 1).padStart(2, "0"))))); const mx = Math.max(1, ...ms.map((a) => Math.abs(a.net))); const tot = agg(fr.filter((r) => r.day.startsWith(J.yr)));

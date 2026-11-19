@@ -1118,4 +1118,4 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 .kp-lines{display:flex;flex-direction:column;gap:10px;min-width:min(620px,90vw)}.kp-tline.out .kp-who{color:#6b6b80}.kp-tline.out .kp-typed{color:#c4b5fd}
 
 /* KING_CALSHORT */
-.jcd .jshort{display:none}@media (max-width:640px){.jcd .jfull{display:none}.jcd .jshort{display:block}}
+.jcd .jshort,.jcw .jshort{display:none}@media (max-width:640px){.jcd .jfull,.jcw .jfull{display:none}.jcd .jshort{display:block}.jcw .jshort{display:inline}}
