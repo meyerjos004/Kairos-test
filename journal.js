@@ -70,6 +70,7 @@ async function loadCfg() {
   let c = await L.get("cfg:" + scope()).catch(() => null);
   if (!DEMO && user) try { const { data } = await sb.from("journal_config").select("data,updated_at").maybeSingle(); if (data && data.data && data.data.fields && (!c || data.data.updated > c.updated)) c = data.data; } catch (e) {}
   J.cfg = c || defCfg(); if (!J.cfg.layout) J.cfg.layout = DEF_LAYOUT(); for (const id of Object.keys(WIDGETS)) if (!J.cfg.layout.some((w) => w.id === id)) J.cfg.layout.push({ id, w: 2, hide: true });
+  if (J.cfg.notionSrc && !J.cfg.notion) { J.cfg.notion = { [J.cfg.notionBook || "live"]: { db: J.cfg.notionSrc, sync: !!J.cfg.notionDb, pulled: J.cfg.notionPulled } }; }
   J.books = new Set(J.cfg.books || ["live", "backtest", "reese"]);
 }
 let _cfgT; function saveCfg() { J.cfg.updated = nowIso(); J.cfg.books = [...J.books]; L.set("cfg:" + scope(), J.cfg).catch(() => {}); clearTimeout(_cfgT);
@@ -94,7 +95,7 @@ async function jSync() {
 
 /* ---------- the three books as one list of rows ---------- */
 const nyHour = (lt) => new Date(lt * 1000).getUTCHours();
-function rowLive(e) { const d = e.data || {}; const day = String(d.date || "").slice(0, 10) || String(e.updated_at).slice(0, 10);
+function rowLive(e) { let d = e.data || {}; if (!d.name) d = { ...d, name: [d.symbol, d.position, String(d.date || "").slice(5, 10)].filter(Boolean).join(" ") || "Untitled" }; const day = String(d.date || "").slice(0, 10) || String(e.updated_at).slice(0, 10);
   let hr = null; const ds = String(d.date || ""), m = ds.match(/T(\d\d):(\d\d)/);
   if (m) hr = /[zZ]|[+-]\d\d:?\d\d$/.test(ds) ? +new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", hour: "numeric", hourCycle: "h23" }).format(new Date(ds)) % 24 : +m[1];
   const at = (J.cfg.accounts.find((a) => a.name === (Array.isArray(d.account) ? (d.account[0] && (d.account[0].title || d.account[0])) : d.account)) || {}).type;
@@ -140,7 +141,7 @@ async function open() {
   try { const [bt, ka] = await Promise.all([db.allTrades(), db.accounts().catch(() => [])]); J.bt = bt || []; J.kacc = ka || []; } catch (e) {}
   try { if (typeof reese !== "undefined") { if (!reese.length) await loadReese(); J.rs = reese || []; } } catch (e) {}
   render(); jSync().then(() => render()).catch(() => {}); backupUI(); $j("tj-sync").textContent = "";
-  if (J.cfg.notionSrc && !DEMO && Date.now() - (J._np || 0) > 120e3) { J._np = Date.now(); $j("tj-sync").textContent = "Checking Notion…"; pullNotion().then((r) => { $j("tj-sync").textContent = r.add + r.upd ? `Notion: ${r.add} new, ${r.upd} updated` : ""; }).catch((e) => { $j("tj-sync").textContent = "Notion: " + e.message; }); }
+  autoPull();
 }
 function render() { if (!J.cfg) return; const rows = allRows(); const fr = filtered(rows); J._rows = rows; J._fr = fr;
   $j("tj-books").innerHTML = Object.entries(BOOKS).map(([k, [n, c]]) => `<button class="jbook${J.books.has(k) ? " on" : ""}" data-b="${k}" style="--bc:${c}"><i></i>${n}<b>${rows.filter((r) => r.book === k).length}</b></button>`).join("");
@@ -208,13 +209,32 @@ async function addImage(file) { const img = await createImageBitmap(file); const
   const blob = await new Promise((ok) => c.toBlob(ok, "image/jpeg", 0.85)); const id = `${scope()}/${uid()}.jpg`; await L.setFile(id, await blobUrl(blob));
   if (!DEMO && user) sb.storage.from("journal").upload(id, blob, { contentType: "image/jpeg", upsert: true }).then(() => {}); return { id, name: file.name || "chart.jpg" }; }
 
+/* ---------- quick backtest log: backtests matter less, so logging one takes a few taps ---------- */
+const QUICK_DEF = new Set(["date", "symbol", "position", "confluences", "notes", "files", "news"]);
+const isQuick = (f) => (f.quick != null ? f.quick : QUICK_DEF.has(f.k));
+function openQuick(prev) { const e = { id: uid(), book: "backtest", src: "manual", data: { date: prev && prev.date ? String(prev.date).slice(0, 10) : new Date().toISOString().slice(0, 10), symbol: (prev && prev.symbol) || "NQ", risk: J.cfg.btRisk || 100, files: [] } };
+  J.sel = { e, isNew: true, quick: true }; drawTrade(); $j("tj-page").classList.remove("hidden"); }
+function drawQuick() { const s = J.sel, d = cur(), risk = num(d.risk) || J.cfg.btRisk || 100, pnl = num(d.pnl), R = pnl == null ? null : pnl / risk, man = !(s.r && s.r.ref);
+  const res = pnl == null ? "" : pnl > 0 ? "win" : pnl < 0 ? "loss" : "be"; const sym = field("symbol"), pos = field("position");
+  const one = (f, v) => (f && f.opts ? f.opts.map((o) => `<button class="qb${v === o.name ? " on" : ""}" data-qone="${f.k}" data-o="${esc(o.name)}">${chip(f, o.name)}</button>`).join("") : "");
+  $j("tj-pagebox").innerHTML = `<div class="tph"><span class="jbk" style="--bc:${BOOKS.backtest[1]}">Backtest</span><b>Quick log</b><span class="tsp"></span><button class="ghost small" id="tp-full">All fields</button>${s.isNew || !man ? "" : '<button class="ghost small danger" id="tp-del">Delete</button>'}<button class="ghost small" id="tp-close">Close</button></div>
+  ${man ? `<div class="qrow"><span class="tpk">Result</span><div class="qres"><button class="qr w${res === "win" ? " on" : ""}" data-qres="win">Win</button><button class="qr l${res === "loss" ? " on" : ""}" data-qres="loss">Loss</button><button class="qr b${res === "be" ? " on" : ""}" data-qres="be">Breakeven</button>
+    <label class="qrr">R <input type="number" step="0.1" id="tp-qr" value="${R == null ? "" : +R.toFixed(2)}" placeholder="2"></label></div></div>` : `<div class="qrow"><span class="tpk">Result (from the replay)</span><b class="${pc(pnl)}">${fmtMoney(pnl)} · ${R == null ? "—" : R.toFixed(2) + "R"}</b></div>`}
+  ${man ? `<div class="qrow"><span class="tpk">Symbol</span><div class="qopts">${one(sym, d.symbol)}</div></div><div class="qrow"><span class="tpk">Side</span><div class="qopts">${one(pos, d.position)}</div></div>
+  <div class="qrow"><span class="tpk">Date</span><input type="date" data-f="date" value="${esc(String(d.date || "").slice(0, 10))}"></div>` : ""}
+  ${J.cfg.fields.filter((f) => !f.hide && isQuick(f) && f.t === "multi").map((f) => { const v = d[f.k] || []; return `<div class="qrow"><span class="tpk">${esc(f.n)}</span><div class="qopts">${(f.opts || []).map((o) => `<button class="qb${v.includes(o.name) ? " on" : ""}" data-qmul="${f.k}" data-o="${esc(o.name)}">${chip(f, o.name)}</button>`).join("")}</div></div>`; }).join("")}
+  <div class="qrow"><span class="tpk">Note</span><textarea data-f="notes" rows="2" placeholder="One line on what you saw">${esc(d.notes || "")}</textarea></div>
+  <div class="tpfiles"><div class="tpimgs" id="tp-imgs">${(d.files || []).map((fl, i) => `<div class="tpimg" data-fimg="${esc(fl.id || fl.path || fl.url)}"><button data-rmimg="${i}" title="Remove">×</button></div>`).join("")}<label class="tpadd">+ Chart<br><span class="muted small">or paste one</span><input type="file" accept="image/*" multiple id="tp-file" hidden></label></div></div>
+  ${man ? '<div class="row qsave"><span class="tsp"></span><button class="primary" id="tp-next">Save + log another</button></div>' : ""}`; fillImgs($j("tj-pagebox")); }
+function setMany(o) { const s = J.sel; s.e.data = { ...s.e.data, ...o }; if (s.isNew) { s.isNew = false; s.created = true; } saveEntry(s.e); pushSoon(s.e); }
+
 /* ---------- the trade page (Notion-style: pinned row, big money, properties, charts) ---------- */
 function openTrade(rid) { const r = rid ? J._rows.find((x) => x.id === rid) : null; let e;
   if (!r) { e = { id: uid(), book: "live", src: "manual", data: { name: "", date: new Date().toISOString().slice(0, 10), files: [] } }; J.sel = { e, isNew: true }; }
   else { e = r.e || (r.book === "live" ? null : { id: uid(), book: r.book, ref: r.ref, src: "manual", data: {} }); J.sel = { e, r }; }
   drawTrade(); $j("tj-page").classList.remove("hidden"); setTimeout(() => { const t = $j("tp-name"); if (!r && t) t.focus(); }, 50); }
 function cur() { const s = J.sel; const base = (s.r && s.r.base) || {}; return { ...base, ...s.e.data }; }
-function drawTrade() { const s = J.sel, d = cur(), pnl = num(d.pnl), risk = num(d.risk), r = risk ? pnl / risk : s.r && s.r.r0; const out = pnl == null ? "Open" : pnl > 0 ? "Profit" : pnl < 0 ? "Loss" : "Breakeven"; const ro = s.e.book !== "live";
+function drawTrade() { if (J.sel.e.book === "backtest" && !J.sel.full) return drawQuick(); const s = J.sel, d = cur(), pnl = num(d.pnl), risk = num(d.risk), r = risk ? pnl / risk : s.r && s.r.r0; const out = pnl == null ? "Open" : pnl > 0 ? "Profit" : pnl < 0 ? "Loss" : "Breakeven"; const ro = s.e.book !== "live";
   const accs = [...new Set([...J.cfg.accounts.map((a) => a.name), ...(J._rows || []).map(accName).filter(Boolean)])];
   $j("tj-pagebox").innerHTML = `<div class="tph"><span class="jbk" style="--bc:${BOOKS[s.e.book][1]}">${BOOKS[s.e.book][0]}</span>${s.isNew ? `<select id="tp-book">${Object.entries(BOOKS).filter(([k]) => k !== "reese").map(([k, [n]]) => `<option value="${k}"${k === s.e.book ? " selected" : ""}>${n} journal</option>`).join("")}</select>` : ""}${ro ? `<span class="muted small">Prices come from the ${s.e.book === "reese" ? "Reese log" : "replay"}. Your tags and notes are yours.</span>` : ""}<span class="tsp"></span>${!ro && !s.isNew ? '<button class="ghost small danger" id="tp-del">Delete</button>' : ""}<button class="ghost small" id="tp-close">Close</button></div>
   <input id="tp-name" class="tpname" placeholder="New trade" value="${esc(d.name || "")}">
@@ -231,10 +251,10 @@ function editor(f, v) { const a = `data-f="${f.k}"`;
   if (f.t === "check") return `<input type="checkbox" ${a} ${v ? "checked" : ""}>`;
   if (f.t === "link") return `<div class="row"><input type="url" ${a} value="${esc(v || "")}" placeholder="Paste a TradingView link">${v ? `<a href="${esc(v)}" target="_blank" rel="noopener">Open</a>` : ""}</div>`;
   return `<input ${a} value="${esc(Array.isArray(v) ? v.join(", ") : v || "")}" placeholder="Empty">`; }
-function setVal(k, v) { const s = J.sel; s.e.data = { ...s.e.data, [k]: v }; if (s.isNew) { s.isNew = false; s.created = true; } saveEntry(s.e); if (s.e.book === "live" || s.e.src_id) pushSoon(s.e); }
-let _pt; function pushSoon(e) { if (!J.cfg.notionDb) return; clearTimeout(_pt); _pt = setTimeout(() => pushNotion(e).catch((er) => toast("Notion: " + er.message)), 4000); }
-async function pushNotion(e) { const vals = {}; for (const f of J.cfg.fields) { const p = f.notion || (J.cfg.notionMap || {})[f.k]; if (!p) continue; let v = e.data[f.k]; if (f.t === "date" && v) v = String(v).length > 10 ? String(v) + ":00" : v; vals[p] = v; }
-  const r = await notion("jpush", { db_id: J.cfg.notionDb, page_id: e.src_id || undefined, values: vals, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }); if (r.page_id && e.src_id !== r.page_id) { e.src_id = r.page_id; saveEntry(e); } }
+function setVal(k, v) { const s = J.sel; s.e.data = { ...s.e.data, [k]: v }; if (s.isNew) { s.isNew = false; s.created = true; } saveEntry(s.e); pushSoon(s.e); }
+let _pt; function pushSoon(e) { const src = nsrc(e.book); if (!src || !src.db || !src.sync) return; clearTimeout(_pt); _pt = setTimeout(() => pushNotion(e).catch((er) => toast("Notion: " + er.message)), 4000); }
+async function pushNotion(e) { const src = nsrc(e.book); const vals = {}; for (const f of J.cfg.fields) { const p = (f.nmap && f.nmap[e.book]) || (e.book === "live" && f.notion); if (!p) continue; let v = e.data[f.k]; if (f.t === "date" && v) v = String(v).length > 10 ? String(v).slice(0, 16) + ":00" : v; vals[p] = v; }
+  const r = await notion("jpush", { db_id: src.db, page_id: e.src_id || undefined, values: vals, tz: Intl.DateTimeFormat().resolvedOptions().timeZone }); if (r.page_id && e.src_id !== r.page_id) { e.src_id = r.page_id; e.src = e.src || "notion"; saveEntry(e); } }
 function tagPicker(el) { const f = field(el.dataset.f), multi = el.dataset.t === "multi"; const cur0 = cur()[f.k]; let sel = cur0 == null ? [] : Array.isArray(cur0) ? [...cur0] : [cur0];
   const pop = document.createElement("div"); pop.className = "jpop"; document.body.appendChild(pop); const rc = el.getBoundingClientRect(); pop.style.left = Math.min(rc.left, innerWidth - 330) + "px"; pop.style.top = Math.min(rc.bottom + 4, innerHeight - 380) + "px";
   const draw = (q = "") => { const ql = q.toLowerCase(); const list = (f.opts || []).filter((o) => o.name.toLowerCase().includes(ql)); const exact = (f.opts || []).some((o) => o.name.toLowerCase() === ql);
@@ -303,10 +323,10 @@ function coreFor(name, type) { const n = name.toLowerCase();
   if (type === "title") return "name"; if (type === "date" && /date|day|time|opened/.test(n)) return "date"; if (/^(symbol|ticker|instrument|asset|market)$/.test(n)) return "symbol";
   if (/^(position|side|direction|long.?short)$/.test(n)) return "position"; if (/(net ?p\/?l|^p ?& ?l$|^pnl$|^profit$)/.test(n) && type === "number") return "pnl"; if (/risk/.test(n) && type === "number") return "risk";
   if (/account/.test(n) && (type === "relation" || type === "select")) return "account"; if (type === "files" && /chart|attach|screenshot|image/.test(n)) return "files"; return null; }
-function mergeSchema(schema) { const map = {};
+function mergeSchema(schema, kind = "live") { const map = {};
   for (const [name, p] of Object.entries(schema)) { const t = NTYPE[p.type]; if (!t) continue; let f = field(coreFor(name, p.type)) || J.cfg.fields.find((x) => x.n.toLowerCase() === name.toLowerCase());
     if (!f) { f = { k: "n_" + name.toLowerCase().replace(/[^a-z0-9]+/g, "_").slice(0, 30), n: name, t: t === "number" && /\$|p\/l|pnl|profit|loss|risk/i.test(name) ? "money" : t }; J.cfg.fields.splice(J.cfg.fields.length - 1, 0, f); }
-    f.notion = name; if (p.options && p.options.length && (f.t === "multi" || f.t === "select")) { f.opts = f.opts || []; for (const o of p.options) { const ex = f.opts.find((x) => x.name === o.name); if (ex) ex.color = o.color; else f.opts.push({ name: o.name, color: o.color }); } }
+    f.notion = name; f.nmap = { ...(f.nmap || {}), [kind]: name }; if (p.options && p.options.length && (f.t === "multi" || f.t === "select")) { f.opts = f.opts || []; for (const o of p.options) { const ex = f.opts.find((x) => x.name === o.name); if (ex) ex.color = o.color; else f.opts.push({ name: o.name, color: o.color }); } }
     map[name] = f; }
   saveCfg(); return map; }
 function rowFromNotion(nr, map) { const d = {}; for (const [name, v] of Object.entries(nr.props)) { const f = map[name]; if (!f || v == null) continue;
@@ -314,37 +334,45 @@ function rowFromNotion(nr, map) { const d = {}; for (const [name, v] of Object.e
     if (f.t === "files") { d[f.k] = (v || []).map((x) => ({ path: x.path, url: x.url, name: x.name })); continue; }
     if (f.t === "multi" && !Array.isArray(v)) { d[f.k] = v ? [v] : []; continue; } d[f.k] = v; }
   if (!d.date) d.date = nr.created; return d; }
-async function pullNotion(say) {   // two-way: Notion -> KAIROS (only pages changed since the last pull). KAIROS -> Notion happens on every edit (pushNotion).
-  const dbid = J.cfg.notionSrc; if (!dbid) return { add: 0, upd: 0 }; const started = nowIso(); let cursor = null, map = null, n = 0, add = 0, upd = 0;
+/* Two Notion journals per person: a live one and a backtesting one. Each can be a one-time copy, or kept in sync both ways. */
+const NK = { live: "live trade journal", backtest: "backtesting journal" };
+const nsrc = (k) => (J.cfg.notion = J.cfg.notion || {})[k];
+async function pullNotion(kind, say) {   // Notion -> KAIROS. First run copies everything; later runs only ask for pages changed since the last pull.
+  const src = nsrc(kind); if (!src || !src.db) return { add: 0, upd: 0 }; const started = nowIso(); let cursor = null, map = null, n = 0, add = 0, upd = 0;
   const bySrc = new Map([...J.ent.values()].filter((e) => e.src_id).map((e) => [e.src_id, e]));
-  if (!J.cfg.notionPulled) { const s0 = await notion("jschema", { db_id: dbid }); map = mergeSchema(s0.schema); } else map = Object.fromEntries(J.cfg.fields.filter((f) => f.notion).map((f) => [f.notion, f]));
-  do { const res = await notion("jimport", { db_id: dbid, cursor, since: J.cfg.notionPulled || undefined }); if (res.schema) map = mergeSchema(res.schema); const batch = [];
+  if (!src.pulled) { const s0 = await notion("jschema", { db_id: src.db }); map = mergeSchema(s0.schema, kind); } else map = Object.fromEntries(J.cfg.fields.filter((f) => f.nmap && f.nmap[kind]).map((f) => [f.nmap[kind], f]));
+  do { const res = await notion("jimport", { db_id: src.db, cursor, since: src.pulled || undefined }); if (res.schema) map = mergeSchema(res.schema, kind); const batch = [];
     for (const nr of res.rows) { n++; const ex = bySrc.get(nr.id); const data = rowFromNotion(nr, map);
       if (ex) { if (ex.data._edited === nr.edited || ex.dirty) continue; ex.data = { ...ex.data, ...data, _edited: nr.edited }; ex.updated_at = nowIso(); ex.dirty = true; batch.push(ex); upd++; }
-      else { const e = { id: uid(), book: J.cfg.notionBook || "live", src: "notion", src_id: nr.id, data: { ...data, _edited: nr.edited }, updated_at: nowIso(), dirty: true, scope: scope() }; bySrc.set(nr.id, e); batch.push(e); add++; } }
-    batch.forEach((e) => J.ent.set(e.id, e)); await L.putMany(batch); say && say(`Read ${n} trades… (${add} new, ${upd} updated)`); cursor = res.next_cursor; } while (cursor);
-  J.cfg.notionPulled = new Date(Date.parse(started) - 120e3).toISOString(); saveCfg(); if (add || upd) { render(); jSync().catch(() => {}); backupSoon(); } return { add, upd };
+      else { const e = { id: uid(), book: kind, src: "notion", src_id: nr.id, data: { ...data, _edited: nr.edited }, updated_at: nowIso(), dirty: true, scope: scope() }; bySrc.set(nr.id, e); batch.push(e); add++; } }
+    batch.forEach((e) => J.ent.set(e.id, e)); await L.putMany(batch); say && say(`Copying… ${n} trades read (${add} new, ${upd} updated)`); cursor = res.next_cursor; } while (cursor);
+  src.pulled = new Date(Date.parse(started) - 120e3).toISOString(); src.count = [...J.ent.values()].filter((e) => e.src === "notion" && e.book === kind && !e.deleted).length; saveCfg();
+  if (add || upd) { render(); jSync().catch(() => {}); backupSoon(); } return { add, upd };
 }
+async function autoPull() { if (DEMO || Date.now() - (J._np || 0) < 120e3) return; const kinds = Object.keys(NK).filter((k) => nsrc(k) && nsrc(k).sync && nsrc(k).pulled); if (!kinds.length) return; J._np = Date.now(); $j("tj-sync").textContent = "Checking Notion…";
+  let a = 0, u = 0; try { for (const k of kinds) { const r = await pullNotion(k); a += r.add; u += r.upd; } $j("tj-sync").textContent = a + u ? `Notion: ${a} new, ${u} updated` : ""; } catch (e) { $j("tj-sync").textContent = "Notion: " + e.message; } }
 async function notionDlg() {
   let st; try { st = await notion("status"); } catch (e) { return wideDlg(`<h3>Notion</h3><p class="muted">${DEMO ? "Notion is off in the demo." : esc(e.message)}</p>`, [{ t: "Close" }]); }
-  if (!st.connected) return wideDlg(`<h3>Connect Notion</h3><p>Connect your Notion in <b>Settings → Notion</b> first, then come back here. In Notion, share your trades database with KAIROS (••• → Connections → KAIROS).</p>`, [{ t: "Close" }, { t: "Open Settings", primary: 1, f: () => view("settings") }]);
-  const r = await notion("dbs");
-  wideDlg(`<h3>Bring in your Notion journal</h3><p class="muted small">KAIROS copies every trade, every property, your tag colors and your chart images. Your Notion stays the same. Running it again only adds what's new or changed.</p>
-    <div class="cols2"><label>Database<select id="nj-db"><option value="">Pick your trades database…</option>${r.dbs.map((d) => `<option value="${d.id}"${d.id === J.cfg.notionDb ? " selected" : ""}>${esc(d.title)}</option>`).join("")}</select></label>
-    <label>Put the trades in<select id="nj-book"><option value="live">Live journal</option><option value="backtest">Backtest journal</option></select></label></div><p class="muted small">Backtests and live trades in the same Notion database? Import into Live, then in Customize → Accounts set your backtest accounts to type <b>Backtest</b>. Their trades move to the Backtest journal.</p>
-    <label class="ck"><input type="checkbox" id="nj-push" ${J.cfg.notionDb ? "checked" : ""}> Send trades I add in KAIROS back to this database</label><div id="nj-msg" class="muted small"></div>`,
-    [{ t: "Close" }, { t: "Import", primary: 1, f: () => {} }]);
-  $j("wb1").onclick = async () => { const dbid = $j("nj-db").value, book = $j("nj-book").value; if (!dbid) return ($j("nj-msg").textContent = "Pick a database first.");
-    const title = $j("nj-db").selectedOptions[0].textContent; J.cfg.notionDb = $j("nj-push").checked ? dbid : null; J.cfg.notionTitle = title; saveCfg(); notion("jset", { db_id: J.cfg.notionDb, title }).catch(() => {});
-    J.cfg.notionSrc = dbid; J.cfg.notionBook = book; J.cfg.notionPulled = null; saveCfg(); $j("wb1").disabled = true;
-    try { const r = await pullNotion((m) => ($j("nj-msg").textContent = m)); $j("nj-msg").textContent = `Done: ${r.add} new, ${r.upd} updated. KAIROS now checks Notion for changes every time you open the journal.`; $j("wb1").textContent = "Import again";
-    } catch (e) { $j("nj-msg").textContent = "Notion: " + e.message; } $j("wb1").disabled = false; };
+  if (!st.connected) return wideDlg(`<h3>Connect Notion first</h3><p>Go to <b>Settings → Notion</b> and connect. Then in Notion, open each journal you want to bring in, tap <b>•••</b> → <b>Connections</b> → <b>KAIROS</b>. Come back here after.</p>`, [{ t: "Close" }, { t: "Open Settings", primary: 1, f: () => view("settings") }]);
+  const r = await notion("dbs"); const card = (k, title, blurb) => { const s = nsrc(k) || {};
+    return `<div class="njc"><h4>${title}</h4><p class="muted small">${blurb}</p><select id="nj-db-${k}"><option value="">Pick it from your Notion…</option>${r.dbs.map((d) => `<option value="${d.id}"${d.id === s.db ? " selected" : ""}>${esc(d.title)}</option>`).join("")}</select>
+      <button class="primary" id="nj-go-${k}">${s.pulled ? "Import again" : "Import " + NK[k]}</button>
+      <label class="njsync"><input type="checkbox" id="nj-sync-${k}" ${s.sync ? "checked" : ""}><span><b>Sync?</b> Keep this journal and KAIROS matched from now on. Add or change a trade in either one and it shows up in both. Leave it off to just copy what's there today.</span></label>
+      <div class="muted small" id="nj-msg-${k}">${s.pulled ? `${s.count ?? "Your"} trades copied${s.sync ? " · syncing" : " · not syncing"}` : ""}</div></div>`; };
+  wideDlg(`<h3>Bring in your Notion journals</h3><p class="muted small">Your Notion stays exactly how it is. KAIROS copies every trade, every property, your tag colors and your chart pictures.</p>
+    <div class="njgrid">${card("live", "Live trades", "The journal you log your real trades in.")}${card("backtest", "Backtesting", "The journal you log your backtests in.")}</div>`, [{ t: "Done", primary: 1 }]);
+  for (const k of Object.keys(NK)) {
+    $j("nj-sync-" + k).onchange = (ev) => { const s = (J.cfg.notion[k] = J.cfg.notion[k] || {}); s.sync = ev.target.checked; saveCfg(); const m = $j("nj-msg-" + k); if (s.pulled) m.textContent = `${s.count ?? "Your"} trades copied · ${s.sync ? "syncing" : "not syncing"}`; };
+    $j("nj-go-" + k).onclick = async () => { const db0 = $j("nj-db-" + k).value, m = $j("nj-msg-" + k), b = $j("nj-go-" + k); if (!db0) return (m.textContent = "Pick your journal first.");
+      const s = (J.cfg.notion[k] = J.cfg.notion[k] || {}); if (s.db !== db0) { s.pulled = null; s.db = db0; } s.title = $j("nj-db-" + k).selectedOptions[0].textContent; s.sync = $j("nj-sync-" + k).checked; saveCfg(); b.disabled = true;
+      try { const res = await pullNotion(k, (t) => (m.textContent = t)); m.textContent = `✓ ${res.add} new, ${res.upd} updated · ${s.sync ? "syncing from now on" : "one-time copy (turn on Sync? to keep it matched)"}`; b.textContent = "Import again"; } catch (e) { m.textContent = "Notion: " + e.message; } b.disabled = false; };
+  }
 }
 
 /* ---------- customize: fields, tags and colors, templates, accounts ---------- */
 function customizeDlg() { const tab = J._ctab || "fields";
   const fieldsH = `<div class="jflist">${J.cfg.fields.map((f, i) => `<div class="jfr" draggable="true" data-fi="${i}"><span class="jgrip">⠿</span><input data-fn="${i}" value="${esc(f.n)}"><select data-ft="${i}" ${f.core ? "disabled" : ""}>${Object.entries({ text: "Text", number: "Number", money: "Money", select: "Select", multi: "Tags", date: "Date", link: "Link", check: "Checkbox", files: "Files", account: "Account", title: "Title" }).map(([k, n]) => `<option value="${k}"${k === f.t ? " selected" : ""}>${n}</option>`).join("")}</select>
-    ${f.t === "multi" || f.t === "select" ? `<button class="ghost small" data-fo="${i}">${(f.opts || []).length} options</button>` : "<span></span>"}<label class="ck small"><input type="checkbox" data-fh="${i}" ${f.hide ? "" : "checked"}> Show</label>${f.core ? "<span></span>" : `<button class="ghost small danger" data-fd="${i}" title="Delete field">×</button>`}</div>`).join("")}</div>
+    ${f.t === "multi" || f.t === "select" ? `<button class="ghost small" data-fo="${i}">${(f.opts || []).length} options</button>` : "<span></span>"}<label class="ck small"><input type="checkbox" data-fh="${i}" ${f.hide ? "" : "checked"}> Show</label><label class="ck small" title="Show on the quick backtest log"><input type="checkbox" data-fq="${i}" ${isQuick(f) ? "checked" : ""}> Quick</label>${f.core ? "<span></span>" : `<button class="ghost small danger" data-fd="${i}" title="Delete field">×</button>`}</div>`).join("")}</div>
     <div class="row"><button class="ghost" id="jc-add">+ Add field</button><span class="tsp"></span><span class="muted small">Start from:</span><button class="ghost small" data-tpl="king">King's layout</button><button class="ghost small" data-tpl="ben">Ben's layout</button></div>`;
   const accH = `<div class="jflist">${J.cfg.accounts.map((a, i) => `<div class="jfr"><input data-an="${i}" value="${esc(a.name)}"><select data-at="${i}">${["Live", "Demo", "Backtest", "Eval", "Funded"].map((t) => `<option${t === a.type ? " selected" : ""}>${t}</option>`).join("")}</select><input type="number" data-ad="${i}" value="${a.deposit ?? ""}" placeholder="Deposit $"><input data-ap="${i}" value="${esc(a.place || "")}" placeholder="Firm (Lucid, Apex…)"><button class="ghost small danger" data-ax="${i}">×</button></div>`).join("") || '<div class="muted small">No accounts yet.</div>'}</div><button class="ghost" id="jc-acc">+ Add account</button>`;
   wideDlg(`<h3>Customize your journal</h3><div class="jtabs">${[["fields", "Fields and tags"], ["accounts", "Accounts"]].map(([k, n]) => `<button data-ct="${k}" class="${tab === k ? "on" : ""}">${n}</button>`).join("")}</div><div id="jc-body">${tab === "fields" ? fieldsH : accH}</div>`, [{ t: "Done", primary: 1, f: () => { saveCfg(); render(); } }]);
@@ -355,7 +383,7 @@ function customizeDlg() { const tab = J._ctab || "fields";
     if (t.id === "jc-add") { J.cfg.fields.splice(J.cfg.fields.length - 1, 0, { k: "c_" + Date.now().toString(36), n: "New field", t: "multi", opts: [] }); saveCfg(); customizeDlg(); }
     if (t.id === "jc-acc") { J.cfg.accounts.push({ name: "Account " + (J.cfg.accounts.length + 1), type: "Live" }); saveCfg(); customizeDlg(); } };
   box.onchange = (ev) => { const d = ev.target.dataset, v = ev.target.value;
-    if (d.fn) J.cfg.fields[d.fn].n = v; if (d.ft) { J.cfg.fields[d.ft].t = v; if (v === "multi" || v === "select") J.cfg.fields[d.ft].opts = J.cfg.fields[d.ft].opts || []; } if (d.fh) J.cfg.fields[d.fh].hide = !ev.target.checked;
+    if (d.fn) J.cfg.fields[d.fn].n = v; if (d.ft) { J.cfg.fields[d.ft].t = v; if (v === "multi" || v === "select") J.cfg.fields[d.ft].opts = J.cfg.fields[d.ft].opts || []; } if (d.fh) J.cfg.fields[d.fh].hide = !ev.target.checked; if (d.fq) J.cfg.fields[d.fq].quick = ev.target.checked;
     if (d.an) { const old = J.cfg.accounts[d.an].name; J.cfg.accounts[d.an].name = v; renameAcct(old, v); } if (d.at) J.cfg.accounts[d.at].type = v; if (d.ad) J.cfg.accounts[d.ad].deposit = +v || null; if (d.ap) J.cfg.accounts[d.ap].place = v; saveCfg(); if (d.ft) customizeDlg(); };
   box.ondragstart = (ev) => { const r = ev.target.closest("[data-fi]"); if (r) dragI = +r.dataset.fi; };
   box.ondragover = (ev) => { if (dragI != null && ev.target.closest("[data-fi]")) ev.preventDefault(); };
@@ -386,7 +414,7 @@ function wire() {
     else if (d.hide) { J.cfg.layout.find((x) => x.id === d.hide).hide = true; saveCfg(); render(); }
     else if (d.show) { const w = J.cfg.layout.find((x) => x.id === d.show); w.hide = false; J.cfg.layout.splice(J.cfg.layout.indexOf(w), 1); J.cfg.layout.push(w); saveCfg(); render(); }
     else if (d.sort) { J.sort = J.sort[0] === d.sort ? [d.sort, -J.sort[1]] : [d.sort, -1]; render(); }
-    else if (b.id === "tj-new") openTrade(null); else if (b.id === "tj-editbtn") { J.edit = !J.edit; render(); }
+    else if (b.id === "tj-new") openTrade(null); else if (b.id === "tj-quick") openQuick(); else if (b.id === "tj-editbtn") { J.edit = !J.edit; render(); }
     else if (b.id === "tj-custom") customizeDlg(); else if (b.id === "tj-notion") notionDlg();
     else if (b.id === "tj-newacc") { J._ctab = "accounts"; J.cfg.accounts.push({ name: "Account " + (J.cfg.accounts.length + 1), type: "Live" }); saveCfg(); customizeDlg(); }
     else if (b.id === "tj-bk") bkDlg(); });
@@ -400,8 +428,17 @@ function wire() {
   const pg = $j("tj-page");
   pg.addEventListener("click", (ev) => { const t = ev.target; if (t === pg || t.id === "tp-close") { pg.classList.add("hidden"); J.sel = null; render(); return; }
     if (t.id === "tp-del") { if (!window.confirm("Delete this trade? It stays in your backups.")) return; J.sel.e.deleted = true; saveEntry(J.sel.e); pg.classList.add("hidden"); render(); return; }
+    if (t.id === "tp-full") { J.sel.full = true; drawTrade(); return; }
+    if (t.id === "tp-next") { const d0 = cur(); if (d0.pnl == null && !(d0.confluences || []).length) { toast("Pick a result first"); return; } toast("Saved"); openQuick(d0); return; }
+    const q = t.closest("[data-qres],[data-qone],[data-qmul]");
+    if (q) { const d0 = cur(), risk = num(d0.risk) || J.cfg.btRisk || 100;
+      if (q.dataset.qres) { const R0 = Math.abs(num($j("tp-qr") && $j("tp-qr").value) || (d0.pnl > 0 ? d0.pnl / risk : 2)); const R = q.dataset.qres === "win" ? R0 : q.dataset.qres === "loss" ? -1 : 0; setMany({ risk, pnl: Math.round(R * risk * 100) / 100 }); }
+      else if (q.dataset.qone) setMany({ [q.dataset.qone]: d0[q.dataset.qone] === q.dataset.o ? null : q.dataset.o });
+      else { const v = [...(d0[q.dataset.qmul] || [])]; const i = v.indexOf(q.dataset.o); i >= 0 ? v.splice(i, 1) : v.push(q.dataset.o); setMany({ [q.dataset.qmul]: v }); }
+      drawTrade(); return; }
     const c = t.closest(".tpchips"); if (c) return tagPicker(c); if (t.dataset.rmimg != null) { const fl = [...(cur().files || [])]; fl.splice(+t.dataset.rmimg, 1); setVal("files", fl); drawTrade(); } });
   pg.addEventListener("change", async (ev) => { const t = ev.target; if (t.id === "tp-book") { J.sel.e.book = t.value; drawTrade(); return; } if (t.id === "tp-file") { await addFiles([...t.files]); return; }
+    if (t.id === "tp-qr") { const R = num(t.value); if (R == null) return; const risk = num(cur().risk) || J.cfg.btRisk || 100; setMany({ risk, pnl: Math.round(R * risk * 100) / 100 }); drawTrade(); return; }
     const k = t.dataset.f; if (!k) return; const f = field(k) || { t: k === "pnl" || k === "risk" ? "money" : "text" }; let v = t.type === "checkbox" ? t.checked : t.value;
     if (f.t === "number" || f.t === "money") v = num(v); setVal(k, v); if (k === "pnl" || k === "risk") drawTrade(); });
   pg.addEventListener("input", (ev) => { if (ev.target.id === "tp-name") { clearTimeout(pg._nt); pg._nt = setTimeout(() => setVal("name", ev.target.value), 500); } });
@@ -418,5 +455,5 @@ function bkDlg() { const fsApi = !!window.showDirectoryPicker;
     [{ t: "Close" }, { t: "Restore from a file", f: () => {} }, { t: "Download a copy now", f: () => downloadBackup() }, ...(fsApi ? [{ t: "Choose backup folder", primary: 1, f: () => pickFolder() }] : [])]);
   $j("wb1").onclick = () => $j("bk-file").click(); $j("bk-file").onchange = (e) => { $j("dlg").classList.add("hidden"); e.target.files[0] && restoreFile(e.target.files[0]); }; }
 
-J.open = () => { wire(); return open(); }; J.render = render; J.backupNow = backupNow; J.snapshot = snapshot; J.viewerHtml = viewerHtml; J.mergeSchema = mergeSchema; J.pullNotion = pullNotion; J.rowFromNotion = rowFromNotion; J.openTrade = openTrade; J.agg = agg; J.applyTpl = applyTpl; J.restoreFile = restoreFile; J.saveEntry = saveEntry; J.allRows = allRows; J.groupBy = groupBy;
+J.open = () => { wire(); return open(); }; J.render = render; J.backupNow = backupNow; J.snapshot = snapshot; J.viewerHtml = viewerHtml; J.mergeSchema = mergeSchema; J.pullNotion = pullNotion; J.rowFromNotion = rowFromNotion; J.openTrade = openTrade; J.openQuick = openQuick; J.agg = agg; J.applyTpl = applyTpl; J.restoreFile = restoreFile; J.saveEntry = saveEntry; J.allRows = allRows; J.groupBy = groupBy;
 })();
