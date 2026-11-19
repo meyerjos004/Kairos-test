@@ -143,6 +143,7 @@ async def main():
         r1=await E("document.querySelectorAll('#tj-log tbody tr').length")
         check("journal: 'Show more' pages past 500 rows", r0==500 and r1==1000, (r0,r1))
         await E("[...JN.ent.keys()].filter(k=>k.startsWith('pf')).forEach(k=>JN.ent.delete(k)); JN.lim=0; JN.render(); 1")
+        check("journal: share-month button on calendar", await E("!!document.querySelector('[data-share]') && typeof JN.shareCard==='function'"))
         check("journal: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())

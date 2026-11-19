@@ -156,7 +156,7 @@ function render() { if (!J.cfg) return; const rows = allRows(); const fr = filte
   renderLog(fr);
 }
 function wHead(id) { if (id === "breakdown") return `<select id="tj-group">${Object.entries(groupers()).map(([k, [n]]) => `<option value="${k}"${k === J.group ? " selected" : ""}>By ${n.toLowerCase()}</option>`).join("")}</select>`;
-  if (id === "calendar") return `<button class="jnav" data-cal="-1">‹</button><span class="small" id="tj-calt"></span><button class="jnav" data-cal="1">›</button>`;
+  if (id === "calendar") return `<button class="jnav" data-cal="-1">‹</button><span class="small" id="tj-calt"></span><button class="jnav" data-cal="1">›</button><button class="jnav" data-share title="Share this month as a picture">⇪</button>`;
   if (id === "monthly") return `<button class="jnav" data-yr="-1">‹</button><span class="small" id="tj-yrt"></span><button class="jnav" data-yr="1">›</button>`; return ""; }
 const stat = (k, v, cls = "") => `<div class="jst"><span>${k}</span><b class="${cls}">${v}</b></div>`;
 const pc = (x) => (x == null ? "" : x > 0 ? "pos-up" : x < 0 ? "pos-dn" : "");
@@ -407,7 +407,7 @@ function wire() {
   v.addEventListener("click", (ev) => { const t = ev.target, b = t.closest("button,[data-open],tr[data-open]"); if (!b) return; const d = b.dataset;
     if (d.b) { J.books.has(d.b) ? J.books.delete(d.b) : J.books.add(d.b); saveCfg(); render(); }
     else if (d.open && !t.closest("a")) openTrade(d.open);
-    else if (d.v) { J.view = d.v; render(); } else if ("clearday" in d) { J.day = null; render(); } else if ("more" in d) { J.lim = (J.lim || 500) + 500; render(); } /* KING_JMORE: table used to silently stop at 500 rows */
+    else if (d.v) { J.view = d.v; render(); } else if ("clearday" in d) { J.day = null; render(); } else if ("share" in d) shareCard(); else if ("more" in d) { J.lim = (J.lim || 500) + 500; render(); } /* KING_JMORE: table used to silently stop at 500 rows */
     else if (d.day) { J.day = J.day === d.day ? null : d.day; render(); }
     else if (d.cal) { const [y, m] = J.cal.split("-").map(Number); J.cal = new Date(Date.UTC(y, m - 1 + +d.cal, 1)).toISOString().slice(0, 7); render(); }
     else if (d.yr) { J.yr = String(+J.yr + +d.yr); render(); } else if (d.month) { J.cal = d.month; render(); }
@@ -458,6 +458,28 @@ function bkDlg() { const fsApi = !!window.showDirectoryPicker;
     <li><b>Open my journal.html</b> is in every backup. Double-click it to read your whole journal with no internet and no site.</li><li><b>Restore</b> puts a backup back into KAIROS (newer edits win).</li></ul><input type="file" id="bk-file" accept=".json,.html" hidden>`,
     [{ t: "Close" }, { t: "Restore from a file", f: () => {} }, { t: "Download a copy now", f: () => downloadBackup() }, ...(fsApi ? [{ t: "Choose backup folder", primary: 1, f: () => pickFolder() }] : [])]);
   $j("wb1").onclick = () => $j("bk-file").click(); $j("bk-file").onchange = (e) => { $j("dlg").classList.add("hidden"); e.target.files[0] && restoreFile(e.target.files[0]); }; }
+
+/* KING_SHARECARD: one-tap month picture (P/L, calendar squares, stats) for the group chat */
+async function shareCard() { const m = J.cal || new Date().toISOString().slice(0, 7), rows = (J._fr || []).filter((r) => r.day.startsWith(m)), a = agg(rows);
+  const cs = getComputedStyle(document.documentElement), v = (k, f) => (cs.getPropertyValue(k) || "").trim() || f;
+  const bg = v("--bg", "#0a0a0d"), txt = v("--txt", "#ecebf3"), mut = v("--mut", "#8b8a99"), acc = v("--acc", "#a78bfa"), up = "#2bd4a0", dn = "#ff4d5e";
+  const c = document.createElement("canvas"); c.width = c.height = 1080; const g = c.getContext("2d"), F = (w, px) => `${w} ${px}px Geist, Inter, system-ui, sans-serif`;
+  g.fillStyle = bg; g.fillRect(0, 0, 1080, 1080); g.fillStyle = "rgba(255,255,255,.03)"; g.strokeStyle = "rgba(255,255,255,.08)"; g.lineWidth = 2; g.beginPath(); g.roundRect(48, 48, 984, 984, 32); g.fill(); g.stroke();
+  const [y, mo] = m.split("-").map(Number), first = new Date(Date.UTC(y, mo - 1, 1)), days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  g.fillStyle = mut; g.font = F(600, 30); g.fillText(first.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }), 96, 130);
+  g.fillStyle = acc; g.textAlign = "right"; g.fillText("KAIROS", 984, 130); g.textAlign = "left";
+  g.fillStyle = a.net >= 0 ? up : dn; g.font = F(800, 120); g.fillText((a.net < 0 ? "-$" : "$") + Math.abs(Math.round(a.net)).toLocaleString("en-US"), 90, 270);
+  const by = {}; for (const r of rows) if (r.pnl != null) by[r.day] = (by[r.day] || 0) + r.pnl; const mx = Math.max(1, ...Object.values(by).map(Math.abs));
+  const G = 12, S = (888 - 6 * G) / 7, x0 = 96, y0 = 330; g.font = F(600, 22); ["S", "M", "T", "W", "T", "F", "S"].forEach((d, i) => { g.fillStyle = mut; g.fillText(d, x0 + i * (S + G) + S / 2 - 7, y0); });
+  for (let d = 1; d <= days; d++) { const i = first.getUTCDay() + d - 1, cx = x0 + (i % 7) * (S + G), cy = y0 + 20 + Math.floor(i / 7) * (S * 0.7 + G), k = m + "-" + String(d).padStart(2, "0"), p = by[k];
+    g.fillStyle = p == null ? "rgba(255,255,255,.04)" : p === 0 ? "rgba(255,198,92,.35)" : (p > 0 ? up : dn) + Math.round(40 + 180 * Math.abs(p) / mx).toString(16).padStart(2, "0");
+    g.beginPath(); g.roundRect(cx, cy, S, S * 0.7, 14); g.fill(); g.fillStyle = p == null ? mut : txt; g.font = F(600, 20); g.fillText(String(d), cx + 12, cy + 30); }
+  const st = [["Trades", a.n], ["Win rate", a.wr == null ? "—" : Math.round(a.wr) + "%"], ["Profit factor", a.pf == null ? "—" : a.pf.toFixed(2)], ["Avg R", a.avgR == null ? "—" : a.avgR.toFixed(2)]];
+  st.forEach(([l, val], i) => { const sx = 96 + i * 228; g.fillStyle = mut; g.font = F(500, 24); g.fillText(l, sx, 930); g.fillStyle = txt; g.font = F(800, 44); g.fillText(String(val), sx, 984); });
+  const blob = await new Promise((r) => c.toBlob(r, "image/png")), name = "KAIROS " + m + ".png";
+  try { const f = new File([blob], name, { type: "image/png" }); if (navigator.canShare && navigator.canShare({ files: [f] })) return await navigator.share({ files: [f], title: name }); } catch (e) { if (e.name === "AbortError") return; }
+  const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = name; l.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); toast("Saved " + name); return c; }
+J.shareCard = shareCard;
 
 J.open = () => { wire(); return open(); };
 J.ensure = async () => { if (!J.cfg) { await loadCfg(); await loadEntries(); J.ready = true; } if (!J._loaded) { J._loaded = 1; try { const [bt, ka] = await Promise.all([db.allTrades(), db.accounts().catch(() => [])]); J.bt = bt || []; J.kacc = ka || []; } catch (e) {} } }; J.render = render; J.backupNow = backupNow; J.snapshot = snapshot; J.viewerHtml = viewerHtml; J.saveCfgPublic = saveCfg; J.mergeSchema = mergeSchema; J.pullNotion = pullNotion; J.rowFromNotion = rowFromNotion; J.openTrade = openTrade; J.openQuick = openQuick; J.agg = agg; J.applyTpl = applyTpl; J.restoreFile = restoreFile; J.saveEntry = saveEntry; J.allRows = allRows; J.groupBy = groupBy;
