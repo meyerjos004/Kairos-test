@@ -1155,3 +1155,5 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
  .jfr:not([data-fi]):not([data-oi])>:nth-child(3){grid-area:d;display:block}.jfr:not([data-fi]):not([data-oi])>:nth-child(4){grid-area:p;display:block}.jfr:not([data-fi]):not([data-oi])>:nth-child(5){grid-area:x;display:block}
  .jfr:not([data-fi]):not([data-oi]) input,.jfr:not([data-fi]):not([data-oi]) select{width:100%;min-width:0}
 }
+/* KING_MWBTNS: dialog button rows wrap on phones instead of squashing labels */
+@media (max-width:640px){.wbtns{flex-wrap:wrap}.wbtns button{flex:1 1 auto;white-space:nowrap}}
