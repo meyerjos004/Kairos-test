@@ -421,8 +421,8 @@ async def main():
         check("settings: 11 categories (admin hidden for non-admins)", await E('document.querySelectorAll(".s2side [data-s2]").length') == 11)
         await pg.click('.s2side [data-s2="sound"]'); await pg.wait_for_timeout(200)
         check("settings: category shows its cards", await E('!document.querySelector(\'.s2sec[data-s2="sound"]\').classList.contains("hidden") && !!document.getElementById("s-sound") && document.getElementById("s-sound").offsetParent !== null'))
-        await pg.fill("#s2-q", "hot keys"); await pg.wait_for_timeout(200)
-        check("settings: search finds cards", await E('[...document.querySelectorAll(".s2sec:not(.hidden) .setc:not(.s2hide) h3")].some((h) => h.textContent === "Hot keys")'))
+        await pg.fill("#s2-q", "hotkeys"); await pg.wait_for_timeout(200)
+        check("settings: search finds cards", await E('[...document.querySelectorAll(".s2sec:not(.hidden) .setc:not(.s2hide) h3")].some((h) => h.textContent === "Hotkeys")'))
         await pg.fill("#s2-q", ""); await E('view("trade")')
         # KING_JDETAIL
         await E("pos.qty && flatten()"); await E("market(1)"); await pg.wait_for_timeout(200); await E("(async () => { for (let i=0;i<5;i++) await stepFwd(); })()"); await E("flatten()"); await pg.wait_for_timeout(600)

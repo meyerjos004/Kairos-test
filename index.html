@@ -20,8 +20,8 @@
     <div class="kbrand"><img class="klock" src="brand/kairos-intro.svg" alt="KAIROS OS">
 </div>
     <p class="muted">The right moment, on repeat. Bar-by-bar futures replay · invite only.</p>
-    <input id="a-email" type="email" placeholder="email" autocomplete="email">
-    <input id="a-pass" type="password" placeholder="password (8+ chars)" autocomplete="current-password">
+    <input id="a-email" type="email" placeholder="Email" autocomplete="email">
+    <input id="a-pass" type="password" placeholder="Password (8+ characters)" autocomplete="current-password">
     <div class="row"><button id="a-in" class="primary">Sign in</button><button id="a-up">Create account</button></div>
     <p id="a-msg" class="muted small"></p>
     <button id="a-get" class="getapp" type="button">⬇ Get the app</button>
@@ -45,7 +45,7 @@
     <div class="rsp"></div>
     <button id="railx" class="ri" title="Expand the sidebar (drag its edge to resize)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
     <button id="rail-ask" class="ri" title="Ask the KAIROS helper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/><path d="M9 10h.01M12 10h.01M15 10h.01"/></svg></button>
-    <button id="helpbtn" class="ri" title="Help + hot keys">?</button>
+    <button id="helpbtn" class="ri" title="Help + hotkeys">?</button>
     <div class="avatar" id="avatar" title="">·</div>
     <button id="logout" class="ri" title="Sign out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 16l-4-4 4-4M6 12h10"/></svg></button>
   </aside>
@@ -58,12 +58,12 @@
     <div class="kv"><label>DD left</label><b id="ddl">—</b></div>
     <div class="status" id="status">Active</div><button id="fxtop" class="fxtop" title="Send feedback: a fix or an idea">Feedback</button>
     <div class="grp replay">
-      <input id="start" type="datetime-local" title="Start (New York time)" class="hidden"><button id="choosedates" class="dpbtn" title="Choose dates (KING_DATEPICK)">📅 <span>Choose dates</span></button>
+      <input id="start" type="datetime-local" title="Start (New York time)" class="hidden"><button id="choosedates" class="dpbtn" title="Choose dates">📅 <span>Choose dates</span></button>
       <button id="go" class="primary small hidden" title="Load">Load</button>
       <div class="seg"><button id="back" title="Step back (←)">⏮</button><button id="play" title="Play / pause (space)">▶</button><button id="step" title="Step one bar (→)">⏭</button></div>
       <button id="skipnext" class="skipbtn" title="Skip to whichever session opens next (NY 9:30 or Asia 20:00)">SKIP</button><div class="seg skips"><button id="skipny" title="Skip to the next NY open (9:30 New York)">NY open</button><button id="skipasia" title="Skip to the next Asia open (20:00 New York)">Asia open</button></div>
       <button id="blindbtn" class="small hidden" title="Mystery day: a random day with the date hidden until you finish (no cherry-picking)">🎲</button><button id="plbtn" class="small hidden" title="Session playlist: queue 10 days (random, news days, Mondays, Fridays)">▤</button><span id="plpill" class="plpill hidden"></span>
-      <select id="stepsz" title="How far each step / play tick moves (KING_STEPTF)"><option value="sync" selected>Sync to timeframe</option><option value="60">1m</option><option value="120">2m</option><option value="180">3m</option><option value="300">5m</option><option value="900">15m</option><option value="1800">30m</option><option value="3600">1h</option><option value="14400">4h</option><option value="86400">D</option></select>
+      <select id="stepsz" title="How far each step / play tick moves"><option value="sync" selected>Sync to timeframe</option><option value="60">1m</option><option value="120">2m</option><option value="180">3m</option><option value="300">5m</option><option value="900">15m</option><option value="1800">30m</option><option value="3600">1h</option><option value="14400">4h</option><option value="86400">D</option></select>
       <select id="speed" title="Replay speed"><option value="1" selected>1×</option><option value="15">15×</option><option value="30">30×</option><option value="60">60×</option><option value="120">120×</option><option value="300">300×</option></select><button id="playday" class="ib sm playday" title="Play out the day: fast to 3:00 PM New York"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l3-4 3 2 3-5"/><path d="M13 12h5"/><path d="M16 9l3 3-3 3"/><path d="M21 5v14"/></svg></button>
     </div>
         <button id="livepill" class="livepill hidden" title="Friends in your live session"></button><span class="conn" title="Replay data">●</span>
@@ -108,8 +108,8 @@
         <div class="modes"><button data-mode="scalp" class="mode on">Scalp</button><button data-mode="dom" class="mode" id="m-dom">DOM</button><button data-mode="order" class="mode">Order</button><button data-mode="friends" class="mode" id="m-fr">Friends<i class="dotn hidden" id="frdot"></i></button></div>
         <div id="md-friends" class="mpanel hidden"><div class="small muted" id="sfr-live"></div><div id="sfr"></div><button id="sfr-open" class="wide ghost small">Open the Friends page</button></div>
         <div id="md-scalp" class="mpanel">
-          <p class="muted small">The Scalp Pad floats over the chart. Drag it anywhere, and right-click it for settings.</p>
-          <button id="padshow" class="wide">Show Scalp Pad</button>
+          <p class="muted small">The scalp pad floats over the chart. Drag it anywhere, and right-click it for settings.</p>
+          <button id="padshow" class="wide">Show scalp pad</button>
           <div class="hr"></div>
           <div class="kvs">
             <div><span>Auto bracket</span><b id="sb-br">—</b></div>
@@ -194,7 +194,7 @@
       </div></section>
       <section class="setg" id="sg-trade"><h2 class="seth">Trading</h2><div class="setgrid">
         <div class="setc"><h3>Order pad</h3>
-        <div class="tiny muted">Pick up to 6 button groups for the Scalp pad.</div>
+        <div class="tiny muted">Pick up to 6 button groups for the scalp pad.</div>
         <div id="s-padbtns" class="chips"></div>
         </div>
         <div class="setc hidden" data-removed="KING_NOLOCK"><h3>Personal lockout</h3>
@@ -202,7 +202,7 @@
         <div class="row2"><select id="s-lock"><option value="0">Pick…</option><option value="1">1 hour</option><option value="2">2 hours</option><option value="4">4 hours</option><option value="day">Rest of the day</option><option value="custom">Custom hours…</option></select><button id="s-lockgo" class="small">Lock me out</button></div>
         <div id="s-lockmsg" class="tiny muted"></div>
         </div>
-        <div class="setc"><h3>Hot keys</h3>
+        <div class="setc"><h3>Hotkeys</h3>
         <div id="s-keys" class="keys"></div>
         </div>
       </div></section>
@@ -274,7 +274,7 @@
     <div class="stats" id="st-kpi"></div>
     <div class="card"><h4>Weekly review <i class="qm" data-help="Your last 7 replay days next to the 7 before. Arrows show if you got better or worse.">?</i></h4><div id="st-week"></div></div>
     <div id="st-eq" class="card chartcard"></div>
-    <div class="grid3"><div class="card"><h4>By hour (New York) <i class="qm" data-help="Your trades grouped by the hour you entered, New York time. Find your best and worst hours.">?</i></h4><div id="st-hour"></div></div><div class="card"><h4>By session (New York) <i class="qm" data-help="Asia, London, NY pre-open, NY AM, NY PM. Shows which session you actually make money in.">?</i></h4><div id="st-sess"></div></div><div class="card"><h4>By weekday <i class="qm" data-help="Monday to Friday. Some traders lose on Mondays or Fridays, this shows if you do.">?</i></h4><div id="st-wd"></div></div><div class="hidden"><div id="st-tag"></div></div></div>
+    <div class="grid3"><div class="card"><h4>By hour (New York) <i class="qm" data-help="Your trades grouped by the hour you entered, New York time. Find your best and worst hours.">?</i></h4><div id="st-hour"></div></div><div class="card"><h4>By session (New York) <i class="qm" data-help="Asia, London, NY pre-open, NY AM, NY PM. Shows which session you actually make money in.">?</i></h4><div id="st-sess"></div></div><div class="card"><h4>By weekday <i class="qm" data-help="Monday to Friday. Some traders lose on Mondays or Fridays. This shows if you do.">?</i></h4><div id="st-wd"></div></div><div class="hidden"><div id="st-tag"></div></div></div>
     <div class="card"><h4>Monte Carlo: will you pass the eval? <i class="qm" data-help="Shuffles your real trades thousands of times to estimate how often you'd pass or blow the eval with your current results.">?</i></h4><div id="st-mc"></div></div><div class="card"><h4>How your backtesting compares to live <i class="qm" data-help="Your backtests next to your real trades from your journal. Big gaps show where your live trading drifts from your plan.">?</i></h4><div id="st-cmp"></div></div>
     <div class="grid3"><div class="card"><h4>By setup (strategy) <i class="qm" data-help="Results per strategy you ticked in the Checklist. Shows which setup actually pays.">?</i></h4><div id="st-strat"></div></div><div class="card"><h4>Checklist: all rules vs not <i class="qm" data-help="Trades where every checklist rule was ticked vs the rest. Do your A+ setups really beat the others?">?</i></h4><div id="st-chk"></div></div><div class="card"><h4>How to use</h4><p class="small muted">Open <b>Checklist</b> on the chart, pick a strategy, tick the rules you actually see before you enter. Each trade is tagged, so these two tables show whether your A+ setups (every rule) really beat the rest.</p></div></div>
     <div class="grid3"><div class="card"><h4>R per trade (spread) <i class="qm" data-help="How many R each trade made or lost. A healthy spread has small losses and some big wins.">?</i></h4><div id="st-rd" class="rdist"></div></div><div class="hidden"><div id="st-rule"></div></div><div class="card"><h4>Mistakes and tilt <i class="qm" data-help="Re-entries right after a loss and size jumps after a loss, plus the mistakes you tagged.">?</i></h4><div id="st-tilt"></div></div></div>
@@ -295,7 +295,7 @@
         <label>Personal daily profit target, PDPT ($, 0 = off)<input id="s-ptg" type="number" value="0"></label>
         <label>When a limit is hit<select id="s-act"><option value="block">Liquidate and block for the day</option><option value="liq">Liquidate only</option></select></label>
       <button id="s-save2" class="primary small">Save</button> <span id="s-msg2" class="muted small"></span></div>
-    <div class="card taxc hidden"><div class="ah"><b>Prop firm tax estimate · Utah · 2026</b><span class="pill">estimate only, not tax advice</span></div>
+    <div class="card taxc hidden"><div class="ah"><b>Prop firm tax estimate · Utah · 2026</b><span class="pill">Estimate only, not tax advice</span></div>
       <p class="small muted">Real payouts from prop firms usually come as contractor income (a 1099), so you owe self-employment tax on top of income tax, and nothing is withheld. Type your real numbers; nothing here is saved to the cloud.</p>
       <div class="taxgrid">
         <label>Filing status<select id="tx-st"><option value="mfj">Married, filing jointly</option><option value="s">Single</option></select></label>
@@ -323,7 +323,7 @@
         <div id="f-lv" class="fpanel"><div class="toolbar"><span class="muted small">Who's replaying right now. Invite someone and you both replay the same start time, each at your own pace. When you're done you can still see who's trading, then compare and write shared notes.</span></div><div id="lv-room" class="card hidden"></div><div id="lv-list" class="rgrid"></div></div>
         <div id="f-lb" class="fpanel hidden"><div class="toolbar"><select id="lb-range"><option value="0">All time</option><option value="7">Last 7 days (replay dates)</option><option value="30">Last 30 days</option></select><select id="lb-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select><label class="ck small"><input id="lb-share" type="checkbox" checked> Show my stats to friends</label></div><div class="card" id="lb-list"></div><p class="tiny muted" style="margin:0 16px">Only totals are shared (trades, win rate, net, average R). Your individual trades stay private unless you share one.</p></div>
         <div id="f-ch" class="fpanel hidden"><div class="toolbar"><button id="ch-new" class="primary small">Challenge friends with the week I'm on</button><span class="muted small">Everyone replays the same week, at their own pace. Results show after.</span></div><div id="ch-list"></div></div>
-        <div id="f-sh" class="fpanel hidden"><div class="toolbar"><span class="muted small">Share a trade from the Journal (the ⤴ button). Friends can rate it 1-5 and leave notes.</span></div><div id="sh-list"></div></div>
+        <div id="f-sh" class="fpanel hidden"><div class="toolbar"><span class="muted small">Share a trade from the Journal (the ⤴ button). Friends can rate it 1–5 and leave notes.</span></div><div id="sh-list"></div></div>
         <div id="f-sg" class="fpanel hidden"><div class="toolbar sgadd"><select id="sg-kind"><option value="fix">🔧 Fix / bug</option><option value="idea">💡 Idea</option></select><input id="sg-text" placeholder="What should change? Be specific (where + what)…"><button id="sg-add" class="primary small">Send to Claude</button></div><div class="tiny muted sghow">Fixes and ideas go straight to Claude Code. It writes a plan, King approves it, then Claude builds it. You'll see the status move here.</div><div id="sg-list"></div></div>
       </div>
       <aside class="fchat"><div class="fch-h">Chat <span class="muted tiny" id="ch-online"></span></div><div class="fch-list" id="chat"></div><div class="fch-in"><input id="chat-in" placeholder="Message the group…" maxlength="1000"><button id="chat-send" class="primary small">Send</button></div></aside>
@@ -347,7 +347,7 @@
   <div class="padbar" id="padbar"><span class="pt">Scalp</span><b id="padsym"></b><button id="padmore" class="pb" title="More: bid/ask, presets, close, reverse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg></button><button id="padx" class="pb" title="Dock (hide)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 15h16"/></svg></button></div>
   <div class="padbody">
     <div class="prow" data-pg="buysell"><button id="pbuy" class="buy" title="Buy market (B)">Buy</button><div class="qstep"><button id="qdn" aria-label="Fewer contracts">−</button><b id="qn">1</b><span>lots</span><button id="qup" aria-label="More contracts">+</button></div><button id="psell" class="sell" title="Sell market (S)">Sell</button></div>
-    <div class="prow2" data-pg="joinba"><button id="pjb" title="Join bid (J)">Join Bid</button><button id="pja" title="Join ask (A)">Join Ask</button></div>
+    <div class="prow2" data-pg="joinba"><button id="pjb" title="Join bid (J)">Join bid</button><button id="pja" title="Join ask (A)">Join ask</button></div>
     <div class="prow3" id="padextra"><button id="pclose2" data-pg="close">Close</button><button id="prev2" data-pg="reverse">Reverse</button><button id="pbe" data-pg="be">B/E</button><button id="pcan" data-pg="cancel">Cancel</button><button id="pflat" data-pg="flatten">Flatten</button></div>
     <div id="padx2" class="padx2 hidden">
       <div class="pxrow"><div><label>Bid</label><b id="pbid">—</b></div><div><label>Ask</label><b id="pask">—</b></div></div>
@@ -387,7 +387,7 @@
     <label class="ck"><input id="s-sess" type="checkbox" checked> Shade the NY session</label>
     <h4>Time scale</h4><label class="ck"><input type="checkbox" id="cs-dow"> Day of week on labels</label>
     <div class="csr"><div class="csl">Date format</div><div class="csv"><select id="cs-df"><option value="tv">Mon 29 Sep '97</option><option value="dmy">29 Sep '97</option><option value="iso">1997-09-29</option><option value="us">09/29/97</option></select></div></div>
-    <div class="csr"><div class="csl">Time hours format</div><div class="csv"><select id="cs-hf"><option value="24">24-hours</option><option value="12">12-hours</option></select></div></div>
+    <div class="csr"><div class="csl">Time hours format</div><div class="csv"><select id="cs-hf"><option value="24">24-hour</option><option value="12">12-hour</option></select></div></div>
     <label class="ck"><input type="checkbox" id="cs-keepl"> Keep my place when changing interval</label></section>
    <section data-csp="canvas" class="hidden"><h4>Chart basic styles</h4>
     <div class="csr"><div class="csl">Background</div><div class="csv"><select id="cs-bgk"><option value="none">Theme (see-through)</option><option value="solid">Solid</option><option value="grad">Gradient</option></select><input type="color" id="cs-bg1" class="csc"><input type="color" id="cs-bg2" class="csc"></div></div>
@@ -402,11 +402,11 @@
    <section data-csp="trading" class="hidden"><h4>General</h4><label class="ck"><input type="checkbox" id="cs-oneclick"> One-click trading (off = confirm every Buy / Sell)</label>
     <h4>Appearance</h4><label class="ck"><input type="checkbox" id="cs-pos"> Positions and orders</label><div class="csind"><label class="ck"><input type="checkbox" id="cs-rev"> Reverse position button</label><div class="tiny muted">Shows the Reverse button on the order pad</div></div>
     <label class="ck"><input type="checkbox" id="cs-pnl"> Profit &amp; loss value</label><div class="csind"><div class="csr"><div class="csl">Position</div><div class="csv"><select id="cs-pnlp"><option value="money">Money</option><option value="pts">Points</option><option value="ticks">Ticks</option><option value="r">R</option></select></div></div><div class="csr"><div class="csl">Brackets</div><div class="csv"><select id="cs-pnlb"><option value="money">Money</option><option value="pts">Points</option><option value="ticks">Ticks</option></select></div></div></div>
-    <label class="ck"><input type="checkbox" id="cs-exm"> Executions marks</label><div class="csind"><label class="ck"><input type="checkbox" id="cs-exl"> Executions labels</label></div>
+    <label class="ck"><input type="checkbox" id="cs-exm"> Execution marks</label><div class="csind"><label class="ck"><input type="checkbox" id="cs-exl"> Execution labels</label></div>
     <label class="ck"><input type="checkbox" id="cs-ext"> Extended price lines across the entire chart width</label></section>
    <section data-csp="sync" class="hidden" data-moved="KING_LAYOUT2"><h4>Sync across charts</h4><div class="chips"><label class="ck" title="On: every chart shows the symbol you trade. Off: charts 2+ can each show their own symbol (click the symbol name on a chart)."><input type="checkbox" id="cs-ssym"> Symbol</label><label class="ck"><input type="checkbox" id="cs-sint"> Interval</label><label class="ck"><input type="checkbox" id="cs-scross" checked> Crosshair</label><label class="ck"><input type="checkbox" id="cs-stime" checked> Time (scroll together)</label><label class="ck"><input type="checkbox" id="cs-srange" checked> Date range buttons</label></div></section>
   </div></div>
-  <div class="csfoot"><span class="csfl"><select id="cs-tpl"><option value="">Template</option><option value="__save">Save as template…</option><option value="__def">Reset to default</option></select></span><button id="cs-all" class="small">Apply to all</button><button id="cs-cancel" class="small">Cancel</button><button id="cs-save" class="primary small">Ok</button></div></div></div>
+  <div class="csfoot"><span class="csfl"><select id="cs-tpl"><option value="">Template</option><option value="__save">Save as template…</option><option value="__def">Reset to default</option></select></span><button id="cs-all" class="small">Apply to all</button><button id="cs-cancel" class="small">Cancel</button><button id="cs-save" class="primary small">OK</button></div></div></div>
 <div id="favbar" class="favbar hidden"><div class="fgrip" id="favgrip" title="Drag to move">⋮⋮</div><div class="fbreplay"></div><div class="fbtools"></div></div>
 <div id="qzbar" class="qzbar hidden"><div class="qzq">Taking dis? or fade it? <span id="qz-clock" class="qzclock hidden"></span></div><div class="qzd" id="qz-desc"></div><div class="row"><button id="qz-take" class="buy">Take it</button><button id="qz-fade" class="sell">Fade it</button></div><div class="qzr hidden" id="qz-res"></div><div class="row hidden" id="qz-next"><button id="qz-more" class="primary">Next setup</button><button id="qz-stop" class="ghost">Stop</button></div></div>
 <div id="tour" class="tour hidden"><div class="tour-hole" id="tourhole"></div><div class="tour-card" id="tourcard"></div></div>
