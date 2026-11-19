@@ -1137,3 +1137,5 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 @media (max-width:640px){#jw-stats{display:block!important}#jw-stats .jsts{display:grid!important;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:14px}}
 /* KING_MTPH: phone trade-page header wraps cleanly (buttons on their own row, no 2-line labels) */
 .tph .jshort{display:none}@media (max-width:640px){.tph{gap:6px}.tph .jfull{display:none}.tph .jshort{display:inline}.tph button,.tph label{white-space:nowrap}}
+/* KING_MSEARCH: phone search box gets its own full row so the placeholder isn't cut */
+@media (max-width:640px){#tj-q{flex:1 1 100%;width:100%;min-width:0}.jtool{justify-content:flex-start}.jtool .tsp{display:none}}
