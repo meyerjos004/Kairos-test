@@ -1148,3 +1148,10 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
  .jflist{max-height:42vh}
  #dlg .row button{white-space:nowrap}
 }
+/* KING_MACC: phone account rows show every field (deposit, firm, delete were hidden) */
+@media (max-width:640px){
+ .jfr:not([data-fi]):not([data-oi]){grid-template-columns:1fr 1fr 30px;grid-template-areas:"n n x" "t d d" "p p p";row-gap:6px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+ .jfr:not([data-fi]):not([data-oi])>:nth-child(1){grid-area:n}.jfr:not([data-fi]):not([data-oi])>:nth-child(2){grid-area:t}
+ .jfr:not([data-fi]):not([data-oi])>:nth-child(3){grid-area:d;display:block}.jfr:not([data-fi]):not([data-oi])>:nth-child(4){grid-area:p;display:block}.jfr:not([data-fi]):not([data-oi])>:nth-child(5){grid-area:x;display:block}
+ .jfr:not([data-fi]):not([data-oi]) input,.jfr:not([data-fi]):not([data-oi]) select{width:100%;min-width:0}
+}
