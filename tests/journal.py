@@ -131,7 +131,7 @@ async def main():
         await E("document.getElementById('botpop').classList.add('hidden'); document.getElementById('tj-page').classList.add('hidden')")
         await E("window.__pd=0; kairosPrank(()=>window.__pd=1)"); await W(400)
         check("prank: fake KAIROS pricing screen shows", await E("!!document.querySelector('#kprank .kp-card.pro') && document.querySelector('#kprank').textContent.includes('KAIROS') && !/FX ?REPLAY/i.test(document.querySelector('#kprank').textContent)"))
-        await W(11800); check("prank: terminal types 'just kidding' and hands back to the app", await E("window.__pd===1 && !document.getElementById('kprank')"))
+        await W(19500); check("prank: terminal reveal plays and hands back to the app", await E("window.__pd===1 && !document.getElementById('kprank')"))
         await pg.set_viewport_size({"width":390,"height":844}); await E("JN.render()"); await W(300)
         ov=await E("document.getElementById('v-tj').scrollWidth - document.getElementById('v-tj').clientWidth")
         print(await E("[...document.querySelectorAll('#v-tj *')].filter(e=>e.getBoundingClientRect().right>392).slice(0,8).map(e=>e.tagName+'.'+e.className+'#'+e.id+' '+Math.round(e.getBoundingClientRect().right))"))

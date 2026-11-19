@@ -298,7 +298,7 @@ async function backupUI(state) { const el = $j("tj-bk"); if (!el) return; const 
 /* the offline viewer: one HTML file with the whole journal inside. Opens by double-click, no internet, no site. */
 function viewerHtml(json) { const data = json.replace(/<\//g, "<\\/");
   return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My KAIROS journal (offline copy)</title><style>
-body{margin:0;background:#0a0a0d;color:#ecebf3;font:14px/1.5 Inter,system-ui,sans-serif}header{padding:20px 24px;border-bottom:1px solid #222}h1{font-size:20px;margin:0}small,.m{color:#8b8a99}
+body{margin:0;background:#0a0a0d;color:#ecebf3;font:14px/1.5 Geist,system-ui,sans-serif}header{padding:20px 24px;border-bottom:1px solid #222}h1{font-size:20px;margin:0}small,.m{color:#8b8a99}
 .f{display:flex;gap:8px;flex-wrap:wrap;padding:12px 24px}.f button,.f input,.f select{background:#16161c;color:#ecebf3;border:1px solid #2a2a33;border-radius:999px;padding:6px 12px;font:inherit}.f button.on{border-color:#a78bfa;background:rgba(167,139,250,.18)}
 .s{display:flex;gap:24px;padding:4px 24px 12px;flex-wrap:wrap}.s b{display:block;font-size:22px}table{border-collapse:collapse;width:100%}th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #1d1d24;vertical-align:top}th{color:#8b8a99;font-weight:500;font-size:12px;position:sticky;top:0;background:#0a0a0d}
 tr.r{cursor:pointer}tr.r:hover{background:#15151b}.u{color:#2bd4a0}.d{color:#ff4d5e}.t{display:inline-block;padding:1px 8px;border-radius:4px;margin:1px;font-size:12px}.x td{background:#101015}.x img{max-width:420px;max-height:260px;border-radius:8px;margin:4px}.x .k{color:#8b8a99;width:180px}

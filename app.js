@@ -269,7 +269,7 @@ function pushBar(p, b) {
 function makePane(i) {
   const el = document.createElement("div"); el.className = "pane"; el.innerHTML = `<div class="wmark"></div><div class="legend"><span class="lname"></span><i></i><span class="ohlc"></span><span class="ivals"></span></div><div class="chart"></div><canvas class="overlay"></canvas>`;
   $("charts").appendChild(el);
-  const chart = LightweightCharts.createChart(el.querySelector(".chart"), { layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontSize: 11, fontFamily: "Inter, -apple-system, Segoe UI, sans-serif" },
+  const chart = LightweightCharts.createChart(el.querySelector(".chart"), { layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontSize: 11, fontFamily: "Geist, -apple-system, Segoe UI, sans-serif" },
     localization: { timeFormatter: hoverDate },
     grid: gridOpts(), rightPriceScale: { borderColor: "rgba(255,255,255,.06)" },
     timeScale: { borderColor: "rgba(255,255,255,.06)", timeVisible: true, secondsVisible: true, rightOffset: 12 }, crosshair: { mode: 0, vertLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" }, horzLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" } }, autoSize: true });
@@ -578,18 +578,18 @@ function paintSmt(p, g, W, H) { if (!smtOn()) return; const C = smtCfg();
     for (const z of smtFind(tf, sec)) { const x1 = xOf(p, z.t1), x2 = xOf(p, z.t2 + Math.max(0, sec - p.sec)), y1 = yOf(p, z.v1), y2 = yOf(p, z.v2); if (x1 == null || x2 == null || y1 == null || y2 == null || x2 < 0) continue;
       const col = z.bear ? "#ff6b7a" : "#2bd4a0"; g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 1.6; g.setLineDash([]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
       for (const [x, y] of [[x1, y1], [x2, y2]]) { g.beginPath(); g.arc(x, y, 2.6, 0, 7); g.fill(); }
-      g.font = "600 10.5px Inter, sans-serif"; const tx = `SMT ${tf}`, tw = g.measureText(tx).width, lx = (x1 + x2) / 2 - tw / 2 - 5, ly = (y1 + y2) / 2 + (z.bear ? -18 : 6);
+      g.font = "600 10.5px Geist, sans-serif"; const tx = `SMT ${tf}`, tw = g.measureText(tx).width, lx = (x1 + x2) / 2 - tw / 2 - 5, ly = (y1 + y2) / 2 + (z.bear ? -18 : 6);
       g.fillStyle = "rgba(11,11,16,.85)"; g.fillRect(lx, ly, tw + 10, 15); g.fillStyle = col; g.fillText(tx, lx + 5, ly + 11); g.restore(); } } }
 function paintEcon(p, g, W, H) { if (prefs.ind && prefs.ind.econ === false) return; const c = p.candles; if (c.length < 2 || p.sec >= 86400) return; const ts = p.chart.timeScale();
   const d0 = Math.floor(c[0].time / 86400), d1 = Math.floor(c[c.length - 1].time / 86400) + 1, last = c[c.length - 1].time;
   for (let d = d0; d <= d1; d++) { const ds = new Date(d * 86400000).toISOString().slice(0, 10); const evs = econOn(ds); for (const [ei, e] of evs.entries()) { const [h, m] = e.hm.split(":").map(Number), lt = d * 86400 + h * 3600 + m * 60;
       let x = xOf(p, lt); if (x == null && lt > last) x = ts.logicalToCoordinate(c.length - 1 + (lt - last) / p.sec); if (x == null || x < 0 || x > W) continue;
       const col = e.name === "FOMC" ? "rgba(248,113,113,.75)" : e.name === "NFP" ? "rgba(96,165,250,.85)" : "rgba(245,197,66,.8)"; g.save(); g.strokeStyle = col; g.setLineDash([3, 4]); g.lineWidth = 1; g.beginPath(); g.moveTo(x, 18); g.lineTo(x, H); g.stroke(); g.setLineDash([]);
-      g.font = "600 10.5px Inter, sans-serif"; const tw = g.measureText(e.name).width, oy = evs.slice(0, ei).filter((z) => z.hm === e.hm).length * 18; g.fillStyle = col; g.beginPath(); g.roundRect(x - tw / 2 - 6, 2 + oy, tw + 12, 16, 4); g.fill(); g.fillStyle = "#0b0b10"; g.fillText(e.name, x - tw / 2, 14 + oy); g.restore(); } } }
+      g.font = "600 10.5px Geist, sans-serif"; const tw = g.measureText(e.name).width, oy = evs.slice(0, ei).filter((z) => z.hm === e.hm).length * 18; g.fillStyle = col; g.beginPath(); g.roundRect(x - tw / 2 - 6, 2 + oy, tw + 12, 16, 4); g.fill(); g.fillStyle = "#0b0b10"; g.fillText(e.name, x - tw / 2, 14 + oy); g.restore(); } } }
 function paintStudies(p, g, W, H) { const ps = paneSym(p); if (ps !== sym) return withSym(ps, () => paintStudies(p, g, W, H)); try { paintEcon(p, g, W, H); } catch (e) {} try { paintSmt(p, g, W, H); } catch (e) {}
   if (!prefs.ind || p.sec >= 86400 || !p.candles.length) return; const S = studies(), ts = p.chart.timeScale();
   const X = (lt) => { const x = xOf(p, lt); return x == null ? 0 : Math.max(0, x); };
-  g.save(); g.font = "500 10.5px Inter, sans-serif"; paintSessBoxes(p, g, W, H);
+  g.save(); g.font = "500 10.5px Geist, sans-serif"; paintSessBoxes(p, g, W, H);
   for (const z of S.h4) { if (p.sec >= 14400) break; const x1 = X(z.t), x2 = Math.min(W, X(z.t + 14400) || W), y1 = yOf(p, z.h), y2 = yOf(p, z.l); if (y1 == null || y2 == null || x2 <= x1) continue;
     g.strokeStyle = z.c >= z.o ? "rgba(43,212,160,.35)" : "rgba(255,107,122,.35)"; g.lineWidth = 1; g.setLineDash([]); g.strokeRect(x1, y1, x2 - x1, y2 - y1);
     const yo = yOf(p, z.o), yc = yOf(p, z.c); if (yo != null && yc != null) { g.fillStyle = z.c >= z.o ? "rgba(43,212,160,.06)" : "rgba(255,107,122,.06)"; g.fillRect(x1, Math.min(yo, yc), x2 - x1, Math.abs(yo - yc)); } }
@@ -646,14 +646,14 @@ function paint(p) {   // data speed: Fast = every frame, Balanced ~30 fps, Lite 
   if (p.dead) return; try { p.prim.req && p.prim.req(); } catch (e) {}
 }
 function drawOne(p, g, d, W, H) {
-  const on = (sel && sel.id === d.id) || (hov && hov.id === d.id); g.lineWidth = (d.w || 1.4) + (on ? 0.6 : 0); g.font = "11px Inter, sans-serif"; g.setLineDash([]);
+  const on = (sel && sel.id === d.id) || (hov && hov.id === d.id); g.lineWidth = (d.w || 1.4) + (on ? 0.6 : 0); g.font = "11px Geist, sans-serif"; g.setLineDash([]);
   const gold = d.color || "#2962ff", blue = "rgba(122,167,255,.95)"; g.strokeStyle = gold; g.fillStyle = gold;
   const DASH = { dash: [7, 5], dot: [2, 4] }; if (DASH[d.dash] && !["long", "short", "measure"].includes(d.type)) g.setLineDash(DASH[d.dash]);
-  if (d.label && !["long", "short", "measure", "text"].includes(d.type)) { const lx = d.type === "hline" ? 8 : Math.min(xOf(p, d.a.t) ?? 0, xOf(p, d.b.t) ?? W), ly = Math.min(yOf(p, d.a.p) ?? 0, yOf(p, d.b.p) ?? yOf(p, d.a.p) ?? 0); g.save(); g.setLineDash([]); g.font = "600 11px Inter, sans-serif"; const lw = g.measureText(d.label).width + 12, bx = lx + 4, by = ly - 22; g.fillStyle = gold; g.globalAlpha = 0.92; g.beginPath(); (g.roundRect ? g.roundRect(bx, by, lw, 17, 4) : g.rect(bx, by, lw, 17)); g.fill(); g.globalAlpha = 1; g.fillStyle = "#fff"; g.fillText(d.label, bx + 6, by + 12.5); g.restore(); }   // KING_TOOLRAIL: label as a pill
+  if (d.label && !["long", "short", "measure", "text"].includes(d.type)) { const lx = d.type === "hline" ? 8 : Math.min(xOf(p, d.a.t) ?? 0, xOf(p, d.b.t) ?? W), ly = Math.min(yOf(p, d.a.p) ?? 0, yOf(p, d.b.p) ?? yOf(p, d.a.p) ?? 0); g.save(); g.setLineDash([]); g.font = "600 11px Geist, sans-serif"; const lw = g.measureText(d.label).width + 12, bx = lx + 4, by = ly - 22; g.fillStyle = gold; g.globalAlpha = 0.92; g.beginPath(); (g.roundRect ? g.roundRect(bx, by, lw, 17, 4) : g.rect(bx, by, lw, 17)); g.fill(); g.globalAlpha = 1; g.fillStyle = "#fff"; g.fillText(d.label, bx + 6, by + 12.5); g.restore(); }   // KING_TOOLRAIL: label as a pill
   const x1 = xOf(p, d.a.t), y1 = yOf(p, d.a.p), x2 = xOf(p, d.b.t), y2 = yOf(p, d.b.p); if (y1 == null) return;
   if (on && !d.preview && !["long", "short", "measure", "text", "vline"].includes(d.type)) p._ax = d.type === "hline" || d.type === "hray" ? [d.a.p] : [d.a.p, d.b.p];   // KING_AXISLBL
   if (sel && sel.id === d.id && !d.label && ["trend", "ray", "arrow"].includes(d.type) && x2 != null && y2 != null && Math.hypot(x2 - x1, y2 - y1) > 60) { const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; let an = Math.atan2(y2 - y1, x2 - x1); if (an > Math.PI / 2) an -= Math.PI; if (an < -Math.PI / 2) an += Math.PI;
-    g.save(); g.translate(mx, my); g.rotate(an); g.font = "500 11.5px Inter, sans-serif"; g.fillStyle = /^#|^rgb/.test(d.color || "") ? d.color : "#2962ff"; g.globalAlpha = 0.85; g.textAlign = "center"; g.fillText("+ Add text", 0, -7); g.restore(); d._addAt = [mx, my]; } else d._addAt = null;   // KING_ADDTEXT
+    g.save(); g.translate(mx, my); g.rotate(an); g.font = "500 11.5px Geist, sans-serif"; g.fillStyle = /^#|^rgb/.test(d.color || "") ? d.color : "#2962ff"; g.globalAlpha = 0.85; g.textAlign = "center"; g.fillText("+ Add text", 0, -7); g.restore(); d._addAt = [mx, my]; } else d._addAt = null;   // KING_ADDTEXT
   const dot = (x, y) => { if (on && x != null && y != null) { g.save(); g.setLineDash([]); g.beginPath(); g.arc(x, y, 5, 0, 7); g.fillStyle = "#ffffff"; g.fill(); g.strokeStyle = /^#|^rgb/.test(gold) ? gold : "#2962ff"; g.lineWidth = 1.6; g.stroke(); g.restore(); g.strokeStyle = gold; g.fillStyle = gold; } };
   if (d.type === "measure") { if (x1 == null || x2 == null || y2 == null) return; const up = d.b.p >= d.a.p; g.fillStyle = up ? "rgba(43,212,160,.13)" : "rgba(255,107,122,.13)";
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); const pts = d.b.p - d.a.p, bars = Math.round((d.b.t - d.a.t) / p.sec);
@@ -683,7 +683,7 @@ function drawOne(p, g, d, W, H) {
     g.strokeStyle = v ? (up ? "#2bd4a0" : "#ff6b7a") : "#7aa7ff"; g.beginPath(); if (v) { const xm = (x1 + x2) / 2; g.moveTo(xm, y1); g.lineTo(xm, y2); } else { const ym = (y1 + y2) / 2; g.moveTo(x1, ym); g.lineTo(x2, ym); } g.stroke();
     const pts = d.b.p - d.a.p, secs = Math.abs(d.b.t - d.a.t), bars = Math.round(secs / p.sec), dur = secs >= 86400 ? (secs / 86400).toFixed(1) + "d" : secs >= 3600 ? Math.floor(secs / 3600) + "h " + Math.round((secs % 3600) / 60) + "m" : Math.round(secs / 60) + "m";
     const txt = v ? `${pts >= 0 ? "+" : ""}${pts.toFixed(2)} pts · ${((pts / d.a.p) * 100).toFixed(2)}% · ${money(Math.abs(pts) * inst.pt)}/lot` : `${bars} bars · ${dur}`;
-    g.font = "600 11px Inter, sans-serif"; const tw = g.measureText(txt).width, tx = (x1 + x2) / 2 - tw / 2 - 6, ty = (v ? Math.min(y1, y2) : Math.max(y1, y2)) + (v ? -22 : 6);
+    g.font = "600 11px Geist, sans-serif"; const tw = g.measureText(txt).width, tx = (x1 + x2) / 2 - tw / 2 - 6, ty = (v ? Math.min(y1, y2) : Math.max(y1, y2)) + (v ? -22 : 6);
     g.fillStyle = "rgba(12,16,22,.88)"; g.fillRect(tx, ty, tw + 12, 17); g.fillStyle = "#e6eaf0"; g.fillText(txt, tx + 6, ty + 12); dot(x1, y1); dot(x2, y2); return; }
   if (d.type === "ellipse") { if (x1 == null || x2 == null || y2 == null) return; const rc = /^#[0-9a-f]{6}$/i.test(d.color || "") ? d.color : "#7aa7ff";
     g.beginPath(); g.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2, 0, 0, 7); g.fillStyle = rc + Math.round(((d.fill ?? 10) / 100) * 255).toString(16).padStart(2, "0"); g.fill(); g.strokeStyle = d.color || rc; g.stroke(); dot(x1, y1); dot(x2, y2); return; }
@@ -707,8 +707,8 @@ function drawOne(p, g, d, W, H) {
     const risk = Math.abs(d.entry - d.sl), q = posQty(d), rr = Math.abs(d.tp - d.entry) / (risk || 1);
     const tag = d.state === "armed" ? "ARMED · auto-entry" : d.state === "filled" ? "IN TRADE" : d.state === "done" ? "DONE" : "right-click → Arm";
     const label = `${d.side > 0 ? "LONG" : "SHORT"} ${q} @ ${px2(d.entry)} · ${rr.toFixed(2)}R · risk ${money(risk * q * inst.pt)} · ${tag}`;
-    // KING_POSSTYLE (Nov 11): position labels styled like the trade panel (Inter, rounded pills, solid green / red like the Buy / Sell buttons)
-    const pill = (txt, x, y, bg, fg, bold) => { g.font = (bold ? "700" : "600") + " 11.5px Inter, sans-serif"; const w = g.measureText(txt).width + 16, h = 20; g.fillStyle = bg; g.beginPath(); (g.roundRect ? g.roundRect(x, y, w, h, 6) : g.rect(x, y, w, h)); g.fill(); g.fillStyle = fg; g.fillText(txt, x + 8, y + 14); return w; };
+    // KING_POSSTYLE (Nov 11): position labels styled like the trade panel (Geist, rounded pills, solid green / red like the Buy / Sell buttons)
+    const pill = (txt, x, y, bg, fg, bold) => { g.font = (bold ? "700" : "600") + " 11.5px Geist, sans-serif"; const w = g.measureText(txt).width + 16, h = 20; g.fillStyle = bg; g.beginPath(); (g.roundRect ? g.roundRect(x, y, w, h, 6) : g.rect(x, y, w, h)); g.fill(); g.fillStyle = fg; g.fillText(txt, x + 8, y + 14); return w; };
     const head = `${d.side > 0 ? "Long" : "Short"} ${q} @ ${px2(d.entry)}`, sub = `${rr.toFixed(2)}R · risk ${money(risk * q * inst.pt)} · ${tag}`;
     if (!on) return;   // KING_POSHOVER (Nov 12 walkthrough): the text pills only show while you hover or select the position
     const hw = pill(head, xa + 6, ye - 24, d.side > 0 ? "#2bd4a0" : "#ff5d6c", "#06110c", true); pill(sub, xa + 10 + hw, ye - 24, "rgba(16,20,28,.92)", "#dfe5ee");
@@ -1318,7 +1318,7 @@ async function renderStats() {
   const sizeUp = tr.filter((t, i) => i && tr[i - 1].pnl < 0 && t.qty > tr[i - 1].qty).length, aw = after.filter((t) => t.pnl > 0).length;
   { const cg = grp((t) => { const c = (t.tags || []).find((x) => /^conf:/.test(x)); return c ? ["Confidence " + c.slice(5)] : []; }); $("st-conf").innerHTML = Object.keys(cg).length ? table(cg, [1, 2, 3, 4, 5].map((n) => "Confidence " + n)) : '<div class="empty">Rate how sure you were after each trade (1–5) and this shows whether your confident trades pay more.</div>'; } /* KING_CONF */
   $("st-tilt").innerHTML = `<div class="kvs"><div><span>Re-entries within 10 min of a loss</span><b>${after.length}${after.length ? " · " + Math.round((100 * aw) / after.length) + "% win · " + money(sum(after)) : ""}</b></div><div><span>Size went up right after a loss</span><b>${sizeUp}</b></div></div>` + table(grp((t) => (t.mistakes && t.mistakes.length ? t.mistakes : [])));
-  if (!stC) { stC = LightweightCharts.createChart($("st-eq"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontFamily: "Inter, sans-serif" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } }); stC.s = stC.addBaselineSeries({ baseValue: { type: "price", price: 0 }, topLineColor: "#2bd4a0", topFillColor1: "rgba(43,212,160,.55)", topFillColor2: "rgba(43,212,160,.04)", bottomLineColor: "#ff5d6c", bottomFillColor1: "rgba(255,93,108,.04)", bottomFillColor2: "rgba(255,93,108,.55)", lineWidth: 2, lineType: 2, pointMarkersVisible: false, crosshairMarkerRadius: 3 }); }
+  if (!stC) { stC = LightweightCharts.createChart($("st-eq"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontFamily: "Geist, sans-serif" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } }); stC.s = stC.addBaselineSeries({ baseValue: { type: "price", price: 0 }, topLineColor: "#2bd4a0", topFillColor1: "rgba(43,212,160,.55)", topFillColor2: "rgba(43,212,160,.04)", bottomLineColor: "#ff5d6c", bottomFillColor1: "rgba(255,93,108,.04)", bottomFillColor2: "rgba(255,93,108,.55)", lineWidth: 2, lineType: 2, pointMarkersVisible: false, crosshairMarkerRadius: 3 }); }
   const seen = new Set(), eqd = eq.filter((p) => (seen.has(p.time) ? false : seen.add(p.time))); stC.s.setData(eqd); stC.timeScale().fitContent();
   { const hi = Math.max(200, ...eqd.map((p) => Math.abs(p.value))); stC.s.applyOptions({ autoscaleInfoProvider: (o) => { const r = o(); if (r && r.priceRange) { r.priceRange.minValue = Math.min(r.priceRange.minValue, -200); r.priceRange.maxValue = Math.max(r.priceRange.maxValue, 200); } return r; } }); }   // KING_STATS2: colour builds from ±$200
   try { cmpUI(tr); } catch (e) {}
@@ -1688,12 +1688,12 @@ async function shareCard(t, withChart) { const W = 1200, H = 630, c = document.c
   const lock = await img("brand/kairos-lockup.svg"); if (lock) g.drawImage(lock, 56, 50, 380, 380 * lock.height / lock.width || 80);
   if (withChart && panes[active]) { try { const sc = panes[active].chart.takeScreenshot(), cw = 560, ch = (sc.height / sc.width) * cw; g.save(); g.beginPath(); g.roundRect(W - cw - 56, 120, cw, Math.min(ch, 440), 18); g.clip(); g.drawImage(sc, W - cw - 56, 120, cw, ch); g.restore(); g.strokeStyle = "rgba(185,140,255,.35)"; g.lineWidth = 2; g.beginPath(); g.roundRect(W - cw - 56, 120, cw, Math.min(ch, 440), 18); g.stroke(); } catch (e) {} }
   const up = +t.pnl >= 0, side = t.dir > 0 ? "LONG" : "SHORT";
-  g.font = "600 22px Inter, sans-serif"; g.fillStyle = "#a98bff"; g.fillText(`${side} · ${t.symbol} · ${t.qty} lot${t.qty > 1 ? "s" : ""}`, 60, 200);
-  g.font = "300 104px Inter, sans-serif"; g.fillStyle = up ? "#4ade80" : "#f87171"; g.fillText((up ? "+" : "−") + money(Math.abs(+t.pnl)).replace("-", ""), 54, 312);
-  g.font = "300 40px Inter, sans-serif"; g.fillStyle = "#efedf6"; if (t.r != null) g.fillText(`${t.r > 0 ? "+" : ""}${t.r}R`, 60, 372);
-  g.font = "400 21px Inter, sans-serif"; g.fillStyle = "#8d8b9c"; g.fillText(`Entry ${px2(t.entry)}  →  Exit ${px2(t.exit)}`, 60, 430);
+  g.font = "600 22px Geist, sans-serif"; g.fillStyle = "#a98bff"; g.fillText(`${side} · ${t.symbol} · ${t.qty} lot${t.qty > 1 ? "s" : ""}`, 60, 200);
+  g.font = "300 104px Geist, sans-serif"; g.fillStyle = up ? "#4ade80" : "#f87171"; g.fillText((up ? "+" : "−") + money(Math.abs(+t.pnl)).replace("-", ""), 54, 312);
+  g.font = "300 40px Geist, sans-serif"; g.fillStyle = "#efedf6"; if (t.r != null) g.fillText(`${t.r > 0 ? "+" : ""}${t.r}R`, 60, 372);
+  g.font = "400 21px Geist, sans-serif"; g.fillStyle = "#8d8b9c"; g.fillText(`Entry ${px2(t.entry)}  →  Exit ${px2(t.exit)}`, 60, 430);
   g.fillText(blind && !blind.revealed ? "Mystery day" : `${fmt(loc(t.t_entry))} NY`, 60, 464);
-  g.font = "500 15px Inter, sans-serif"; g.fillStyle = "#5f5d73"; g.fillText("Replayed bar by bar on KAIROS OS · not live trading", 60, H - 46);
+  g.font = "500 15px Geist, sans-serif"; g.fillStyle = "#5f5d73"; g.fillText("Replayed bar by bar on KAIROS OS · not live trading", 60, H - 46);
   const blob = await new Promise((ok) => c.toBlob(ok, "image/png")); if (!blob) return toast("Couldn't make the card");
   const url = URL.createObjectURL(blob); let copied = false; try { await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]); copied = true; } catch (e) {}
   dlg(`<h3>Share card</h3><img src="${url}" style="width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.08)"><div class="tiny muted" style="margin-top:6px">${copied ? "Copied to your clipboard: paste it into Discord or a text." : "Save it, then drop it into Discord or a text."}</div>`, () => { const a = document.createElement("a"); a.href = url; a.download = `kairos-${t.symbol}-${(t.pnl >= 0 ? "win" : "loss")}.png`; a.click(); });
@@ -1960,7 +1960,7 @@ function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min
   const reveal = (l) => { if (!l.el) return; const el = l.el; el.style.transition = "opacity .2s ease"; el.style.opacity = l.prev || ""; setTimeout(() => { el.style.transition = ""; }, 260); };
   const cursor = (a) => { g.save(); g.translate(a.x, a.y); g.rotate(a.h); g.globalAlpha = 1; g.shadowColor = a.c; g.shadowBlur = 8; g.fillStyle = a.c; g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 1;
     g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 13); g.lineTo(3.6, 9.6); g.lineTo(6.4, 15); g.lineTo(8.4, 14); g.lineTo(5.8, 8.8); g.lineTo(10.4, 8.6); g.closePath(); g.fill(); g.shadowBlur = 0; g.stroke(); g.restore(); };
-  const pill = (x, y, txt) => { g.font = "600 9px Inter,sans-serif"; const w = g.measureText(txt).width + 8; g.globalAlpha = 0.95; g.fillStyle = "#2f5bff"; g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, 13, 3); else g.rect(x, y, w, 13); g.fill(); g.fillStyle = "#fff"; g.fillText(txt, x + 4, y + 9.5); };
+  const pill = (x, y, txt) => { g.font = "600 9px Geist,sans-serif"; const w = g.measureText(txt).width + 8; g.globalAlpha = 0.95; g.fillStyle = "#2f5bff"; g.beginPath(); if (g.roundRect) g.roundRect(x, y, w, 13, 3); else g.rect(x, y, w, 13); g.fill(); g.fillStyle = "#fff"; g.fillText(txt, x + 4, y + 9.5); };
   const startPlay = () => { phase = "play";
     play = { t: performance.now(), dur: full ? 1300 : 800, P: panes.map((p) => { const o = { p };
       try { o.data = p.series.data().slice(); const ts = p.chart.timeScale(); o.lr = ts.getVisibleLogicalRange(); o.ps = p.chart.priceScale("right"); o.auto = o.ps.options().autoScale; o.ps.applyOptions({ autoScale: false });
@@ -2000,7 +2000,7 @@ function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min
     const bw = 300, bx = W / 2 - bw / 2, by = H - 52; g.globalAlpha = phase === "away" ? Math.max(0, 1 - (t - awayT) * 2) : Math.min(1, t * 4);
     g.fillStyle = "rgba(14,14,20,.9)"; g.strokeStyle = "rgba(255,255,255,.12)"; g.beginPath(); if (g.roundRect) g.roundRect(bx, by, bw, 30, 9); else g.rect(bx, by, bw, 30); g.fill(); g.stroke();
     COL.slice(0, 5).forEach((c, i) => { g.fillStyle = c; g.beginPath(); g.arc(bx + 16 + i * 9, by + 15, 4.5, 0, 6.29); g.fill(); });
-    g.fillStyle = "#e8e6f2"; g.font = "600 11px Inter,sans-serif"; g.fillText(NA + " agents", bx + 66, by + 19); g.fillStyle = "#8d89a3"; g.fillText(phase === "build" ? done + " / " + L.length + " layers" : "playing candles", bx + 130, by + 19);
+    g.fillStyle = "#e8e6f2"; g.font = "600 11px Geist,sans-serif"; g.fillText(NA + " agents", bx + 66, by + 19); g.fillStyle = "#8d89a3"; g.fillText(phase === "build" ? done + " / " + L.length + " layers" : "playing candles", bx + 130, by + 19);
     g.fillStyle = "rgba(255,255,255,.12)"; g.fillRect(bx + 222, by + 13.5, 64, 3); g.fillStyle = "#8b5cf6"; g.fillRect(bx + 222, by + 13.5, 64 * (phase === "build" ? done / Math.max(1, L.length) : 1), 3); g.globalAlpha = 1;
     if (phase === "away" && (A.every((a) => a.x < -30 || a.x > W + 30 || a.y < -30 || a.y > H + 30) || t > awayT + 3)) { clearTimeout(guard); finish(); return; }
     requestAnimationFrame(fr); };
@@ -3170,7 +3170,7 @@ async function jdChart(t, tf) { const el = $("jd-chart"); if (!el) return; if (j
     if (xa == null) return; const x1 = xa, x2 = Math.max(x1 + bw * 3, xe != null ? xe : x1 + bw * 20), ye = s.priceToCoordinate(+t.entry);
     const zone = (p, col) => { if (p == null) return; const y = s.priceToCoordinate(+p); if (y == null || ye == null) return; g.fillStyle = col; g.fillRect(x1, Math.min(y, ye), x2 - x1, Math.abs(y - ye)); };
     zone(t.target, "rgba(43,212,160,.16)"); zone(t.stop, "rgba(255,107,122,.16)");
-    const pt = (INST[t.symbol] || inst).pt * (+t.qty || 1), lab = (p, txt, col) => { if (p == null) return; const y = s.priceToCoordinate(+p); if (y == null) return; g.font = "600 11px Inter,sans-serif"; const w = g.measureText(txt).width + 10, yy = Math.max(2, Math.min(el.clientHeight - 18, y - 8)); g.fillStyle = col; g.beginPath(); if (g.roundRect) g.roundRect(x1 + 4, yy, w, 16, 4); else g.rect(x1 + 4, yy, w, 16); g.fill(); g.fillStyle = "#06110c"; g.fillText(txt, x1 + 9, yy + 12); };
+    const pt = (INST[t.symbol] || inst).pt * (+t.qty || 1), lab = (p, txt, col) => { if (p == null) return; const y = s.priceToCoordinate(+p); if (y == null) return; g.font = "600 11px Geist,sans-serif"; const w = g.measureText(txt).width + 10, yy = Math.max(2, Math.min(el.clientHeight - 18, y - 8)); g.fillStyle = col; g.beginPath(); if (g.roundRect) g.roundRect(x1 + 4, yy, w, 16, 4); else g.rect(x1 + 4, yy, w, 16); g.fill(); g.fillStyle = "#06110c"; g.fillText(txt, x1 + 9, yy + 12); };
     const risk = t.stop != null ? Math.abs(+t.entry - +t.stop) : null, rew = t.target != null ? Math.abs(+t.target - +t.entry) : null;   // KING_JDLABELS: R and $ on the box
     if (rew != null) lab(t.target, `Target ${money(rew * pt)}${risk ? " · " + (rew / risk).toFixed(2) + "R" : ""}`, "#2bd4a0"); if (risk != null) lab(t.stop, `Risk ${money(risk * pt)} · 1R`, "#ff8a96"); if (ye != null) { g.strokeStyle = "rgba(220,226,236,.8)"; g.lineWidth = 1; g.beginPath(); g.moveTo(x1, ye); g.lineTo(x2, ye); g.stroke(); }
     if (t.exit != null && xe != null) { const yx = s.priceToCoordinate(+t.exit); if (yx != null && ye != null) { g.setLineDash([4, 4]); g.strokeStyle = +t.pnl >= 0 ? "#2bd4a0" : "#ff6b7a"; g.beginPath(); g.moveTo(x1, ye); g.lineTo(xe, yx); g.stroke(); g.setLineDash([]); } } };
