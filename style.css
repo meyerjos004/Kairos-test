@@ -233,7 +233,7 @@ select option,select optgroup{background:#10141b;color:#e6eaf0}
 .chartset{position:fixed;inset:0;z-index:60;background:rgba(4,6,10,.55);display:grid;place-items:center;backdrop-filter:blur(3px)}.csbox{width:min(520px,94vw);max-height:88vh;overflow:auto;animation:pop .25s var(--spring) both}
 .acdef{margin-top:14px;max-width:min(560px,100%)}
 .jcal{padding:12px;margin:12px 0}.jcal .ah{display:flex;align-items:center;gap:8px;margin-bottom:10px}.jcal .ah b{font-size:15px;min-width:150px;text-align:center}
-.jcgrid{display:grid;grid-template-columns:repeat(7,1fr) 1.1fr;gap:5px}.jch{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;padding:0 4px}
+.jcgrid{display:grid;grid-template-columns:repeat(5,1fr) 1.1fr;gap:5px}.jch{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;padding:0 4px}
 .jcd,.jcw{min-height:72px;border-radius:10px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02);padding:6px 8px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;color:var(--txt);text-align:left;cursor:pointer;transition:transform .15s,border-color .15s}
 .jcd:hover{transform:translateY(-1px);border-color:rgba(255,255,255,.18)}.jcd .n{font-size:11px;color:var(--mut)}.jcd.out{opacity:.35}.jcd b,.jcw b{font-size:13px}
 .jcd.up,.jcw.up{background:rgba(43,212,160,.10);border-color:rgba(43,212,160,.25)}.jcd.dn,.jcw.dn{background:rgba(255,107,122,.10);border-color:rgba(255,107,122,.25)}.jcd.up b,.jcw.up b{color:var(--up)}.jcd.dn b,.jcw.dn b{color:var(--dn)}
@@ -980,7 +980,7 @@ table.bt td{font-variant-numeric:tabular-nums}
 .setc .conn.crow{flex-direction:row;align-items:center;justify-content:space-between}
 /* 11 · Phone: journal calendar fits 7 columns (week totals and the trades line hide), settings categories are one clean scroll row */
 @media (max-width:600px){
- .jcgrid{grid-template-columns:repeat(7,1fr);gap:3px}.jcgrid .jcw,.jcgrid .jch:nth-child(8){display:none}
+ .jcgrid{grid-template-columns:repeat(5,1fr);gap:3px}.jcgrid .jcw,.jcgrid .jch:nth-child(6){display:none}
  .jcd{min-height:52px;padding:4px 3px;align-items:center;text-align:center}.jcd .tiny{display:none}.jcd b{font-size:10.5px;letter-spacing:-.2px}
  .s2side{gap:6px;padding:8px;flex-wrap:nowrap;scrollbar-width:none}.s2side::-webkit-scrollbar{display:none}
  .s2side input{flex:none;min-width:130px;margin:0}
@@ -1038,7 +1038,7 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 .jaccs{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}.jacc{text-align:left;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:10px 12px;color:var(--txt)}
 .jacc .row{display:flex;justify-content:space-between;align-items:center}.jacc.on{border-color:rgba(167,139,250,.6);background:rgba(167,139,250,.12)}.jab{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;margin:4px 0}.jacc.jnew{display:grid;place-items:center;color:var(--mut);border-style:dashed}
 .jtag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:12px;line-height:1.5;color:#e9e9e9;white-space:nowrap}
-.jcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.1fr);gap:4px}.jcal>i{font-style:normal;font-size:11px;color:var(--mut);text-align:center}
+.jwb>.jcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr)) minmax(0,1.1fr);gap:4px;padding:0;margin:0}.jwb>.jcal>i{font-style:normal;font-size:11px;color:var(--mut);text-align:center} /* KING_CALFIX: scoped to the journal widget so the old Calendar tab's .jcal box isn't turned into a grid */
 .jcd{min-height:54px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06);border-radius:8px;padding:4px 6px;text-align:left;display:flex;flex-direction:column;color:var(--txt);font-variant-numeric:tabular-nums}
 .jcd em{font-style:normal;font-size:11px;color:var(--mut)}.jcd b{font-size:12px}.jcd small{font-size:10px;color:var(--mut)}.jcd.up{background:rgba(43,212,160,.12);border-color:rgba(43,212,160,.3)}.jcd.up b{color:#2bd4a0}
 .jcd.dn{background:rgba(255,77,94,.12);border-color:rgba(255,77,94,.3)}.jcd.dn b{color:#ff4d5e}.jcd.be{background:rgba(255,198,92,.08)}.jcd.on{outline:2px solid var(--acc)}
@@ -1160,3 +1160,6 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 /* KING_BFORM: coach / template-helper message box matches the app (was a default gray monospace box) */
 .bform textarea{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);border-radius:10px;padding:9px 12px;color:var(--txt);font:inherit;font-size:14px;line-height:1.4;resize:none;min-height:40px}
 .bform textarea:focus{border-color:rgba(167,139,250,.55);outline:none}.bform textarea::placeholder{color:var(--mut)}
+
+/* KING_WKDAY: 5-day journal calendar */
+.jwb>.jcal.jcal5{grid-template-columns:repeat(5,minmax(0,1fr)) minmax(0,1.1fr)}

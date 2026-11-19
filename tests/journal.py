@@ -144,6 +144,9 @@ async def main():
         check("journal: 'Show more' pages past 500 rows", r0==500 and r1==1000, (r0,r1))
         await E("[...JN.ent.keys()].filter(k=>k.startsWith('pf')).forEach(k=>JN.ent.delete(k)); JN.lim=0; JN.render(); 1")
         check("journal: share-month button on calendar", await E("!!document.querySelector('[data-share]') && typeof JN.shareCard==='function'"))
+        # KING_WKDAY: journal calendar is Mon-Fri and Sunday trades land on Monday
+        wk=await E("(()=>{const h=[...document.querySelectorAll('#jw-calendar .jcal>i')].map(i=>i.textContent).join('');return h+'|'+JN.tday('2026-11-15')+'|'+JN.tday('2026-11-14')+'|'+JN.tday('2026-11-18')})()")
+        check("journal: weekday calendar + Sunday->Monday", wk=="MTWTFWk|2026-11-16|2026-11-13|2026-11-18", wk)
         check("journal: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())

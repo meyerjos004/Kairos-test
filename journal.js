@@ -165,12 +165,15 @@ const WR = {
   accounts(fr, rows) { const names = [...new Set([...J.cfg.accounts.map((a) => a.name), ...rows.filter((r) => J.books.has(r.book)).map(accName).filter(Boolean)])];
     $j("jw-accounts").innerHTML = names.length ? `<div class="jaccs">` + names.map((n) => { const meta = J.cfg.accounts.find((a) => a.name === n) || {}; const a = agg(rows.filter((r) => accName(r) === n && J.books.has(r.book))); const dep = +meta.deposit || 0;
       return `<button class="jacc${J.acct === n ? " on" : ""}" data-acc="${esc(n)}"><div class="row"><b>${esc(n)}</b>${meta.type ? `<span class="jtag" style="background:${NC[meta.type === "Live" || meta.type === "Funded" ? "green" : meta.type === "Demo" || meta.type === "Eval" ? "yellow" : "blue"][0]}">${meta.type}</span>` : ""}</div><div class="jab ${pc(a.net)}">${dep ? fmtMoney(dep + a.net) : fmtMoney(a.net)}</div><div class="muted small">${dep ? "Balance · deposit " + fmtMoney(dep) + " · " : ""}${a.n} trades · ${a.wr == null ? "—" : Math.round(a.wr) + "%"} · ${a.w}:${a.l}:${a.b}</div></button>`; }).join("") + `<button class="jacc jnew" id="tj-newacc">+ Account</button></div>` : `<div class="muted small">No accounts yet. <button class="ghost small" id="tj-newacc">+ Add account</button></div>`; },
-  calendar(fr) { const m = J.cal || (fr[0] ? fr[0].day.slice(0, 7) : new Date().toISOString().slice(0, 7)); J.cal = m; const [y, mo] = m.split("-").map(Number); const first = new Date(Date.UTC(y, mo - 1, 1)), days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
-    $j("tj-calt").textContent = first.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }); const by = {}; for (const r of fr) if (r.day.startsWith(m)) (by[r.day] = by[r.day] || []).push(r);
-    let h = `<div class="jcal">${["S", "M", "T", "W", "T", "F", "S", "Wk"].map((d) => `<i>${d}</i>`).join("")}`, wk = 0, wn = 0; for (let i = 0; i < first.getUTCDay(); i++) h += "<span></span>";
-    for (let d = 1; d <= days; d++) { const k = m + "-" + String(d).padStart(2, "0"), rs = by[k] || [], a = agg(rs); wk += a.net; wn += a.n;
-      h += `<button class="jcd ${rs.length ? (a.net > 0 ? "up" : a.net < 0 ? "dn" : "be") : ""}${J.day === k ? " on" : ""}" data-day="${k}"><em>${d}</em>${rs.length ? `<b class="jfull">${fmtMoney(a.net)}</b><b class="jshort">${kM(a.net)}</b><small>${rs.length}</small>` : ""}</button>`;
-      if ((first.getUTCDay() + d) % 7 === 0 || d === days) { if (d === days) for (let i = (first.getUTCDay() + d) % 7; i && i < 7; i++) h += "<span></span>"; h += `<div class="jcw ${pc(wk)}">${wn ? `<span class="jfull">${fmtMoney(wk)}</span><span class="jshort">${kM(wk)}</span>` : ""}</div>`; wk = 0; wn = 0; } }
+  calendar(fr) { const m = J.cal || (fr[0] ? tday(fr[0].day).slice(0, 7) : new Date().toISOString().slice(0, 7)); J.cal = m; const [y, mo] = m.split("-").map(Number); const first = new Date(Date.UTC(y, mo - 1, 1)), days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+    $j("tj-calt").textContent = first.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }); const by = {}; for (const r of fr) { const k = tday(r.day); if (k.startsWith(m)) (by[k] = by[k] || []).push(r); }
+    let h = `<div class="jcal jcal5">${["M", "T", "W", "T", "F", "Wk"].map((d) => `<i>${d}</i>`).join("")}`, wk = 0, wn = 0, col = 0, started = false;
+    for (let d = 1; d <= days; d++) { const wd = new Date(Date.UTC(y, mo - 1, d)).getUTCDay(); if (wd === 0 || wd === 6) continue;
+      if (!started) { for (let i = 1; i < wd; i++) { h += "<span></span>"; col++; } started = true; }
+      const k = m + "-" + String(d).padStart(2, "0"), rs = by[k] || [], a = agg(rs); wk += a.net; wn += a.n;
+      h += `<button class="jcd ${rs.length ? (a.net > 0 ? "up" : a.net < 0 ? "dn" : "be") : ""}${J.day === k ? " on" : ""}" data-day="${k}"><em>${d}</em>${rs.length ? `<b class="jfull">${fmtMoney(a.net)}</b><b class="jshort">${kM(a.net)}</b><small>${rs.length}</small>` : ""}</button>`; col++;
+      let last = true; for (let e = d + 1; e <= days; e++) { const we = new Date(Date.UTC(y, mo - 1, e)).getUTCDay(); if (we !== 0 && we !== 6) { last = false; break; } }
+      if (wd === 5 || last) { for (; col % 5; col++) h += "<span></span>"; h += `<div class="jcw ${pc(wk)}">${wn ? `<span class="jfull">${fmtMoney(wk)}</span><span class="jshort">${kM(wk)}</span>` : ""}</div>`; wk = 0; wn = 0; } }
     $j("jw-calendar").innerHTML = h + "</div>"; },
   monthly(fr) { const ys = [...new Set(fr.map((r) => r.day.slice(0, 4)))].sort(); if (!J.yr) J.yr = ys[ys.length - 1] || String(new Date().getFullYear()); $j("tj-yrt").textContent = J.yr;
     const ms = Array.from({ length: 12 }, (_, i) => agg(fr.filter((r) => r.day.startsWith(J.yr + "-" + String(i + 1).padStart(2, "0"))))); const mx = Math.max(1, ...ms.map((a) => Math.abs(a.net))); const tot = agg(fr.filter((r) => r.day.startsWith(J.yr)));
@@ -189,7 +192,7 @@ const WR = {
     $j("jw-mistakes").innerHTML = `<div class="jbig ${pc(a.net)}" style="font-size:24px">${fmtMoney(a.net)}<small>from ${a.n} trades tagged revenge, emotional, gamble or negative RR</small></div><div class="muted small">Without them you'd be at <b class="${pc(all.net - a.net)}">${fmtMoney(all.net - a.net)}</b>.</div>`; },
 };
 const VIEWS = { all: "All trades", gallery: "Gallery", Profit: "Profit", Loss: "Loss", Breakeven: "Breakeven" };
-function renderLog(fr) { let rows = J.day ? fr.filter((r) => r.day === J.day) : fr; if (["Profit", "Loss", "Breakeven"].includes(J.view)) rows = rows.filter((r) => r.out === J.view);
+function renderLog(fr) { let rows = J.day ? fr.filter((r) => tday(r.day) === J.day) : fr; if (["Profit", "Loss", "Breakeven"].includes(J.view)) rows = rows.filter((r) => r.out === J.view);
   $j("tj-views").innerHTML = Object.entries(VIEWS).map(([k, n]) => `<button class="${J.view === k ? "on" : ""}" data-v="${k}">${n}</button>`).join("") + (J.day ? `<button class="on" data-clearday>${J.day} ×</button>` : "") + `<span class="tsp"></span><span class="muted small">${rows.length} shown</span>`;
   const show = J.cfg.fields.filter((f) => !f.hide && !["name", "date", "pnl", "risk", "files"].includes(f.k) && f.t !== "text").slice(0, 7);
   if (J.view === "gallery") { $j("tj-log").innerHTML = `<div class="jgal">${rows.slice(0, 200).map((r) => { const fl = (r.d.files || [])[0]; return `<button class="jcard" data-open="${r.id}"><div class="jcov" ${fl ? `data-fimg="${esc(fl.id || fl.path || fl.url)}"` : ""}>${fl ? "" : "No chart yet"}</div><b>${esc(r.d.name || "Untitled")}</b><div class="row"><span class="${pc(r.pnl)}">${fmtMoney(r.pnl)}</span>${outTag(r.out)}<span class="muted small">${r.r == null ? "" : r.r.toFixed(2) + "R"}</span></div><div class="muted small">${esc(accName(r))} · ${r.day}</div></button>`; }).join("") || '<div class="muted">Nothing here yet.</div>'}</div>`; fillImgs($j("tj-log")); return; }
@@ -459,25 +462,32 @@ function bkDlg() { const fsApi = !!window.showDirectoryPicker;
     [{ t: "Close" }, { t: "Restore from a file", f: () => {} }, { t: "Download a copy now", f: () => downloadBackup() }, ...(fsApi ? [{ t: "Choose backup folder", primary: 1, f: () => pickFolder() }] : [])]);
   $j("wb1").onclick = () => $j("bk-file").click(); $j("bk-file").onchange = (e) => { $j("dlg").classList.add("hidden"); e.target.files[0] && restoreFile(e.target.files[0]); }; }
 
+/* KING_WKDAY: markets are closed on weekends, so calendars are Mon-Fri. A Sunday-evening (futures open) trade counts as Monday; a Saturday one as Friday. */
+function tday(day) { const t = Date.parse(day + "T12:00:00Z"), w = new Date(t).getUTCDay(); return w === 0 ? new Date(t + 864e5).toISOString().slice(0, 10) : w === 6 ? new Date(t - 864e5).toISOString().slice(0, 10) : day; }
+J.tday = tday;
 /* KING_CALSHORT: compact $ on phone calendars ($17.6k) so day cells don't overflow */
 function kM(v) { const a = Math.abs(v), sg = v < 0 ? "-$" : "$"; return a >= 1000 ? sg + (a / 1000).toFixed(a >= 10000 ? 0 : 1) + "k" : sg + Math.round(a); }
 /* KING_SHARECARD: one-tap month picture (P/L, calendar squares, stats) for the group chat */
-async function shareCard() { const m = J.cal || new Date().toISOString().slice(0, 7), rows = (J._fr || []).filter((r) => r.day.startsWith(m)), a = agg(rows);
+async function shareCard() { const m = J.cal || new Date().toISOString().slice(0, 7), rows = (J._fr || []).filter((r) => tday(r.day).startsWith(m)), a = agg(rows); /* KING_WKDAY + King's picks: P/L, days, win rate, initials, best day */
   const cs = getComputedStyle(document.documentElement), v = (k, f) => (cs.getPropertyValue(k) || "").trim() || f;
   const bg = v("--bg", "#0a0a0d"), txt = v("--txt", "#ecebf3"), mut = v("--mut", "#8b8a99"), acc = v("--acc", "#a78bfa"), up = "#2bd4a0", dn = "#ff4d5e";
   const c = document.createElement("canvas"); c.width = c.height = 1080; const g = c.getContext("2d"), F = (w, px) => `${w} ${px}px Geist, Inter, system-ui, sans-serif`;
   g.fillStyle = bg; g.fillRect(0, 0, 1080, 1080); g.fillStyle = "rgba(255,255,255,.03)"; g.strokeStyle = "rgba(255,255,255,.08)"; g.lineWidth = 2; g.beginPath(); g.roundRect(48, 48, 984, 984, 32); g.fill(); g.stroke();
   const [y, mo] = m.split("-").map(Number), first = new Date(Date.UTC(y, mo - 1, 1)), days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
   g.fillStyle = mut; g.font = F(600, 30); g.fillText(first.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }), 96, 130);
-  g.fillStyle = acc; g.textAlign = "right"; g.fillText("KAIROS", 984, 130); g.textAlign = "left";
+  const nm = (typeof me !== "undefined" && me && me.name) || "", ini = nm.split(/\s+/).filter(Boolean).map((w) => w[0].toUpperCase()).join("").slice(0, 3);
+  g.fillStyle = acc; g.textAlign = "right"; g.fillText(ini ? ini + " · KAIROS" : "KAIROS", 984, 130); g.textAlign = "left";
   g.fillStyle = a.net >= 0 ? up : dn; const big = (a.net < 0 ? "-$" : "$") + Math.abs(Math.round(a.net)).toLocaleString("en-US"); let bs = 120; g.font = F(800, bs); while (bs > 48 && g.measureText(big).width > 888) g.font = F(800, (bs -= 6)); g.fillText(big, 90, 270);
-  const by = {}; for (const r of rows) if (r.pnl != null) by[r.day] = (by[r.day] || 0) + r.pnl; const mx = Math.max(1, ...Object.values(by).map(Math.abs));
-  const G = 12, S = (888 - 6 * G) / 7, x0 = 96, y0 = 330; g.font = F(600, 22); ["S", "M", "T", "W", "T", "F", "S"].forEach((d, i) => { g.fillStyle = mut; g.fillText(d, x0 + i * (S + G) + S / 2 - 7, y0); });
-  for (let d = 1; d <= days; d++) { const i = first.getUTCDay() + d - 1, cx = x0 + (i % 7) * (S + G), cy = y0 + 20 + Math.floor(i / 7) * (S * 0.7 + G), k = m + "-" + String(d).padStart(2, "0"), p = by[k];
+  const by = {}; for (const r of rows) if (r.pnl != null) { const k = tday(r.day); by[k] = (by[k] || 0) + r.pnl; } const mx = Math.max(1, ...Object.values(by).map(Math.abs));
+  const G = 14, S = (888 - 4 * G) / 5, H = 78, x0 = 96, y0 = 330; g.font = F(600, 22); ["M", "T", "W", "T", "F"].forEach((d, i) => { g.fillStyle = mut; g.fillText(d, x0 + i * (S + G) + S / 2 - 7, y0); });
+  let row = 0, started = false;
+  for (let d = 1; d <= days; d++) { const wd = new Date(Date.UTC(y, mo - 1, d)).getUTCDay(); if (wd === 0 || wd === 6) { if (wd === 6 && started) row++; continue; } started = true;
+    const cx = x0 + (wd - 1) * (S + G), cy = y0 + 20 + row * (H + G), k = m + "-" + String(d).padStart(2, "0"), p = by[k];
     g.fillStyle = p == null ? "rgba(255,255,255,.04)" : p === 0 ? "rgba(255,198,92,.35)" : (p > 0 ? up : dn) + Math.round(40 + 180 * Math.abs(p) / mx).toString(16).padStart(2, "0");
-    g.beginPath(); g.roundRect(cx, cy, S, S * 0.7, 14); g.fill(); g.fillStyle = p == null ? mut : txt; g.font = F(600, 20); g.fillText(String(d), cx + 12, cy + 30); }
-  const st = [["Trades", a.n], ["Win rate", a.wr == null ? "—" : Math.round(a.wr) + "%"], ["Profit factor", a.pf == null ? "—" : a.pf.toFixed(2)], ["Avg R", a.avgR == null ? "—" : a.avgR.toFixed(2)]];
-  st.forEach(([l, val], i) => { const sx = 96 + i * 228; g.fillStyle = mut; g.font = F(500, 24); g.fillText(l, sx, 930); g.fillStyle = txt; g.font = F(800, 44); g.fillText(String(val), sx, 984); });
+    g.beginPath(); g.roundRect(cx, cy, S, H, 14); g.fill(); g.fillStyle = p == null ? mut : txt; g.font = F(600, 20); g.fillText(String(d), cx + 12, cy + 30); }
+  const best = Object.entries(by).sort((p, q) => q[1] - p[1])[0], bestTxt = best && best[1] > 0 ? (best[1] >= 1000 ? "$" + (best[1] / 1000).toFixed(1) + "k" : "$" + Math.round(best[1])) + " · " + new Date(best[0] + "T12:00:00Z").toLocaleString("en-US", { month: "short", day: "numeric", timeZone: "UTC" }) : "—";
+  const st = [["Win rate", a.wr == null ? "—" : Math.round(a.wr) + "%"], ["Best day", bestTxt]];
+  st.forEach(([l, val], i) => { const sx = 96 + i * 444; g.fillStyle = mut; g.font = F(500, 24); g.fillText(l, sx, 930); g.fillStyle = l === "Best day" && best && best[1] > 0 ? up : txt; g.font = F(800, 44); g.fillText(String(val), sx, 984); });
   const blob = await new Promise((r) => c.toBlob(r, "image/png")), name = "KAIROS " + m + ".png";
   try { const f = new File([blob], name, { type: "image/png" }); if (navigator.canShare && navigator.canShare({ files: [f] })) return await navigator.share({ files: [f], title: name }); } catch (e) { if (e.name === "AbortError") return; }
   const u = URL.createObjectURL(blob), l = document.createElement("a"); l.href = u; l.download = name; l.click(); setTimeout(() => URL.revokeObjectURL(u), 4000); toast("Saved " + name); return c; }

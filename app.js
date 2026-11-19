@@ -2248,10 +2248,11 @@ function calUI() { const days = {}; for (const t of jT) { const d = sessDay(t.t_
   if (!jMonth) { const last = Object.keys(days).sort().pop(); jMonth = (last || new Date().toISOString().slice(0, 10)).slice(0, 7); }
   const [Y, M] = jMonth.split("-").map(Number), first = new Date(Date.UTC(Y, M - 1, 1)), start = new Date(first); start.setUTCDate(1 - first.getUTCDay());
   $("jc-title").textContent = first.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
-  let html = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Week"].map((d) => `<div class="jch">${d}</div>`).join(""), mNet = 0, mN = 0;
+  let html = ["Mon", "Tue", "Wed", "Thu", "Fri", "Week"].map((d) => `<div class="jch">${d}</div>`).join(""), mNet = 0, mN = 0;
   for (let w = 0; w < 6; w++) { let wNet = 0, wN = 0, any = false;
     for (let k = 0; k < 7; k++) { const dt = new Date(start); dt.setUTCDate(start.getUTCDate() + w * 7 + k); const ds = dt.toISOString().slice(0, 10), inM = dt.getUTCMonth() === M - 1, ts = days[ds] || [];
       const net = ts.reduce((s, t) => s + +t.pnl, 0), wins = ts.filter((t) => t.pnl > 0).length; if (inM) any = true; if (inM) { wNet += net; wN += ts.length; mNet += net; mN += ts.length; }
+      if (k === 0 || k === 6) continue; /* KING_WKDAY: no weekend columns (session days already put Sunday-evening trades on Monday) */
       html += `<button class="jcd ${inM ? "" : "out"} ${ts.length ? (net >= 0 ? "up" : "dn") : ""} ${jDay === ds ? "on" : ""}" data-day="${ds}"><span class="n">${dt.getUTCDate()}</span>${ts.length ? `<b>${money(net)}</b><span class="tiny">${ts.length} trade${ts.length > 1 ? "s" : ""} · ${Math.round((100 * wins) / ts.length)}%</span>` : ""}</button>`; }
     html += `<div class="jcw ${wN ? (wNet >= 0 ? "up" : "dn") : ""}">${wN ? `<b>${money(wNet)}</b><span class="tiny">${wN} trades</span>` : ""}</div>`; if (!any && w > 3) break; }
   $("jc-grid").innerHTML = html; $("jc-sum").textContent = mN ? `${first.toLocaleString("en-US", { month: "short", timeZone: "UTC" })}: ${money(mNet)} · ${mN} trades` : "No trades this month";
