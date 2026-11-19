@@ -169,7 +169,7 @@ const WR = {
     $j("tj-calt").textContent = first.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }); const by = {}; for (const r of fr) if (r.day.startsWith(m)) (by[r.day] = by[r.day] || []).push(r);
     let h = `<div class="jcal">${["S", "M", "T", "W", "T", "F", "S", "Wk"].map((d) => `<i>${d}</i>`).join("")}`, wk = 0, wn = 0; for (let i = 0; i < first.getUTCDay(); i++) h += "<span></span>";
     for (let d = 1; d <= days; d++) { const k = m + "-" + String(d).padStart(2, "0"), rs = by[k] || [], a = agg(rs); wk += a.net; wn += a.n;
-      h += `<button class="jcd ${rs.length ? (a.net > 0 ? "up" : a.net < 0 ? "dn" : "be") : ""}${J.day === k ? " on" : ""}" data-day="${k}"><em>${d}</em>${rs.length ? `<b>${fmtMoney(a.net)}</b><small>${rs.length}</small>` : ""}</button>`;
+      h += `<button class="jcd ${rs.length ? (a.net > 0 ? "up" : a.net < 0 ? "dn" : "be") : ""}${J.day === k ? " on" : ""}" data-day="${k}"><em>${d}</em>${rs.length ? `<b class="jfull">${fmtMoney(a.net)}</b><b class="jshort">${kM(a.net)}</b><small>${rs.length}</small>` : ""}</button>`;
       if ((first.getUTCDay() + d) % 7 === 0 || d === days) { if (d === days) for (let i = (first.getUTCDay() + d) % 7; i && i < 7; i++) h += "<span></span>"; h += `<div class="jcw ${pc(wk)}">${wn ? fmtMoney(wk) : ""}</div>`; wk = 0; wn = 0; } }
     $j("jw-calendar").innerHTML = h + "</div>"; },
   monthly(fr) { const ys = [...new Set(fr.map((r) => r.day.slice(0, 4)))].sort(); if (!J.yr) J.yr = ys[ys.length - 1] || String(new Date().getFullYear()); $j("tj-yrt").textContent = J.yr;
@@ -459,6 +459,8 @@ function bkDlg() { const fsApi = !!window.showDirectoryPicker;
     [{ t: "Close" }, { t: "Restore from a file", f: () => {} }, { t: "Download a copy now", f: () => downloadBackup() }, ...(fsApi ? [{ t: "Choose backup folder", primary: 1, f: () => pickFolder() }] : [])]);
   $j("wb1").onclick = () => $j("bk-file").click(); $j("bk-file").onchange = (e) => { $j("dlg").classList.add("hidden"); e.target.files[0] && restoreFile(e.target.files[0]); }; }
 
+/* KING_CALSHORT: compact $ on phone calendars ($17.6k) so day cells don't overflow */
+function kM(v) { const a = Math.abs(v), sg = v < 0 ? "-$" : "$"; return a >= 1000 ? sg + (a / 1000).toFixed(a >= 10000 ? 0 : 1) + "k" : sg + Math.round(a); }
 /* KING_SHARECARD: one-tap month picture (P/L, calendar squares, stats) for the group chat */
 async function shareCard() { const m = J.cal || new Date().toISOString().slice(0, 7), rows = (J._fr || []).filter((r) => r.day.startsWith(m)), a = agg(rows);
   const cs = getComputedStyle(document.documentElement), v = (k, f) => (cs.getPropertyValue(k) || "").trim() || f;
