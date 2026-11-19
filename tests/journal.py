@@ -113,6 +113,22 @@ async def main():
         await pg.click('[data-tpluse=add]'); await W(300)
         check("bots: 'Add these' adds the fields", await E("['Setup','Pre-trade plan','Review','Chart link'].every(n=>JN.cfg.fields.some(f=>f.n===n))"))
         check("bots: template tags keep colors", await E("JN.cfg.fields.find(f=>f.n==='Setup').opts.find(o=>o.name==='IFVG').color==='purple'"))
+        # KING_COACH: one-time shared-learning notice, group brain, private trades, review with coach
+        await E("localStorage.removeItem('kz-ai-ack'); prefs.aiAck=0; document.getElementById('botpop').classList.add('hidden')")
+        await pg.click("#rail-ask"); await W(300)
+        check("coach: one-time notice says learning is shared", "shared with the whole group" in (await E("(document.querySelector('#botpop .back')||{}).textContent||''")))
+        await pg.click('#botpop [data-ack]'); await W(200)
+        check("coach: notice gone after Got it", await E("!document.querySelector('#botpop .back') && localStorage.getItem('kz-ai-ack')==='1'"))
+        await E("document.getElementById('botpop').classList.add('hidden'); view('help')"); await W(600)
+        check("coach: brain list on the helper page", await E("document.querySelectorAll('#brain-list .brow').length")>=1)
+        r=await E("""(async()=>{view('tj');await new Promise(r=>setTimeout(r,500));let row=JN.allRows().find(x=>x.book==='live'&&x.e);row.e.data.notes='secret plan xyz';JN.saveEntry(row.e);row=JN.allRows().find(x=>x.id===row.id);JN.render();JN.openTrade(row.id);await new Promise(r=>setTimeout(r,200));
+          const cb=document.getElementById('tp-priv');cb.checked=true;cb.dispatchEvent(new Event('change',{bubbles:true}));await new Promise(r=>setTimeout(r,100));
+          let got=null;BOT.api.askHelper=async(t,ctx,mode)=>{got={ctx,mode}};document.getElementById('tp-coach').click();await new Promise(r=>setTimeout(r,900));
+          return {priv:!!JN.ent.get(row.id).data._private,mode:got&&got.mode,hasTrade:got&&got.ctx.includes('Trade to review'),leaked:got&&got.ctx.includes(row.d.notes)}})()""")
+        check("coach: trade marked private", r['priv'], r)
+        check("coach: 'Review with coach' sends that trade in review mode", r['mode']=="review" and r['hasTrade'], r)
+        check("coach: private trade's notes never sent", r['leaked']==False, r)
+        await E("document.getElementById('botpop').classList.add('hidden'); document.getElementById('tj-page').classList.add('hidden')")
         await E("window.__pd=0; kairosPrank(()=>window.__pd=1)"); await W(400)
         check("prank: fake KAIROS pricing screen shows", await E("!!document.querySelector('#kprank .kp-card.pro') && document.querySelector('#kprank').textContent.includes('KAIROS') && !/FX ?REPLAY/i.test(document.querySelector('#kprank').textContent)"))
         await W(11800); check("prank: terminal types 'just kidding' and hands back to the app", await E("window.__pd===1 && !document.getElementById('kprank')"))

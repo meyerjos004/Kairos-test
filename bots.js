@@ -15,12 +15,14 @@ const api = B.api = {
   async latest(kind) { if (DEMO_ON) return mem.th.filter((t) => t.kind === kind).pop() || null;
     const { data } = await sb.from("bot_threads").select("*").eq("kind", kind).order("created_at", { ascending: false }).limit(1); return (data || [])[0] || null; },
   async thread(id) { if (DEMO_ON) return mem.th.find((t) => t.id === id); const { data } = await sb.from("bot_threads").select("*").eq("id", id).maybeSingle(); return data; },
+  async brain() { if (DEMO_ON) return mem.brain || (mem.brain = [{ id: 1, fact: "Demo: the group does best on IFVG longs after a London low sweep.", created_at: new Date().toISOString() }]); const { data } = await sb.from("bot_memory").select("*").order("id", { ascending: false }).limit(300); return data || []; },
+  async forget(id) { if (DEMO_ON) { mem.brain = (mem.brain || []).filter((b) => b.id !== id); return true; } const { data, error } = await sb.from("bot_memory").delete().eq("id", id).select(); if (error) throw error; return !!(data && data.length); },
   async messages(id) { if (DEMO_ON) return mem.ms.filter((m) => m.thread_id === id); const { data } = await sb.from("bot_messages").select("*").eq("thread_id", id).order("id"); return data || []; },
   async upload(blob) { const path = `${user.id}/tpl/${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`; const { error } = await sb.storage.from("journal").upload(path, blob, { contentType: "image/jpeg" }); if (error) throw error; return path; },
   async send(t, body, images = []) { if (DEMO_ON) { mem.ms.push({ id: mem.ms.length + 1, thread_id: t.id, role: "user", body, images, created_at: new Date().toISOString() }); demoReply(t, body, images); return; }
     const paths = []; for (const b of images) paths.push(await api.upload(b));
     const { error } = await sb.from("bot_messages").insert({ thread_id: t.id, role: "user", body, images: paths.length ? paths : null }); if (error) throw error; },
-  async askHelper(t, context) { if (DEMO_ON) return; const { error } = await sb.functions.invoke("helper", { body: { thread_id: t.id, context } }); if (error) { let m = error.message; try { m = (await error.context.json()).error || m; } catch (e) {} throw new Error(m); } },
+  async askHelper(t, context, mode) { if (DEMO_ON) return; const { error } = await sb.functions.invoke("helper", { body: { thread_id: t.id, context, mode } }); if (error) { let m = error.message; try { m = (await error.context.json()).error || m; } catch (e) {} throw new Error(m); } },
   subscribe(t, cb) { if (DEMO_ON || !sb.channel) return () => {}; const ch = sb.channel("bot-" + t.id).on("postgres_changes", { event: "INSERT", schema: "public", table: "bot_messages", filter: "thread_id=eq." + t.id }, cb).subscribe(); return () => sb.removeChannel(ch); },
 };
 function demoReply(t, body, images) { setTimeout(() => {   // demo only: canned replies so the screens can be tried without the server
@@ -43,26 +45,39 @@ function bubbles(msgs, kind) { return msgs.map((m) => { const mine = m.role === 
 
 /* ---------- KAIROS helper (every page + its own page) ---------- */
 const HELP_NOTE = `<div class="bnote">Each message costs King a little, so please don't spam it. Limit: 30 a day.</div>`;
-function helperHtml(big) { return `<div class="bchat${big ? " big" : ""}"><div class="bhead"><b>KAIROS helper</b><span class="tsp"></span>${big ? "" : '<button class="ghost small" data-hp="page">Open page</button>'}<button class="ghost small" data-hp="new">New chat</button>${big ? "" : '<button class="ghost small" data-hp="close" aria-label="Close">×</button>'}</div>
-  <div class="blog" data-blog="helper">${B.msgs.length ? bubbles(B.msgs, "helper") : `<div class="bempty">Ask anything about KAIROS: "how do I log a quick backtest?", "what does profit factor mean?", "where do I set my drawdown?"</div>`}${B.busy ? '<div class="bmsg bot"><div class="btxt bdots">…</div></div>' : ""}</div>
+const acked = () => { try { return localStorage.getItem("kz-ai-ack") === "1" || (typeof prefs !== "undefined" && prefs.aiAck); } catch (e) { return false; } };
+const ACK = `<div class="back"><b>Heads up, once:</b> the coach learns from what you ask it and from everyone's journals, and everything it learns is shared with the whole group. That's how it gets better for all of you. To keep a trade's notes out of it, mark the trade 🔒 Private on its page. <button class="primary small" data-ack="1">Got it</button></div>`;
+function helperHtml(big) { return `<div class="bchat${big ? " big" : ""}"><div class="bhead"><b>KAIROS coach</b><span class="tsp"></span>${big ? "" : '<button class="ghost small" data-hp="page">Open page</button>'}<button class="ghost small" data-hp="new">New chat</button>${big ? "" : '<button class="ghost small" data-hp="close" aria-label="Close">×</button>'}</div>
+  ${acked() ? "" : ACK}<div class="blog" data-blog="helper">${B.msgs.length ? bubbles(B.msgs, "helper") : `<div class="bempty">Ask about KAIROS or your trading: "what's my best setup?", "why do my Friday trades lose?", "explain IFVG vs FVG", "how do I log a quick backtest?"</div>`}${B.busy ? '<div class="bmsg bot"><div class="btxt bdots">…</div></div>' : ""}</div>
   <form class="bform" data-bform="helper"><textarea rows="1" maxlength="1500" placeholder="Ask about KAIROS…"></textarea><button class="primary" type="submit">Send</button></form>${HELP_NOTE}</div>`; }
+async function drawBrain() { const el = $b("brain-list"); if (!el) return; let b = []; try { b = await api.brain(); } catch (e) {}
+  el.innerHTML = b.length ? b.map((f) => `<div class="brow"><span>${escH(f.fact)}</span><span class="muted small">${String(f.created_at || "").slice(0, 10)}</span><button class="ghost small" data-forget="${f.id}" title="Remove (yours, about you, or King)">×</button></div>`).join("") : "Nothing yet. It learns as you all use it."; }
 function drawHelper() { const pop = $b("botpop"), pg = $b("v-help");
   if (pop && !pop.classList.contains("hidden")) pop.innerHTML = helperHtml(false);
-  if (pg && !pg.classList.contains("hidden")) $b("help-host").innerHTML = helperHtml(true);
+  if (pg && !pg.classList.contains("hidden")) { $b("help-host").innerHTML = helperHtml(true) + `<section class="brain"><h3 class="sub">What KAIROS has learned <span class="muted small">(shared with everyone)</span></h3><div id="brain-list" class="muted small">Loading…</div></section>`; drawBrain(); }
   document.querySelectorAll('[data-blog="helper"]').forEach((el) => (el.scrollTop = 1e9)); }
 async function loadHelper(fresh) { if (fresh || !B.thread) { B.thread = fresh ? null : await api.latest("helper").catch(() => null); B.msgs = B.thread ? await api.messages(B.thread.id) : []; watch(B.thread); } drawHelper(); }
 function watch(t) { if (!t || B.subs[t.id]) return; B.subs[t.id] = api.subscribe(t, () => B.refresh(t.id)); }
 B.refresh = async (id) => { if (B.thread && id === B.thread.id) { B.msgs = await api.messages(id); if (B.msgs.length && B.msgs[B.msgs.length - 1].role === "bot") B.busy = false; drawHelper(); }
   if (B.tpl && id === B.tpl.id) { B.tplMsgs = await api.messages(id); B.tpl = (await api.thread(id)) || B.tpl; drawTpl(); } };
-function pageContext() { const v = (document.getElementById("app") || {}).dataset ? $b("app").dataset.v : ""; let s = "Page: " + (v || "trade");
-  try { if (window.JN && JN.cfg && JN._fr) { const a = JN.agg(JN._fr); s += `\nJournal (current filter): ${a.n} trades, win rate ${a.wr == null ? "n/a" : Math.round(a.wr) + "%"}, net ${Math.round(a.net)}, avg R ${a.avgR == null ? "n/a" : a.avgR.toFixed(2)}, profit factor ${a.pf == null ? "n/a" : a.pf.toFixed(2)}, max drawdown ${Math.round(a.dd)}. Fields: ${JN.cfg.fields.map((f) => f.n).join(", ")}.`; } } catch (e) {}
-  return s; }
-async function sendHelper(text) { text = text.trim(); if (!text || B.busy) return; if (!B.thread) { B.thread = await api.newThread("helper"); watch(B.thread); }
+async function pageContext(extra) { const v = $b("app") && $b("app").dataset.v; let s = "Page they're on: " + (v || "trade");
+  try { if (window.JN && JN.ensure) await JN.ensure(); if (window.JN && JN.cfg) { const all = JN.allRows(), pr = (r) => r.e && r.e.data && r.e.data._private;
+      const line = (n, a) => `${n}: ${a.n} trades, win ${a.wr == null ? "n/a" : Math.round(a.wr) + "%"}, net $${Math.round(a.net)}, avg R ${a.avgR == null ? "n/a" : a.avgR.toFixed(2)}, PF ${a.pf == null ? "n/a" : a.pf.toFixed(2)}, max DD $${Math.round(a.dd)}`;
+      for (const bk of ["live", "backtest"]) { const rs = all.filter((r) => r.book === bk); if (!rs.length) continue; s += "\n" + line(bk === "live" ? "Live trades" : "Backtests", JN.agg(rs));
+        const top = (key, n) => JN.groupBy(rs, key).filter((g) => g.n >= 3).sort((x, y) => y.net - x.net); const fmt = (g) => `${g.k} (${g.n}, ${g.wr == null ? "-" : Math.round(g.wr) + "%"}, $${Math.round(g.net)})`;
+        for (const [key, nm] of [["f:confluences", "setups/confluences"], ["hour", "hour NY"], ["weekday", "weekday"], ["side", "long/short"], ["f:mentality", "mentality tags"]]) { try { const g = top(key); if (g.length) s += `\n  ${nm} best: ${g.slice(0, 3).map(fmt).join(", ")}; worst: ${g.slice(-2).map(fmt).join(", ")}`; } catch (e) {} } }
+      const recent = all.filter((r) => r.book !== "reese").slice(0, 12).map((r) => `${r.day} ${r.book} ${r.d.symbol || ""} ${r.d.position || ""} ${r.r == null ? "" : r.r.toFixed(1) + "R"} $${r.pnl == null ? "?" : Math.round(r.pnl)} [${(r.d.confluences || []).join(",")}]${pr(r) ? " (private)" : r.d.notes ? " note: " + String(r.d.notes).slice(0, 120) : ""}`);
+      if (recent.length) s += "\nRecent trades:\n" + recent.join("\n"); } } catch (e) {}
+  return (s + (extra ? "\n" + extra : "")).slice(0, 7000); }
+async function sendHelper(text, mode, extra) { text = text.trim(); if (!text || B.busy) return; if (!B.thread) { B.thread = await api.newThread("helper"); watch(B.thread); }
   B.msgs.push({ role: "user", body: text }); B.busy = true; drawHelper();
-  try { await api.send(B.thread, text); await api.askHelper(B.thread, pageContext()); } catch (e) { B.busy = false; B.msgs.push({ role: "bot", body: "Couldn't reach the helper: " + e.message }); drawHelper(); return; }
+  try { await api.send(B.thread, text); await api.askHelper(B.thread, await pageContext(extra), mode); } catch (e) { B.busy = false; B.msgs.push({ role: "bot", body: "Couldn't reach the helper: " + e.message }); drawHelper(); return; }
   B.msgs = await api.messages(B.thread.id); if (B.msgs.length && B.msgs[B.msgs.length - 1].role === "bot") B.busy = false; drawHelper(); setTimeout(() => { if (B.busy) B.refresh(B.thread.id); }, 6000); }
 function openPop(prefill) { const p = $b("botpop"); p.classList.remove("hidden"); loadHelper().then(() => { if (prefill) { const ta = p.querySelector("textarea"); if (ta) { ta.value = prefill; ta.focus(); } } else { const ta = p.querySelector("textarea"); ta && ta.focus(); } }); }
 B.openHelper = openPop;
+B.review = (r) => { const d = r.d || {}, priv = r.e && r.e.data && r.e.data._private; const det = [`Trade to review: ${d.name || ""} on ${r.day} (${r.book} journal)`, `${d.symbol || ""} ${d.position || ""}, net $${r.pnl == null ? "?" : Math.round(r.pnl)}, risk $${r.risk == null ? "?" : Math.round(r.risk)}, ${r.r == null ? "" : r.r.toFixed(2) + "R"}, outcome ${r.out}`];
+  if (window.JN) for (const f of JN.cfg.fields) { const v = d[f.k]; if (["name", "date", "symbol", "position", "pnl", "risk", "files"].includes(f.k) || v == null || v === "" || (Array.isArray(v) && !v.length)) continue; if (priv && (f.t === "text")) continue; det.push(`${f.n}: ${Array.isArray(v) ? v.map((x) => x.title || x).join(", ") : String(v).slice(0, 400)}`); }
+  openPop(); setTimeout(() => sendHelper("Review this trade for me: what did I do well, what should I fix, and did it follow my rules?", "review", det.join("\n")), 150); };
 
 /* ---------- template helper ---------- */
 const TPL_TYPES = { text: "Text", number: "Number", money: "Money", select: "Pick one", multi: "Tags", date: "Date", link: "Link", check: "Checkbox", files: "Pictures" };
@@ -96,6 +111,8 @@ function useTemplate(t, mode) { if (!window.JN || !JN.cfg) return toast("Open th
 /* ---------- wiring ---------- */
 function wire() {
   document.addEventListener("click", (ev) => { const t = ev.target, b = t.closest("button,[data-hp]"); if (!b) return; const d = b.dataset;
+    if (d.ack) { try { localStorage.setItem("kz-ai-ack", "1"); if (typeof prefs !== "undefined") { prefs.aiAck = 1; savePrefs(); } } catch (e) {} drawHelper(); return; }
+    if (d.forget) { api.forget(+d.forget).then((ok) => { toast(ok ? "Removed" : "Only the person it's about, who taught it, or King can remove that"); drawBrain(); }).catch((e) => toast(e.message)); return; }
     if (b.id === "rail-ask") { const p = $b("botpop"); p.classList.contains("hidden") ? openPop() : p.classList.add("hidden"); return; }
     if (d.hp === "close") $b("botpop").classList.add("hidden"); else if (d.hp === "page") { $b("botpop").classList.add("hidden"); view("help"); } else if (d.hp === "new") { B.thread = null; B.msgs = []; B.busy = false; drawHelper(); }
     else if (d.tp === "close") $b("tplpop").classList.add("hidden"); else if (d.tp === "restart") { B.tpl = null; B.tplMsgs = []; B.tplImgs = []; drawTpl(); }

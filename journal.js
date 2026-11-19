@@ -138,7 +138,7 @@ function groupBy(rows, key) { const fn = groupers()[key][1]; const m = new Map()
 async function open() {
   if (!J.cfg) { await loadCfg(); await loadEntries(); J.ready = true; }
   render(); $j("tj-sync").textContent = "Loading trades…";
-  try { const [bt, ka] = await Promise.all([db.allTrades(), db.accounts().catch(() => [])]); J.bt = bt || []; J.kacc = ka || []; } catch (e) {}
+  try { const [bt, ka] = await Promise.all([db.allTrades(), db.accounts().catch(() => [])]); J.bt = bt || []; J.kacc = ka || []; J._loaded = 1; } catch (e) {}
   try { if (typeof reese !== "undefined") { if (!reese.length) await loadReese(); J.rs = reese || []; } } catch (e) {}
   render(); jSync().then(() => render()).catch(() => {}); backupUI(); $j("tj-sync").textContent = "";
   autoPull();
@@ -217,7 +217,7 @@ function openQuick(prev) { const e = { id: uid(), book: "backtest", src: "manual
 function drawQuick() { const s = J.sel, d = cur(), risk = num(d.risk) || J.cfg.btRisk || 100, pnl = num(d.pnl), R = pnl == null ? null : pnl / risk, man = !(s.r && s.r.ref);
   const res = pnl == null ? "" : pnl > 0 ? "win" : pnl < 0 ? "loss" : "be"; const sym = field("symbol"), pos = field("position");
   const one = (f, v) => (f && f.opts ? f.opts.map((o) => `<button class="qb${v === o.name ? " on" : ""}" data-qone="${f.k}" data-o="${esc(o.name)}">${chip(f, o.name)}</button>`).join("") : "");
-  $j("tj-pagebox").innerHTML = `<div class="tph"><span class="jbk" style="--bc:${BOOKS.backtest[1]}">Backtest</span><b>Quick log</b><span class="tsp"></span><button class="ghost small" id="tp-full">All fields</button>${s.isNew || !man ? "" : '<button class="ghost small danger" id="tp-del">Delete</button>'}<button class="ghost small" id="tp-close">Close</button></div>
+  $j("tj-pagebox").innerHTML = `<div class="tph"><span class="jbk" style="--bc:${BOOKS.backtest[1]}">Backtest</span><b>Quick log</b><span class="tsp"></span>${privBox()}<button class="ghost small" id="tp-full">All fields</button>${s.isNew || !man ? "" : '<button class="ghost small danger" id="tp-del">Delete</button>'}<button class="ghost small" id="tp-close">Close</button></div>
   ${man ? `<div class="qrow"><span class="tpk">Result</span><div class="qres"><button class="qr w${res === "win" ? " on" : ""}" data-qres="win">Win</button><button class="qr l${res === "loss" ? " on" : ""}" data-qres="loss">Loss</button><button class="qr b${res === "be" ? " on" : ""}" data-qres="be">Breakeven</button>
     <label class="qrr">R <input type="number" step="0.1" id="tp-qr" value="${R == null ? "" : +R.toFixed(2)}" placeholder="2"></label></div></div>` : `<div class="qrow"><span class="tpk">Result (from the replay)</span><b class="${pc(pnl)}">${fmtMoney(pnl)} · ${R == null ? "—" : R.toFixed(2) + "R"}</b></div>`}
   ${man ? `<div class="qrow"><span class="tpk">Symbol</span><div class="qopts">${one(sym, d.symbol)}</div></div><div class="qrow"><span class="tpk">Side</span><div class="qopts">${one(pos, d.position)}</div></div>
@@ -226,6 +226,7 @@ function drawQuick() { const s = J.sel, d = cur(), risk = num(d.risk) || J.cfg.b
   <div class="qrow"><span class="tpk">Note</span><textarea data-f="notes" rows="2" placeholder="One line on what you saw">${esc(d.notes || "")}</textarea></div>
   <div class="tpfiles"><div class="tpimgs" id="tp-imgs">${(d.files || []).map((fl, i) => `<div class="tpimg" data-fimg="${esc(fl.id || fl.path || fl.url)}"><button data-rmimg="${i}" title="Remove">×</button></div>`).join("")}<label class="tpadd">+ Chart<br><span class="muted small">or paste one</span><input type="file" accept="image/*" multiple id="tp-file" hidden></label></div></div>
   ${man ? '<div class="row qsave"><span class="tsp"></span><button class="primary" id="tp-next">Save + log another</button></div>' : ""}`; fillImgs($j("tj-pagebox")); }
+function privBox() { const p = J.sel && J.sel.e && J.sel.e.data && J.sel.e.data._private; return `<label class="ck small jpriv" title="Keep this trade's notes out of the coach. Shared data helps everyone learn, so only use this when you need to."><input type="checkbox" id="tp-priv" ${p ? "checked" : ""}> 🔒 Private</label>`; }
 function setMany(o) { const s = J.sel; s.e.data = { ...s.e.data, ...o }; if (s.isNew) { s.isNew = false; s.created = true; } saveEntry(s.e); pushSoon(s.e); }
 
 /* ---------- the trade page (Notion-style: pinned row, big money, properties, charts) ---------- */
@@ -236,7 +237,7 @@ function openTrade(rid) { const r = rid ? J._rows.find((x) => x.id === rid) : nu
 function cur() { const s = J.sel; const base = (s.r && s.r.base) || {}; return { ...base, ...s.e.data }; }
 function drawTrade() { if (J.sel.e.book === "backtest" && !J.sel.full) return drawQuick(); const s = J.sel, d = cur(), pnl = num(d.pnl), risk = num(d.risk), r = risk ? pnl / risk : s.r && s.r.r0; const out = pnl == null ? "Open" : pnl > 0 ? "Profit" : pnl < 0 ? "Loss" : "Breakeven"; const ro = s.e.book !== "live";
   const accs = [...new Set([...J.cfg.accounts.map((a) => a.name), ...(J._rows || []).map(accName).filter(Boolean)])];
-  $j("tj-pagebox").innerHTML = `<div class="tph"><span class="jbk" style="--bc:${BOOKS[s.e.book][1]}">${BOOKS[s.e.book][0]}</span>${s.isNew ? `<select id="tp-book">${Object.entries(BOOKS).filter(([k]) => k !== "reese").map(([k, [n]]) => `<option value="${k}"${k === s.e.book ? " selected" : ""}>${n} journal</option>`).join("")}</select>` : ""}${ro ? `<span class="muted small">Prices come from the ${s.e.book === "reese" ? "Reese log" : "replay"}. Your tags and notes are yours.</span>` : ""}<span class="tsp"></span>${!ro && !s.isNew ? '<button class="ghost small danger" id="tp-del">Delete</button>' : ""}<button class="ghost small" id="tp-close">Close</button></div>
+  $j("tj-pagebox").innerHTML = `<div class="tph"><span class="jbk" style="--bc:${BOOKS[s.e.book][1]}">${BOOKS[s.e.book][0]}</span>${s.isNew ? `<select id="tp-book">${Object.entries(BOOKS).filter(([k]) => k !== "reese").map(([k, [n]]) => `<option value="${k}"${k === s.e.book ? " selected" : ""}>${n} journal</option>`).join("")}</select>` : ""}${ro ? `<span class="muted small">Prices come from the ${s.e.book === "reese" ? "Reese log" : "replay"}. Your tags and notes are yours.</span>` : ""}<span class="tsp"></span>${privBox()}${s.isNew ? "" : '<button class="ghost small" id="tp-coach" title="Ask the coach to review this trade">Review with coach</button>'}${!ro && !s.isNew ? '<button class="ghost small danger" id="tp-del">Delete</button>' : ""}<button class="ghost small" id="tp-close">Close</button></div>
   <input id="tp-name" class="tpname" placeholder="New trade" value="${esc(d.name || "")}">
   <div class="tppins"><div><span>Outcome</span>${outTag(out)}</div><div><span>R multiple</span><b>${r == null || !isFinite(r) ? "—" : r.toFixed(2) + "R"}</b></div><div><span>Account</span><input list="tp-accl" data-f="account" value="${esc(Array.isArray(d.account) ? (d.account[0] && (d.account[0].title || d.account[0])) || "" : d.account || "")}" placeholder="Empty"><datalist id="tp-accl">${accs.map((a) => `<option>${esc(a)}</option>`).join("")}</datalist></div></div>
   <div class="tpbig"><label><span>Net P/L</span><input type="number" step="any" data-f="pnl" value="${pnl ?? ""}" placeholder="Empty" class="${pc(pnl)}"></label><label><span>$ Risk</span><input type="number" step="any" data-f="risk" value="${risk ?? ""}" placeholder="Empty"></label></div>
@@ -429,6 +430,7 @@ function wire() {
   const pg = $j("tj-page");
   pg.addEventListener("click", (ev) => { const t = ev.target; if (t === pg || t.id === "tp-close") { pg.classList.add("hidden"); J.sel = null; render(); return; }
     if (t.id === "tp-del") { if (!window.confirm("Delete this trade? It stays in your backups.")) return; J.sel.e.deleted = true; saveEntry(J.sel.e); pg.classList.add("hidden"); render(); return; }
+    if (t.id === "tp-coach") { const rid = J.sel.r ? J.sel.r.id : J.sel.e.id; const row = (J._rows || allRows()).find((x) => x.id === rid) || allRows().find((x) => x.id === rid); if (row && window.BOT) BOT.review(row); return; }
     if (t.id === "tp-full") { J.sel.full = true; drawTrade(); return; }
     if (t.id === "tp-next") { const d0 = cur(); if (d0.pnl == null && !(d0.confluences || []).length) { toast("Pick a result first"); return; } toast("Saved"); openQuick(d0); return; }
     const q = t.closest("[data-qres],[data-qone],[data-qmul]");
@@ -439,6 +441,7 @@ function wire() {
       drawTrade(); return; }
     const c = t.closest(".tpchips"); if (c) return tagPicker(c); if (t.dataset.rmimg != null) { const fl = [...(cur().files || [])]; fl.splice(+t.dataset.rmimg, 1); setVal("files", fl); drawTrade(); } });
   pg.addEventListener("change", async (ev) => { const t = ev.target; if (t.id === "tp-book") { J.sel.e.book = t.value; drawTrade(); return; } if (t.id === "tp-file") { await addFiles([...t.files]); return; }
+    if (t.id === "tp-priv") { setVal("_private", t.checked); if (t.checked) toast("Private: the coach won't see this trade's notes. Shared trades help everyone learn."); return; }
     if (t.id === "tp-qr") { const R = num(t.value); if (R == null) return; const risk = num(cur().risk) || J.cfg.btRisk || 100; setMany({ risk, pnl: Math.round(R * risk * 100) / 100 }); drawTrade(); return; }
     const k = t.dataset.f; if (!k) return; const f = field(k) || { t: k === "pnl" || k === "risk" ? "money" : "text" }; let v = t.type === "checkbox" ? t.checked : t.value;
     if (f.t === "number" || f.t === "money") v = num(v); setVal(k, v); if (k === "pnl" || k === "risk") drawTrade(); });
@@ -456,5 +459,6 @@ function bkDlg() { const fsApi = !!window.showDirectoryPicker;
     [{ t: "Close" }, { t: "Restore from a file", f: () => {} }, { t: "Download a copy now", f: () => downloadBackup() }, ...(fsApi ? [{ t: "Choose backup folder", primary: 1, f: () => pickFolder() }] : [])]);
   $j("wb1").onclick = () => $j("bk-file").click(); $j("bk-file").onchange = (e) => { $j("dlg").classList.add("hidden"); e.target.files[0] && restoreFile(e.target.files[0]); }; }
 
-J.open = () => { wire(); return open(); }; J.render = render; J.backupNow = backupNow; J.snapshot = snapshot; J.viewerHtml = viewerHtml; J.saveCfgPublic = saveCfg; J.mergeSchema = mergeSchema; J.pullNotion = pullNotion; J.rowFromNotion = rowFromNotion; J.openTrade = openTrade; J.openQuick = openQuick; J.agg = agg; J.applyTpl = applyTpl; J.restoreFile = restoreFile; J.saveEntry = saveEntry; J.allRows = allRows; J.groupBy = groupBy;
+J.open = () => { wire(); return open(); };
+J.ensure = async () => { if (!J.cfg) { await loadCfg(); await loadEntries(); J.ready = true; } if (!J._loaded) { J._loaded = 1; try { const [bt, ka] = await Promise.all([db.allTrades(), db.accounts().catch(() => [])]); J.bt = bt || []; J.kacc = ka || []; } catch (e) {} } }; J.render = render; J.backupNow = backupNow; J.snapshot = snapshot; J.viewerHtml = viewerHtml; J.saveCfgPublic = saveCfg; J.mergeSchema = mergeSchema; J.pullNotion = pullNotion; J.rowFromNotion = rowFromNotion; J.openTrade = openTrade; J.openQuick = openQuick; J.agg = agg; J.applyTpl = applyTpl; J.restoreFile = restoreFile; J.saveEntry = saveEntry; J.allRows = allRows; J.groupBy = groupBy;
 })();
