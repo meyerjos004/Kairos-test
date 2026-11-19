@@ -15,10 +15,13 @@ for line in open(os.path.expanduser("~/.kairos-bot.env")) if os.path.exists(os.p
 URL = ENV.get("SUPABASE_URL") or os.environ.get("SUPABASE_URL", ""); KEY = ENV.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_SERVICE_KEY", "")
 CLAUDE = ENV.get("CLAUDE_BIN") or shutil.which("claude") or os.path.expanduser("~/.local/bin/claude")
 LOG = os.path.expanduser("~/grid/logs/template-bot.log")
-# Lockdown flags. Checked against `claude --help` on install (Friday); --tools "" removes every built-in tool,
-# the empty strict MCP config removes every MCP server, --setting-sources "" ignores ~/.claude settings, hooks and CLAUDE.md.
-LOCK = ["-p", "--input-format", "stream-json", "--output-format", "json", "--verbose", "--max-turns", "1", "--tools", "",
-        "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--setting-sources", "", "--permission-mode", "default"]
+# Lockdown flags, checked against `claude --help` on 2.1.328 (Nov 19): --tools "" removes every built-in tool, the empty strict MCP
+# config removes every MCP server, --setting-sources "" ignores ~/.claude settings, hooks and CLAUDE.md, --disable-slash-commands drops
+# skills, dontAsk denies anything not pre-approved (nothing is), and no session is saved. (--max-turns no longer exists; --bare is
+# NOT used because it skips keychain reads, which is where the Mac keeps the Claude login.)
+LOCK = ["-p", "--input-format", "stream-json", "--output-format", "stream-json", "--verbose", "--tools", "", "--strict-mcp-config",
+        "--mcp-config", '{"mcpServers":{}}', "--setting-sources", "", "--disable-slash-commands", "--permission-mode", "dontAsk",
+        "--no-session-persistence"]
 COLORS = {"default", "gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"}
 TYPES = {"text", "number", "money", "select", "multi", "date", "link", "check", "files"}
 
@@ -73,11 +76,15 @@ def ask_claude(content):
     with tempfile.TemporaryDirectory() as tmp:   # empty folder: nothing to read even if a tool somehow existed
         msg = json.dumps({"type": "user", "message": {"role": "user", "content": content}})
         p = subprocess.run([CLAUDE, *LOCK, "--append-system-prompt", SYSTEM], input=msg + "\n", capture_output=True, text=True, timeout=240, cwd=tmp, env={**os.environ, "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"})
-    out = p.stdout.strip()
-    try: res = json.loads(out); text = res.get("result", "") if isinstance(res, dict) else ""
-    except Exception: text = out
-    used = [l for l in (p.stderr or "").splitlines() if "tool_use" in l]
-    if used: log("WARN tool_use seen", used[:2])
+    text, used = "", []
+    for line in (p.stdout or "").splitlines():   # stream-json: one event per line
+        try: ev = json.loads(line)
+        except Exception: continue
+        if ev.get("type") == "result": text = ev.get("result") or ""
+        elif ev.get("type") == "assistant":
+            for b in (ev.get("message") or {}).get("content") or []:
+                if isinstance(b, dict) and b.get("type") == "tool_use": used.append(b.get("name"))
+    if used: log("WARN tool_use seen, reply dropped", used[:3]); return None
     s, e = text.find("{"), text.rfind("}")
     try: return valid(json.loads(text[s:e + 1])) if s >= 0 else None
     except Exception: return None
