@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- KING_BOTS: install on the Mac Friday: cp to ~/Library/LaunchAgents, then launchctl load -w ... -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.josh.kairos-template-bot</string>
+  <key>ProgramArguments</key><array><string>/usr/bin/python3</string><string>/Users/Josh/grid/template_bot.py</string></array>
+  <key>RunAtLoad</key><true/><key>KeepAlive</key><true/>
+  <key>StandardErrorPath</key><string>/Users/Josh/grid/logs/template-bot.err</string>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/Josh/.local/bin</string></dict>
+</dict></plist>
