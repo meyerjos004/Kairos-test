@@ -468,7 +468,7 @@ async function shareCard() { const m = J.cal || new Date().toISOString().slice(0
   const [y, mo] = m.split("-").map(Number), first = new Date(Date.UTC(y, mo - 1, 1)), days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
   g.fillStyle = mut; g.font = F(600, 30); g.fillText(first.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" }), 96, 130);
   g.fillStyle = acc; g.textAlign = "right"; g.fillText("KAIROS", 984, 130); g.textAlign = "left";
-  g.fillStyle = a.net >= 0 ? up : dn; g.font = F(800, 120); g.fillText((a.net < 0 ? "-$" : "$") + Math.abs(Math.round(a.net)).toLocaleString("en-US"), 90, 270);
+  g.fillStyle = a.net >= 0 ? up : dn; const big = (a.net < 0 ? "-$" : "$") + Math.abs(Math.round(a.net)).toLocaleString("en-US"); let bs = 120; g.font = F(800, bs); while (bs > 48 && g.measureText(big).width > 888) g.font = F(800, (bs -= 6)); g.fillText(big, 90, 270);
   const by = {}; for (const r of rows) if (r.pnl != null) by[r.day] = (by[r.day] || 0) + r.pnl; const mx = Math.max(1, ...Object.values(by).map(Math.abs));
   const G = 12, S = (888 - 6 * G) / 7, x0 = 96, y0 = 330; g.font = F(600, 22); ["S", "M", "T", "W", "T", "F", "S"].forEach((d, i) => { g.fillStyle = mut; g.fillText(d, x0 + i * (S + G) + S / 2 - 7, y0); });
   for (let d = 1; d <= days; d++) { const i = first.getUTCDay() + d - 1, cx = x0 + (i % 7) * (S + G), cy = y0 + 20 + Math.floor(i / 7) * (S * 0.7 + G), k = m + "-" + String(d).padStart(2, "0"), p = by[k];
