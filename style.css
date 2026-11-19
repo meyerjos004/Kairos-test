@@ -1130,3 +1130,6 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
  .jtbl td:nth-child(4){display:block;grid-area:o;text-align:right}
  .tblwrap:has(.jtbl){overflow-x:visible}
 }
+/* KING_QNOTE: quick-log note box matches the rest of the trade page */
+.qrow textarea,.qrow input[type=number],.qrow input[type=text]{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 10px;color:var(--txt);font:inherit;font-size:14px;resize:vertical}
+.qrow textarea:focus,.qrow input:focus{border-color:rgba(167,139,250,.5);outline:none}
