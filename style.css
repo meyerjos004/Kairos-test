@@ -1119,3 +1119,14 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 
 /* KING_CALSHORT */
 .jcd .jshort,.jcw .jshort{display:none}@media (max-width:640px){.jcd .jfull,.jcw .jfull{display:none}.jcd .jshort{display:block}.jcw .jshort{display:inline}}
+/* KING_JLIST: on phones the trade table becomes a list (name + P/L big, date/outcome/R under it) */
+@media (max-width:640px){
+ .jtbl thead{display:none}.jtbl,.jtbl tbody{display:block;width:100%}
+ .jtbl tr{display:grid;grid-template-columns:1fr auto;grid-template-areas:"n p" "m o";gap:2px 10px;padding:10px 4px;border-bottom:1px solid rgba(255,255,255,.06)}
+ .jtbl td{display:none;padding:0;border:0}
+ .jtbl td:nth-child(2){display:block;grid-area:n;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .jtbl td:nth-child(6){display:block;grid-area:p;font-size:16px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+ .jtbl td:nth-child(1){display:block;grid-area:m;font-size:12px;color:var(--mut)}
+ .jtbl td:nth-child(4){display:block;grid-area:o;text-align:right}
+ .tblwrap:has(.jtbl){overflow-x:visible}
+}
