@@ -1908,6 +1908,7 @@ function releaseIntro(replay) {
   const note = el.querySelector(".rnote"), vid = el.querySelector(".rvid"), hold = el.querySelector(".rhold"), hint = el.querySelector(".rhint");
   let stage = "note", ended = false;
   const finish = () => { if (ended) return; ended = true;
+    if (window.kairosPrank && !el._pranked && (!replay || /prank=1/.test(location.search))) { el._pranked = true; stage = "prank"; hint.hidden = true; return kairosPrank(() => { ended = false; stage = "hold"; finish(); }); }   // KING_PRANK
     if (typeof releaseTour === "function" && !replay) { stage = "tour"; hint.hidden = true; return releaseTour(el, () => { ended = false; stage = "hold"; finish2(); }); }   // the 10 stops plug in here (not built yet)
     finish2(); };
   const finish2 = () => { if (!replay) { prefs.releaseSeen = "1.0"; savePrefs(); }
