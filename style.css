@@ -1133,3 +1133,5 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 /* KING_QNOTE: quick-log note box matches the rest of the trade page */
 .qrow textarea,.qrow input[type=number],.qrow input[type=text]{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:8px 10px;color:var(--txt);font:inherit;font-size:14px;resize:vertical}
 .qrow textarea:focus,.qrow input:focus{border-color:rgba(167,139,250,.5);outline:none}
+/* KING_MSTATS: phone overview = big P/L on top, stats in 2 columns */
+@media (max-width:640px){#jw-stats{display:block!important}#jw-stats .jsts{display:grid!important;grid-template-columns:1fr 1fr;gap:10px 16px;margin-top:14px}}
