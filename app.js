@@ -1856,11 +1856,11 @@ const KTIPS = ["Hold the corner triangle on any tool button to see every tool in
   "Drag the bottom panel up for more room, or the sidebar edge to widen it.", "Found a bug or have an idea? Tap the 🔧 bubble in the corner. It goes straight to Claude.",
   "Friends → Leaderboard shows who backtested the most this week.", "Double-click the toolbar grip to dock it again after floating it."];
 /* KING_STARTFX (Nov 12): every launch / reload plays a short take on the welcome cinematic (no tap gate, a random opening line),
-   then the charts get "built" by swimming cursors. Lines from Codex; {name} = your first name (cached from the last visit). */
-const KLINES = ["THE SESSION RETURNS", "BACK TO THE SCREEN", "TIME TO REPLAY", "THE MARKETS AWAIT", "FOCUS RESETS", "PICK UP THE THREAD", "ANOTHER SESSION", "REPLAY BEGINS",
-  "THE CLOCK RESUMES", "MARKETS IN MOTION", "TIME, REVISITED", "LIQUIDITY IS RESTING", "BACK IN SEQUENCE", "A NEW SESSION", "THE CHARTS ARE READY", "BACK IN THE KILL ZONE",
-  "HISTORY, IN MOTION", "THE NEXT MOVE", "ON THE CLOCK", "SESSION RELOADED", "BACK TO THE BARS", "THE SIGNAL RETURNS",
-  "{name}, BACK TO THE CHARTS", "{name}, TIME TO REPLAY", "{name}, PICK UP THE THREAD", "{name}, THE SESSION RESUMES"];
+   then the charts get "built" by swimming cursors. Motivation lines (King, Nov 18); {name} = your first name (cached from the last visit). */
+const KLINES = ["WAIT FOR THE A+", "PATIENCE PAYS OUT", "PROTECT THE ACCOUNT", "NO SETUP, NO TRADE", "DISCIPLINE IS THE EDGE", "ONE GOOD TRADE IS ENOUGH",   // KING_MOTIVE (Nov 18): motivation lines
+  "RISK FIRST. ALWAYS.", "EARN THE PAYOUT", "REPS BUILD CONVICTION", "THE PLAN IS THE TRADE", "LOSSES ARE TUITION", "CALM MIND, CLEAN ENTRIES", "NO REVENGE TRADES",
+  "JOURNAL EVERY TRADE", "FOLLOW YOUR RULES TODAY", "SIT ON YOUR HANDS", "GREEN DAYS STACK", "OWN EVERY TRADE", "STAY IN YOUR HOURS", "QUALITY OVER QUANTITY",
+  "{name}, WAIT FOR YOUR A+", "{name}, PROTECT THE ACCOUNT", "{name}, EARN THAT PAYOUT", "{name}, TRUST THE PROCESS"];
 let introOn = false; const introWait = [];
 function afterIntro(f) { if (introOn) introWait.push(f); else f(); }
 function introLine() { let nm = ""; try { nm = (localStorage.getItem("kz-name") || "").split(" ")[0].slice(0, 14); const uid = localStorage.getItem("kz-uid"), tok = Object.keys(localStorage).find((k) => /^sb-.*-auth-token$/.test(k)); if (uid && tok && !(localStorage.getItem(tok) || "").includes(uid)) nm = ""; } catch (e) {}
