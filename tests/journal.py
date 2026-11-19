@@ -137,6 +137,12 @@ async def main():
         print(await E("[...document.querySelectorAll('#v-tj *')].filter(e=>e.getBoundingClientRect().right>392).slice(0,8).map(e=>e.tagName+'.'+e.className+'#'+e.id+' '+Math.round(e.getBoundingClientRect().right))"))
         await pg.screenshot(path="/tmp/journal-mobile.png")
         check("mobile: no sideways overflow on the page", ov<=2, ov)
+        # KING_JMORE: big journals page past 500 rows
+        await E("""(()=>{const base=[...JN.ent.values()][0]; for(let i=0;i<1200;i++){const e=JSON.parse(JSON.stringify(base)); e.id='pf'+i; e.data.name='P'+i; JN.ent.set(e.id,e);} JN.view='all'; JN.lim=0; JN.render(); return 1})()"""); await W(200)
+        r0=await E("document.querySelectorAll('#tj-log tbody tr').length"); await E("document.querySelector('#tj-log [data-more]').click()"); await W(200)
+        r1=await E("document.querySelectorAll('#tj-log tbody tr').length")
+        check("journal: 'Show more' pages past 500 rows", r0==500 and r1==1000, (r0,r1))
+        await E("[...JN.ent.keys()].filter(k=>k.startsWith('pf')).forEach(k=>JN.ent.delete(k)); JN.lim=0; JN.render(); 1")
         check("journal: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
