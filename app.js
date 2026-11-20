@@ -70,12 +70,31 @@ const CHART_THEMES = {
     dark: { bg: "#1d2022", grid: "#272b2e", txt: "#8e969a", up: "#1aa58d", dn: "#3a3f43", bord: true, bu: "#1aa58d", bd: "#8e969a", wu: "#1aa58d", wd: "#8e969a", zUp: "#1aa58d", zDn: "#c0575f", tools: { trend: "#6f86e8", ray: "#6f86e8", channel: "#6f86e8", hline: "#6f86e8", hray: "#6f86e8", rect: "#8e969a", fib: "#6f86e8", text: "#e6eaec", arrow: "#e6eaec" } } }],
   ben: ["Ben's tan", {
     light: { bg: "#c0b39b", grid: "#b6a991", txt: "#4a4438", up: "#ffffff", dn: "#3f3f3d", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#1a1a1a", ray: "#1a1a1a", channel: "#1a1a1a", hline: "#1a1a1a", hray: "#1a1a1a", rect: "#8a8578", fib: "#1a1a1a", text: "#1a1a1a", arrow: "#2f5fd0" } },
-    dark: { bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#c54557", zDn: "#8a8578", zA: .6, tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } } }] };
+    dark: { bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#c54557", zDn: "#8a8578", zA: .6, tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } },
+    // KING_WAIFU (Ben, Nov 20): anime backdrop + picture candles. Art is original, made on King's PC.
+    waifu: { waifu: true, bg: "#15161c", grid: "#2a2c34", txt: "#e8e2d6", up: "#ffe3ea", dn: "#9fb0cf", bord: true, bu: "#ffffff", bd: "#c9d3e6", wu: "#f4f1ea", wd: "#c9d3e6", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#f5efe2", ray: "#f5efe2", channel: "#f5efe2", hline: "#f5efe2", hray: "#f5efe2", rect: "#c9d3e6", fib: "#f5efe2", text: "#ffffff", arrow: "#8fb4ff" } } }] };
+const WAIFU = { bgs: ["bg1", "bg2", "bg3", "bg4"], up: ["up1", "up2", "up3", "up4"], dn: ["dn1", "dn2", "dn3", "dn4"], img: {} };
+function wImg(n, ext) { let im = WAIFU.img[n]; if (im) return im.complete && im.naturalWidth ? im : null;
+  im = WAIFU.img[n] = new Image(); im.decoding = "async"; im.onload = () => { try { repaintAll(); } catch (e) {} }; im.src = "assets/waifu/" + n + "." + ext; return null; }
+// draws one candle body as a picture: cropped to the body's shape, faces kept near the top. Same picture at every zoom, more detail as it grows.
+function wSkin(g, im, x, y, w, h) { const iw = im.naturalWidth, ih = im.naturalHeight, a = h / w; let sx = 0, sy = 0, sw = iw, sh = ih;
+  if (ih / iw > a) { sh = iw * a; sy = Math.min(ih - sh, Math.max(0, ih * 0.08)); } else { sw = ih / a; sx = (iw - sw) / 2; }
+  g.drawImage(im, sx, sy, sw, sh, x, y, w, h); }
+function waifuPaint(p, g, W, H) { const bgN = WAIFU.bgs.includes(prefs.waifuBg) ? prefs.waifuBg : "bg1", bg = wImg(bgN, "jpg");
+  if (bg) { const s = Math.max(W / bg.naturalWidth, H / bg.naturalHeight); g.drawImage(bg, (W - bg.naturalWidth * s) / 2, (H - bg.naturalHeight * s) / 2, bg.naturalWidth * s, bg.naturalHeight * s); }
+  g.fillStyle = "rgba(12,13,18," + (prefs.waifuDim ?? 0.62) + ")"; g.fillRect(0, 0, W, H);
+  const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (!vr || !p.candles.length) return; const sp = ts.options().barSpacing || 6, bw = Math.max(1, Math.floor(sp * 0.8));
+  const from = Math.max(0, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to));
+  for (let k = from; k <= to; k++) { const c = p.candles[k], x = ts.logicalToCoordinate(k); if (x == null) continue;
+    const yo = p.series.priceToCoordinate(c.open), yc = p.series.priceToCoordinate(c.close); if (yo == null || yc == null) continue;
+    const up = c.close >= c.open, top = Math.min(yo, yc), h = Math.max(1, Math.abs(yc - yo)), set = up ? WAIFU.up : WAIFU.dn, n = set[Math.floor(c.time / p.sec) % set.length], im = bw >= 3 && h >= 3 ? wImg(n, "webp") : null;
+    if (im) wSkin(g, im, Math.round(x - bw / 2), top, bw, h); else { g.fillStyle = up ? prefs.up : prefs.dn; g.fillRect(Math.round(x - bw / 2), top, bw, h); } } }
 function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) return; mode = T[1][mode] ? mode : Object.keys(T[1])[0]; const c = T[1][mode];
   prefs.up = c.up; prefs.dn = c.dn; prefs.zUp = c.zUp; prefs.zDn = c.zDn; prefs.zA = c.zA || 0; prefs.toolCols = Object.assign({}, c.tools); prefs.toolCol = c.tools.trend;
-  prefs.cs = Object.assign({}, prefs.cs || {}, { bgk: "solid", bg1: c.bg, bg2: c.bg, gridc: c.grid, txc: c.txt, lnc: c.grid, bord: !!c.bord, bu: c.bu || c.up, bd: c.bd || c.dn, wu: c.wu || "", wd: c.wd || "" });
+  prefs.cs = Object.assign({}, prefs.cs || {}, { bgk: c.waifu ? "waifu" : "solid", bg1: c.bg, bg2: c.bg, gridc: c.grid, txc: c.txt, lnc: c.grid, bord: !!c.bord, bu: c.bu || c.up, bd: c.bd || c.dn, wu: c.wu || "", wd: c.wd || "", body: !c.waifu });
+  prefs.waifu = !!c.waifu;   // KING_WAIFU
   prefs.chTheme = { id, mode }; try { panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: c.wu || prefs.up, wickDownColor: c.wd || prefs.dn })); csApplyAll(); repaintAll(); } catch (e) {}
-  savePrefs(); if (!quiet) try { toast(T[0] + " · " + (mode === "light" ? "Light" : "Dark")); } catch (e) {} }
+  savePrefs(); if (!quiet) try { toast(T[0] + " · " + (mode === "light" ? "Light" : mode === "waifu" ? "Waifu" : "Dark")); } catch (e) {} }
 function themeAutoPick() { if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
   const id = isAdmin ? "sandslate" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true); }
 let csTmp = null, csSnap = null; const execs = [], profs = {};
@@ -642,6 +661,7 @@ function paintStudies(p, g, W, H) { const ps = paneSym(p); if (ps !== sym) retur
 }
 /* fix 6: everything we draw lives INSIDE the chart's own render pass (series primitives), so shading, studies and drawings move with the candles on every drag/zoom frame instead of trailing behind. */
 function drawShade(p, g, W, H) {
+    if (prefs.waifu) try { waifuPaint(p, g, W, H); } catch (e) {}   // KING_WAIFU: backdrop + picture candles sit under the wicks, lines and drawings
     { const C = csG(); if (C.brk && p.sec < 86400 && p.candles.length) { const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (vr) { g.save(); g.strokeStyle = _rgba(C.brkc, 0.55); g.setLineDash([4, 4]); g.lineWidth = 1;   // KING_CS2: session breaks at 18:00 NY
       const from = Math.max(1, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to)), dn = (t) => Math.floor((t - 18 * 3600) / 86400);
       for (let k = from; k <= to; k++) if (dn(p.candles[k].time) !== dn(p.candles[k - 1].time)) { const x = ts.logicalToCoordinate(k); if (x != null) { g.beginPath(); g.moveTo(Math.round(x - (ts.options().barSpacing || 6) / 2) + 0.5, 0); g.lineTo(Math.round(x - (ts.options().barSpacing || 6) / 2) + 0.5, H); g.stroke(); } }
@@ -3541,7 +3561,11 @@ function spVolUI() { const box = $("sp-now"); if (!box || !box.querySelector(".s
 
 
 /* KING_MYTHEME: Chart settings theme picker */
-function chThemeUI() { const t = prefs.chTheme || {}; if ($("cs-theme")) $("cs-theme").value = t.id || ""; document.querySelectorAll("#cs-mode [data-m]").forEach((b) => b.classList.toggle("on", b.dataset.m === (t.mode || "dark"))); }
+function chThemeUI() { const t = prefs.chTheme || {}, id = t.id || ($("cs-theme") && $("cs-theme").value); if ($("cs-theme")) $("cs-theme").value = t.id || "";
+  document.querySelectorAll("#cs-mode [data-m]").forEach((b) => { b.classList.toggle("on", b.dataset.m === (t.mode || "dark")); if (b.dataset.m === "waifu") b.style.display = id === "ben" ? "" : "none"; });
+  const w = $("cs-wbg"); if (w) { w.classList.toggle("hidden", !prefs.waifu); w.querySelectorAll("[data-b]").forEach((b) => b.classList.toggle("on", b.dataset.b === (prefs.waifuBg || "bg1"))); } }
 if ($("cs-theme")) { $("cs-theme").onchange = (e) => { if (e.target.value) applyChartTheme(e.target.value, (prefs.chTheme && prefs.chTheme.mode) || "dark"); else { prefs.chTheme = null; savePrefs(); } try { csFill(); } catch (er) {} chThemeUI(); };
   document.querySelectorAll("#cs-mode [data-m]").forEach((b) => (b.onclick = () => { const id = (prefs.chTheme && prefs.chTheme.id) || $("cs-theme").value; if (id) applyChartTheme(id, b.dataset.m); try { csFill(); } catch (er) {} chThemeUI(); }));
   $("chartsetbtn").addEventListener("click", () => setTimeout(chThemeUI, 0)); }
+// KING_WAIFU: backdrop picker (shows only in Waifu mode)
+document.querySelectorAll("#cs-wbg [data-b]").forEach((b) => (b.onclick = () => { prefs.waifuBg = b.dataset.b; savePrefs(); repaintAll(); chThemeUI(); }));

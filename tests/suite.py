@@ -57,6 +57,8 @@ async def main():
         # KING_MYTHEME: one-tap personal themes set candles, background and per-tool colors (no hard-coded green/red zones)
         th=await E("(()=>{applyChartTheme('sandslate','dark',true); const a=[prefs.up,prefs.dn,prefs.cs.bg1,prefs.toolCols.hline,UPC(.5)].join(','); applyChartTheme('ryan','light',true); const b=[prefs.up,prefs.cs.bg1,prefs.toolCols.trend].join(','); prefs.chTheme=null; return a+'|'+b})()")
         check("personal chart themes apply", th=="#e8d9b5,#6f8396,#16181b,#7fd1e0,rgba(232,217,181,0.5)|#097564,#b8b8b8,#4259c1", th)
+        wf = await E("applyChartTheme('ben','waifu',true); const r=[prefs.waifu, prefs.cs.bgk, prefs.cs.body]; applyChartTheme('sandslate','dark',true); r.concat([prefs.waifu, prefs.cs.body]).join(',')")
+        check("Ben's Waifu mode turns on and off", wf == "true,waifu,false,false,true", wf)
         await pg.keyboard.press("Escape"); await E("sel = drawings[drawings.length-1]; 1"); await pg.keyboard.press("Delete"); check("delete selected drawing", True)
         # position tool arm -> fills
         await E("cancelAll(); flatten(); drawings=[]; 1"); await E("(()=>{const p=panes[0],lp=last(),d=newDrawing('long',p,{t:loc(nowT()),p:rnd(lp-3)}); d.entry=rnd(lp-3); d.sl=rnd(lp-11); d.tp=rnd(lp+13); armTool(d);})()")
