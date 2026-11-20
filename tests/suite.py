@@ -64,6 +64,8 @@ async def main():
         check("Ben's Waifu mode turns on and off", wf == "true,waifu,false,false,true", wf)
         wu = await E("applyChartTheme('ben','waifu',true); const a=[document.body.classList.contains('waifu'), !!document.getElementById('wpetals')]; applyChartTheme('sandslate','dark',true); a.concat([document.body.classList.contains('waifu')]).join(',')")
         check("Waifu dresses the whole app and undresses after", wu == "true,true,false", wu)
+        sk = await E("applyChartTheme('will','sweden',true); const a=[prefs.skin, document.body.classList.contains('skin-sweden'), document.body.classList.contains('waifu')]; applyChartTheme('ryan','rave',true); a.push(prefs.skin, document.body.classList.contains('skin-rave'), document.querySelectorAll('#wpetals b').length); applyChartTheme('sandslate','dark',true); a.push(prefs.skin, document.body.classList.contains('skinon')); a.join(',')")
+        check("Will's Sweden and Ryan's Rave dress the app and undress after", sk == "sweden,true,false,rave,true,6,,false", sk)
         await pg.keyboard.press("Escape"); await E("sel = drawings[drawings.length-1]; 1"); await pg.keyboard.press("Delete"); check("delete selected drawing", True)
         # position tool arm -> fills
         await E("cancelAll(); flatten(); drawings=[]; 1"); await E("(()=>{const p=panes[0],lp=last(),d=newDrawing('long',p,{t:loc(nowT()),p:rnd(lp-3)}); d.entry=rnd(lp-3); d.sl=rnd(lp-11); d.tp=rnd(lp+13); armTool(d);})()")

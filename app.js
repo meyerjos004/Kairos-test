@@ -69,9 +69,13 @@ const CHART_THEMES = {
     dark: { bg: "#16181b", grid: "#20242a", txt: "#8f969e", up: "#e8d9b5", dn: "#6f8396", bord: false, zUp: "#e8d9b5", zDn: "#6f8396", tools: { trend: "#a9c7e0", ray: "#a9c7e0", channel: "#a9c7e0", hline: "#7fd1e0", hray: "#7fd1e0", rect: "#b7c4cf", fib: "#a9c7e0", text: "#efe9dc", arrow: "#efe9dc" } },
     light: { bg: "#faf8f3", grid: "#ebe6db", txt: "#6f6a60", up: "#a8894a", dn: "#4f6274", bord: false, zUp: "#a8894a", zDn: "#4f6274", tools: { trend: "#2f6f9a", ray: "#2f6f9a", channel: "#2f6f9a", hline: "#0f8fa6", hray: "#0f8fa6", rect: "#8a99a8", fib: "#2f6f9a", text: "#2b2a26", arrow: "#2b2a26" } } }],
   will: ["Will's gray", {
+    // KING_SKINS (Nov 20): Will's hardcore Sweden mode. Art is original, made on King's PC.
+    sweden: { skin: "sweden", bg: "#0b1a2c", grid: "#17304a", txt: "#cfdbe8", up: "#fecc02", dn: "#2f6fb5", bord: true, bu: "#fecc02", bd: "#7fb0e6", wu: "#fecc02", wd: "#7fb0e6", zUp: "#fecc02", zDn: "#2f6fb5", zA: .5, tools: { trend: "#eef3f8", ray: "#eef3f8", channel: "#eef3f8", hline: "#eef3f8", hray: "#eef3f8", rect: "#7fb0e6", fib: "#eef3f8", text: "#ffffff", arrow: "#fecc02" } },
     dark: { bg: "#2c2c2c", grid: "#2c2c2c", txt: "#9a9a9a", up: "#dddee2", dn: "#050505", bord: true, bu: "#050505", bd: "#050505", wu: "#050505", wd: "#050505", zUp: "#633420", zDn: "#4d4d4d", zA: .6, tools: { trend: "#d7d7d7", ray: "#d7d7d7", channel: "#d7d7d7", hline: "#d7d7d7", hray: "#d7d7d7", rect: "#8c8c8c", fib: "#d7d7d7", text: "#ececec", arrow: "#5d71b0" } },
     light: { bg: "#ededed", grid: "#e2e2e2", txt: "#606060", up: "#ffffff", dn: "#1a1a1a", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#a8603a", zDn: "#9a9a9a", zA: .6, tools: { trend: "#2a2a2a", ray: "#2a2a2a", channel: "#2a2a2a", hline: "#2a2a2a", hray: "#2a2a2a", rect: "#7a7a7a", fib: "#2a2a2a", text: "#1a1a1a", arrow: "#3f56a8" } } }],
   ryan: ["Ryan's teal", {
+    // KING_SKINS (Nov 20): Ryan's rave mode (lasers, stage lights, pulses on the beat).
+    rave: { skin: "rave", bg: "#05060a", grid: "#121626", txt: "#cfe9f2", up: "#20f0ff", dn: "#ff3ea5", bord: true, bu: "#20f0ff", bd: "#ff3ea5", wu: "#20f0ff", wd: "#ff3ea5", zUp: "#20f0ff", zDn: "#ff3ea5", zA: .45, tools: { trend: "#e8fbff", ray: "#e8fbff", channel: "#e8fbff", hline: "#e8fbff", hray: "#e8fbff", rect: "#7fd8ff", fib: "#e8fbff", text: "#ffffff", arrow: "#ffe94d" } },
     light: { bg: "#b8b8b8", grid: "#a9a9a9", txt: "#3a3a3a", up: "#097564", dn: "#0a0a0a", bord: false, zUp: "#097564", zDn: "#c0575f", tools: { trend: "#4259c1", ray: "#4259c1", channel: "#4259c1", hline: "#4259c1", hray: "#4259c1", rect: "#5a5a5a", fib: "#4259c1", text: "#111111", arrow: "#111111" } },
     dark: { bg: "#1d2022", grid: "#272b2e", txt: "#8e969a", up: "#1aa58d", dn: "#3a3f43", bord: true, bu: "#1aa58d", bd: "#8e969a", wu: "#1aa58d", wd: "#8e969a", zUp: "#1aa58d", zDn: "#c0575f", tools: { trend: "#6f86e8", ray: "#6f86e8", channel: "#6f86e8", hline: "#6f86e8", hray: "#6f86e8", rect: "#8e969a", fib: "#6f86e8", text: "#e6eaec", arrow: "#e6eaec" } } }],
   ben: ["Ben's tan", {
@@ -79,16 +83,22 @@ const CHART_THEMES = {
     dark: { bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#c54557", zDn: "#8a8578", zA: .6, tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } },
     // KING_WAIFU (Ben, Nov 20): anime backdrop + picture candles. Art is original, made on King's PC.
     waifu: { waifu: true, bg: "#15161c", grid: "#2a2c34", txt: "#e8e2d6", up: "#ffd1dc", dn: "#8fa3c8", bord: true, bu: "#ffd1dc", bd: "#8fa3c8", wu: "#ffd1dc", wd: "#8fa3c8", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#f5efe2", ray: "#f5efe2", channel: "#f5efe2", hline: "#f5efe2", hray: "#f5efe2", rect: "#c9d3e6", fib: "#f5efe2", text: "#ffffff", arrow: "#8fb4ff" } } }] };
+// KING_SKINS: full-app looks tied to a friend's theme. waifu = Ben, sweden = Will, rave = Ryan.
+const SKINS = {
+  waifu: { label: "Waifu", owner: "ben", dir: "waifu", bgs: ["bg1", "bg2", "bg3", "bg4"], names: ["Meadow", "Sunset", "Night", "Festival"], dim: 0.62, tint: "rgba(12,13,18," },
+  sweden: { label: "Sweden", owner: "will", dir: "sweden", bgs: ["sw1", "sw2", "sw3", "sw4"], names: ["Fjord", "Aurora", "Stockholm", "Viking"], dim: 0.5, tint: "rgba(6,14,26," },
+  rave: { label: "Rave", owner: "ryan", dir: "rave", bgs: ["rv1", "rv2", "rv3", "rv4"], names: ["Main stage", "Warehouse", "Festival", "Decks"], dim: 0.55, tint: "rgba(3,4,8," } };
+function skinBg() { const k = prefs.skin || "waifu", K = SKINS[k]; const v = k === "waifu" ? prefs.waifuBg : (prefs.skinBg || {})[k]; return K.bgs.includes(v) ? v : K.bgs[0]; }
 const WAIFU = { bgs: ["bg1", "bg2", "bg3", "bg4"], up: ["up1", "up2", "up3", "up4", "up5", "up6", "up7", "up8"], dn: ["dn1", "dn2", "dn3", "dn4", "dn5", "dn6", "dn7", "dn8"], img: {} };
-function wImg(n, ext) { let im = WAIFU.img[n]; if (im) return im.complete && im.naturalWidth ? im : null;
-  im = WAIFU.img[n] = new Image(); im.decoding = "async"; im.onload = () => { try { repaintAll(); } catch (e) {} }; im.src = "assets/waifu/" + n + "." + ext; return null; }
+function wImg(n, ext, dir) { dir = dir || "waifu"; const key = dir + "/" + n; let im = WAIFU.img[key]; if (im) return im.complete && im.naturalWidth ? im : null;
+  im = WAIFU.img[key] = new Image(); im.decoding = "async"; im.onload = () => { try { repaintAll(); } catch (e) {} }; im.src = "assets/" + key + "." + ext; return null; }
 // draws one candle body as a picture: cropped to the body's shape, faces kept near the top. Same picture at every zoom, more detail as it grows.
 function wSkin(g, im, x, y, w, h) { const iw = im.naturalWidth, ih = im.naturalHeight, a = h / w; let sx = 0, sy = 0, sw = iw, sh = ih;
   if (ih / iw > a) { sh = iw * a; sy = Math.min(ih - sh, Math.max(0, ih * 0.08)); } else { sw = ih / a; sx = (iw - sw) / 2; }
   g.drawImage(im, sx, sy, sw, sh, x, y, w, h); }
-function waifuPaint(p, g, W, H) { const bgN = WAIFU.bgs.includes(prefs.waifuBg) ? prefs.waifuBg : "bg1", bg = wImg(bgN, "jpg");
+function waifuPaint(p, g, W, H) { const K = SKINS[prefs.skin] || SKINS.waifu, bgN = skinBg(), bg = wImg(bgN, "jpg", K.dir);
   if (bg) { const s = Math.max(W / bg.naturalWidth, H / bg.naturalHeight); g.drawImage(bg, (W - bg.naturalWidth * s) / 2, (H - bg.naturalHeight * s) / 2, bg.naturalWidth * s, bg.naturalHeight * s); }
-  g.fillStyle = "rgba(12,13,18," + (prefs.waifuDim ?? 0.62) + ")"; g.fillRect(0, 0, W, H); }
+  g.fillStyle = K.tint + (prefs.skin === "waifu" || !prefs.skin ? (prefs.waifuDim ?? K.dim) : K.dim) + ")"; g.fillRect(0, 0, W, H); }
 function waifuSkins(p, g, W) {   // after the trade-box fills, so pictures sit on top of them like normal candles do
   const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (!vr || !p.candles.length) return; const sp = ts.options().barSpacing || 6, bw = Math.max(1, Math.floor(sp * 0.8));
   const from = Math.max(0, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to));
@@ -103,10 +113,11 @@ function wAvg(n) { const c = WAIFU.avg || (WAIFU.avg = {}); if (c[n]) return c[n
     for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; } const k = d.length / 4; return (c[n] = `rgb(${(r / k) | 0},${(g / k) | 0},${(b / k) | 0})`); } catch (e) { return (c[n] = null); } }
 function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) return; mode = T[1][mode] ? mode : Object.keys(T[1])[0]; const c = T[1][mode];
   prefs.up = c.up; prefs.dn = c.dn; prefs.zUp = c.zUp; prefs.zDn = c.zDn; prefs.zA = c.zA || 0; prefs.toolCols = Object.assign({}, c.tools); prefs.toolCol = c.tools.trend;
-  prefs.cs = Object.assign({}, prefs.cs || {}, { bgk: c.waifu ? "waifu" : "solid", bg1: c.bg, bg2: c.bg, gridc: c.grid, txc: c.txt, lnc: c.grid, bord: !!c.bord, bu: c.bu || c.up, bd: c.bd || c.dn, wu: c.wu || "", wd: c.wd || "", body: !c.waifu });
+  prefs.cs = Object.assign({}, prefs.cs || {}, { bgk: (c.waifu || c.skin) ? "waifu" : "solid", bg1: c.bg, bg2: c.bg, gridc: c.grid, txc: c.txt, lnc: c.grid, bord: !!c.bord, bu: c.bu || c.up, bd: c.bd || c.dn, wu: c.wu || "", wd: c.wd || "", body: !c.waifu });
   prefs.waifu = !!c.waifu;   // KING_WAIFU
+  prefs.skin = c.skin || (c.waifu ? "waifu" : null);   // KING_SKINS
   prefs.chTheme = { id, mode }; try { panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: c.wu || prefs.up, wickDownColor: c.wd || prefs.dn })); csApplyAll(); repaintAll(); } catch (e) {}
-  savePrefs(); if (!quiet) try { toast(T[0] + " · " + (mode === "light" ? "Light" : mode === "waifu" ? "Waifu" : "Dark")); } catch (e) {} }
+  savePrefs(); if (!quiet) try { toast(T[0] + " · " + (mode === "light" ? "Light" : (SKINS[mode] ? SKINS[mode].label : "Dark"))); } catch (e) {} }
 // KING_WAIFU: Ben gets a one-time heads-up the first time he opens a build that has Waifu mode
 function waifuHint() { const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase(); if (prefs.waifuHint || !/\bben\b|jinx/.test(n)) return;
   prefs.waifuHint = 1; savePrefs(); setTimeout(() => { try { toast("New for you: Waifu mode. Chart settings → Theme → Ben's tan → Waifu"); } catch (e) {} }, 4000); }
@@ -676,7 +687,7 @@ function paintStudies(p, g, W, H) { const ps = paneSym(p); if (ps !== sym) retur
 }
 /* fix 6: everything we draw lives INSIDE the chart's own render pass (series primitives), so shading, studies and drawings move with the candles on every drag/zoom frame instead of trailing behind. */
 function drawShade(p, g, W, H) {
-    if (prefs.waifu) try { waifuPaint(p, g, W, H); } catch (e) {}   // KING_WAIFU: backdrop + picture candles sit under the wicks, lines and drawings
+    if (prefs.waifu || prefs.skin) try { waifuPaint(p, g, W, H); } catch (e) {}   // KING_WAIFU: backdrop + picture candles sit under the wicks, lines and drawings
     { const C = csG(); if (C.brk && p.sec < 86400 && p.candles.length) { const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (vr) { g.save(); g.strokeStyle = _rgba(C.brkc, 0.55); g.setLineDash([4, 4]); g.lineWidth = 1;   // KING_CS2: session breaks at 18:00 NY
       const from = Math.max(1, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to)), dn = (t) => Math.floor((t - 18 * 3600) / 86400);
       for (let k = from; k <= to; k++) if (dn(p.candles[k].time) !== dn(p.candles[k - 1].time)) { const x = ts.logicalToCoordinate(k); if (x != null) { g.beginPath(); g.moveTo(Math.round(x - (ts.options().barSpacing || 6) / 2) + 0.5, 0); g.lineTo(Math.round(x - (ts.options().barSpacing || 6) / 2) + 0.5, H); g.stroke(); } }
@@ -3583,25 +3594,29 @@ function spVolUI() { const box = $("sp-now"); if (!box || !box.querySelector(".s
 
 /* KING_MYTHEME: Chart settings theme picker */
 function chThemeUI() { const t = prefs.chTheme || {}, id = t.id || ($("cs-theme") && $("cs-theme").value); if ($("cs-theme")) $("cs-theme").value = t.id || "";
-  document.querySelectorAll("#cs-mode [data-m]").forEach((b) => { b.classList.toggle("on", b.dataset.m === (t.mode || "dark")); if (b.dataset.m === "waifu") b.style.display = id === "ben" ? "" : "none"; });
-  const w = $("cs-wbg"); if (w) { w.classList.toggle("hidden", !prefs.waifu); const wr = w.closest(".csr"); if (wr) wr.style.display = prefs.waifu ? "" : "none"; }
-  { document.querySelectorAll("#chartset input.csc").forEach((i) => i._sync && i._sync()); w.querySelectorAll("[data-b]").forEach((b) => b.classList.toggle("on", b.dataset.b === (prefs.waifuBg || "bg1"))); } }
+  document.querySelectorAll("#cs-mode [data-m]").forEach((b) => { b.classList.toggle("on", b.dataset.m === (t.mode || "dark")); if (b.classList.contains("skinm")) { const k = Object.keys(SKINS).find((x) => SKINS[x].owner === id); b.style.display = k ? "" : "none"; if (k) { b.dataset.m = k; b.textContent = SKINS[k].label; b.classList.toggle("on", t.mode === k); } } });
+  const w = $("cs-wbg"); if (w) { const on = !!prefs.skin; w.classList.toggle("hidden", !on); const wr = w.closest(".csr"); if (wr) wr.style.display = on ? "" : "none";
+    if (on) { const K = SKINS[prefs.skin]; w.querySelectorAll("[data-b]").forEach((b, i) => { b.dataset.b = K.bgs[i]; b.textContent = K.names[i]; }); } }
+  { document.querySelectorAll("#chartset input.csc").forEach((i) => i._sync && i._sync()); w.querySelectorAll("[data-b]").forEach((b) => b.classList.toggle("on", b.dataset.b === skinBg())); } }
 if ($("cs-theme")) { $("cs-theme").onchange = (e) => { if (e.target.value) applyChartTheme(e.target.value, (prefs.chTheme && prefs.chTheme.mode) || "dark"); else { prefs.chTheme = null; savePrefs(); } try { csFill(); } catch (er) {} chThemeUI(); };
   document.querySelectorAll("#cs-mode [data-m]").forEach((b) => (b.onclick = () => { const id = (prefs.chTheme && prefs.chTheme.id) || $("cs-theme").value; if (id) applyChartTheme(id, b.dataset.m); try { csFill(); } catch (er) {} chThemeUI(); }));
   $("chartsetbtn").addEventListener("click", () => setTimeout(chThemeUI, 0)); }
 // KING_WAIFU: backdrop picker (shows only in Waifu mode)
-document.querySelectorAll("#cs-wbg [data-b]").forEach((b) => (b.onclick = () => { prefs.waifuBg = b.dataset.b; savePrefs(); repaintAll(); chThemeUI(); }));
+document.querySelectorAll("#cs-wbg [data-b]").forEach((b) => (b.onclick = () => { if (!prefs.skin || prefs.skin === "waifu") prefs.waifuBg = b.dataset.b; else { prefs.skinBg = prefs.skinBg || {}; prefs.skinBg[prefs.skin] = b.dataset.b; } savePrefs(); repaintAll(); chThemeUI(); }));
 
 // KING_WAIFUUI (Ben, Nov 20): Waifu mode dresses the whole app (glass panels over his backdrop, pink/blue buttons, a few falling petals).
-function waifuUI() { const on = !!prefs.waifu, b = document.body; b.classList.toggle("waifu", on);
-  const bg = (typeof WAIFU !== "undefined" && WAIFU.bgs.includes(prefs.waifuBg)) ? prefs.waifuBg : "bg1";
-  if (on) b.style.setProperty("--wbgimg", `url(assets/waifu/${bg}.jpg)`); else b.style.removeProperty("--wbgimg");
-  let pe = document.getElementById("wpetals");
-  if (on && !pe) { pe = document.createElement("div"); pe.id = "wpetals"; pe.setAttribute("aria-hidden", "true");
-    for (let i = 0; i < 14; i++) { const p = document.createElement("i"); const s = 0.6 + Math.random() * 0.8;
-      p.style.cssText = `left:${(Math.random() * 100).toFixed(1)}%;animation-duration:${(11 + Math.random() * 12).toFixed(1)}s;animation-delay:-${(Math.random() * 20).toFixed(1)}s;transform:scale(${s.toFixed(2)});opacity:${(0.35 + Math.random() * 0.45).toFixed(2)}`;
-      pe.appendChild(p); }
-    b.appendChild(pe); } }
+function waifuUI() { const k = prefs.skin || (prefs.waifu ? "waifu" : null), b = document.body;
+  b.classList.toggle("skinon", !!k); Object.keys(SKINS).forEach((x) => b.classList.toggle(x === "waifu" ? "waifu" : "skin-" + x, k === x));
+  if (k) b.style.setProperty("--wbgimg", `url(assets/${SKINS[k].dir}/${skinBg()}.jpg)`); else b.style.removeProperty("--wbgimg");
+  let fx = document.getElementById("wpetals"); if (fx && fx.dataset.k !== k) { fx.remove(); fx = null; }
+  if (k && !fx) { fx = document.createElement("div"); fx.id = "wpetals"; fx.dataset.k = k; fx.setAttribute("aria-hidden", "true");
+    if (k === "rave") { for (let i = 0; i < 6; i++) { const L = document.createElement("b"); L.style.cssText = `left:${8 + i * 17}%;animation-delay:-${(i * 0.7).toFixed(1)}s;--h:${i % 2 ? "#ff3ea5" : "#20f0ff"}`; fx.appendChild(L); } }
+    else { const n = k === "sweden" ? 40 : 14; for (let i = 0; i < n; i++) { const p = document.createElement("i"); const sc = 0.6 + Math.random() * 0.8;
+      p.style.cssText = `left:${(Math.random() * 100).toFixed(1)}%;animation-duration:${((k === "sweden" ? 8 : 11) + Math.random() * 12).toFixed(1)}s;animation-delay:-${(Math.random() * 20).toFixed(1)}s;transform:scale(${sc.toFixed(2)});opacity:${(0.35 + Math.random() * 0.45).toFixed(2)}`;
+      fx.appendChild(p); } }
+    b.appendChild(fx); } }
+// KING_SKINS: rave lights go full while KAIROS music is playing
+setInterval(async () => { if (prefs.skin !== "rave") return; let live = false; try { const st = (typeof spSdk !== "undefined" && spSdk && spSdk.getCurrentState) ? await spSdk.getCurrentState() : null; live = !!(st && !st.paused); } catch (e) {} document.body.classList.toggle("rave-live", live); }, 3000);
 { const _ct = applyChartTheme; applyChartTheme = function (...a) { _ct(...a); try { waifuUI(); } catch (e) {} }; }
 document.querySelectorAll("#cs-wbg [data-b]").forEach((x) => x.addEventListener("click", () => { try { waifuUI(); } catch (e) {} }));
 setTimeout(() => { try { waifuUI(); } catch (e) {} }, 0);

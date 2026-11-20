@@ -1176,21 +1176,46 @@ body.waifu{--bg:#0f0d14;--bg2:#13101a;--panel:rgba(22,18,28,.74);--panel2:rgba(2
   --line:rgba(255,190,214,.13);--edge:rgba(255,190,214,.12);--edge-hi:rgba(255,190,214,.2);--txt:#fbeef3;--mut:#c6a9b8;--mut2:#8f7686;
   --acc:#ff9ec4;--acc2:#e9779f;--up:#ffb3cb;--dn:#9fb3d9;--warn:#ffd88a;
   background:#0f0d14 var(--wbgimg,none) center/cover fixed no-repeat}
-body.waifu::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 90% at 50% 0%,rgba(255,170,205,.10),rgba(10,8,14,.55) 70%),rgba(12,9,16,.38);backdrop-filter:blur(6px)}
-body.waifu #app{position:relative;z-index:1;background:transparent}
-body.waifu .rail,body.waifu header.top,body.waifu .tbar,body.waifu .tools,body.waifu .side,body.waifu .cfoot,body.waifu .bottom,body.waifu .fchat,body.waifu .card,body.waifu .acard,body.waifu .setc,body.waifu .jpagebox,body.waifu .botpop{
+body.skinon{background:#07090d var(--wbgimg,none) center/cover fixed no-repeat}
+body.skinon::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 90% at 50% 0%,rgba(255,170,205,.10),rgba(10,8,14,.55) 70%),rgba(12,9,16,.38);backdrop-filter:blur(6px)}
+body.skinon #app{position:relative;z-index:1;background:transparent}
+body.skinon .rail,body.skinon header.top,body.skinon .tbar,body.skinon .tools,body.skinon .side,body.skinon .cfoot,body.skinon .bottom,body.skinon .fchat,body.skinon .card,body.skinon .acard,body.skinon .setc,body.skinon .jpagebox,body.skinon .botpop{
   background:var(--panel)!important;backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25);border-color:var(--line)!important}
-body.waifu .card,body.waifu .acard,body.waifu .setc{border-radius:18px;box-shadow:0 8px 28px rgba(40,10,30,.35),inset 0 1px 0 rgba(255,220,235,.08)}
+body.skinon .card,body.skinon .acard,body.skinon .setc{border-radius:18px;box-shadow:0 8px 28px rgba(40,10,30,.35),inset 0 1px 0 rgba(255,220,235,.08)}
 body.waifu button.buy,body.waifu #pbuy{background:linear-gradient(180deg,#ffc2d6,#f08bb0)!important;color:#3a1426!important;box-shadow:0 4px 16px rgba(240,139,176,.35)}
 body.waifu button.sell,body.waifu #psell{background:linear-gradient(180deg,#b9c9ec,#7f96c6)!important;color:#141c33!important;box-shadow:0 4px 16px rgba(127,150,198,.35)}
 body.waifu button.buy,body.waifu button.sell,body.waifu .seg,body.waifu .seg button{border-radius:999px}
-body.waifu select,body.waifu input:not([type=range]):not([type=checkbox]):not([type=color]){background-color:rgba(30,22,36,.8);border-color:var(--edge)}
+body.skinon select,body.skinon input:not([type=range]):not([type=checkbox]):not([type=color]){background-color:rgba(30,22,36,.8);border-color:var(--edge)}
 body.waifu .seg button.on,body.waifu .seg button.sel{background:rgba(255,158,196,.2)!important;color:#ffd6e6!important}
-body.waifu ::selection{background:rgba(255,158,196,.35)}
-body.waifu *{scrollbar-color:rgba(255,158,196,.35) transparent}
+body.skinon ::selection{background:rgba(255,158,196,.35)}
+body.skinon *{scrollbar-color:rgba(255,158,196,.35) transparent}
 /* falling petals */
 #wpetals{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;display:none}
-body.waifu #wpetals{display:block}
+body.skinon #wpetals{display:block}
 #wpetals i{position:absolute;top:-24px;width:12px;height:9px;border-radius:12px 1px 12px 1px;background:linear-gradient(135deg,#ffd7e5,#ff9ec4);opacity:.75;animation:wpet linear infinite}
 @keyframes wpet{0%{transform:translate3d(0,-20px,0) rotate(0)}50%{transform:translate3d(-40px,52vh,0) rotate(200deg)}100%{transform:translate3d(30px,108vh,0) rotate(420deg)}}
 @media (prefers-reduced-motion:reduce){#wpetals{display:none!important}}
+
+/* KING_SKINS (Nov 20): Will's hardcore Sweden + Ryan's rave. Same glass layer as Waifu, own colors and effects. */
+body.skin-sweden{--bg:#081322;--panel:rgba(8,20,36,.76);--panel2:rgba(12,26,44,.8);--glass:rgba(10,24,42,.66);--line:rgba(254,204,2,.14);--edge:rgba(127,176,230,.16);--edge-hi:rgba(254,204,2,.25);
+  --txt:#eef3f8;--mut:#9fb3c8;--mut2:#6f849b;--acc:#fecc02;--acc2:#2f6fb5;--up:#fecc02;--dn:#7fb0e6;--warn:#ffe27a}
+body.skin-sweden .card,body.skin-sweden .acard,body.skin-sweden .setc{border-radius:6px;border-top:2px solid rgba(254,204,2,.55)!important}
+body.skin-sweden button.buy,body.skin-sweden #pbuy{background:linear-gradient(180deg,#ffd93a,#e0b400)!important;color:#0b1a2c!important;font-weight:900}
+body.skin-sweden button.sell,body.skin-sweden #psell{background:linear-gradient(180deg,#3d82cc,#1f5a9a)!important;color:#fff!important;font-weight:900}
+body.skin-sweden header.top{box-shadow:inset 0 -3px 0 rgba(254,204,2,.6),inset 0 -6px 0 rgba(47,111,181,.6)}
+body.skin-sweden #wpetals i{width:5px;height:5px;border-radius:50%;background:#f4f8ff;opacity:.7;animation-name:wsnow}
+@keyframes wsnow{0%{transform:translate3d(0,-20px,0)}50%{transform:translate3d(18px,52vh,0)}100%{transform:translate3d(-12px,108vh,0)}}
+body.skin-rave{--bg:#040509;--panel:rgba(6,8,14,.78);--panel2:rgba(10,12,20,.82);--glass:rgba(8,10,18,.66);--line:rgba(32,240,255,.14);--edge:rgba(32,240,255,.16);--edge-hi:rgba(255,62,165,.3);
+  --txt:#effcff;--mut:#9cc3cf;--mut2:#5f8592;--acc:#20f0ff;--acc2:#ff3ea5;--up:#20f0ff;--dn:#ff3ea5;--warn:#ffe94d}
+body.skin-rave .card,body.skin-rave .acard,body.skin-rave .setc{box-shadow:0 0 0 1px rgba(32,240,255,.18),0 0 24px rgba(32,240,255,.08)}
+body.skin-rave button.buy,body.skin-rave #pbuy{background:linear-gradient(180deg,#5ff6ff,#12c6d6)!important;color:#021014!important;box-shadow:0 0 18px rgba(32,240,255,.55)}
+body.skin-rave button.sell,body.skin-rave #psell{background:linear-gradient(180deg,#ff6cbc,#e01f86)!important;color:#fff!important;box-shadow:0 0 18px rgba(255,62,165,.55)}
+body.skin-rave header.top{animation:rvbeat .46875s ease-out infinite}
+@keyframes rvbeat{0%{box-shadow:inset 0 -2px 0 rgba(32,240,255,.9),0 0 22px rgba(32,240,255,.25)}100%{box-shadow:inset 0 -2px 0 rgba(32,240,255,.25),0 0 0 rgba(32,240,255,0)}}
+body.skin-rave #wpetals b{position:absolute;bottom:-10vh;width:3px;height:140vh;transform-origin:50% 100%;background:linear-gradient(0deg,var(--h),transparent 85%);opacity:.22;filter:blur(1px);mix-blend-mode:screen;animation:rvlaser 3.75s ease-in-out infinite alternate}
+body.skin-rave.rave-live #wpetals b{opacity:.42;animation-duration:1.875s}
+@keyframes rvlaser{0%{transform:rotate(-38deg)}100%{transform:rotate(38deg)}}
+body.skin-rave::after{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(60% 40% at 50% 0%,rgba(32,240,255,.10),transparent 70%);animation:rvflash .9375s steps(2) infinite}
+body.skin-rave.rave-live::after{animation-duration:.46875s}
+@keyframes rvflash{0%{opacity:.4}100%{opacity:1}}
+@media (prefers-reduced-motion:reduce){body.skin-rave header.top,body.skin-rave::after{animation:none}}
