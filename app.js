@@ -651,7 +651,13 @@ function drawShade(p, g, W, H) {
         g.fillStyle = "rgba(122,167,255,.04)";
         for (let k = from; k <= to + 1; k++) { const c = p.candles[k], inS = c && lhm(c.time) >= "09:30" && lhm(c.time) < "16:00";
           if (inS && s0 == null) s0 = k; if ((!inS || k === to + 1) && s0 != null) { const x1 = ts.logicalToCoordinate(s0) - 0.5 * (ts.logicalToCoordinate(s0 + 1) - ts.logicalToCoordinate(s0)), x2 = ts.logicalToCoordinate(k) - 0.5 * (ts.logicalToCoordinate(k + 1) - ts.logicalToCoordinate(k)); if (x1 != null && x2 != null) g.fillRect(x1, 0, x2 - x1, H); s0 = null; } } } }
+    // KING_BOXUNDER: trade-box fills sit under the candles (like TradingView); lines + labels stay on top
+    if (!prefs.hideDraw) for (const d of drawings) { if ((d.type !== "long" && d.type !== "short") || !(d.pane === p.i || (SHARED.includes(d.type) && paneSym(d.pane) === paneSym(p)))) continue;
+      try { posFill(p, g, d, W); } catch (e) {} }
 }
+function posFill(p, g, d, W) { const x1 = xOf(p, d.a.t), x2 = xOf(p, d.b.t), xa = x1 ?? 0, xb = x2 ?? W, ye = yOf(p, d.entry), ys = yOf(p, d.sl), yt = yOf(p, d.tp); if (ye == null || ys == null || yt == null) return;
+  const live = d.state === "armed" || d.state === "filled", done = d.state === "done", zA = prefs.zA || 0, a = zA ? (done ? zA * .3 : zA) : done ? 0.06 : live ? 0.22 : 0.14;
+  g.fillStyle = UPC(a); g.fillRect(xa, Math.min(ye, yt), xb - xa, Math.abs(yt - ye)); g.fillStyle = DNC(a); g.fillRect(xa, Math.min(ye, ys), xb - xa, Math.abs(ys - ye)); }
 function drawOverlay(p, g, W, H) {
     try { paintStudies(p, g, W, H); } catch (e) {}
     const all = prefs.hideDraw ? [] : drawings.filter((d) => d.pane === p.i || (SHARED.includes(d.type) && paneSym(d.pane) === paneSym(p)));
@@ -726,8 +732,7 @@ function drawOne(p, g, d, W, H) {
   if (d.type === "long" || d.type === "short") {
     const xa = x1 ?? 0, xb = x2 ?? W, ye = yOf(p, d.entry), ys = yOf(p, d.sl), yt = yOf(p, d.tp); if (ye == null || ys == null || yt == null) return;
     const live = d.state === "armed" || d.state === "filled", done = d.state === "done";
-    const zA = prefs.zA || 0; /* KING_ZSAT */ g.fillStyle = UPC(zA ? (done ? zA * .3 : zA) : done ? 0.06 : live ? 0.22 : 0.14); g.fillRect(xa, Math.min(ye, yt), xb - xa, Math.abs(yt - ye));
-    g.fillStyle = DNC(zA ? (done ? zA * .3 : zA) : done ? 0.06 : live ? 0.22 : 0.14); g.fillRect(xa, Math.min(ye, ys), xb - xa, Math.abs(ys - ye));
+    if (d.preview) posFill(p, g, d, W);   // fills are drawn under the candles in drawShade (KING_BOXUNDER); preview while placing stays on top
     g.strokeStyle = live ? "#fff" : "rgba(255,255,255,.6)"; g.setLineDash(d.state === "armed" ? [6, 4] : []); g.beginPath(); g.moveTo(xa, ye); g.lineTo(xb, ye); g.stroke(); g.setLineDash([]);
     const risk = Math.abs(d.entry - d.sl), q = posQty(d), rr = Math.abs(d.tp - d.entry) / (risk || 1);
     const tag = d.state === "armed" ? "ARMED · auto-entry" : d.state === "filled" ? "IN TRADE" : d.state === "done" ? "DONE" : "right-click → Arm";
