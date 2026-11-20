@@ -30,8 +30,11 @@ async def main():
         await pg.click('[data-view="trade"]')
         # step / play / back
         t0 = await E("nowT()"); await pg.keyboard.press("ArrowRight"); t1 = await E("nowT()"); check("arrow right steps", t1 > t0)
-        await pg.keyboard.press("ArrowLeft"); check("arrow left steps back", await E("nowT()") < t1)
-        await E("document.getElementById('speed').value='120'"); await pg.click("#play"); await pg.wait_for_timeout(1500); await pg.click("#play"); check("play advances", await E("nowT()") > t1)
+        await pg.keyboard.press("ArrowLeft"); t2 = await E("nowT()"); check("arrow left steps back", t2 < t1)
+        await E("document.getElementById('speed').value='120'"); await pg.click("#play"); await pg.wait_for_timeout(1500); await pg.click("#play"); check("play advances", await E("nowT()") > t2)
+        # KING_PERF4: 30s plays in real time (120x = 1 s of market per 1/120 s), it used to run ~6x too fast
+        await E("setPaneTf(active,'30s')"); await pg.wait_for_timeout(400); a = await E("nowT()"); await pg.click("#play"); await pg.wait_for_timeout(3000); await pg.click("#play")
+        d = await E("nowT()") - a; check("30s plays near real time at 120x", 180 <= d <= 600, d); await E("setPaneTf(active,'5m')"); await pg.wait_for_timeout(300)
         # timeframes + layouts
         for tf in ["15s","30s","1m","15m","1h","4h","1D","5m"]:
             await E(f"setPaneTf(active,'{tf}')"); await pg.wait_for_timeout(250); n = await E("panes[active].candles.length"); check(f"timeframe {tf} draws", n > 0, n)

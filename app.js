@@ -280,7 +280,7 @@ function stepBack() {
 }
 function play() { if (timer) return pause(); $("play").textContent = "⏸";
   const tick = async () => { const mult = +$("speed").value || 1, sp = Math.max(40, Math.round((stepSec() * 1000) / mult)) /* KING_SPEED2: real-time multiples, 1x = 60 s per 1m candle, 30x = 2 s, 60x = 1 s, 120x = 0.5 s; same on every timeframe */, an = prefs.live1s !== false && sp >= 150 ? Math.round(sp * 0.85) : 0;   // KING_1S: most of each step is spent forming the candle
-    await stepUnit(true, an); followLive(); if (timer) timer = setTimeout(tick, Math.max(0, sp - an)); };
+    const t0 = performance.now(); await stepUnit(true, an); followLive(); if (timer) timer = setTimeout(tick, Math.max(0, sp - (performance.now() - t0))); };   // KING_PERF4: wait only what's left of this step
   timer = setTimeout(tick, 0); }
 function pause() { clearTimeout(timer); timer = null; $("play").textContent = "▶"; }
 
@@ -1245,7 +1245,14 @@ async function stepCandle(sec) {   // KING_STEPTF (King, Nov 14): play out one w
   rebuildAll(); }
 function stepSec() { const v = $("stepsz").value, p = panes[active]; return v === "sync" ? (p ? p.sec : 60) : +v; }
 async function stepUnit(ui = true, anim = 0) { const s = stepSec(), p = panes[active]; const baseSec = p && p.sec < 60 ? 15 : 60;
-  if (s <= baseSec) return stepFwd(ui, anim); return stepCandle(s); }
+  if (s <= baseSec) return stepFwd(ui, anim);
+  // KING_PERF4 (fix #4): short multiples of the base bar (30s on 15s data, up to 5m on 1m data) play bar by bar with the live-forming animation,
+  // so the play timer stays real-time (it used to subtract animation time that never ran: 30s played ~6x too fast) and we skip the full rebuild each tick.
+  const k = Math.round(s / baseSec), base = baseSec === 15 ? B["15s"] : B["1m"];
+  if (anim && k <= 5 && p && p.candles.length) { let g;
+    for (let n = 0; n < k; n++) { g = await stepFwd(ui, Math.round(anim / k)); if (g === false) break; const nx = base.bars[base.i + 1]; if (!nx || bucket(loc(nx.t), s) !== bucket(loc(nowT()), s)) break; }
+    return g; }
+  return stepCandle(s); }
 
 /* ---------------- first-run tour + help ---------------- */
 function helpDlg() { const K = prefs.keys, rows = [["Play / pause", "Space"], ["Step forward / back", "→ / ←"], ["Buy / sell market", (K.buy + " / " + K.sell).toUpperCase()], ["Join bid / ask", (K.joinbid + " / " + K.joinask).toUpperCase()], ["Close / reverse", (K.close + " / " + K.reverse).toUpperCase()], ["Flatten / cancel all", (K.flatten + " / " + K.cancel).toUpperCase()],
