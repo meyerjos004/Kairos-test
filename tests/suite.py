@@ -1,5 +1,7 @@
 import asyncio, json, sys
 exec(open('/home/claude/shot/shot3.py').read().split('async def main')[0])
+import os
+if os.environ.get('LCJS'): LC = open(os.environ['LCJS']).read()
 FAIL=[]; OK=[]
 def check(name, cond, info=""):
     (OK if cond else FAIL).append(name + ("" if cond else "  -> " + str(info)))

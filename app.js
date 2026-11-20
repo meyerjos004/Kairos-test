@@ -1,3 +1,9 @@
+// KING_LC5 (spike): run on Lightweight Charts 5 with the v4 calls the app already uses (addXSeries, setMarkers, markers)
+(function () { const LW = window.LightweightCharts; if (!LW || !LW.CandlestickSeries || LW.__k5) return; const cc = LW.createChart;
+  const wrap = (el, o) => { const ch = cc(el, o), map = { addCandlestickSeries: LW.CandlestickSeries, addLineSeries: LW.LineSeries, addHistogramSeries: LW.HistogramSeries, addAreaSeries: LW.AreaSeries, addBarSeries: LW.BarSeries, addBaselineSeries: LW.BaselineSeries };
+    for (const [k, T] of Object.entries(map)) ch[k] = (opts) => { const s = ch.addSeries(T, opts); let mk = null, cur = []; s.setMarkers = (m) => { cur = m || []; if (!mk) mk = LW.createSeriesMarkers(s, cur); else mk.setMarkers(cur); }; s.markers = () => cur; return s; };
+    return ch; };
+  try { LW.createChart = wrap; } catch (e) {} if (LW.createChart !== wrap) window.LightweightCharts = Object.assign({}, LW, { createChart: wrap, __k5: 1 }); })();
 /* Rewind v0.4: bar-by-bar futures replay that works like a prop-firm trading station.
    - 1 to 8 synced charts (any timeframe each), canvas drawing layer (trend, ray, h-line, h-ray, v-line, zone, fib, long/short position, measure, text)
    - Long/Short position tool can be ARMED: it places the entry order with its own stop + target and fills automatically (FX Replay style)
