@@ -72,7 +72,7 @@ const CHART_THEMES = {
     light: { bg: "#c0b39b", grid: "#b6a991", txt: "#4a4438", up: "#ffffff", dn: "#3f3f3d", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#1a1a1a", ray: "#1a1a1a", channel: "#1a1a1a", hline: "#1a1a1a", hray: "#1a1a1a", rect: "#8a8578", fib: "#1a1a1a", text: "#1a1a1a", arrow: "#2f5fd0" } },
     dark: { bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#c54557", zDn: "#8a8578", zA: .6, tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } },
     // KING_WAIFU (Ben, Nov 20): anime backdrop + picture candles. Art is original, made on King's PC.
-    waifu: { waifu: true, bg: "#15161c", grid: "#2a2c34", txt: "#e8e2d6", up: "#ffe3ea", dn: "#9fb0cf", bord: true, bu: "#ffffff", bd: "#c9d3e6", wu: "#f4f1ea", wd: "#c9d3e6", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#f5efe2", ray: "#f5efe2", channel: "#f5efe2", hline: "#f5efe2", hray: "#f5efe2", rect: "#c9d3e6", fib: "#f5efe2", text: "#ffffff", arrow: "#8fb4ff" } } }] };
+    waifu: { waifu: true, bg: "#15161c", grid: "#2a2c34", txt: "#e8e2d6", up: "#ffd1dc", dn: "#8fa3c8", bord: true, bu: "#ffd1dc", bd: "#8fa3c8", wu: "#ffd1dc", wd: "#8fa3c8", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#f5efe2", ray: "#f5efe2", channel: "#f5efe2", hline: "#f5efe2", hray: "#f5efe2", rect: "#c9d3e6", fib: "#f5efe2", text: "#ffffff", arrow: "#8fb4ff" } } }] };
 const WAIFU = { bgs: ["bg1", "bg2", "bg3", "bg4"], up: ["up1", "up2", "up3", "up4"], dn: ["dn1", "dn2", "dn3", "dn4"], img: {} };
 function wImg(n, ext) { let im = WAIFU.img[n]; if (im) return im.complete && im.naturalWidth ? im : null;
   im = WAIFU.img[n] = new Image(); im.decoding = "async"; im.onload = () => { try { repaintAll(); } catch (e) {} }; im.src = "assets/waifu/" + n + "." + ext; return null; }
@@ -88,7 +88,11 @@ function waifuPaint(p, g, W, H) { const bgN = WAIFU.bgs.includes(prefs.waifuBg) 
   for (let k = from; k <= to; k++) { const c = p.candles[k], x = ts.logicalToCoordinate(k); if (x == null) continue;
     const yo = p.series.priceToCoordinate(c.open), yc = p.series.priceToCoordinate(c.close); if (yo == null || yc == null) continue;
     const up = c.close >= c.open, top = Math.min(yo, yc), h = Math.max(1, Math.abs(yc - yo)), set = up ? WAIFU.up : WAIFU.dn, n = set[Math.floor(c.time / p.sec) % set.length], im = bw >= 3 && h >= 3 ? wImg(n, "webp") : null;
-    if (im) wSkin(g, im, Math.round(x - bw / 2), top, bw, h); else { g.fillStyle = up ? prefs.up : prefs.dn; g.fillRect(Math.round(x - bw / 2), top, bw, h); } } }
+    if (im) wSkin(g, im, Math.round(x - bw / 2), top, bw, h); else { g.fillStyle = wAvg(n) || (up ? prefs.up : prefs.dn); g.fillRect(Math.round(x - bw / 2), top, bw, h); } } }
+// zoomed far out a candle is too thin for a picture, so it takes that picture's main color (still "the same picture", just tiny)
+function wAvg(n) { const c = WAIFU.avg || (WAIFU.avg = {}); if (c[n]) return c[n]; const im = wImg(n, "webp"); if (!im) return null;
+  try { const cv = document.createElement("canvas"); cv.width = 8; cv.height = 14; const x = cv.getContext("2d"); x.drawImage(im, 0, 0, 8, 14); const d = x.getImageData(0, 0, 8, 14).data; let r = 0, g = 0, b = 0;
+    for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; } const k = d.length / 4; return (c[n] = `rgb(${(r / k) | 0},${(g / k) | 0},${(b / k) | 0})`); } catch (e) { return (c[n] = null); } }
 function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) return; mode = T[1][mode] ? mode : Object.keys(T[1])[0]; const c = T[1][mode];
   prefs.up = c.up; prefs.dn = c.dn; prefs.zUp = c.zUp; prefs.zDn = c.zDn; prefs.zA = c.zA || 0; prefs.toolCols = Object.assign({}, c.tools); prefs.toolCol = c.tools.trend;
   prefs.cs = Object.assign({}, prefs.cs || {}, { bgk: c.waifu ? "waifu" : "solid", bg1: c.bg, bg2: c.bg, gridc: c.grid, txc: c.txt, lnc: c.grid, bord: !!c.bord, bu: c.bu || c.up, bd: c.bd || c.dn, wu: c.wu || "", wd: c.wd || "", body: !c.waifu });
