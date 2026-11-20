@@ -3,7 +3,7 @@ import os
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # KING_JOURNAL tests: run with python3 tests/journal.py
 exec(open('/home/claude/shot/shot3.py').read().split('async def main')[0])
 import os
-if os.environ.get('LCJS'): LC = open(os.environ['LCJS']).read()
+LC = open(os.environ.get('LCJS', '/home/claude/shot/lc5.js')).read()   # KING_LC5: test the engine that ships (5.3)
 OK=[];FAIL=[]
 def check(n,c,i=""): (OK if c else FAIL).append(n+("" if c else "  -> "+str(i)))
 async def main():
