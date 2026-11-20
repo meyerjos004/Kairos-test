@@ -82,7 +82,8 @@ function wSkin(g, im, x, y, w, h) { const iw = im.naturalWidth, ih = im.naturalH
   g.drawImage(im, sx, sy, sw, sh, x, y, w, h); }
 function waifuPaint(p, g, W, H) { const bgN = WAIFU.bgs.includes(prefs.waifuBg) ? prefs.waifuBg : "bg1", bg = wImg(bgN, "jpg");
   if (bg) { const s = Math.max(W / bg.naturalWidth, H / bg.naturalHeight); g.drawImage(bg, (W - bg.naturalWidth * s) / 2, (H - bg.naturalHeight * s) / 2, bg.naturalWidth * s, bg.naturalHeight * s); }
-  g.fillStyle = "rgba(12,13,18," + (prefs.waifuDim ?? 0.62) + ")"; g.fillRect(0, 0, W, H);
+  g.fillStyle = "rgba(12,13,18," + (prefs.waifuDim ?? 0.62) + ")"; g.fillRect(0, 0, W, H); }
+function waifuSkins(p, g, W) {   // after the trade-box fills, so pictures sit on top of them like normal candles do
   const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (!vr || !p.candles.length) return; const sp = ts.options().barSpacing || 6, bw = Math.max(1, Math.floor(sp * 0.8));
   const from = Math.max(0, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to));
   if (bw < 3) return;   // too thin for pictures: the pink/blue edges already draw these candles, skip the extra work
@@ -679,6 +680,7 @@ function drawShade(p, g, W, H) {
     // KING_BOXUNDER: trade-box fills sit under the candles (like TradingView); lines + labels stay on top
     if (!prefs.hideDraw) for (const d of drawings) { if ((d.type !== "long" && d.type !== "short") || !(d.pane === p.i || (SHARED.includes(d.type) && paneSym(d.pane) === paneSym(p)))) continue;
       try { posFill(p, g, d, W); } catch (e) {} }
+    if (prefs.waifu) try { waifuSkins(p, g, W); } catch (e) {}
 }
 function posFill(p, g, d, W) { const x1 = xOf(p, d.a.t), x2 = xOf(p, d.b.t), xa = x1 ?? 0, xb = x2 ?? W, ye = yOf(p, d.entry), ys = yOf(p, d.sl), yt = yOf(p, d.tp); if (ye == null || ys == null || yt == null) return;
   const live = d.state === "armed" || d.state === "filled", done = d.state === "done", zA = prefs.zA || 0, a = zA ? (done ? zA * .3 : zA) : done ? 0.06 : live ? 0.22 : 0.14;
