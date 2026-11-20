@@ -51,6 +51,9 @@ async def main():
                 await pg.wait_for_timeout(100)
                 if await E("drawings.length") >= n0 + 1: ok = True; break
             check(f"place {t}", ok)
+        # KING_MYTHEME: one-tap personal themes set candles, background and per-tool colors (no hard-coded green/red zones)
+        th=await E("(()=>{applyChartTheme('sandslate','dark',true); const a=[prefs.up,prefs.dn,prefs.cs.bg1,prefs.toolCols.hline,UPC(.5)].join(','); applyChartTheme('ryan','light',true); const b=[prefs.up,prefs.cs.bg1,prefs.toolCols.trend].join(','); prefs.chTheme=null; return a+'|'+b})()")
+        check("personal chart themes apply", th=="#e8d9b5,#6f8396,#16181b,#7fd1e0,rgba(232,217,181,0.5)|#097564,#b8b8b8,#4259c1", th)
         await pg.keyboard.press("Escape"); await E("sel = drawings[drawings.length-1]; 1"); await pg.keyboard.press("Delete"); check("delete selected drawing", True)
         # position tool arm -> fills
         await E("cancelAll(); flatten(); drawings=[]; 1"); await E("(()=>{const p=panes[0],lp=last(),d=newDrawing('long',p,{t:loc(nowT()),p:rnd(lp-3)}); d.entry=rnd(lp-3); d.sl=rnd(lp-11); d.tp=rnd(lp+13); armTool(d);})()")

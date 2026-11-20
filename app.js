@@ -53,6 +53,31 @@ const CS_DEF = { prevClr: false, body: true, bord: false, bu: "#2bd4a0", bd: "#f
   cd: false, last: "vl", pdc: "h", pdcc: "#9aa4b2", hl: "h", hlc: "#c4b5fd", ba: "h", bidc: "#3b82f6", askc: "#ff6b7a", dow: false, df: "tv", hf: "24", keepC: true,
   bgk: "none", bg1: "#0b0e14", bg2: "#151a24", gridc: "#ffffff", brk: false, brkc: "#7f8a9c", xc: "#ffffff", xs: "2", wm: true, txc: "#7f8a9c", txs: "11", lnc: "#1c212b", mt: 10, mb: 10, mr: 12,
   oneClick: true, pos: true, rev: true, pnl: true, pnlp: "money", pnlb: "money", exm: true, exl: false, ext: true };
+/* KING_THEMECOL: drawings, FVG zones, position boxes and TP/SL lines follow each person's candle colors (no hard-coded green/red) */
+function hexA(h, a) { h = String(h || "#888888").replace("#", ""); if (h.length === 3) h = h.split("").map((c) => c + c).join(""); const n = parseInt(h.slice(0, 6), 16); return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`; }
+const UPC = (a) => hexA(prefs.zUp || prefs.up, a), DNC = (a) => hexA(prefs.zDn || prefs.dn, a);
+/* KING_MYTHEME (Nov 19): personal chart themes = background, grid, candles, drawing tools and position boxes together, each with dark + light.
+   King picked Sand and slate; Will, Ryan and Ben are matched to their own chart screenshots. Anyone can switch in Chart settings → Symbol → Theme. */
+const CHART_THEMES = {
+  sandslate: ["Sand and slate", {
+    dark: { bg: "#16181b", grid: "#20242a", txt: "#8f969e", up: "#e8d9b5", dn: "#6f8396", bord: false, zUp: "#e8d9b5", zDn: "#6f8396", tools: { trend: "#a9c7e0", ray: "#a9c7e0", channel: "#a9c7e0", hline: "#7fd1e0", hray: "#7fd1e0", rect: "#b7c4cf", fib: "#a9c7e0", text: "#efe9dc", arrow: "#efe9dc" } },
+    light: { bg: "#faf8f3", grid: "#ebe6db", txt: "#6f6a60", up: "#a8894a", dn: "#4f6274", bord: false, zUp: "#a8894a", zDn: "#4f6274", tools: { trend: "#2f6f9a", ray: "#2f6f9a", channel: "#2f6f9a", hline: "#0f8fa6", hray: "#0f8fa6", rect: "#8a99a8", fib: "#2f6f9a", text: "#2b2a26", arrow: "#2b2a26" } } }],
+  will: ["Will's gray", {
+    dark: { bg: "#2c2c2c", grid: "#2c2c2c", txt: "#9a9a9a", up: "#dddee2", dn: "#050505", bord: true, bu: "#050505", bd: "#050505", wu: "#050505", wd: "#050505", zUp: "#6a6a6a", zDn: "#8a4a2c", tools: { trend: "#d7d7d7", ray: "#d7d7d7", channel: "#d7d7d7", hline: "#d7d7d7", hray: "#d7d7d7", rect: "#8c8c8c", fib: "#d7d7d7", text: "#ececec", arrow: "#5d71b0" } },
+    light: { bg: "#ededed", grid: "#e2e2e2", txt: "#606060", up: "#ffffff", dn: "#1a1a1a", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#9a9a9a", zDn: "#a8603a", tools: { trend: "#2a2a2a", ray: "#2a2a2a", channel: "#2a2a2a", hline: "#2a2a2a", hray: "#2a2a2a", rect: "#7a7a7a", fib: "#2a2a2a", text: "#1a1a1a", arrow: "#3f56a8" } } }],
+  ryan: ["Ryan's teal", {
+    light: { bg: "#b8b8b8", grid: "#a9a9a9", txt: "#3a3a3a", up: "#097564", dn: "#0a0a0a", bord: false, zUp: "#097564", zDn: "#c0575f", tools: { trend: "#4259c1", ray: "#4259c1", channel: "#4259c1", hline: "#4259c1", hray: "#4259c1", rect: "#5a5a5a", fib: "#4259c1", text: "#111111", arrow: "#111111" } },
+    dark: { bg: "#1d2022", grid: "#272b2e", txt: "#8e969a", up: "#1aa58d", dn: "#3a3f43", bord: true, bu: "#1aa58d", bd: "#8e969a", wu: "#1aa58d", wd: "#8e969a", zUp: "#1aa58d", zDn: "#c0575f", tools: { trend: "#6f86e8", ray: "#6f86e8", channel: "#6f86e8", hline: "#6f86e8", hray: "#6f86e8", rect: "#8e969a", fib: "#6f86e8", text: "#e6eaec", arrow: "#e6eaec" } } }],
+  ben: ["Ben's tan", {
+    light: { bg: "#c0b39b", grid: "#b6a991", txt: "#4a4438", up: "#ffffff", dn: "#3f3f3d", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#8a8578", zDn: "#cd7972", tools: { trend: "#1a1a1a", ray: "#1a1a1a", channel: "#1a1a1a", hline: "#1a1a1a", hray: "#1a1a1a", rect: "#8a8578", fib: "#1a1a1a", text: "#1a1a1a", arrow: "#2f5fd0" } },
+    dark: { bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#8a8578", zDn: "#cd7972", tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } } }] };
+function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) return; mode = T[1][mode] ? mode : Object.keys(T[1])[0]; const c = T[1][mode];
+  prefs.up = c.up; prefs.dn = c.dn; prefs.zUp = c.zUp; prefs.zDn = c.zDn; prefs.toolCols = Object.assign({}, c.tools); prefs.toolCol = c.tools.trend;
+  prefs.cs = Object.assign({}, prefs.cs || {}, { bgk: "solid", bg1: c.bg, bg2: c.bg, gridc: c.grid, txc: c.txt, lnc: c.grid, bord: !!c.bord, bu: c.bu || c.up, bd: c.bd || c.dn, wu: c.wu || "", wd: c.wd || "" });
+  prefs.chTheme = { id, mode }; try { panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: c.wu || prefs.up, wickDownColor: c.wd || prefs.dn })); csApplyAll(); repaintAll(); } catch (e) {}
+  savePrefs(); if (!quiet) try { toast(T[0] + " · " + (mode === "light" ? "Light" : "Dark")); } catch (e) {} }
+function themeAutoPick() { if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
+  const id = isAdmin ? "sandslate" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true); }
 let csTmp = null, csSnap = null; const execs = [], profs = {};
 const csG = () => Object.assign({}, CS_DEF, (prefs && prefs.cs) || {}, csTmp || {});
 /* ---------------- time (shown in New York time) ---------------- */
@@ -431,7 +456,7 @@ function fibList() { const L = (prefs && Array.isArray(prefs.fibLv) && prefs.fib
 const SHARED = ["hline"];   // horizontal lines show on every chart; everything else stays on the chart it was drawn on
 function setTool(t) { tool = t; pend = null; document.querySelectorAll("[data-tool]").forEach((b) => b.classList.toggle("on", b.dataset.tool === t)); try { tgSync(t); } catch (e) {} panes.forEach((p) => { p.el.style.cursor = t === "cursor" ? "" : "crosshair"; p.chart.applyOptions({ crosshair: { mode: t === "cross" ? 0 : 1 } }); paint(p); }); }
 function newDrawing(type, p, a, b) {
-  const d = { id: did++, type, pane: p.i, a: { ...a }, b: b ? { ...b } : { ...a } }; if (prefs.toolCol && !["long", "short", "measure"].includes(type)) d.color = prefs.toolCol;   // KING_SETUP default tool color
+  const d = { id: did++, type, pane: p.i, a: { ...a }, b: b ? { ...b } : { ...a } }; if (!["long", "short", "measure"].includes(type) && ((prefs.toolCols && prefs.toolCols[type]) || prefs.toolCol)) d.color = (prefs.toolCols && prefs.toolCols[type]) || prefs.toolCol;   /* KING_MYTHEME per-tool colors */   // KING_SETUP default tool color
   if (type === "long" || type === "short") { const s = type === "long" ? 1 : -1;
     { const c = p.candles; if (c && c.length) { const k = Math.max(0, Math.min(c.length - 1, Math.round(idxOf(p, a.t)))); d.a.t = c[k].time; d.a.p = a.p = rnd(c[k].close); a = d.a; } }   // KING_POSSNAP (King, Nov 14): the box starts at the centre of the entry candle and the entry line = that candle's close
     d.b = { t: a.t + p.sec * 30, p: a.p }; d.entry = a.p; d.sl = rnd(a.p - s * prefs.slPts); d.tp = rnd(a.p + s * prefs.tpPts); d.side = s; d.state = "idle"; d.qty = null; }
@@ -576,7 +601,7 @@ function smtFind(tf, sec) { const P = X[smtPartner(sym)]; if (!P || B["1m"].i < 
 function paintSmt(p, g, W, H) { if (!smtOn()) return; const C = smtCfg();
   for (const [tf, sec] of SMT_TFS) { if (!C[tf] || sec < p.sec) continue;
     for (const z of smtFind(tf, sec)) { const x1 = xOf(p, z.t1), x2 = xOf(p, z.t2 + Math.max(0, sec - p.sec)), y1 = yOf(p, z.v1), y2 = yOf(p, z.v2); if (x1 == null || x2 == null || y1 == null || y2 == null || x2 < 0) continue;
-      const col = z.bear ? "#ff6b7a" : "#2bd4a0"; g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 1.6; g.setLineDash([]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
+      const col = z.bear ? prefs.dn : prefs.up; g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineWidth = 1.6; g.setLineDash([]); g.beginPath(); g.moveTo(x1, y1); g.lineTo(x2, y2); g.stroke();
       for (const [x, y] of [[x1, y1], [x2, y2]]) { g.beginPath(); g.arc(x, y, 2.6, 0, 7); g.fill(); }
       g.font = "600 10.5px Geist, sans-serif"; const tx = `SMT ${tf}`, tw = g.measureText(tx).width, lx = (x1 + x2) / 2 - tw / 2 - 5, ly = (y1 + y2) / 2 + (z.bear ? -18 : 6);
       g.fillStyle = "rgba(11,11,16,.85)"; g.fillRect(lx, ly, tw + 10, 15); g.fillStyle = col; g.fillText(tx, lx + 5, ly + 11); g.restore(); } } }
@@ -591,11 +616,11 @@ function paintStudies(p, g, W, H) { const ps = paneSym(p); if (ps !== sym) retur
   const X = (lt) => { const x = xOf(p, lt); return x == null ? 0 : Math.max(0, x); };
   g.save(); g.font = "500 10.5px Geist, sans-serif"; paintSessBoxes(p, g, W, H);
   for (const z of S.h4) { if (p.sec >= 14400) break; const x1 = X(z.t), x2 = Math.min(W, X(z.t + 14400) || W), y1 = yOf(p, z.h), y2 = yOf(p, z.l); if (y1 == null || y2 == null || x2 <= x1) continue;
-    g.strokeStyle = z.c >= z.o ? "rgba(43,212,160,.35)" : "rgba(255,107,122,.35)"; g.lineWidth = 1; g.setLineDash([]); g.strokeRect(x1, y1, x2 - x1, y2 - y1);
-    const yo = yOf(p, z.o), yc = yOf(p, z.c); if (yo != null && yc != null) { g.fillStyle = z.c >= z.o ? "rgba(43,212,160,.06)" : "rgba(255,107,122,.06)"; g.fillRect(x1, Math.min(yo, yc), x2 - x1, Math.abs(yo - yc)); } }
+    g.strokeStyle = z.c >= z.o ? UPC(.35) : DNC(.35); g.lineWidth = 1; g.setLineDash([]); g.strokeRect(x1, y1, x2 - x1, y2 - y1);
+    const yo = yOf(p, z.o), yc = yOf(p, z.c); if (yo != null && yc != null) { g.fillStyle = z.c >= z.o ? UPC(.06) : DNC(.06); g.fillRect(x1, Math.min(yo, yc), x2 - x1, Math.abs(yo - yc)); } }
   for (const z of S.gaps) { const y1 = yOf(p, z.top), y2 = yOf(p, z.bot); if (y1 == null || y2 == null) continue; const x1 = X(z.t0), x2 = z.t1 ? Math.min(W, X(z.t1)) : W; if (x2 <= x1) continue;
-    const up = z.dir > 0, a1 = z.t1 ? 0.045 : z.ob ? 0.07 : 0.09; g.fillStyle = up ? `rgba(43,212,160,${a1})` : `rgba(255,107,122,${a1})`; g.fillRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1));
-    if (z.inv || z.ob) { g.strokeStyle = up ? "rgba(43,212,160,.5)" : "rgba(255,107,122,.5)"; g.setLineDash(z.ob ? [] : [4, 3]); g.strokeRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1)); g.setLineDash([]); }
+    const up = z.dir > 0, a1 = z.t1 ? 0.045 : z.ob ? 0.07 : 0.09; g.fillStyle = up ? UPC(a1) : DNC(a1); g.fillRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1));
+    if (z.inv || z.ob) { g.strokeStyle = up ? UPC(.5) : DNC(.5); g.setLineDash(z.ob ? [] : [4, 3]); g.strokeRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1)); g.setLineDash([]); }
     g.fillStyle = z.t1 ? "rgba(200,210,225,.3)" : "rgba(200,210,225,.6)"; g.fillText(z.label, x1 + 4, Math.min(y1, y2) + 11); }
   for (const l of S.levels) { const y = yOf(p, l.price); if (y == null || y < 0 || y > H) continue; const x1 = X(l.t0);
     g.strokeStyle = l.col; g.lineWidth = 1; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(x1, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.col; g.fillText(l.label, W - g.measureText(l.label).width - 6, y - 4); }
@@ -610,7 +635,7 @@ function paintStudies(p, g, W, H) { const ps = paneSym(p); if (ps !== sym) retur
     g.strokeStyle = "rgba(200,210,225,.35)"; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x - 14, yo); g.lineTo(x + 14, yo); g.stroke(); g.setLineDash([]);
     g.fillStyle = "rgba(220,228,240,.85)"; g.fillText(P.tf, x - g.measureText(P.tf).width / 2, Math.min(yh, yl) - 6); });
   if (S.po3) { const P = S.po3, x = W - 26, yh = yOf(p, P.h), yl = yOf(p, P.l), yo = yOf(p, P.o), yc = yOf(p, P.c); if ([yh, yl, yo, yc].every((v) => v != null)) {
-      const up = P.c >= P.o; g.strokeStyle = up ? "rgba(43,212,160,.8)" : "rgba(255,107,122,.8)"; g.fillStyle = up ? "rgba(43,212,160,.22)" : "rgba(255,107,122,.22)";
+      const up = P.c >= P.o; g.strokeStyle = up ? UPC(.8) : DNC(.8); g.fillStyle = up ? UPC(.22) : DNC(.22);
       g.beginPath(); g.moveTo(x, yh); g.lineTo(x, yl); g.stroke(); g.fillRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc))); g.strokeRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc)));
       g.fillStyle = "rgba(200,210,225,.6)"; g.fillText("D", x - 3, yh - 5); } }
   g.restore();
@@ -655,7 +680,7 @@ function drawOne(p, g, d, W, H) {
   if (sel && sel.id === d.id && !d.label && ["trend", "ray", "arrow"].includes(d.type) && x2 != null && y2 != null && Math.hypot(x2 - x1, y2 - y1) > 60) { const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; let an = Math.atan2(y2 - y1, x2 - x1); if (an > Math.PI / 2) an -= Math.PI; if (an < -Math.PI / 2) an += Math.PI;
     g.save(); g.translate(mx, my); g.rotate(an); g.font = "500 11.5px Geist, sans-serif"; g.fillStyle = /^#|^rgb/.test(d.color || "") ? d.color : "#2962ff"; g.globalAlpha = 0.85; g.textAlign = "center"; g.fillText("+ Add text", 0, -7); g.restore(); d._addAt = [mx, my]; } else d._addAt = null;   // KING_ADDTEXT
   const dot = (x, y) => { if (on && x != null && y != null) { g.save(); g.setLineDash([]); g.beginPath(); g.arc(x, y, 5, 0, 7); g.fillStyle = "#ffffff"; g.fill(); g.strokeStyle = /^#|^rgb/.test(gold) ? gold : "#2962ff"; g.lineWidth = 1.6; g.stroke(); g.restore(); g.strokeStyle = gold; g.fillStyle = gold; } };
-  if (d.type === "measure") { if (x1 == null || x2 == null || y2 == null) return; const up = d.b.p >= d.a.p; g.fillStyle = up ? "rgba(43,212,160,.13)" : "rgba(255,107,122,.13)";
+  if (d.type === "measure") { if (x1 == null || x2 == null || y2 == null) return; const up = d.b.p >= d.a.p; g.fillStyle = up ? UPC(.13) : DNC(.13);
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); const pts = d.b.p - d.a.p, bars = Math.round((d.b.t - d.a.t) / p.sec);
     g.fillStyle = "#e6eaf0"; g.fillText(`${pts >= 0 ? "+" : ""}${pts.toFixed(2)} pts · ${money(Math.abs(pts) * inst.pt)}/lot · ${(Math.abs(pts) / (prefs.slPts || 1)).toFixed(2)}R · ${bars} bars`, Math.min(x1, x2) + 4, Math.min(y1, y2) - 6); return; }
   if (d.type === "trend" || d.type === "ray") { if (x1 == null || x2 == null || y2 == null) return; let ex = x2, ey = y2;
@@ -679,8 +704,8 @@ function drawOne(p, g, d, W, H) {
       g.beginPath(); g.moveTo(xa, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = g.strokeStyle; g.fillText(`${lab}  ${px2(pr)}`, xa + 4, y - 3); }
     g.strokeStyle = gold; dot(x1, y1); dot(x2, y2); return; }
   if (d.type === "prange" || d.type === "drange") { if (x1 == null || x2 == null || y2 == null) return; const v = d.type === "prange", up = d.b.p >= d.a.p;
-    g.fillStyle = v ? (up ? "rgba(43,212,160,.10)" : "rgba(255,107,122,.10)") : "rgba(122,167,255,.10)"; g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
-    g.strokeStyle = v ? (up ? "#2bd4a0" : "#ff6b7a") : "#7aa7ff"; g.beginPath(); if (v) { const xm = (x1 + x2) / 2; g.moveTo(xm, y1); g.lineTo(xm, y2); } else { const ym = (y1 + y2) / 2; g.moveTo(x1, ym); g.lineTo(x2, ym); } g.stroke();
+    g.fillStyle = v ? (up ? UPC(.10) : DNC(.10)) : "rgba(122,167,255,.10)"; g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+    g.strokeStyle = v ? (up ? prefs.up : prefs.dn) : "#7aa7ff"; g.beginPath(); if (v) { const xm = (x1 + x2) / 2; g.moveTo(xm, y1); g.lineTo(xm, y2); } else { const ym = (y1 + y2) / 2; g.moveTo(x1, ym); g.lineTo(x2, ym); } g.stroke();
     const pts = d.b.p - d.a.p, secs = Math.abs(d.b.t - d.a.t), bars = Math.round(secs / p.sec), dur = secs >= 86400 ? (secs / 86400).toFixed(1) + "d" : secs >= 3600 ? Math.floor(secs / 3600) + "h " + Math.round((secs % 3600) / 60) + "m" : Math.round(secs / 60) + "m";
     const txt = v ? `${pts >= 0 ? "+" : ""}${pts.toFixed(2)} pts · ${((pts / d.a.p) * 100).toFixed(2)}% · ${money(Math.abs(pts) * inst.pt)}/lot` : `${bars} bars · ${dur}`;
     g.font = "600 11px Geist, sans-serif"; const tw = g.measureText(txt).width, tx = (x1 + x2) / 2 - tw / 2 - 6, ty = (v ? Math.min(y1, y2) : Math.max(y1, y2)) + (v ? -22 : 6);
@@ -690,7 +715,7 @@ function drawOne(p, g, d, W, H) {
   if (d.type === "hline") { g.beginPath(); g.moveTo(0, y1); g.lineTo(W, y1); g.stroke(); g.fillText(px2(d.a.p), W - 60, y1 - 4); return; }
   if (d.type === "hray") { if (x1 == null) return; g.beginPath(); g.moveTo(x1, y1); g.lineTo(W, y1); g.stroke(); dot(x1, y1); return; }
   if (d.type === "vline") { if (x1 == null) return; g.beginPath(); g.moveTo(x1, 0); g.lineTo(x1, H); g.stroke(); return; }
-  if (d.type === "text") { if (x1 == null) return; g.font = "600 12px Geist, sans-serif"; g.fillStyle = "#e6eaf0"; g.fillText(d.text, x1, y1); return; }
+  if (d.type === "text") { if (x1 == null) return; g.font = "600 12px Geist, sans-serif"; g.fillStyle = d.color || "#e6eaf0"; g.fillText(d.text, x1, y1); return; }
   if (d.type === "rect") { if (x1 == null || x2 == null || y2 == null) return; const rc = /^#[0-9a-f]{6}$/i.test(d.color || "") ? d.color : "#7aa7ff"; g.fillStyle = rc + Math.round(((d.fill ?? 10) / 100) * 255).toString(16).padStart(2, "0"); g.strokeStyle = d.color ? rc : blue;
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); g.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); dot(x1, y1); dot(x2, y2); return; }
   if (d.type === "fib") { if (y2 == null) return; const xa = Math.min(x1 ?? 0, x2 ?? W);
@@ -701,8 +726,8 @@ function drawOne(p, g, d, W, H) {
   if (d.type === "long" || d.type === "short") {
     const xa = x1 ?? 0, xb = x2 ?? W, ye = yOf(p, d.entry), ys = yOf(p, d.sl), yt = yOf(p, d.tp); if (ye == null || ys == null || yt == null) return;
     const live = d.state === "armed" || d.state === "filled", done = d.state === "done";
-    g.fillStyle = `rgba(43,212,160,${done ? 0.06 : live ? 0.22 : 0.14})`; g.fillRect(xa, Math.min(ye, yt), xb - xa, Math.abs(yt - ye));
-    g.fillStyle = `rgba(255,107,122,${done ? 0.06 : live ? 0.22 : 0.14})`; g.fillRect(xa, Math.min(ye, ys), xb - xa, Math.abs(ys - ye));
+    g.fillStyle = UPC(done ? 0.06 : live ? 0.22 : 0.14); g.fillRect(xa, Math.min(ye, yt), xb - xa, Math.abs(yt - ye));
+    g.fillStyle = DNC(done ? 0.06 : live ? 0.22 : 0.14); g.fillRect(xa, Math.min(ye, ys), xb - xa, Math.abs(ys - ye));
     g.strokeStyle = live ? "#fff" : "rgba(255,255,255,.6)"; g.setLineDash(d.state === "armed" ? [6, 4] : []); g.beginPath(); g.moveTo(xa, ye); g.lineTo(xb, ye); g.stroke(); g.setLineDash([]);
     const risk = Math.abs(d.entry - d.sl), q = posQty(d), rr = Math.abs(d.tp - d.entry) / (risk || 1);
     const tag = d.state === "armed" ? "ARMED · auto-entry" : d.state === "filled" ? "IN TRADE" : d.state === "done" ? "DONE" : "right-click → Arm";
@@ -711,9 +736,9 @@ function drawOne(p, g, d, W, H) {
     const pill = (txt, x, y, bg, fg, bold) => { g.font = (bold ? "700" : "600") + " 11.5px Geist, sans-serif"; const w = g.measureText(txt).width + 16, h = 20; g.fillStyle = bg; g.beginPath(); (g.roundRect ? g.roundRect(x, y, w, h, 6) : g.rect(x, y, w, h)); g.fill(); g.fillStyle = fg; g.fillText(txt, x + 8, y + 14); return w; };
     const head = `${d.side > 0 ? "Long" : "Short"} ${q} @ ${px2(d.entry)}`, sub = `${rr.toFixed(2)}R · risk ${money(risk * q * inst.pt)} · ${tag}`;
     if (!on) return;   // KING_POSHOVER (Nov 12 walkthrough): the text pills only show while you hover or select the position
-    const hw = pill(head, xa + 6, ye - 24, d.side > 0 ? "#2bd4a0" : "#ff5d6c", "#06110c", true); pill(sub, xa + 10 + hw, ye - 24, "rgba(16,20,28,.92)", "#dfe5ee");
+    const hw = pill(head, xa + 6, ye - 24, d.side > 0 ? prefs.up : prefs.dn, "#06110c", true); pill(sub, xa + 10 + hw, ye - 24, "rgba(16,20,28,.92)", "#dfe5ee");
     const tpTxt = `Target ${px2(d.tp)} · +${money(Math.abs(d.tp - d.entry) * q * inst.pt)}`, slTxt = `Stop ${px2(d.sl)} · -${money(risk * q * inst.pt)}`;
-    pill(tpTxt, xa + 6, d.side > 0 ? yt + 4 : yt - 24, "rgba(43,212,160,.9)", "#06110c", true);
+    pill(tpTxt, xa + 6, d.side > 0 ? yt + 4 : yt - 24, UPC(.9), "#06110c", true);
     pill(slTxt, xa + 6, d.side > 0 ? ys - 24 : ys + 4, "rgba(255,93,108,.9)", "#1a0508", true);
     [[xb, ye], [xb, ys], [xb, yt], [xa, ye]].forEach(([x, y]) => dot(x, y));
   }
@@ -979,8 +1004,8 @@ function linesFor(p) {
     const pf = (pts, qty, k) => { if (!C.pnl) return ""; const mode = k === "pos" ? C.pnlp : C.pnlb; if (mode === "pts") return (pts >= 0 ? "+" : "") + pts.toFixed(2) + " pts"; if (mode === "ticks") return (pts >= 0 ? "+" : "") + Math.round(pts / TICK) + " ticks";
       if (mode === "r") return pos.risk ? (pts / pos.risk).toFixed(2) + "R" : "—R"; return money(pts * qty * inst.pt); };
     if (pos.qty) { const q = Math.abs(pos.qty), sd = Math.sign(pos.qty), rk = pos.sl != null ? Math.abs(pos.avg - pos.sl) * q * inst.pt : null; L(pos.avg, "#c9d2df", `${pos.qty > 0 ? "LONG" : "SHORT"} ${q}  ${pf(openPnl() / (q * inst.pt), q, "pos")}${rk != null ? "  · risk " + money(rk) : ""}`, "pos", null, 0);   // KING_RISKLINE
-      if (pos.sl != null) L(pos.sl, "#ff6b7a", (pos.trail ? "TRAIL " : "SL ") + pf((pos.sl - pos.avg) * sd, q, "br"), "sl");
-      if (pos.tp != null) L(pos.tp, "#2bd4a0", "TP " + pf((pos.tp - pos.avg) * sd, q, "br"), "tp"); }
+      if (pos.sl != null) L(pos.sl, prefs.dn, (pos.trail ? "TRAIL " : "SL ") + pf((pos.sl - pos.avg) * sd, q, "br"), "sl");
+      if (pos.tp != null) L(pos.tp, prefs.up, "TP " + pf((pos.tp - pos.avg) * sd, q, "br"), "tp"); }
     for (const o of orders) L(o.price, "#7aa7ff", `${o.side > 0 ? "BUY" : "SELL"} ${o.type.toUpperCase()} ${o.qty}${o.tool ? " · auto" : ""}`, "ord", o);
     if (draft) L(draft.price, "#ffc65c", `DRAFT ${draft.side > 0 ? "BUY" : "SELL"} ${draft.type.toUpperCase()} · drag, then Submit`, "draft", draft);
   }
@@ -2102,7 +2127,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  document.body.classList.toggle("glass", prefs.glass !== false); applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); speedBestUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
+  document.body.classList.toggle("glass", prefs.glass !== false); applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); try { themeAutoPick(); } catch (e) {} loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); speedBestUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().then(() => { const idle = window.requestIdleCallback || ((f) => setTimeout(f, 300)); idle(() => { ensureAhead().catch(() => {}); db.allTrades().then((t) => { jT = jT.length ? jT : t; }).catch(() => {}); }); }).catch(() => {}); }   // KING_PRELOAD: chart + next month + journal load behind the intro animation   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
@@ -3170,7 +3195,7 @@ async function jdChart(t, tf) { const el = $("jd-chart"); if (!el) return; if (j
     const ts = jdC.timeScale(), xa = ts.timeToCoordinate(bucket(loc(t.t_entry), sec)), xe = t.t_exit ? ts.timeToCoordinate(bucket(loc(t.t_exit), sec)) : null, bw = Math.max(6, ts.width() / 90);
     if (xa == null) return; const x1 = xa, x2 = Math.max(x1 + bw * 3, xe != null ? xe : x1 + bw * 20), ye = s.priceToCoordinate(+t.entry);
     const zone = (p, col) => { if (p == null) return; const y = s.priceToCoordinate(+p); if (y == null || ye == null) return; g.fillStyle = col; g.fillRect(x1, Math.min(y, ye), x2 - x1, Math.abs(y - ye)); };
-    zone(t.target, "rgba(43,212,160,.16)"); zone(t.stop, "rgba(255,107,122,.16)");
+    zone(t.target, UPC(.16)); zone(t.stop, DNC(.16));
     const pt = (INST[t.symbol] || inst).pt * (+t.qty || 1), lab = (p, txt, col) => { if (p == null) return; const y = s.priceToCoordinate(+p); if (y == null) return; g.font = "600 11px Geist,sans-serif"; const w = g.measureText(txt).width + 10, yy = Math.max(2, Math.min(el.clientHeight - 18, y - 8)); g.fillStyle = col; g.beginPath(); if (g.roundRect) g.roundRect(x1 + 4, yy, w, 16, 4); else g.rect(x1 + 4, yy, w, 16); g.fill(); g.fillStyle = "#06110c"; g.fillText(txt, x1 + 9, yy + 12); };
     const risk = t.stop != null ? Math.abs(+t.entry - +t.stop) : null, rew = t.target != null ? Math.abs(+t.target - +t.entry) : null;   // KING_JDLABELS: R and $ on the box
     if (rew != null) lab(t.target, `Target ${money(rew * pt)}${risk ? " · " + (rew / risk).toFixed(2) + "R" : ""}`, "#2bd4a0"); if (risk != null) lab(t.stop, `Risk ${money(risk * pt)} · 1R`, "#ff8a96"); if (ye != null) { g.strokeStyle = "rgba(220,226,236,.8)"; g.lineWidth = 1; g.beginPath(); g.moveTo(x1, ye); g.lineTo(x2, ye); g.stroke(); }
@@ -3424,7 +3449,7 @@ function ghostMarks(p, last, first) { if (prefs.ghosts === false || !ghostT.leng
   for (const t of ghostT) { if (mine.has(t.id) || (sess && t.session_id === sess.id)) continue; if (symRoot(t.symbol) !== symRoot(s)) continue;
     const te = bucket(loc(t.t_entry), p.sec); if (te < first || te > last) continue; const won = +t.pnl > 0;
     out.push({ time: te, position: t.dir > 0 ? "belowBar" : "aboveBar", color: t.dir > 0 ? "rgba(61,139,255,.55)" : "rgba(255,77,94,.55)", shape: t.dir > 0 ? "arrowUp" : "arrowDown", text: `👻 ${t.dir > 0 ? "B" : "S"} ${px2(t.entry)}` });
-    if (t.t_exit) { const tx = bucket(loc(t.t_exit), p.sec); if (tx <= last) out.push({ time: tx, position: t.dir > 0 ? "aboveBar" : "belowBar", color: won ? "rgba(43,212,160,.55)" : "rgba(255,107,122,.55)", shape: "circle", text: `👻 ${won ? "+" : ""}${money(+t.pnl)}` }); } }
+    if (t.t_exit) { const tx = bucket(loc(t.t_exit), p.sec); if (tx <= last) out.push({ time: tx, position: t.dir > 0 ? "aboveBar" : "belowBar", color: won ? UPC(.55) : DNC(.55), shape: "circle", text: `👻 ${won ? "+" : ""}${money(+t.pnl)}` }); } }
   return out; }
 { const _cm = csMarks; csMarks = function (p) { const n0 = ghostMarks.n; _cm(p); try { const last = p.candles.length ? p.candles[p.candles.length - 1].time : -1, first = p.candles.length ? p.candles[0].time : Infinity, g = ghostMarks(p, last, first);
     if (!g.length && !p._ghostN) return; const key = "g" + g.length + "|" + p._mkk + "|" + p.sec; if (p._gk === key) return; p._gk = key; p._ghostN = g.length;
@@ -3502,3 +3527,9 @@ function spVolUI() { const box = $("sp-now"); if (!box || !box.querySelector(".s
       prefs.media.big = false; m.classList.remove("big"); Object.assign(m.style, { left: L + "px", top: T + "px", right: "auto" }); prefs.media.w = W; prefs.media.h = H; mediaLook(); },
     () => { const r = m.getBoundingClientRect(); prefs.media.x = r.left; prefs.media.y = r.top; savePrefs(); }); }); })();
 
+
+/* KING_MYTHEME: Chart settings theme picker */
+function chThemeUI() { const t = prefs.chTheme || {}; if ($("cs-theme")) $("cs-theme").value = t.id || ""; document.querySelectorAll("#cs-mode [data-m]").forEach((b) => b.classList.toggle("on", b.dataset.m === (t.mode || "dark"))); }
+if ($("cs-theme")) { $("cs-theme").onchange = (e) => { if (e.target.value) applyChartTheme(e.target.value, (prefs.chTheme && prefs.chTheme.mode) || "dark"); else { prefs.chTheme = null; savePrefs(); } try { csFill(); } catch (er) {} chThemeUI(); };
+  document.querySelectorAll("#cs-mode [data-m]").forEach((b) => (b.onclick = () => { const id = (prefs.chTheme && prefs.chTheme.id) || $("cs-theme").value; if (id) applyChartTheme(id, b.dataset.m); try { csFill(); } catch (er) {} chThemeUI(); }));
+  $("chartsetbtn").addEventListener("click", () => setTimeout(chThemeUI, 0)); }
