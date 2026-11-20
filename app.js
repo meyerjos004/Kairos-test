@@ -85,6 +85,7 @@ function waifuPaint(p, g, W, H) { const bgN = WAIFU.bgs.includes(prefs.waifuBg) 
   g.fillStyle = "rgba(12,13,18," + (prefs.waifuDim ?? 0.62) + ")"; g.fillRect(0, 0, W, H);
   const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (!vr || !p.candles.length) return; const sp = ts.options().barSpacing || 6, bw = Math.max(1, Math.floor(sp * 0.8));
   const from = Math.max(0, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to));
+  if (bw < 3) return;   // too thin for pictures: the pink/blue edges already draw these candles, skip the extra work
   for (let k = from; k <= to; k++) { const c = p.candles[k], x = ts.logicalToCoordinate(k); if (x == null) continue;
     const yo = p.series.priceToCoordinate(c.open), yc = p.series.priceToCoordinate(c.close); if (yo == null || yc == null) continue;
     const up = c.close >= c.open, top = Math.min(yo, yc), h = Math.max(1, Math.abs(yc - yo)), set = up ? WAIFU.up : WAIFU.dn, n = set[Math.floor(c.time / p.sec) % set.length], im = bw >= 3 && h >= 3 ? wImg(n, "webp") : null;
