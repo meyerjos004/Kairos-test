@@ -1168,3 +1168,5 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 
 /* KING_WAIFU: theme row fits Dark/Light/Waifu next to the picker (wraps on narrow dialogs) */
 #cs-theme{min-width:0}#cs-mode{flex:none}#cs-theme+#cs-mode,#cs-mode{white-space:nowrap}
+/* KING_FABHIDE: the floating fix-box button sat on top of dialog buttons on phones (it covered OK in Chart settings) */
+@media (max-width:900px){body:has(#chartset:not(.hidden)) #fxb,body:has(#dlg:not(.hidden)) #fxb{display:none}}
