@@ -29,7 +29,7 @@ def summary(frames, longs):
 
 async def main():
     async with async_playwright() as p:
-        b = await p.chromium.launch(channel="chrome", headless=False, args=["--start-maximized"])
+        b = await p.chromium.launch(channel="chrome", headless=False, args=["--start-maximized", "--disable-renderer-backgrounding", "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows", "--disable-features=CalculateNativeWinOcclusion"])
         ctx = await b.new_context(no_viewport=True); pg = await ctx.new_page()
         await pg.goto(URL); await pg.wait_for_timeout(9000)   # intro + data preload
         await pg.keyboard.press("Escape")
@@ -45,7 +45,7 @@ async def main():
             if worst is None or s["fps"] < worst[2]["fps"]: worst = (tf, sp, s)
         tf, sp, _ = worst
         await b.close()
-        b = await p.chromium.launch(channel="chrome", headless=False, args=["--start-maximized"])
+        b = await p.chromium.launch(channel="chrome", headless=False, args=["--start-maximized", "--disable-renderer-backgrounding", "--disable-background-timer-throttling", "--disable-backgrounding-occluded-windows", "--disable-features=CalculateNativeWinOcclusion"])
         ctx = await b.new_context(no_viewport=True); pg = await ctx.new_page()
         await pg.goto(URL); await pg.wait_for_timeout(9000); await pg.keyboard.press("Escape")
         await pg.evaluate(f"setPaneTf(active,'{tf}')"); await pg.evaluate(f"document.getElementById('speed').value='{sp}'")
