@@ -2869,12 +2869,13 @@ const CSF = { "cs-prevclr": "prevClr", "cs-body": "body", "cs-bord": "bord", "cs
   "cs-cd": "cd", "cs-last": "last", "cs-pdc": "pdc", "cs-pdcc": "pdcc", "cs-hl": "hl", "cs-hlc": "hlc", "cs-ba": "ba", "cs-bidc": "bidc", "cs-askc": "askc", "cs-dow": "dow", "cs-df": "df", "cs-hf": "hf", "cs-keepl": "keepC",
   "cs-bgk": "bgk", "cs-bg1": "bg1", "cs-bg2": "bg2", "cs-gridc": "gridc", "cs-brk": "brk", "cs-brkc": "brkc", "cs-xc": "xc", "cs-xs": "xs", "cs-wm": "wm", "cs-txc": "txc", "cs-txs": "txs", "cs-lnc": "lnc", "cs-mt": "mt", "cs-mb": "mb", "cs-mr": "mr",
   "cs-oneclick": "oneClick", "cs-pos": "pos", "cs-rev": "rev", "cs-pnl": "pnl", "cs-pnlp": "pnlp", "cs-pnlb": "pnlb", "cs-exm": "exm", "cs-exl": "exl", "cs-ext": "ext" };
-function csFill() { const C = csG(); for (const [id, k] of Object.entries(CSF)) { const el = $(id); if (!el) continue; if (el.type === "checkbox") el.checked = !!C[k]; else el.value = C[k] === "" && el.type === "color" ? (k[1] === "u" ? prefs.up : prefs.dn) : C[k]; }
+function csFill() { const C = csG(); try { $("s-up").value = prefs.up; $("s-dn").value = prefs.dn; } catch (e) {}   // KING_CSFILL: body swatches follow the theme too
+  for (const [id, k] of Object.entries(CSF)) { const el = $(id); if (!el) continue; if (el.type === "checkbox") el.checked = !!C[k]; else el.value = C[k] === "" && el.type === "color" ? (k[1] === "u" ? prefs.up : prefs.dn) : C[k]; }
   const T = prefs.csT || {}; $("cs-tpl").innerHTML = '<option value="">Template</option>' + Object.keys(T).map((n) => `<option value="t:${esc(n)}">${esc(n)}</option>`).join("") + '<option value="__save">Save as template…</option><option value="__def">Reset to default</option>'; }
 function csRead() { const o = {}; for (const [id, k] of Object.entries(CSF)) { const el = $(id); if (!el) continue; o[k] = el.type === "checkbox" ? el.checked : el.type === "number" || el.type === "range" ? +el.value : el.value; } return o; }
 $("chartset").addEventListener("input", (e) => { if (!CSF[e.target.id] && !["s-up", "s-dn"].includes(e.target.id)) return; csTmp = csRead(); if (e.target.id === "s-up") prefs.up = e.target.value; if (e.target.id === "s-dn") prefs.dn = e.target.value; csApplyAll(); });
 $("chartset").addEventListener("change", (e) => { if (CSF[e.target.id]) { csTmp = csRead(); csApplyAll(); } });
-$("chartsetbtn").addEventListener("click", () => { csSnap = { cs: JSON.parse(JSON.stringify(prefs.cs || {})), up: prefs.up, dn: prefs.dn }; csTmp = null; csFill(); });
+$("chartsetbtn").addEventListener("click", () => { csSnap = { cs: JSON.parse(JSON.stringify(prefs.cs || {})), up: prefs.up, dn: prefs.dn }; csTmp = null; csFill(); try { chThemeUI(); } catch (e) {} });
 const csCommit = () => { prefs.cs = Object.assign({}, prefs.cs || {}, csRead()); csTmp = null; savePrefs(); csApplyAll(); };
 $("cs-save").addEventListener("click", csCommit, true); $("cs-all").onclick = () => { csCommit(); toast("Applied to all charts"); };
 $("cs-cancel").onclick = () => { if (csSnap) { prefs.cs = csSnap.cs; prefs.up = csSnap.up; prefs.dn = csSnap.dn; } csTmp = null; csApplyAll(); $("chartset").classList.add("hidden"); };
@@ -3572,7 +3573,8 @@ function spVolUI() { const box = $("sp-now"); if (!box || !box.querySelector(".s
 /* KING_MYTHEME: Chart settings theme picker */
 function chThemeUI() { const t = prefs.chTheme || {}, id = t.id || ($("cs-theme") && $("cs-theme").value); if ($("cs-theme")) $("cs-theme").value = t.id || "";
   document.querySelectorAll("#cs-mode [data-m]").forEach((b) => { b.classList.toggle("on", b.dataset.m === (t.mode || "dark")); if (b.dataset.m === "waifu") b.style.display = id === "ben" ? "" : "none"; });
-  const w = $("cs-wbg"); if (w) { w.classList.toggle("hidden", !prefs.waifu); w.querySelectorAll("[data-b]").forEach((b) => b.classList.toggle("on", b.dataset.b === (prefs.waifuBg || "bg1"))); } }
+  const w = $("cs-wbg"); if (w) { w.classList.toggle("hidden", !prefs.waifu); const wr = w.closest(".csr"); if (wr) wr.style.display = prefs.waifu ? "" : "none"; }
+  { document.querySelectorAll("#chartset input.csc").forEach((i) => i._sync && i._sync()); w.querySelectorAll("[data-b]").forEach((b) => b.classList.toggle("on", b.dataset.b === (prefs.waifuBg || "bg1"))); } }
 if ($("cs-theme")) { $("cs-theme").onchange = (e) => { if (e.target.value) applyChartTheme(e.target.value, (prefs.chTheme && prefs.chTheme.mode) || "dark"); else { prefs.chTheme = null; savePrefs(); } try { csFill(); } catch (er) {} chThemeUI(); };
   document.querySelectorAll("#cs-mode [data-m]").forEach((b) => (b.onclick = () => { const id = (prefs.chTheme && prefs.chTheme.id) || $("cs-theme").value; if (id) applyChartTheme(id, b.dataset.m); try { csFill(); } catch (er) {} chThemeUI(); }));
   $("chartsetbtn").addEventListener("click", () => setTimeout(chThemeUI, 0)); }
