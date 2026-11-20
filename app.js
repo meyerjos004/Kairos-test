@@ -73,7 +73,7 @@ const CHART_THEMES = {
     dark: { bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#c54557", zDn: "#8a8578", zA: .6, tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } },
     // KING_WAIFU (Ben, Nov 20): anime backdrop + picture candles. Art is original, made on King's PC.
     waifu: { waifu: true, bg: "#15161c", grid: "#2a2c34", txt: "#e8e2d6", up: "#ffd1dc", dn: "#8fa3c8", bord: true, bu: "#ffd1dc", bd: "#8fa3c8", wu: "#ffd1dc", wd: "#8fa3c8", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#f5efe2", ray: "#f5efe2", channel: "#f5efe2", hline: "#f5efe2", hray: "#f5efe2", rect: "#c9d3e6", fib: "#f5efe2", text: "#ffffff", arrow: "#8fb4ff" } } }] };
-const WAIFU = { bgs: ["bg1", "bg2", "bg3", "bg4"], up: ["up1", "up2", "up3", "up4"], dn: ["dn1", "dn2", "dn3", "dn4"], img: {} };
+const WAIFU = { bgs: ["bg1", "bg2", "bg3", "bg4"], up: ["up1", "up2", "up3", "up4", "up5", "up6", "up7", "up8"], dn: ["dn1", "dn2", "dn3", "dn4", "dn5", "dn6", "dn7", "dn8"], img: {} };
 function wImg(n, ext) { let im = WAIFU.img[n]; if (im) return im.complete && im.naturalWidth ? im : null;
   im = WAIFU.img[n] = new Image(); im.decoding = "async"; im.onload = () => { try { repaintAll(); } catch (e) {} }; im.src = "assets/waifu/" + n + "." + ext; return null; }
 // draws one candle body as a picture: cropped to the body's shape, faces kept near the top. Same picture at every zoom, more detail as it grows.
