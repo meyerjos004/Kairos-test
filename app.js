@@ -101,7 +101,10 @@ function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) 
   prefs.waifu = !!c.waifu;   // KING_WAIFU
   prefs.chTheme = { id, mode }; try { panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: c.wu || prefs.up, wickDownColor: c.wd || prefs.dn })); csApplyAll(); repaintAll(); } catch (e) {}
   savePrefs(); if (!quiet) try { toast(T[0] + " · " + (mode === "light" ? "Light" : mode === "waifu" ? "Waifu" : "Dark")); } catch (e) {} }
-function themeAutoPick() { if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
+// KING_WAIFU: Ben gets a one-time heads-up the first time he opens a build that has Waifu mode
+function waifuHint() { const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase(); if (prefs.waifuHint || !/\bben\b|jinx/.test(n)) return;
+  prefs.waifuHint = 1; savePrefs(); setTimeout(() => { try { toast("New for you: Waifu mode. Chart settings → Theme → Ben's tan → Waifu"); } catch (e) {} }, 4000); }
+function themeAutoPick() { waifuHint(); if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
   const id = isAdmin ? "sandslate" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true); }
 let csTmp = null, csSnap = null; const execs = [], profs = {};
 const csG = () => Object.assign({}, CS_DEF, (prefs && prefs.cs) || {}, csTmp || {});
