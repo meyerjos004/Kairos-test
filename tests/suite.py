@@ -599,7 +599,7 @@ async def main():
         check("replay from candle: No keeps the candles", await E("panes[0].candles.length") == n1)
         # KING_TFKEYS (fix 6): type a number then a letter to change timeframe; s must not sell
         await E("document.activeElement && document.activeElement.blur()")
-        check("tf keys: parse", await E("[tfParse('5'),tfParse('1h'),tfParse('4h'),tfParse('d'),tfParse('7')].join()") == "5m,1h,4h,1D,", await E("[tfParse('5'),tfParse('1h'),tfParse('4h'),tfParse('d'),tfParse('7')].join()"))
+        check("tf keys: parse", await E("[tfParse('5'),tfParse('1h'),tfParse('4h'),tfParse('d'),tfParse('7')].join()") == "5m,1h,4h,1D,5m", await E("[tfParse('5'),tfParse('1h'),tfParse('4h'),tfParse('d'),tfParse('7')].join()"))
         for k in "15": await pg.keyboard.press(k)
         check("tf keys: popup shows what you typed", (await E("document.getElementById('tfpop') && document.getElementById('tfpop').textContent")) not in (None, ""))
         await pg.keyboard.press("Enter"); await pg.wait_for_timeout(500)
@@ -611,7 +611,8 @@ async def main():
         check("tf keys: 5 s does not place a sell", await E("JSON.stringify(typeof pos !== 'undefined' ? pos : null)") == pos0)
         await pg.keyboard.press("5"); await pg.wait_for_timeout(1500)
         check("tf keys: idle 1.2s applies 5m", await E("prefs.tfs[active]") == "5m", await E("prefs.tfs[active]"))
-        check("tf keys: buttons show their key", await E("!!document.querySelector('.tf .tfk')"))
+        check("tf keys: no key hints under the timeframes", await E("!document.querySelector('.tf .tfk')"))
+        check("tf keys: missing timeframes round to the nearest", await E("[tfParse('7'),tfParse('10'),tfParse('2h'),tfParse('40'),tfParse('20s')].join(',')") == "5m,15m,1h,30m,15s", await E("[tfParse('7'),tfParse('10'),tfParse('2h'),tfParse('40'),tfParse('20s')].join(',')"))
         # KING_FAVDOCK (9) + KING_FAVLOOK (7)
         await E("prefs.favShow = true; prefs.favs = ['line','hline','rect','long','short']; delete prefs.favDock; savePrefs(); favUI()"); await pg.wait_for_timeout(200)
         check("fav bar: docked in the timeframe row on desktop", await E("$('favbar').parentElement.classList.contains('tbar') && $('favbar').classList.contains('docked')"))
@@ -620,6 +621,9 @@ async def main():
         await E("prefs.favDock = false; savePrefs(); favUI()"); await pg.wait_for_timeout(250)
         check("fav bar: Float it puts it back on the page, centered", await E("(()=>{const f=$('favbar'),r=f.getBoundingClientRect();return f.parentElement===document.body && Math.abs((r.left+r.right)/2-innerWidth/2)<4})()"))
         await E("delete prefs.favDock; savePrefs(); favUI()")
+        await pg.click("#favpop"); await pg.wait_for_timeout(250); fp1 = await E("prefs.favDock === false && $('favbar').parentElement === document.body")
+        await pg.click("#favpop"); await pg.wait_for_timeout(250); fp2 = await E("prefs.favDock !== false && $('favbar').classList.contains('docked')")
+        check("fav bar: pop-out button floats it and docks it back", fp1 and fp2, (fp1, fp2))
         # KING_PIXTHEMES (8)
         for th in ["pixelblock", "pixelgrid", "pixel8", "pixelterm"]:
             await E(f"applyTheme('{th}')")
@@ -632,6 +636,7 @@ async def main():
         await E("view('trade')"); await pg.wait_for_timeout(300)
         # KING_SPOTREQ (13): demo request flow
         await E("window.REWIND = Object.assign(window.REWIND||{}, {spotify:'x'}); localStorage.removeItem('kz-sp'); spReqMine = undefined; prefs.media.show=true; prefs.media.tab='sp'; mediaUI()"); await pg.wait_for_timeout(500)
+        check("spotify volume: curve hits 0 and 100, small steps stay small", await E("[spCurve(0), spCurve(100), spCurve(10) < 0.01, spCurve(50) < 0.3].join(',')") == "0,1,true,true", await E("[spCurve(0), spCurve(100), spCurve(10), spCurve(50)].join(',')"))
         check("spotify request: ask link shows when not connected", await E("!!document.getElementById('spr-t')"))
         await E("document.getElementById('spr-t').click(); document.getElementById('spr-n').value='Ryan Test'; document.getElementById('spr-e').value='nope'; document.getElementById('spr-s').click()"); await pg.wait_for_timeout(200)
         check("spotify request: bad email is caught", "look right" in await E("document.getElementById('spr-m').textContent"))

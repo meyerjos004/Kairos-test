@@ -355,14 +355,17 @@ function makePane(i) {
 }
 function setActive(i) { active = i; const ps = paneSym(i); if (ps !== sym && X[ps] && swapTo(ps)) { $("sym").value = sym; drawOrders(); try { refresh(); } catch (e) {} panes.forEach(label); } panes.forEach((p) => p.el.classList.toggle("active", p.i === i && panes.length > 1)); tfUI(); scaleUI(); }
 function label(p) { const tf = prefs.tfs[p.i] || "5m", s = paneSym(p); p.el.querySelector(".lname").textContent = `${s} · ${tf} · CME`; p.el.classList.toggle("tradesym", s === sym && panes.length > 1 && new Set(panes.map(paneSym)).size > 1); wmSet(p, true); }
-function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}" title="${n === "1D" ? "Daily" : n} · type ${tfCode(n)}">${n === "1D" ? "D" : n}<span class="tfk">${tfCode(n)}</span></button>`).join(""); }
+function tfUI() { const cur = prefs.tfs[active]; $("tfbar").innerHTML = TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).map(([n]) => `<button class="tf ${n === cur ? "on" : ""}" data-tf="${n}" title="${n === "1D" ? "Daily" : n} · type ${tfCode(n)}">${n === "1D" ? "D" : n}</button>`).join(""); }
 /* KING_TFKEYS (fix 6): Tradesea/TradingView-style interval typing. Type 5 → 5m, 15 → 15m, 1h / 60 → 1h, 4h / 240 → 4h, 15s, D. Hints sit under each timeframe. */
 function tfCode(n) { return n === "1D" ? "D" : n.endsWith("s") ? n.toUpperCase() : n.endsWith("h") ? n.toUpperCase() : n.replace("m", ""); }
 let tfBuf = "", tfBufT = 0;
 function tfParse(b) { b = b.toLowerCase(); if (b === "d") return "1D"; const m = b.match(/^(\d{1,3})([smhd]?)$/); if (!m) return null; const n = +m[1], u = m[2] || "m";
-  const sec = u === "s" ? n : u === "m" ? n * 60 : u === "h" ? n * 3600 : n * 86400, hit = TFS.find(([, v]) => v === sec); return hit ? hit[0] : null; }
+  const sec = u === "s" ? n : u === "m" ? n * 60 : u === "h" ? n * 3600 : n * 86400, hit = TFS.find(([, v]) => v === sec); if (hit) return hit[0];
+  // KING_TFROUND (King, Nov 20): a timeframe we don't have rounds to the nearest one we do (7 → 5m, 10 → 15m, 2h → 1h, 45 → 30m)
+  const ok = TFS.filter(([nm]) => features.sec15 !== false || !nm.endsWith("s")); let best = ok[0];
+  for (const t of ok) if (Math.abs(Math.log(t[1] / sec)) < Math.abs(Math.log(best[1] / sec))) best = t; return best ? best[0] : null; }
 function tfPop(txt) { let el = $("tfpop"); if (!el) { el = document.createElement("div"); el.id = "tfpop"; el.setAttribute("aria-live", "polite"); document.body.appendChild(el); } el.textContent = txt; el.classList.toggle("hidden", !txt); }
-function tfApply() { clearTimeout(tfBufT); const b = tfBuf; tfBuf = ""; tfPop(""); if (!b) return; const tf = tfParse(b);
+function tfApply() { clearTimeout(tfBufT); const b = tfBuf; tfBuf = ""; tfPop(""); if (!b) return; const tf = tfParse(b); if (tf && tfCode(tf).toLowerCase() !== b.toLowerCase() && !(b === "d")) try { toast(`${b.toUpperCase()} → ${tf === "1D" ? "D" : tf}`); } catch (e) {}
   if (!tf || (tf.endsWith("s") && features.sec15 === false)) return toast(`No ${b} chart. Try 15S, 1, 5, 15, 1H, 4H or D`); setPaneTf(active, tf); }
 document.addEventListener("keydown", (e) => {
   if (e.ctrlKey || e.metaKey || e.altKey || ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || e.target.isContentEditable || $("v-trade").classList.contains("hidden") || !$("dlg").classList.contains("hidden")) return;
@@ -826,7 +829,7 @@ function initPointer(p) {
   p.el.addEventListener("pointerdown", (e) => {
     if (e.button !== 0 || e.target.closest(".ptitle,.lname")) return; const { x, y } = pt(e); hideCtx();
     let onAxis = false; try { onAxis = x > p.el.clientWidth - p.chart.priceScale("right").width() - 1 || y > p.el.clientHeight - p.chart.timeScale().height() - 1; } catch (er) {}   // KING_AXISDRAG (Nov 14): dragging the price/time axis only scales the chart
-    if (onAxis) { const l0 = hitLine(p, y); if (!l0) return; }
+    if (onAxis) { const l0 = hitLine(p, y), py0 = pos.qty && paneSym(p) === sym ? yOf(p, pos.avg) : null; if (!l0 && !(py0 != null && Math.abs(py0 - y) < 7 && (pos.sl == null || pos.tp == null))) return; }   // KING_DRAGAXIS: the position tag on the axis can also pull out a stop/target
     if (tool !== "cursor" && tool !== "cross") {
       const a = { t: tOf(p, x), p: pOf(p, y, x) }; if (a.t == null || a.p == null) return;
       if (["hline", "vline", "hray", "text", "long", "short"].includes(tool)) { newDrawing(tool, p, a); if (!e.shiftKey) setTool("cursor"); repaintAll(); e.stopPropagation(); e.preventDefault(); return; }
@@ -842,7 +845,9 @@ function initPointer(p) {
     const { x, y } = pt(e);
     if (pend && pend.pane === p.i) { const t = tOf(p, x), pr = pOf(p, y, x); if (t != null && pr != null) pend.b = { t, p: pr }; paint(p); return; }
     if (!drag) { if (tool === "cursor") { const l = hitLine(p, y), h = !l && hitDrawing(p, x, y); p.el.style.cursor = l ? "ns-resize" : h ? (h.d.locked ? "pointer" : h.h === "move" ? "move" : h.h === "w" ? "ew-resize" : "pointer") : ""; const nh = h ? h.d : null; if (nh !== hov) { hov = nh; repaintAll(); dtbShow(p); } } return; }
-    const pr = pOf(p, y, x), tt = tOf(p, x); if (pr == null || tt == null) return;
+    // KING_DRAGAXIS (King, Nov 20): a stop/target/order line grabbed by its price tag on the axis has no time under the mouse; lines only need the price
+    if (drag.kind === "newbr" || drag.kind === "line") { const pl = p.series.coordinateToPrice(y); if (pl == null) return; drag.pr = rnd(pl); }
+    const pr = (drag.kind === "newbr" || drag.kind === "line") ? drag.pr : pOf(p, y, x), tt = (drag.kind === "newbr" || drag.kind === "line") ? 0 : tOf(p, x); if (pr == null || tt == null) return;
     if (drag.kind === "newbr") { const k = (pr - pos.avg) * Math.sign(pos.qty) > 0 ? "tp" : "sl"; if (pos[k] != null || Math.abs(pr - pos.avg) < TICK) return; pos[k] = rnd(pr); if (k === "sl") pos.risk = Math.abs(pos.avg - pos.sl); drawOrders(); const nl = p.lines.find((z) => z.kind === k); if (nl) drag = { kind: "line", l: nl }; return; }
     if (drag.kind === "line") { const l = drag.l; l.price = pr; l.ref.applyOptions({ price: pr }); if (l.kind === "sl") pos.sl = pr; else if (l.kind === "tp") pos.tp = pr; else if (l.obj) l.obj.price = pr; if (l.kind === "draft") $("o-px").value = pr; return; }
     const { h, snap, a0 } = drag, d = h.d, dp = pr - a0.p, dt = tt - a0.t;
@@ -1055,7 +1060,7 @@ function linesFor(p) {
     const L = (price, color, title, kind, obj, style = 2) => p.lines.push({ ref: p.series.createPriceLine({ price, color, lineWidth: 2, lineStyle: style, title, axisLabelVisible: true, lineVisible: C.ext !== false }), kind, price, obj });
     const pf = (pts, qty, k) => { if (!C.pnl) return ""; const mode = k === "pos" ? C.pnlp : C.pnlb; if (mode === "pts") return (pts >= 0 ? "+" : "") + pts.toFixed(2) + " pts"; if (mode === "ticks") return (pts >= 0 ? "+" : "") + Math.round(pts / TICK) + " ticks";
       if (mode === "r") return pos.risk ? (pts / pos.risk).toFixed(2) + "R" : "—R"; return money(pts * qty * inst.pt); };
-    if (pos.qty) { const q = Math.abs(pos.qty), sd = Math.sign(pos.qty), rk = pos.sl != null ? Math.abs(pos.avg - pos.sl) * q * inst.pt : null; L(pos.avg, "#c9d2df", `${pos.qty > 0 ? "LONG" : "SHORT"} ${q}  ${pf(openPnl() / (q * inst.pt), q, "pos")}${rk != null ? "  · risk " + money(rk) : ""}`, "pos", null, 0);   // KING_RISKLINE
+    if (pos.qty) { const q = Math.abs(pos.qty), sd = Math.sign(pos.qty), rk = pos.sl != null ? Math.abs(pos.avg - pos.sl) * q * inst.pt : null; L(pos.avg, "#c9d2df", rk != null ? "risk " + money(rk) : "", "pos", null, 0);   /* KING_POSTAG: side, qty and P&L moved into the tag on the line */   // KING_RISKLINE
       if (pos.sl != null) L(pos.sl, prefs.dn, (pos.trail ? "TRAIL " : "SL ") + pf((pos.sl - pos.avg) * sd, q, "br"), "sl");
       if (pos.tp != null) L(pos.tp, prefs.up, "TP " + pf((pos.tp - pos.avg) * sd, q, "br"), "tp"); }
     for (const o of orders) L(o.price, "#7aa7ff", `${o.side > 0 ? "BUY" : "SELL"} ${o.type.toUpperCase()} ${o.qty}${o.tool ? " · auto" : ""}`, "ord", o);
@@ -2003,10 +2008,10 @@ function releaseIntro(replay) {
   const start = () => { if (stage !== "note") return; stage = "play"; note.classList.add("out"); vid.classList.add("on");
     vid.muted = prefs.sound === false; const p = vid.play(); if (p && p.catch) p.catch(() => { vid.muted = true; vid.play().catch(toHold); }); };
   vid.addEventListener("ended", toHold); vid.addEventListener("error", () => { if (stage !== "note") toHold(); });
-  el.addEventListener("click", () => { if (stage === "note") start(); else if (stage === "hold") finish(); else if (replay) toHold(); });
+  el.addEventListener("click", () => { if (stage === "note") start(); else if (stage === "hold") finish(); });   // KING_NOSKIP (King, Nov 20): no clicking through the video, even on a replay; it waits for the logo
   addEventListener("keydown", function relKey(e) { if (!document.body.contains(el)) return removeEventListener("keydown", relKey);
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (stage === "note") start(); else if (stage === "hold") finish(); }
-    else if (e.key === "Escape" && replay) finish(); });
+    else if (e.key === "Escape" && replay && stage === "hold") finish(); });
   setTimeout(() => note.focus(), 50); return true; }
 if (!releaseIntro()) splash();
 /* chart build (KING_BUILD v2): colored cursors swim in and build every piece of the screen except the candles; each piece pops in as its
@@ -2877,7 +2882,10 @@ function rollMarks(p) { const c = p.candles, n = c.length; if (n < 50) return []
     out.push({ time: c[i].time, position: "aboveBar", color: "#c08bff", shape: "square", text: "ROLL " + (c[i].open > c[i - 1].close ? "+" : "−") + g.toFixed(2) }); }
   return (p._rm = out); }
 function csMarks(p) { const C = csG(); const s = paneSym(p), last = p.candles.length ? p.candles[p.candles.length - 1].time : -1;
-  const mk = !C.exm ? [] : execs.filter((x) => x.sym === s).map((x) => ({ time: bucket(loc(x.t), p.sec), position: x.side > 0 ? "belowBar" : "aboveBar", color: x.side > 0 ? "#2bd4a0" : "#ff6b7a", shape: x.side > 0 ? "arrowUp" : "arrowDown", text: C.exl ? `${x.side > 0 ? "B" : "S"} ${x.qty} @ ${px2(x.price)}` : "" })).filter((m) => m.time <= last);
+  // KING_ARROWS (King, Nov 20): buy = blue, sell = red, and fills on the same candle + side merge into ONE arrow (they used to stack into a tower)
+  const grp = new Map(); if (C.exm) for (const x of execs) { if (x.sym !== s) continue; const tt = bucket(loc(x.t), p.sec); if (tt > last) continue; const k = tt + "|" + (x.side > 0 ? 1 : -1);
+    const g = grp.get(k) || { time: tt, side: x.side > 0 ? 1 : -1, qty: 0, val: 0 }; g.qty += x.qty || 1; g.val += (x.qty || 1) * x.price; grp.set(k, g); }
+  const mk = [...grp.values()].map((g) => ({ time: g.time, position: g.side > 0 ? "belowBar" : "aboveBar", color: g.side > 0 ? "#3d8bff" : "#ff4d5e", shape: g.side > 0 ? "arrowUp" : "arrowDown", text: C.exl ? `${g.side > 0 ? "B" : "S"} ${g.qty} @ ${px2(g.val / g.qty)}` : "" }));
   const first = p.candles.length ? p.candles[0].time : Infinity, seenR = new Set();   // KING_REALMARKS: skip trades before the loaded data (they piled on the first candle) + duplicates
   if (prefs.showReal !== false && realTrades.length) for (const r of realTrades) { if (r.sym && r.sym !== symRoot(s)) continue; const lt = loc(r.t), dayEnd = Math.floor(lt / 86400) * 86400 + 17 * 3600; if (dayEnd > last || bucket(lt, p.sec) < first) continue;
     const rk = r.url || [r.t, r.side, r.pnl, r.entry].join("|"), rk2 = [r.t, r.side, r.pnl].join("|"); if (seenR.has(rk) || seenR.has(rk2)) continue; seenR.add(rk); seenR.add(rk2);
@@ -2885,7 +2893,7 @@ function csMarks(p) { const C = csG(); const s = paneSym(p), last = p.candles.le
   for (const m of reeseMk) { const tt = bucket(m.t, p.sec); if (tt <= last) mk.push({ time: tt, position: m.position, color: m.color, shape: m.shape, text: m.text }); }   // KING_REESEWIN
   if (prefs.rollMk !== false) for (const m of rollMarks(p)) if (m.time <= last) mk.push(m);   // KING_ROLLMK
   dayRecap(last);
-  mk.sort((a, b) => a.time - b.time); const key = mk.length + "|" + reeseMk.length + "|" + C.exl + "|" + p.sec; if (p._mkk === key) return; p._mkk = key; p._mk = mk.length; try { p.series.setMarkers(mk); } catch (e) {} }
+  mk.sort((a, b) => a.time - b.time); const key = mk.length + "|" + execs.length + "|" + reeseMk.length + "|" + C.exl + "|" + p.sec; if (p._mkk === key) return; p._mkk = key; p._mk = mk.length; try { p.series.setMarkers(mk); } catch (e) {} }
 // the settings window
 const CSF = { "cs-prevclr": "prevClr", "cs-body": "body", "cs-bord": "bord", "cs-bu": "bu", "cs-bd": "bd", "cs-wick": "wick", "cs-wu": "wu", "cs-wd": "wd", "cs-prec": "prec", "cs-title": "title", "cs-titlek": "titleK", "cs-mstat": "mstat", "cs-vals": "vals", "cs-chg": "chg", "cs-lbg": "lbg", "cs-lbga": "lbga",
   "cs-cd": "cd", "cs-last": "last", "cs-pdc": "pdc", "cs-pdcc": "pdcc", "cs-hl": "hl", "cs-hlc": "hlc", "cs-ba": "ba", "cs-bidc": "bidc", "cs-askc": "askc", "cs-dow": "dow", "cs-df": "df", "cs-hf": "hf", "cs-keepl": "keepC",
@@ -3579,7 +3587,11 @@ let spVolT;
 function spVolUI() { const box = $("sp-now"); if (!box || !box.querySelector(".spc") || box.querySelector(".spvol")) return; const v = prefs.media.spVol ?? 70;
   const l = document.createElement("label"); l.className = "spvol"; l.title = "Volume"; l.innerHTML = `<span aria-hidden="true">${v ? "🔊" : "🔇"}</span><input type="range" min="0" max="100" value="${v}" aria-label="Spotify volume">`; box.appendChild(l);
   l.querySelector("input").oninput = (e) => { const n = +e.target.value; prefs.media.spVol = n; l.firstChild.textContent = n ? "🔊" : "🔇"; clearTimeout(spVolT);
-    spVolT = setTimeout(async () => { savePrefs(); try { if (spSdk && spSdk.setVolume) await spSdk.setVolume(n / 100); else await spApi(`/me/player/volume?volume_percent=${n}`, { method: "PUT" }); } catch (x) {} }, 120); }; }
+    spVolT = setTimeout(async () => { savePrefs(); const f = spCurve(n); try { if (spSdk && spSdk.setVolume) await spSdk.setVolume(f); else await spApi(`/me/player/volume?volume_percent=${Math.round(f * 100)}`, { method: "PUT" }); } catch (x) {} }, 60); };
+  // KING_SPVOL (King, Nov 20): the slider reaches 0 and 100 (the window's resize edge was eating the ends) and volume follows your ears, not a straight line
+  const inp = l.querySelector("input"); inp.step = "1"; ["pointerdown", "mousedown", "touchstart"].forEach((ev) => inp.addEventListener(ev, (e) => e.stopPropagation()));
+  inp.addEventListener("wheel", (e) => { e.preventDefault(); inp.value = Math.max(0, Math.min(100, +inp.value + (e.deltaY < 0 ? 2 : -2))); inp.oninput({ target: inp }); }, { passive: false }); }
+function spCurve(n) { n = Math.max(0, Math.min(100, +n || 0)) / 100; return n <= 0 ? 0 : Math.round(Math.pow(n, 2.2) * 1000) / 1000; }   // 50% on the slider ≈ 22% loudness, small steps stay small
 (function mediaEdges() { const m = $("media"); if (!m || m.querySelector(".medge")) return;
   ["n", "s", "e", "w", "ne", "nw", "se", "sw"].forEach((d) => { const h = document.createElement("div"); h.className = "medge medge-" + d; h.dataset.e = d; m.appendChild(h);
     grip(h, (e, st) => { if (prefs.media.pop) return; if (!st.r) st.r = m.getBoundingClientRect(); const r = st.r, dx = e.clientX - st.x, dy = e.clientY - st.y, MW = 300, MH = 220;
@@ -3620,3 +3632,35 @@ setInterval(async () => { if (prefs.skin !== "rave") return; let live = false; t
 { const _ct = applyChartTheme; applyChartTheme = function (...a) { _ct(...a); try { waifuUI(); } catch (e) {} }; }
 document.querySelectorAll("#cs-wbg [data-b]").forEach((x) => x.addEventListener("click", () => { try { waifuUI(); } catch (e) {} }));
 setTimeout(() => { try { waifuUI(); } catch (e) {} }, 0);
+
+// KING_FAVPOP (King, Nov 20): one-click pop out / dock back for the favorites bar (was only in the right-click menu)
+{ const pb = $("favpop"); if (pb) { const sync = () => { const fl = prefs.favDock === false; pb.title = fl ? "Dock the favorites bar back in the top row" : "Pop out the favorites bar"; pb.setAttribute("aria-label", pb.title); pb.classList.toggle("on", fl); };
+  pb.onclick = (e) => { e.stopPropagation(); if (prefs.favDock === false) { delete prefs.favDock; delete prefs.favPos; } else prefs.favDock = false; savePrefs(); favUI(); sync(); try { sfx("tap"); } catch (er) {} };
+  const _f = favUI; favUI = function () { _f(); sync(); }; sync(); } }
+
+// KING_POSTAG (King, Nov 20, from his TradingView screenshot): a tag on the position line with ⇅ reverse, TP and SL you drag
+// straight out of it (drag again to move them), qty + live P&L, and ✕ to close. Works whether or not auto brackets are on.
+const POSTAG = { drag: null };
+function posTag(p) { let el = p.el.querySelector(".postag");
+  const show = pos.qty && paneSym(p) === sym && !p.dead; const y = show ? yOf(p, pos.avg) : null;
+  if (!show || y == null || y < 4 || y > p.el.clientHeight - 30) { if (el) el.classList.add("hidden"); return; }
+  if (!el) { el = document.createElement("div"); el.className = "postag"; el.innerHTML = `<button class="ptrev" title="Reverse the position" aria-label="Reverse">⇅</button><button class="ptbr" data-k="tp" title="Drag up/down to set your target">TP</button><button class="ptbr" data-k="sl" title="Drag up/down to set your stop">SL</button><span class="ptq"></span><span class="ptp"></span><button class="ptx" title="Close the position" aria-label="Close">✕</button>`;
+    p.el.appendChild(el);
+    el.addEventListener("pointerdown", (e) => e.stopPropagation(), true);
+    el.querySelector(".ptrev").onclick = (e) => { e.stopPropagation(); reverse(); };
+    el.querySelector(".ptx").onclick = (e) => { e.stopPropagation(); closeAll(); };
+    el.querySelectorAll(".ptbr").forEach((b) => b.addEventListener("pointerdown", (e) => { e.preventDefault(); e.stopPropagation(); POSTAG.drag = { p, k: b.dataset.k, id: e.pointerId }; b.setPointerCapture(e.pointerId); document.body.classList.add("ptdragging"); })); 
+    el.querySelectorAll(".ptbr").forEach((b) => { b.addEventListener("pointermove", (e) => { const D = POSTAG.drag; if (!D || D.id !== e.pointerId) return; const r = D.p.el.getBoundingClientRect(), pr0 = D.p.series.coordinateToPrice(e.clientY - r.top); if (pr0 == null) return;
+        const pr = rnd(pr0), d = Math.sign(pos.qty); if (!pos.qty) return; const ok = D.k === "tp" ? (pr - pos.avg) * d >= TICK : (pos.avg - pr) * d >= TICK; if (!ok) return;
+        const had = pos[D.k] != null; pos[D.k] = pr; if (D.k === "sl") pos.risk = Math.abs(pos.avg - pr);
+        const l = D.p.lines.find((z) => z.kind === D.k); if (had && l) { l.price = pr; try { l.ref.applyOptions({ price: pr }); } catch (er) { drawOrders(); } } else drawOrders(); });
+      const end = (e) => { const D = POSTAG.drag; if (!D || D.id !== e.pointerId) return; POSTAG.drag = null; document.body.classList.remove("ptdragging"); drawOrders(); refresh(); try { sfx("tap"); } catch (er) {} };
+      b.addEventListener("pointerup", end); b.addEventListener("pointercancel", end); }); }
+  el.classList.remove("hidden");
+  const q = Math.abs(pos.qty), pl = openPnl(), ps = (() => { try { return p.chart.priceScale("right").width(); } catch (e) { return 70; } })();
+  el.style.top = Math.round(y - 11) + "px"; el.style.right = ps + (pos.sl != null ? 96 : 12) + "px";
+  el.classList.toggle("short", pos.qty < 0); el.classList.toggle("win", pl > 0); el.classList.toggle("loss", pl < 0);
+  el.querySelector(".ptq").textContent = (pos.qty > 0 ? "+" : "−") + q;
+  el.querySelector(".ptp").textContent = (pl >= 0 ? "+ " : "− ") + Math.abs(pl).toFixed(2) + " USD";
+  el.querySelector('[data-k="tp"]').classList.toggle("set", pos.tp != null); el.querySelector('[data-k="sl"]').classList.toggle("set", pos.sl != null); }
+{ const _paint = paint; paint = function (p) { const r = _paint.apply(this, arguments); try { posTag(p); } catch (e) {} return r; }; }

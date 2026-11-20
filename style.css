@@ -1219,3 +1219,22 @@ body.skin-rave::after{content:"";position:fixed;inset:0;z-index:0;pointer-events
 body.skin-rave.rave-live::after{animation-duration:.46875s}
 @keyframes rvflash{0%{opacity:.4}100%{opacity:1}}
 @media (prefers-reduced-motion:reduce){body.skin-rave header.top,body.skin-rave::after{animation:none}}
+
+/* KING_FAVPOP */
+#favbar .fbpop{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:2px;padding:0;border-radius:7px;background:transparent;border:1px solid transparent;color:var(--mut);opacity:.7;cursor:pointer}
+#favbar .fbpop:hover{opacity:1;color:var(--txt);border-color:var(--edge)}#favbar .fbpop.on svg{transform:rotate(180deg)}
+@media (max-width:900px){#favbar .fbpop{display:none}}
+/* KING_SPVOL */ .spvol{position:relative;z-index:5;padding:4px 6px}.spvol input[type=range]{width:110px!important;cursor:pointer;touch-action:none}
+/* KING_POSTAG: TradingView-style tag on the position line */
+.postag{position:absolute;z-index:6;display:flex;align-items:center;gap:4px;height:22px;pointer-events:auto;font:600 11px/1 var(--body,Geist,sans-serif);font-variant-numeric:tabular-nums}
+.postag button,.postag span{height:22px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;padding:0 7px;background:rgba(10,12,16,.92);border:1px solid rgba(255,255,255,.22);color:var(--txt);margin:0}
+.postag button{cursor:pointer}.postag button:hover{border-color:rgba(255,255,255,.5)}
+.postag .ptrev{border-color:rgba(255,77,94,.7);color:#ff6b7a}
+.postag .ptbr{cursor:ns-resize}.postag [data-k="tp"]{border-color:rgba(61,139,255,.75);color:#7fb0ff}.postag [data-k="sl"]{border-color:rgba(255,198,92,.75);color:#ffc65c}
+.postag .ptbr.set{opacity:.55}
+.postag .ptq{background:#3d8bff;border-color:#3d8bff;color:#fff;border-radius:5px 0 0 5px;margin-right:-4px}
+.postag.short .ptq{background:#ff4d5e;border-color:#ff4d5e}
+.postag .ptp{border-radius:0;border-color:#3d8bff;min-width:78px}.postag.short .ptp{border-color:#ff4d5e}
+.postag.win .ptp{color:#7fb0ff}.postag.loss .ptp{color:#ff8a96}
+.postag .ptx{border-radius:0 5px 5px 0;margin-left:-4px;border-color:#3d8bff;color:#fff}.postag.short .ptx{border-color:#ff4d5e}
+body.ptdragging,body.ptdragging *{cursor:ns-resize!important}
