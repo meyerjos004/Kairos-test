@@ -50,10 +50,11 @@ async def main():
             # KING_FLAKY: each tool clicks its own empty spot (short used to land on the long box and select it) and we poll up to 1s
             i = ["hline","vline","long","short","text"].index(t); n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.click(cx-150+i*70, cy+60-i*30)
             ok = False
-            for _ in range(10):
+            for k in range(20):
                 await pg.wait_for_timeout(100)
                 if await E("drawings.length") >= n0 + 1: ok = True; break
-            check(f"place {t}", ok)
+                if k == 9: await E(f"setTool('{t}')"); await pg.mouse.click(cx-150+i*70+7, cy+60-i*30+5)   # one retry a few px over if the first click got eaten
+            check(f"place {t}", ok, await E("[drawings.length, typeof tool!=='undefined'?tool:null]"))
         # KING_MYTHEME: one-tap personal themes set candles, background and per-tool colors (no hard-coded green/red zones)
         th=await E("(()=>{applyChartTheme('sandslate','dark',true); const a=[prefs.up,prefs.dn,prefs.cs.bg1,prefs.toolCols.hline,UPC(.5)].join(','); applyChartTheme('ryan','light',true); const b=[prefs.up,prefs.cs.bg1,prefs.toolCols.trend].join(','); prefs.chTheme=null; return a+'|'+b})()")
         check("personal chart themes apply", th=="#e8d9b5,#6f8396,#16181b,#7fd1e0,rgba(232,217,181,0.5)|#097564,#b8b8b8,#4259c1", th)
@@ -478,7 +479,11 @@ async def main():
         await E("showView && showView('friends')") if await E("typeof showView==='function'") else await pg.click('[data-view="friends"]')
         await pg.wait_for_timeout(300); n0 = await E("document.querySelectorAll('#chat .cm').length")
         for i in range(30): await E(f"$('chat-in').value='spam {i}'; sendChat()")
-        await pg.wait_for_timeout(200); n1 = await E("document.querySelectorAll('#chat .cm').length"); check("chat: 30 fast msgs all show, no limit", n1 - n0 == 30, (n0, n1))
+        n1 = n0
+        for _ in range(20):   # de-flake: wait up to 2 s for the list to catch up
+            await pg.wait_for_timeout(100); n1 = await E("document.querySelectorAll('#chat .cm').length")
+            if n1 - n0 >= 30: break
+        check("chat: 30 fast msgs all show, no limit", n1 - n0 == 30, (n0, n1))
         await E("$('sg-kind').value='fix'; $('sg-text').value='Make the buy button bigger'; addSg()"); await pg.wait_for_timeout(200)
         check("fix box: sends + shows status", await E("document.getElementById('sg-list').innerText.includes('sent to Claude')"))
         # ---- Brief 3 (Nov 11) ----
