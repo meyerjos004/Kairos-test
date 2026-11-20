@@ -1163,3 +1163,5 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 
 /* KING_WKDAY: 5-day journal calendar */
 .jwb>.jcal.jcal5{grid-template-columns:repeat(5,minmax(0,1fr)) minmax(0,1.1fr)}
+/* KING_AUDIT20 (night audit, phone 390px): accounts card no longer pokes past the right edge; trade table scrolls sideways instead of clipping Notes */
+@media (max-width:600px){#v-accounts .acdef{max-width:calc(100% - 28px)}#v-journal .tblwrap,.tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch}}
