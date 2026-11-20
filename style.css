@@ -1238,3 +1238,18 @@ body.skin-rave.rave-live::after{animation-duration:.46875s}
 .postag.win .ptp{color:#7fb0ff}.postag.loss .ptp{color:#ff8a96}
 .postag .ptx{border-radius:0 5px 5px 0;margin-left:-4px;border-color:#3d8bff;color:#fff}.postag.short .ptx{border-color:#ff4d5e}
 body.ptdragging,body.ptdragging *{cursor:ns-resize!important}
+/* KING_CMDK: quick actions */
+#cmdk{position:fixed;inset:0;z-index:400;display:flex;justify-content:center;align-items:flex-start;padding-top:14vh;background:rgba(4,5,8,.42);backdrop-filter:blur(3px);animation:ckin .14s ease-out}
+#cmdk.out{opacity:0;transition:opacity .14s}@keyframes ckin{from{opacity:0}}
+#cmdk .ck-box{width:min(620px,94vw);max-height:62vh;display:flex;flex-direction:column;border-radius:16px;background:color-mix(in srgb,var(--panel,#111116) 88%,transparent);backdrop-filter:blur(18px) saturate(1.2);border:1px solid rgb(255 255 255 / .1);box-shadow:0 24px 70px rgb(0 0 0 / .55);overflow:hidden;animation:ckpop .18s cubic-bezier(.2,.9,.3,1.15)}
+@keyframes ckpop{from{transform:translateY(-6px) scale(.985)}}
+#cmdk .ck-in{font:500 17px var(--body,Geist,sans-serif);color:var(--txt);background:transparent;border:0;border-bottom:1px solid rgb(255 255 255 / .08);padding:16px 18px;outline:none}
+#cmdk .ck-list{overflow:auto;padding:6px}
+#cmdk .ck-g{font:600 11px var(--body,Geist,sans-serif);color:var(--mut);padding:10px 12px 4px}
+#cmdk .ck-i{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 12px;border-radius:10px;cursor:pointer;color:var(--txt);font-size:14px}
+#cmdk .ck-i em{font-style:normal;font-size:12px;color:var(--mut)}
+#cmdk .ck-i.on{background:color-mix(in srgb,var(--acc) 18%,transparent)}
+#cmdk .ck-none{padding:18px;color:var(--mut);font-size:14px}
+#cmdk .ck-foot{display:flex;gap:16px;padding:9px 14px;border-top:1px solid rgb(255 255 255 / .07);font-size:12px;color:var(--mut)}
+#cmdk kbd{font:600 11px var(--mono,ui-monospace,monospace);border:1px solid rgb(255 255 255 / .16);border-radius:5px;padding:1px 5px;margin-right:3px}
+@media (prefers-reduced-motion:reduce){#cmdk,#cmdk .ck-box{animation:none}}

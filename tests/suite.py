@@ -624,6 +624,15 @@ async def main():
         await pg.click("#favpop"); await pg.wait_for_timeout(250); fp1 = await E("prefs.favDock === false && $('favbar').parentElement === document.body")
         await pg.click("#favpop"); await pg.wait_for_timeout(250); fp2 = await E("prefs.favDock !== false && $('favbar').classList.contains('docked')")
         check("fav bar: pop-out button floats it and docks it back", fp1 and fp2, (fp1, fp2))
+        # KING_CMDK
+        await pg.keyboard.press("Control+k"); await pg.wait_for_timeout(250)
+        await pg.keyboard.type("15m"); await pg.wait_for_timeout(100); await pg.keyboard.press("Enter"); await pg.wait_for_timeout(500)
+        check("Ctrl+K: type 15m + Enter changes the timeframe", await E("prefs.tfs[active]") == "15m" and await E("!document.getElementById('cmdk')"), await E("prefs.tfs[active]"))
+        await pg.keyboard.press("Control+k"); await pg.wait_for_timeout(250); await pg.keyboard.type("stats"); await pg.keyboard.press("Enter"); await pg.wait_for_timeout(400)
+        check("Ctrl+K: go to a page", await E("document.body.classList.contains('v-stats')"))
+        await E("view('trade')"); await pg.keyboard.press("Control+k"); await pg.wait_for_timeout(200); await pg.keyboard.press("Escape"); await pg.wait_for_timeout(250)
+        check("Ctrl+K: Esc closes", await E("!document.getElementById('cmdk')"))
+        await E("setPaneTf(active,'5m')"); await pg.wait_for_timeout(300)
         # KING_PIXTHEMES (8)
         for th in ["pixelblock", "pixelgrid", "pixel8", "pixelterm"]:
             await E(f"applyTheme('{th}')")

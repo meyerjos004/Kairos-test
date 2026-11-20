@@ -3664,3 +3664,51 @@ function posTag(p) { let el = p.el.querySelector(".postag");
   el.querySelector(".ptp").textContent = (pl >= 0 ? "+ " : "− ") + Math.abs(pl).toFixed(2) + " USD";
   el.querySelector('[data-k="tp"]').classList.toggle("set", pos.tp != null); el.querySelector('[data-k="sl"]').classList.toggle("set", pos.sl != null); }
 { const _paint = paint; paint = function (p) { const r = _paint.apply(this, arguments); try { posTag(p); } catch (e) {} return r; }; }
+
+// KING_CMDK (Nov 20, from King's Instagram "Websites" saves: the ⌘K quick-actions idea): press Ctrl/⌘+K (or "/" on the chart)
+// for one search box that does everything: go to a page, change timeframe, symbol, layout, theme, skin, play/pause, flatten…
+// Arrow keys + Enter, Esc closes. Recent picks float to the top.
+function cmdkList() { const L = [], add = (g, t, f, k) => L.push({ g, t, f, k: (k || "") + " " + t });
+  [["trade", "Trade"], ["tj", "Journal"], ["journal", "Calendar"], ["stats", "Stats"], ["accounts", "Accounts"], ["friends", "Friends"], ["learn", "Learn"], ["tax", "Tax"], ["help", "Helper"], ["settings", "Settings"]]
+    .forEach(([v, n]) => add("Go to", n, () => view(v), "page open"));
+  TFS.filter(([n]) => features.sec15 !== false || !n.endsWith("s")).forEach(([n]) => add("Timeframe", n === "1D" ? "Daily" : n, () => { view("trade"); setPaneTf(active, n); }, "tf interval chart " + n));
+  ["NQ", "MNQ", "ES", "MES"].forEach((s) => add("Symbol", s, () => { view("trade"); $("sym").value = s; $("sym").onchange(); }, "symbol ticker"));
+  Object.keys(LAYS || {}).forEach((k) => add("Layout", k === "1" ? "1 chart" : k.replace("h", " side by side") + " charts", () => { view("trade"); setLayout(k); }, "layout grid split"));
+  Object.entries(CHART_THEMES).forEach(([id, [nm, modes]]) => Object.keys(modes).forEach((m) => add("Chart theme", `${nm} · ${(SKINS[m] && SKINS[m].label) || (m === "light" ? "Light" : "Dark")}`, () => { applyChartTheme(id, m); try { chThemeUI(); } catch (e) {} }, "theme colors skin " + m)));
+  Object.entries(THEMES).forEach(([id, v]) => add("App theme", v[0], () => applyTheme(id), "app theme look"));
+  add("Replay", "Play / pause", () => $("play").click(), "play pause space");
+  add("Replay", "Step forward", () => document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight" })), "next bar");
+  add("Trade", "Buy 1 (market)", () => $("pbuy").click(), "long buy");
+  add("Trade", "Sell 1 (market)", () => $("psell").click(), "short sell");
+  add("Trade", "Flatten everything", () => flatten(), "close all exit");
+  add("Trade", "Reverse position", () => reverse(), "flip");
+  add("Trade", "Stop to break-even", () => toBE(), "be breakeven");
+  add("Chart", "Indicators…", () => { view("trade"); $("indbtn").click(); }, "ema vwap rsi");
+  add("Chart", "Chart settings…", () => { view("trade"); $("chartsetbtn").click(); }, "colors candles grid");
+  add("Chart", "Pop out / dock favorites bar", () => { const b = $("favpop"); if (b) b.click(); }, "favorites toolbar");
+  add("Help", "Start the feature tour", () => { view("trade"); setTimeout(tour, 250); }, "tour guide");
+  return L; }
+function cmdkOpen() { if (document.getElementById("cmdk")) return; const prev = document.activeElement;
+  const el = document.createElement("div"); el.id = "cmdk"; el.innerHTML = `<div class="ck-box" role="dialog" aria-label="Quick actions"><input class="ck-in" placeholder="Type a page, timeframe, symbol, theme or action…" aria-label="Search actions" autocomplete="off"><div class="ck-list" role="listbox"></div><div class="ck-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>Enter</kbd> run</span><span><kbd>Esc</kbd> close</span></div></div>`;
+  document.body.appendChild(el); const inp = el.querySelector(".ck-in"), list = el.querySelector(".ck-list"), all = cmdkList(); let sel = 0, shown = [];
+  const rec = (prefs.cmdkRecent || []).slice(0, 6);
+  const score = (c, q) => { const s = (c.g + " " + c.k).toLowerCase(); let sc = 0; for (const w of q) { const i = s.indexOf(w); if (i < 0) return -1; sc += i === 0 || s[i - 1] === " " ? 3 : 1; } return sc + (rec.includes(c.g + "|" + c.t) ? 2 : 0); };
+  const draw = () => { const q = inp.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    shown = q.length ? all.map((c) => [c, score(c, q)]).filter((x) => x[1] >= 0).sort((a, b) => b[1] - a[1]).slice(0, 40).map((x) => x[0])
+      : rec.map((r) => all.find((c) => c.g + "|" + c.t === r)).filter(Boolean).concat(all.filter((c) => c.g === "Go to"));
+    sel = Math.min(sel, Math.max(0, shown.length - 1)); let lastG = "";
+    list.innerHTML = shown.length ? shown.map((c, i) => { const h = c.g !== lastG ? `<div class="ck-g">${q.length ? esc(c.g) : i < rec.length ? "Recent" : esc(c.g)}</div>` : ""; lastG = c.g; return h + `<div class="ck-i${i === sel ? " on" : ""}" role="option" data-i="${i}"><span>${esc(c.t)}</span><em>${esc(c.g)}</em></div>`; }).join("")
+      : `<div class="ck-none">Nothing matches "${esc(inp.value)}". Try a page name, "5m", "ES" or "flatten".</div>`;
+    const on = list.querySelector(".ck-i.on"); if (on) on.scrollIntoView({ block: "nearest" }); };
+  const run = (i) => { const c = shown[i]; if (!c) return; close(); prefs.cmdkRecent = [c.g + "|" + c.t].concat((prefs.cmdkRecent || []).filter((x) => x !== c.g + "|" + c.t)).slice(0, 6); savePrefs(); try { c.f(); } catch (e) { console.warn(e); } };
+  const close = () => { el.classList.add("out"); setTimeout(() => el.remove(), 140); try { prev && prev.focus && prev.focus(); } catch (e) {} };
+  inp.addEventListener("input", () => { sel = 0; draw(); });
+  inp.addEventListener("keydown", (e) => { e.stopPropagation();
+    if (e.key === "ArrowDown") { e.preventDefault(); sel = Math.min(shown.length - 1, sel + 1); draw(); } else if (e.key === "ArrowUp") { e.preventDefault(); sel = Math.max(0, sel - 1); draw(); }
+    else if (e.key === "Enter") { e.preventDefault(); run(sel); } else if (e.key === "Escape") { e.preventDefault(); close(); } });
+  list.addEventListener("pointermove", (e) => { const it = e.target.closest(".ck-i"); if (it && +it.dataset.i !== sel) { sel = +it.dataset.i; list.querySelectorAll(".ck-i").forEach((x) => x.classList.toggle("on", +x.dataset.i === sel)); } });
+  list.addEventListener("click", (e) => { const it = e.target.closest(".ck-i"); if (it) run(+it.dataset.i); });
+  el.addEventListener("pointerdown", (e) => { if (e.target === el) close(); });
+  draw(); requestAnimationFrame(() => inp.focus()); }
+addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K")) { e.preventDefault(); e.stopImmediatePropagation(); cmdkOpen(); return; }
+  if (e.key === "/" && !["INPUT", "SELECT", "TEXTAREA"].includes((e.target.tagName || "")) && !e.target.isContentEditable && !document.getElementById("cmdk")) { e.preventDefault(); cmdkOpen(); } }, true);
