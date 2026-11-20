@@ -3585,3 +3585,17 @@ if ($("cs-theme")) { $("cs-theme").onchange = (e) => { if (e.target.value) apply
   $("chartsetbtn").addEventListener("click", () => setTimeout(chThemeUI, 0)); }
 // KING_WAIFU: backdrop picker (shows only in Waifu mode)
 document.querySelectorAll("#cs-wbg [data-b]").forEach((b) => (b.onclick = () => { prefs.waifuBg = b.dataset.b; savePrefs(); repaintAll(); chThemeUI(); }));
+
+// KING_WAIFUUI (Ben, Nov 20): Waifu mode dresses the whole app (glass panels over his backdrop, pink/blue buttons, a few falling petals).
+function waifuUI() { const on = !!prefs.waifu, b = document.body; b.classList.toggle("waifu", on);
+  const bg = (typeof WAIFU !== "undefined" && WAIFU.bgs.includes(prefs.waifuBg)) ? prefs.waifuBg : "bg1";
+  if (on) b.style.setProperty("--wbgimg", `url(assets/waifu/${bg}.jpg)`); else b.style.removeProperty("--wbgimg");
+  let pe = document.getElementById("wpetals");
+  if (on && !pe) { pe = document.createElement("div"); pe.id = "wpetals"; pe.setAttribute("aria-hidden", "true");
+    for (let i = 0; i < 14; i++) { const p = document.createElement("i"); const s = 0.6 + Math.random() * 0.8;
+      p.style.cssText = `left:${(Math.random() * 100).toFixed(1)}%;animation-duration:${(11 + Math.random() * 12).toFixed(1)}s;animation-delay:-${(Math.random() * 20).toFixed(1)}s;transform:scale(${s.toFixed(2)});opacity:${(0.35 + Math.random() * 0.45).toFixed(2)}`;
+      pe.appendChild(p); }
+    b.appendChild(pe); } }
+{ const _ct = applyChartTheme; applyChartTheme = function (...a) { _ct(...a); try { waifuUI(); } catch (e) {} }; }
+document.querySelectorAll("#cs-wbg [data-b]").forEach((x) => x.addEventListener("click", () => { try { waifuUI(); } catch (e) {} }));
+setTimeout(() => { try { waifuUI(); } catch (e) {} }, 0);

@@ -1170,3 +1170,27 @@ body.jedit .jw[data-w]{outline:1px dashed rgba(167,139,250,.45);cursor:grab}body
 #cs-theme{min-width:0}#cs-mode{flex:none}#cs-theme+#cs-mode,#cs-mode{white-space:nowrap}
 /* KING_FABHIDE: the floating fix-box button sat on top of dialog buttons on phones (it covered OK in Chart settings) */
 @media (max-width:900px){body:has(#chartset:not(.hidden)) #fxb,body:has(#dlg:not(.hidden)) #fxb{display:none}}
+
+/* KING_WAIFUUI (Ben, Nov 20): Waifu mode dresses the whole app, not just the chart. Only on when body.waifu (Ben's theme → Waifu). */
+body.waifu{--bg:#0f0d14;--bg2:#13101a;--panel:rgba(22,18,28,.74);--panel2:rgba(28,22,34,.78);--glass:rgba(26,20,32,.66);--glass2:rgba(34,26,42,.74);
+  --line:rgba(255,190,214,.13);--edge:rgba(255,190,214,.12);--edge-hi:rgba(255,190,214,.2);--txt:#fbeef3;--mut:#c6a9b8;--mut2:#8f7686;
+  --acc:#ff9ec4;--acc2:#e9779f;--up:#ffb3cb;--dn:#9fb3d9;--warn:#ffd88a;
+  background:#0f0d14 var(--wbgimg,none) center/cover fixed no-repeat}
+body.waifu::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(120% 90% at 50% 0%,rgba(255,170,205,.10),rgba(10,8,14,.55) 70%),rgba(12,9,16,.38);backdrop-filter:blur(6px)}
+body.waifu #app{position:relative;z-index:1;background:transparent}
+body.waifu .rail,body.waifu header.top,body.waifu .tbar,body.waifu .tools,body.waifu .side,body.waifu .cfoot,body.waifu .bottom,body.waifu .fchat,body.waifu .card,body.waifu .acard,body.waifu .setc,body.waifu .jpagebox,body.waifu .botpop{
+  background:var(--panel)!important;backdrop-filter:blur(16px) saturate(1.25);-webkit-backdrop-filter:blur(16px) saturate(1.25);border-color:var(--line)!important}
+body.waifu .card,body.waifu .acard,body.waifu .setc{border-radius:18px;box-shadow:0 8px 28px rgba(40,10,30,.35),inset 0 1px 0 rgba(255,220,235,.08)}
+body.waifu button.buy,body.waifu #pbuy{background:linear-gradient(180deg,#ffc2d6,#f08bb0)!important;color:#3a1426!important;box-shadow:0 4px 16px rgba(240,139,176,.35)}
+body.waifu button.sell,body.waifu #psell{background:linear-gradient(180deg,#b9c9ec,#7f96c6)!important;color:#141c33!important;box-shadow:0 4px 16px rgba(127,150,198,.35)}
+body.waifu button.buy,body.waifu button.sell,body.waifu .seg,body.waifu .seg button{border-radius:999px}
+body.waifu select,body.waifu input:not([type=range]):not([type=checkbox]):not([type=color]){background-color:rgba(30,22,36,.8);border-color:var(--edge)}
+body.waifu .seg button.on,body.waifu .seg button.sel{background:rgba(255,158,196,.2)!important;color:#ffd6e6!important}
+body.waifu ::selection{background:rgba(255,158,196,.35)}
+body.waifu *{scrollbar-color:rgba(255,158,196,.35) transparent}
+/* falling petals */
+#wpetals{position:fixed;inset:0;z-index:2;pointer-events:none;overflow:hidden;display:none}
+body.waifu #wpetals{display:block}
+#wpetals i{position:absolute;top:-24px;width:12px;height:9px;border-radius:12px 1px 12px 1px;background:linear-gradient(135deg,#ffd7e5,#ff9ec4);opacity:.75;animation:wpet linear infinite}
+@keyframes wpet{0%{transform:translate3d(0,-20px,0) rotate(0)}50%{transform:translate3d(-40px,52vh,0) rotate(200deg)}100%{transform:translate3d(30px,108vh,0) rotate(420deg)}}
+@media (prefers-reduced-motion:reduce){#wpetals{display:none!important}}

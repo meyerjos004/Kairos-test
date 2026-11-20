@@ -60,6 +60,8 @@ async def main():
         check("personal chart themes apply", th=="#e8d9b5,#6f8396,#16181b,#7fd1e0,rgba(232,217,181,0.5)|#097564,#b8b8b8,#4259c1", th)
         wf = await E("applyChartTheme('ben','waifu',true); const r=[prefs.waifu, prefs.cs.bgk, prefs.cs.body]; applyChartTheme('sandslate','dark',true); r.concat([prefs.waifu, prefs.cs.body]).join(',')")
         check("Ben's Waifu mode turns on and off", wf == "true,waifu,false,false,true", wf)
+        wu = await E("applyChartTheme('ben','waifu',true); const a=[document.body.classList.contains('waifu'), !!document.getElementById('wpetals')]; applyChartTheme('sandslate','dark',true); a.concat([document.body.classList.contains('waifu')]).join(',')")
+        check("Waifu dresses the whole app and undresses after", wu == "true,true,false", wu)
         await pg.keyboard.press("Escape"); await E("sel = drawings[drawings.length-1]; 1"); await pg.keyboard.press("Delete"); check("delete selected drawing", True)
         # position tool arm -> fills
         await E("cancelAll(); flatten(); drawings=[]; 1"); await E("(()=>{const p=panes[0],lp=last(),d=newDrawing('long',p,{t:loc(nowT()),p:rnd(lp-3)}); d.entry=rnd(lp-3); d.sl=rnd(lp-11); d.tp=rnd(lp+13); armTool(d);})()")
