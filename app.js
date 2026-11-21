@@ -2127,7 +2127,6 @@ function wField(cv) { const g = cv.getContext("2d"), D = Math.min(devicePixelRat
 const TOUR = [
   { sel: "#start", t: "Pick any day", d: "Five years of real NQ and ES. Pick a date (or hit the dice for a mystery day) and it loads itself." },
   { sel: "#play", t: "Replay it", d: "Play, pause, or step one bar at a time. Nothing from the future shows until it happens. 120x means two minutes of market every second, on every timeframe down to 15 seconds." },
-  { sel: "#skipnext", t: "Skip the dead time", d: "Jump straight to the next New York or Asia open. Your orders and stops still fill on the way." },
   { sel: "#pad", t: "Trade it like it's live", d: "Buy, sell, join bid/ask, brackets, breakeven. Hotkeys B and S work too. Prop rules (daily loss, drawdown) are on." },
   { sel: "#laybtn", t: "Two charts, both tradable", d: "Split the screen, put NQ on one and ES on the other, and click a chart to trade it. Save layouts you like." },
   { sel: "#indbtn", t: "Your tools", d: "Sessions, FVGs and IFVGs, data highs and lows, SMT on every timeframe, CPI/NFP/FOMC lines, EMAs and more." },
@@ -2452,7 +2451,7 @@ $("sym").onchange = () => {   // switch instrument right away, at the same repla
   $("start").value = fmt(loc(cursorT + 61)).replace(" ", "T"); loadReplay();
 };
 $("skipny").onclick = () => skipTo("09:30", "NY open");
-$("skipnext").onclick = (e) => { const r = e.target.getBoundingClientRect(), m = lhm(loc(nowT() || 0));   // KING_SKIPMENU (King, Nov 14): next session / next day / next week
+if ($("skipnext")) $("skipnext").onclick = (e) => { const r = e.target.getBoundingClientRect(), m = lhm(loc(nowT() || 0));   // KING_SKIPMENU (King, Nov 14): next session / next day / next week
   menu([{ h: "Skip ahead" }, { t: m >= "09:30" && m < "20:00" ? "Next session · Asia open 8:00 PM" : "Next session · NY open 9:30 AM", f: () => (m >= "09:30" && m < "20:00" ? skipTo("20:00", "Asia open") : skipTo("09:30", "NY open")) },
     { t: "Next day · 9:30 AM", f: () => skipUntil((lt, l0) => Math.floor(lt / 86400) > Math.floor(l0 / 86400) && lhm(lt) >= "09:30", "next day") },
     { t: "Next week · Monday 9:30 AM", f: () => skipUntil((lt, l0) => lt - l0 > 86400 && new Date(lt * 1000).getUTCDay() === 1 && lhm(lt) >= "09:30", "next week") }], r.left, r.bottom + 4); };

@@ -341,7 +341,7 @@ async def main():
         # KING_STEPTF / KING_SKIPCOL / KING_PLAYDAY (Nov 14)
         check("step selector has Sync default + 1m..D, no 1 bar", await E('[...document.querySelectorAll("#stepsz option")].map(o=>o.value).join(",")') == "sync,60,120,180,300,900,1800,3600,14400,86400")
         check("speed is 1x/30x/60x/120x", await E("[...document.querySelectorAll('#speed option')].map(o=>o.value).join()") == "1,15,30,60,120,300")
-        check("SKIP + Play out day buttons exist (play out day lives on the favorites bar on wide screens)", await E('!!document.getElementById("skipnext") && !!document.getElementById("playday")'))
+        check("SKIP button removed (KING_NOSKIPBTN), Play out day still there", await E('!document.getElementById("skipnext") && !!document.getElementById("playday")'))
         await E('panes[active] && pause()'); t0 = await E("nowT()"); await E('document.getElementById("stepsz").value="300"'); await E("stepUnit(false)"); t1 = await E("nowT()")
         check("5m step moves to the next 5m candle", t1 > t0 and (t1 - t0) <= 300, (t0, t1)); await E('document.getElementById("stepsz").value="sync"')
         # KING_DATEPICK (Nov 14)
@@ -389,8 +389,7 @@ async def main():
             if r1 == r0: break
             await pg.wait_for_timeout(100)
         check("rewind keeps the same view", r1 == r0, (r0, r1, await E("[panes[0].candles.length, panes[0].full, panes[0].cap, panes.length, JSON.stringify(prefs.sync), prefs.layout, active, panes[0].sec]")))
-        await pg.click("#skipnext"); await pg.wait_for_timeout(150); check("SKIP opens a 3-item menu", await E('document.querySelectorAll("#ctx .mi, #ctx button, #ctx [data-i]").length') >= 3 or "Next week" in await E('document.getElementById("ctx").textContent'))
-        await E("hideCtx()")
+        # KING_NOSKIPBTN: SKIP button removed (King, Nov 21)
         # KING_SHOT2REPLAY + KING_GHOSTS
         check("screenshot reader: TradingView style", await E('JSON.stringify(shotParse("NQ1! · 1 · CME   Fri 14 Nov \'26  09:45  21,420.25"))') == '{"sym":"NQ","date":"2026-11-14","time":"09:45"}', await E('JSON.stringify(shotParse("NQ1! · 1 · CME   Fri 14 Nov \'26  09:45  21,420.25"))'))
         check("screenshot reader: Discord style", await E('JSON.stringify(shotParse("MES Jan 3, 2025 10:32 AM long 5900"))') == '{"sym":"MES","date":"2025-01-03","time":"10:32"}')
