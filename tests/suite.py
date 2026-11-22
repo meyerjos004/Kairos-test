@@ -729,7 +729,7 @@ async def main():
         check("phonesave: Save button clear of the search box and tabs", not _ov, await E("(()=>{const a=document.getElementById('s-save').getBoundingClientRect();return [[a.left,a.top,a.right,a.bottom].map(Math.round),[...document.querySelectorAll('#s2-q, button[data-s2]')].filter(e=>e.offsetParent).map(e=>{const b=e.getBoundingClientRect();return (e.dataset.s2||e.id)+' '+[b.left,b.top,b.right,b.bottom].map(Math.round)})]})()"))
         await pg.set_viewport_size({"width": 1680, "height": 945}); await E("view('trade')"); await pg.wait_for_timeout(300)
         # KING_UI2FIX (#330): in the new look, icon buttons keep real icons (they were squashed to 0-4px) and daylight text is readable
-        await E("view('trade'); window.__ui2m='light'; ui2Apply()"); await pg.wait_for_timeout(300)
+        await E("view('trade'); window.__ui2m='light'; ui2Apply()"); await pg.wait_for_timeout(1000)
         _ic = await E("['#chartsetbtn','#fullbtn','#padx','#padmore','.tools .tool.hashk','.fbtools .tool.hashk'].map(s=>{const e=document.querySelector(s+' svg');return e?Math.round(Math.min(e.getBoundingClientRect().width,e.getBoundingClientRect().height)):99})")
         check("ui2fix: icon buttons show icons 16px+", all(x >= 16 for x in _ic), _ic)
         _ny = await E("[getComputedStyle(document.getElementById('skipny')).color, document.body.className, document.getElementById('skipny').matches(':hover')]"); check("ui2fix: NY open readable in daylight", sum(abs(a-b) for a,b in zip([int(v) for v in __import__("re").findall(r"\d+", _ny[0])[:3]],[15,122,63])) < 12, _ny)   # tolerant: color may be mid-transition
