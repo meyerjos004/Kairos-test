@@ -1271,3 +1271,9 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px soli
 #st-none{display:none;padding:24px 4px;font-size:15px}#v-stats.st-empty #st-none{display:block}#v-stats.st-empty>:not(.toolbar):not(#st-none){display:none}
 /* KING_PADBLUE (night Nov 22, waits on King's yes): pad Buy matches the blue buy arrows */
 #pbuy{background:linear-gradient(180deg,#5aa2ff,#2f7cf0)}
+
+/* KING_DUEL: 1v1 panel */
+.dlwrap{padding:0 14px 14px}.dlwrap .sub{margin:14px 0 8px}.dlrow{margin:0 0 8px}.dlrow .row{gap:8px;display:flex}
+.dlrec{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}.dlrec .card{margin:0}
+.dlscore{font:700 30px/1.1 var(--display);margin:6px 0 2px;font-variant-numeric:tabular-nums}.dlscore i{font-style:normal;color:var(--mut);margin:0 4px;font-weight:400}
+body.ui2-ivory .dlscore{font-family:var(--serif)}

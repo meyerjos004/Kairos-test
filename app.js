@@ -251,7 +251,7 @@ const paneSec = (i) => SEC[prefs.tfs[i] || "5m"];
 function lastBar() { const a = B["1m"].bars[B["1m"].i], b = need15 ? B["15s"].bars[B["15s"].i] : null; if (!a) return b; if (!b) return a; return b.t >= a.t ? b : a; }
 const last = () => (lastBar() ? lastBar().c : null);
 const nowT = () => cursorT;
-async function loadReplay() { try { execs.length = 0; } catch (e) {}
+async function loadReplay() { try { execs.length = 0; } catch (e) {} if (duel && duel.fin) { duel = null; try { livePill(); } catch (e) {} }   // KING_DUEL: a finished 1v1 clears when you load anything else
   pause(); if (pos.qty || orders.length || busyElsewhere()) return toast("Close positions and cancel orders first (on every chart)");
   for (const k of Object.keys(CTX)) delete CTX[k];
   sym = $("sym").value; prefs.syms = prefs.syms || []; if (!(prefs.sync && prefs.sync.sym)) { prefs.syms[active] = sym; panes.forEach((p) => { if (!prefs.syms[p.i]) prefs.syms[p.i] = sym; }); } inst = INST[sym]; need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
@@ -1182,7 +1182,7 @@ $("dom").addEventListener("pointerup", (e) => {
 });
 
 /* ---------------- panels ---------------- */
-function refresh() {
+function refresh() { try { duelTick(); } catch (e) {}
   const bal = balance(), op = openPnlAll(), rp = dayRpl(), cls = (v) => (v >= 0 ? "pos-up" : "pos-dn");
   flashNum("bal", Math.round(bal)); flashNum("rpl", Math.round(rp)); $("bal").textContent = money(bal); $("rpl").textContent = money(rp); $("rpl").className = cls(rp); $("upl").textContent = money(op); $("upl").className = cls(op);
   let run = sess ? +sess.account_start : prefs.bal, peak = Math.max(run, acctPeak || 0); for (const t of hist) { run += +t.pnl || 0; peak = Math.max(peak, run); }
@@ -1374,6 +1374,10 @@ function mcUI(tr) { const el = $("st-mc"); if (!el) return; const pnls = tr.map(
     <div class="mck"><div><span class="muted small">Pass</span><b class="pos-up">${r.passPct.toFixed(0)}%</b></div><div><span class="muted small">Blow the account</span><b class="pos-dn">${r.blownPct.toFixed(0)}%</b></div><div><span class="muted small">Still going after 200 trades</span><b>${r.openPct.toFixed(0)}%</b></div><div><span class="muted small">Trades to pass (median)</span><b>${r.medTrades ?? "—"}</b></div></div>
     <canvas id="mc-cv" class="mccv"></canvas><div class="tiny muted">${r.N.toLocaleString()} reshuffles of your ${pnls.length} trades in this filter. Green = hit the target, red = hit the drawdown. Past replay results, not a promise.</div>`;
   mcDraw($("mc-cv"), r, o); $("mc-go").onclick = () => mcUI(tr); }
+// KING_IVORY: Ivory look uses quiet ink-green / brick-red instead of the bright mint / pink
+function ivOn() { return document.body.classList.contains("ui2-ivory"); }
+function ivEq() { return ivOn() ? { topLineColor: "#1f6f4e", topFillColor1: "rgba(31,111,78,.22)", topFillColor2: "rgba(31,111,78,.02)", bottomLineColor: "#a8343a", bottomFillColor1: "rgba(168,52,58,.02)", bottomFillColor2: "rgba(168,52,58,.22)" } : { topLineColor: "#2bd4a0", topFillColor1: "rgba(43,212,160,.55)", topFillColor2: "rgba(43,212,160,.04)", bottomLineColor: "#ff5d6c", bottomFillColor1: "rgba(255,93,108,.04)", bottomFillColor2: "rgba(255,93,108,.55)" }; }
+function ivCol(c) { return !ivOn() ? c : /^#(2bd4a0|5ee6b8|26a69a)$/i.test(c) ? "#1f6f4e" : /^#(ff6b7a|ff5d6c|ff4d5e|ef5350)$/i.test(c) ? "#a8343a" : c; }
 async function renderStats() {
   $("st-acct").innerHTML = `<option value="">All accounts</option><option value="none">Replay (no account)</option>` + accts.map((a) => `<option value="${a.id}">${a.name}</option>`).join(""); $("st-acct").value = prefs.stAcct || "";
   let tr = (await db.allTrades()).slice().sort((a, b) => a.t_exit - b.t_exit); const A = $("st-acct").value, S = $("st-sym").value, D = +$("st-range").value;
@@ -1412,8 +1416,8 @@ async function renderStats() {
   const sizeUp = tr.filter((t, i) => i && tr[i - 1].pnl < 0 && t.qty > tr[i - 1].qty).length, aw = after.filter((t) => t.pnl > 0).length;
   { const cg = grp((t) => { const c = (t.tags || []).find((x) => /^conf:/.test(x)); return c ? ["Confidence " + c.slice(5)] : []; }); $("st-conf").innerHTML = Object.keys(cg).length ? table(cg, [1, 2, 3, 4, 5].map((n) => "Confidence " + n)) : '<div class="empty">Rate how sure you were after each trade (1–5) and this shows whether your confident trades pay more.</div>'; } /* KING_CONF */
   $("st-tilt").innerHTML = `<div class="kvs"><div><span>Re-entries within 10 min of a loss</span><b>${after.length}${after.length ? " · " + Math.round((100 * aw) / after.length) + "% win · " + money(sum(after)) : ""}</b></div><div><span>Size went up right after a loss</span><b>${sizeUp}</b></div></div>` + table(grp((t) => (t.mistakes && t.mistakes.length ? t.mistakes : [])));
-  if (!stC) { stC = LightweightCharts.createChart($("st-eq"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontFamily: "Geist, sans-serif" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } }); stC.s = stC.addBaselineSeries({ baseValue: { type: "price", price: 0 }, topLineColor: "#2bd4a0", topFillColor1: "rgba(43,212,160,.55)", topFillColor2: "rgba(43,212,160,.04)", bottomLineColor: "#ff5d6c", bottomFillColor1: "rgba(255,93,108,.04)", bottomFillColor2: "rgba(255,93,108,.55)", lineWidth: 2, lineType: 2, pointMarkersVisible: false, crosshairMarkerRadius: 3 }); }
-  const seen = new Set(), eqd = eq.filter((p) => (seen.has(p.time) ? false : seen.add(p.time))); stC.s.setData(eqd); stC.timeScale().fitContent();
+  if (!stC) { stC = LightweightCharts.createChart($("st-eq"), { autoSize: true, layout: { background: { type: "solid", color: "transparent" }, textColor: "#7f8a9c", fontFamily: "Geist, sans-serif" }, grid: { vertLines: { visible: false }, horzLines: { color: "rgba(255,255,255,.04)" } }, rightPriceScale: { borderVisible: false }, timeScale: { borderVisible: false } }); stC.s = stC.addBaselineSeries({ baseValue: { type: "price", price: 0 }, ...ivEq(), lineWidth: 2, lineType: 2, pointMarkersVisible: false, crosshairMarkerRadius: 3 }); }
+  const seen = new Set(), eqd = eq.filter((p) => (seen.has(p.time) ? false : seen.add(p.time))); stC.s.applyOptions(ivEq()); stC.s.setData(eqd); stC.timeScale().fitContent();
   { const hi = Math.max(200, ...eqd.map((p) => Math.abs(p.value))); stC.s.applyOptions({ autoscaleInfoProvider: (o) => { const r = o(); if (r && r.priceRange) { r.priceRange.minValue = Math.min(r.priceRange.minValue, -200); r.priceRange.maxValue = Math.max(r.priceRange.maxValue, 200); } return r; } }); }   // KING_STATS2: colour builds from ±$200
   try { cmpUI(tr); } catch (e) {}
   /* KING_EMPTYEQ: say so instead of a blank box */ let em = $("st-eq").querySelector(".eqempty"); if (!em) { em = document.createElement("div"); em.className = "eqempty muted"; em.textContent = "Your equity curve shows up here after your first trade in this filter."; $("st-eq").appendChild(em); } em.style.display = tr.length ? "none" : "";
@@ -1720,20 +1724,22 @@ async function loadMe() {
   if (!me) { const nm = (user.email || "me").split("@")[0].replace(/[0-9_.]+$/, "") || "me"; const r = await sb.from("profiles").insert({ name: nm }).select().single(); me = r.data || { user_id: user.id, name: nm, share_stats: true }; names[user.id] = me.name; }
   else sb.from("profiles").update({ seen_at: new Date().toISOString() }).eq("user_id", user.id).then(() => {});
 }
-function ftab(k) { document.querySelectorAll("#ftabs button").forEach((b) => b.classList.toggle("on", b.dataset.f === k)); ["lv", "lb", "ch", "sh", "sg"].forEach((x) => $("f-" + x).classList.toggle("hidden", x !== k)); ({ lv: renderLive, lb: renderLB, ch: renderCh, sh: renderSh, sg: renderSg })[k](); }
+function ftab(k) { document.querySelectorAll("#ftabs button").forEach((b) => b.classList.toggle("on", b.dataset.f === k)); ["lv", "dl", "lb", "ch", "sh", "sg"].forEach((x) => $("f-" + x).classList.toggle("hidden", x !== k)); ({ lv: renderLive, dl: renderDuel, lb: renderLB, ch: renderCh, sh: renderSh, sg: renderSg })[k](); }
 // ---- live sessions (Realtime presence + invites), like a game lobby
 let liveCh = null, live = {}, room = null, roomSub = null;
-function myLive() { const dayP = dayRpl(); return { name: (me && me.name) || "me", room: room && room.id, sym, start: sess ? sess.start_ts : null, t: nowT() || null, pnl: Math.round(hist.reduce((a, t) => a + (+t.pnl || 0), 0)), day: Math.round(dayP), n: hist.length, playing: !!timer, done: !!(room && room.done), at: Date.now() }; }
+function myLive() { const dayP = dayRpl(); return { name: (me && me.name) || "me", room: room && room.id, sym, start: sess ? sess.start_ts : null, t: nowT() || null, pnl: Math.round(hist.reduce((a, t) => a + (+t.pnl || 0), 0)), day: Math.round(dayP), n: hist.length, playing: !!timer, done: !!(room && room.done), duel: duel && duel.id, dpnl: duel ? Math.round(duelStats().pnl) : null, at: Date.now() }; }
 function initLive() {
   if (DEMO) { live = { b: [{ name: "Ben", sym: "NQ", t: Date.parse("2026-10-14T14:20:00Z") / 1000, pnl: 340, n: 2, playing: true }], w: [{ name: "Will", sym: "ES", t: Date.parse("2026-09-02T13:55:00Z") / 1000, pnl: -120, n: 1, playing: false }] }; return; }
   liveCh = sb.channel("live", { config: { presence: { key: user.id }, broadcast: { self: false } } });
   liveCh.on("presence", { event: "sync" }, () => { live = liveCh.presenceState(); delete live[user.id]; livePill(); if (!$("f-lv").classList.contains("hidden") && !$("v-friends").classList.contains("hidden")) renderLive(); })
     .on("broadcast", { event: "invite" }, ({ payload: p }) => { if (p.to !== user.id) return; sfx("fill"); buzz(40);
       dlg(`<h3>${esc(p.fromName)} invited you</h3><p class="small">Replay <b>${esc(p.sym)}</b> from <b>${fmt(loc(p.start))} New York</b> together. You each trade at your own pace and compare at the end.</p>`, () => joinRoom({ id: p.room, host: p.from, sym: p.sym, start: p.start })); const ok = $("dl-ok"); if (ok) ok.textContent = "Join"; })
+    .on("broadcast", { event: "duel" }, ({ payload: p }) => { if (p.to !== user.id) return; sfx("fill"); buzz(40); toast("⚔ " + p.fromName + " challenged you to a 1v1 (Friends → 1v1)"); if (!$("f-dl").classList.contains("hidden")) renderDuel(); })   // KING_DUEL
+    .on("broadcast", { event: "duelDone" }, ({ payload: p }) => duelOnDone(p.id))
     .subscribe((st) => { if (st === "SUBSCRIBED") liveCh.track(myLive()); });
   setInterval(() => { if (liveCh) liveCh.track(myLive()); }, 15000);
 }
-function livePill() { if (!room) return $("livepill").classList.add("hidden"); const mates = Object.values(live).map((x) => x[0]).filter((x) => x.room === room.id), going = mates.filter((x) => !x.done);
+function livePill() { if (duel) return duelPill(); if (!room) return $("livepill").classList.add("hidden"); const mates = Object.values(live).map((x) => x[0]).filter((x) => x.room === room.id), going = mates.filter((x) => !x.done);
   $("livepill").classList.remove("hidden"); $("livepill").innerHTML = `<i></i> ${mates.length ? going.length + " of " + mates.length + " still trading" : "waiting for friends"}`; }
 async function renderLive() { const rows = Object.entries(live).map(([id, xs]) => ({ id, ...xs[0] })).filter((x) => x.at == null || Date.now() - x.at < 120000 || DEMO);
   $("lv-list").innerHTML = rows.map((x) => `<div class="card lvc"><div class="ah"><b><i class="ldot ${x.playing ? "on" : ""}"></i> ${nmFx(x.name, x.user_id)}</b><span class="muted tiny">${x.done ? "done for the day" : x.playing ? "playing" : x.t ? "paused" : "in the app"}</span></div>
@@ -1761,6 +1767,79 @@ function lbTable(rows) { if (!rows.length) return '<div class="empty">No trades 
 async function renderLB() { const D = +$("lb-range").value, now = Math.floor(Date.now() / 1000); let t0 = 0, t1 = 9999999999;
   if (D) { const all = await db.allTrades(); const end = all.length ? Math.max(...all.map((t) => t.t_entry)) : now; t0 = end - D * 86400; }
   $("lb-share").checked = !me || me.share_stats !== false; $("lb-list").innerHTML = lbTable(await lbRows(t0, t1, $("lb-sym").value)); }
+/* ---------------- KING_DUEL (Nov 22): competitive 1v1 ----------------
+   Live (above) = trade the same day together, no winner. 1v1 = a real match: you challenge a friend, you both get the same
+   hidden day and session with the same rules, each trades at their own pace, and when the session's replay clock runs out
+   (or you press Finish) your P&L locks in. Higher P&L wins; ties go to the higher total R. Head-to-head record per friend. */
+let duel = null;   // the match you're playing right now: the duels row + { me: "a"|"b", h0, fin }
+const DUEL_SESS = { ny: ["NY morning", "09:00", "11:30"], nyfull: ["NY full day", "09:00", "16:00"] };
+function duelMe() { return (user && user.id) || "demo"; }
+function duelPickDay() { const a = Date.UTC(2021, 1, 1), z = Date.UTC(2026, 9, 30); let d; for (let i = 0; i < 80; i++) { d = new Date(a + Math.random() * (z - a)); const wd = d.getUTCDay(); if (wd >= 1 && wd <= 5 && !(d.getUTCMonth() === 11 && d.getUTCDate() >= 24) && !(d.getUTCMonth() === 0 && d.getUTCDate() <= 2)) break; } return d.toISOString().slice(0, 10); }
+function duelOpp(d) { const mine = d.a === duelMe(); return { id: mine ? d.b : d.a, name: (mine ? d.b_name : d.a_name) || names[mine ? d.b : d.a] || "friend", side: mine ? "a" : "b", os: mine ? "b" : "a" }; }
+function duelStats() { const tr = duel ? hist.slice(duel.h0 || 0) : []; let op = 0; try { op = duel && !duel.fin ? openPnlAll() || 0 : 0; } catch (e) {} return { pnl: tr.reduce((a, t) => a + (+t.pnl || 0), 0) + op, n: tr.length, r: tr.reduce((a, t) => a + (+t.r || 0), 0) }; }
+function duelWinner(d) { if (d.a_pnl == null || d.b_pnl == null) return null; if (+d.a_pnl !== +d.b_pnl) return +d.a_pnl > +d.b_pnl ? d.a : d.b; if ((+d.a_r || 0) !== (+d.b_r || 0)) return (+d.a_r || 0) > (+d.b_r || 0) ? d.a : d.b; return "tie"; }
+async function duelRows() {
+  if (DEMO) { if (!mem.duels) { const t = Date.now(); mem.duels = [
+      { id: "d1", a: "b", b: "demo", a_name: "Ben", b_name: "You", sym: "NQ", day: "2024-03-12", sess: "ny", status: "pending", created_at: new Date(t - 6e5).toISOString() },
+      { id: "d2", a: "demo", b: "b", a_name: "You", b_name: "Ben", sym: "NQ", day: "2023-06-07", sess: "ny", status: "done", a_pnl: 540, b_pnl: 210, a_n: 3, b_n: 2, a_r: 2.1, b_r: 0.8, a_done: true, b_done: true, winner: "demo", created_at: new Date(t - 864e5).toISOString() },
+      { id: "d3", a: "w", b: "demo", a_name: "Will", b_name: "You", sym: "ES", day: "2022-11-03", sess: "ny", status: "done", a_pnl: 300, b_pnl: -150, a_n: 2, b_n: 3, a_r: 1.5, b_r: -1, a_done: true, b_done: true, winner: "w", created_at: new Date(t - 2 * 864e5).toISOString() }]; }
+    return mem.duels; }
+  const { data } = await sb.from("duels").select("*").order("created_at", { ascending: false }).limit(80); return data || []; }
+async function duelSave(id, ch) { if (DEMO) { const d = (mem.duels || []).find((x) => x.id === id); if (d) Object.assign(d, ch); return d; } const { data, error } = await sb.from("duels").update(ch).eq("id", id).select().single(); if (error) throw error; return data; }
+function duelRecord(rows, oid) { let w = 0, l = 0, t = 0; rows.filter((d) => d.status === "done" && (d.a === oid || d.b === oid)).forEach((d) => { const x = d.winner || duelWinner(d); if (x === "tie") t++; else if (x === duelMe()) w++; else if (x) l++; }); return { w, l, t }; }
+async function renderDuel() {
+  const rows = await duelRows(), me0 = duelMe(), box = $("dl-list"); if (!box) return;
+  const inc = rows.filter((d) => d.status === "pending" && d.b === me0), out = rows.filter((d) => d.status === "pending" && d.a === me0), act = rows.filter((d) => d.status === "active" && !d[duelOpp(d).side + "_done"]),
+    wait = rows.filter((d) => d.status === "active" && d[duelOpp(d).side + "_done"]), done = rows.filter((d) => d.status === "done").slice(0, 12);
+  const opps = [...new Set(rows.filter((d) => d.status === "done").map((d) => duelOpp(d).id))];
+  const sl = (d) => `${esc(d.sym)} · ${DUEL_SESS[d.sess] ? DUEL_SESS[d.sess][0] : esc(d.sess)} · mystery day`;
+  const card = (d, btns, note) => `<div class="card dlrow"><div class="ah"><b>vs ${nmFx(duelOpp(d).name, duelOpp(d).id)}</b><span class="muted small">${ago(d.created_at)}</span></div><div class="small muted">${sl(d)}${note ? " · " + note : ""}</div><div class="row" style="margin-top:8px">${btns}</div></div>`;
+  box.innerHTML = `
+    ${inc.length ? `<div class="sub">Challenges for you</div>${inc.map((d) => card(d, `<button class="primary small" data-dacc="${d.id}">Accept and play</button><button class="ghost small" data-ddec="${d.id}">Decline</button>`)).join("")}` : ""}
+    ${act.length ? `<div class="sub">Your turn</div>${act.map((d) => card(d, `<button class="primary small" data-dplay="${d.id}">${duel && duel.id === d.id ? "Back to the match" : "Play"}</button>`, d[duelOpp(d).os + "_done"] ? `${esc(duelOpp(d).name)} is done, waiting on you` : "")).join("")}` : ""}
+    ${out.length || wait.length ? `<div class="sub">Waiting on them</div>${out.map((d) => card(d, `<button class="ghost small" data-dcan="${d.id}">Cancel</button>`, "sent")).join("")}${wait.map((d) => card(d, "", `you're done (${money(+d[duelOpp(d).side + "_pnl"] || 0)}), they're still trading`)).join("")}` : ""}
+    <div class="sub">Head-to-head</div>${opps.length ? `<div class="dlrec">${opps.map((o) => { const r = duelRecord(rows, o), d0 = rows.find((d) => duelOpp(d).id === o); return `<div class="card"><b>${nmFx(duelOpp(d0).name, o)}</b><div class="dlscore">${r.w}<i>–</i>${r.l}${r.t ? `<i>–</i>${r.t}` : ""}</div><div class="small muted">${r.w > r.l ? "You lead" : r.w < r.l ? "They lead" : "Even"}</div><button class="ghost small" data-dnew="${o}">Rematch</button></div>`; }).join("")}</div>` : `<div class="empty">No finished 1v1s yet. Press New 1v1 to challenge someone.</div>`}
+    ${done.length ? `<div class="sub">Results</div><table class="bt"><tr><th>Opponent</th><th>Day</th><th>You</th><th>Them</th><th>Result</th></tr>${done.map((d) => { const o = duelOpp(d), w = d.winner || duelWinner(d), my = +d[o.side + "_pnl"] || 0, th = +d[o.os + "_pnl"] || 0;
+      return `<tr><td>${nmFx(o.name, o.id)}</td><td>${esc(d.sym)} · ${esc(d.day)}</td><td class="${my >= 0 ? "pos-up" : "pos-dn"}">${money(my)}</td><td class="${th >= 0 ? "pos-up" : "pos-dn"}">${money(th)}</td><td><b>${w === "tie" ? "Tie" : w === me0 ? "Won" : "Lost"}</b></td></tr>`; }).join("")}</table>` : ""}`;
+}
+async function duelNew(oid) {
+  const ids = Object.keys(names).filter((k) => k !== duelMe()); if (!ids.length) return toast("No friends to challenge yet");
+  wideDlg(`<h3>New 1v1</h3><p class="small muted">You both get the same hidden day and session, same rules. Trade at your own pace; when the session's replay clock ends (or you press Finish) your P&amp;L locks in. Higher P&amp;L wins. The day is revealed at the end.</p>
+    <label>Opponent<select id="dn-opp">${ids.map((k) => `<option value="${k}" ${k === oid ? "selected" : ""}>${esc(names[k])}</option>`).join("")}</select></label>
+    <label>Symbol<select id="dn-sym"><option>NQ</option><option>ES</option></select></label>
+    <label>Session<select id="dn-sess">${Object.entries(DUEL_SESS).map(([k, v]) => `<option value="${k}">${v[0]} (${v[1]}–${v[2]} NY)</option>`).join("")}</select></label>`,
+    [{ t: "Cancel" }, { t: "Send challenge", primary: true, f: async () => {
+      const b = $("dn-opp").value, sym0 = $("dn-sym").value, sk = $("dn-sess").value, day = duelPickDay(), S = DUEL_SESS[sk];
+      const row = { a: duelMe(), b, a_name: (me && me.name) || "me", b_name: names[b] || "friend", sym: sym0, day, sess: sk, start_ts: nyToUtc(day + "T" + S[1]), end_ts: nyToUtc(day + "T" + S[2]), status: "pending" };
+      let d; if (DEMO) { d = { id: "d" + Date.now(), created_at: new Date().toISOString(), ...row }; mem.duels.unshift(d); setTimeout(() => { d.status = "active"; toast("Ben accepted your 1v1 (demo)"); try { renderDuel(); } catch (e) {} }, 1500); }
+      else { const r = await sb.from("duels").insert(row).select().single(); if (r.error) return toast("Couldn't send: " + r.error.message); d = r.data; if (liveCh) liveCh.send({ type: "broadcast", event: "duel", payload: { to: b, id: d.id, fromName: row.a_name } }); }
+      toast("Challenge sent to " + row.b_name); renderDuel(); } }]);
+}
+async function duelStart(d) {
+  if (duel && duel.id !== d.id && !duel.fin) return toast("Finish your other 1v1 first");
+  if (pos.qty || orders.length) return toast("Close positions and cancel orders first");
+  const S = DUEL_SESS[d.sess] || DUEL_SESS.ny; if (!d.start_ts) { d.start_ts = nyToUtc(d.day + "T" + S[1]); d.end_ts = nyToUtc(d.day + "T" + S[2]); }
+  room = null; $("sym").value = d.sym; $("start").value = d.day + "T" + S[1]; view("trade"); blind = { day: d.day, duel: true }; await loadReplay(); blindUI();
+  duel = Object.assign({}, d, { me: duelOpp(d).side, h0: hist.length, fin: false }); if (liveCh) liveCh.track(myLive()); duelPill();
+  toast(`⚔ 1v1 vs ${duelOpp(d).name}: ${S[0]}, mystery day. Ends at ${S[2]} NY replay time.`); }
+function duelPill() { const P = $("livepill"); if (!duel) return livePill(); const o = duelOpp(duel), st = duelStats(), left = Math.max(0, Math.ceil((duel.end_ts - (nowT() || duel.start_ts)) / 60));
+  let them = Object.values(live).map((x) => x[0]).find((x) => x.duel === duel.id); if (duel.res && duel.res[o.os + "_done"]) them = { dpnl: +duel.res[o.os + "_pnl"] || 0 }; P.classList.remove("hidden");
+  P.innerHTML = `<i></i> 1v1 · You <b class="${st.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(st.pnl)}</b> · ${esc(o.name)} ${them && them.dpnl != null ? `<b class="${them.dpnl >= 0 ? "pos-up" : "pos-dn"}">${money(them.dpnl)}</b>` : "…"} · ${duel.fin ? "done" : left + "m left"}`; }
+function duelTick() { if (!duel || duel.fin) return; if (nowT() && nowT() >= duel.end_ts) return duelFinish(true); duelPill(); }
+async function duelFinish(auto) {
+  if (!duel || duel.fin) return; duel.fin = true; try { flatten(); } catch (e) {} lock = { why: "1v1 finished", until: Infinity }; try { pause(); } catch (e) {}
+  const st = duelStats(), s = duel.me, ch = { [s + "_pnl"]: Math.round(st.pnl * 100) / 100, [s + "_n"]: st.n, [s + "_r"]: Math.round(st.r * 100) / 100, [s + "_done"]: true };
+  let d = null; try { d = await duelSave(duel.id, ch); } catch (e) { toast("1v1 result not saved: " + e.message); }
+  if (DEMO && d && !d[(s === "a" ? "b" : "a") + "_done"]) { const o = s === "a" ? "b" : "a"; Object.assign(d, { [o + "_pnl"]: Math.round((Math.random() - 0.4) * 600), [o + "_n"]: 2, [o + "_r"]: 0.5, [o + "_done"]: true }); }
+  if (d && d.a_done && d.b_done && d.status !== "done") { const w = duelWinner(d); try { d = await duelSave(d.id, { status: "done", winner: w === "tie" ? null : w, done_at: new Date().toISOString() }) || d; } catch (e) {} }
+  if (liveCh && !DEMO) liveCh.send({ type: "broadcast", event: "duelDone", payload: { id: duel.id } });
+  if (d) duel.res = d; try { refresh(); } catch (e) {} duelPill(); duelResult(d || Object.assign({}, duel, ch), auto); }
+function duelResult(d, auto) { const o = duelOpp(d), my = +d[o.side + "_pnl"] || 0, both = d.a_done && d.b_done, w = both ? (d.winner || duelWinner(d)) : null, S = DUEL_SESS[d.sess] || DUEL_SESS.ny;
+  const head = !both ? "Locked in" : w === "tie" || !w && both ? "It's a tie" : w === duelMe() ? "You won 🏆" : `${esc(o.name)} won`;
+  dlg(`<h3>${head}</h3><p>${auto ? "The session ended. " : ""}You: <b class="${my >= 0 ? "pos-up" : "pos-dn"}">${money(my)}</b> (${d[o.side + "_n"] || 0} trade${d[o.side + "_n"] === 1 ? "" : "s"})${both ? ` · ${esc(o.name)}: <b class="${(+d[o.os + "_pnl"] || 0) >= 0 ? "pos-up" : "pos-dn"}">${money(+d[o.os + "_pnl"] || 0)}</b> (${d[o.os + "_n"] || 0} trade${d[o.os + "_n"] === 1 ? "" : "s"})` : `<br><span class="muted small">${esc(o.name)} is still trading. You'll see the result when they finish (Friends → 1v1).</span>`}</p>
+    <p class="small muted">The day was ${new Date(d.day + "T12:00:00Z").toUTCString().slice(0, 16)}, ${S[0]} (${esc(d.sym)}).</p>`, () => { view("friends"); ftab("dl"); }); const ok = $("dl-ok"); if (ok) ok.textContent = "See 1v1s"; }
+async function duelOnDone(id) { const rows = await duelRows(), d = rows.find((x) => x.id === id); if (!d) return; if (d.a_done && d.b_done && d.status !== "done") { const w = duelWinner(d); try { await duelSave(d.id, { status: "done", winner: w === "tie" ? null : w, done_at: new Date().toISOString() }); } catch (e) {} d.status = "done"; d.winner = w === "tie" ? null : w; }
+  if (d.status === "done" && (d.a === duelMe() || d.b === duelMe()) && d[duelOpp(d).side + "_done"]) duelResult(d); if (!$("f-dl").classList.contains("hidden")) renderDuel(); }
 async function renderCh() { let list = [];
   if (DEMO) list = mem.ch || []; else { const { data } = await sb.from("challenges").select("*").order("created_at", { ascending: false }).limit(30); list = data || []; }
   const cards = await Promise.all(list.map(async (c) => { const rows = await lbRows(c.start_ts, c.end_ts, c.symbol); const mine = me && rows.some((r) => r.user_id === me.user_id);
@@ -2402,9 +2481,9 @@ const FX = {
   const _toast = toast; toast = function (m) { _toast(m); if (m) FX.spring($("toast"), { opacity: [0, 1], y: [16, 0] }, { bounce: 0.35 }); };
   /* old splash bounce removed (KING_STARTFX replaced the splash) */ }
 document.querySelectorAll(".vtab[data-view]").forEach((b) => (b.onclick = () => view(b.dataset.view)));
-$("start").addEventListener("change", () => { if (!pos.qty && !orders.length) { blind = null; blindUI(); loadReplay(); } });   // picking a date loads it right away
+$("start").addEventListener("change", () => { if (duel && !duel.fin) { $("start").value = duel.day + "T" + (DUEL_SESS[duel.sess] || DUEL_SESS.ny)[1]; return toast("Finish your 1v1 first (tap the 1v1 pill up top)"); } if (!pos.qty && !orders.length) { blind = null; blindUI(); loadReplay(); } });   // picking a date loads it right away
 $("go").onclick = () => { blind = null; blindUI(); loadReplay(); }; $("play").onclick = play; $("step").onclick = () => { pause(); stepUnit(); };
-$("blindbtn").onclick = () => { if (blind) { const d = blind.day; blind = null; blindUI(); toast("It was " + new Date(d + "T12:00:00Z").toUTCString().slice(0, 16)); } else mysteryDay(); }; $("back").onclick = () => { pause(); stepBack(); };
+$("blindbtn").onclick = () => { if (duel && !duel.fin) return toast("The day is revealed when the 1v1 ends"); if (blind) { const d = blind.day; blind = null; blindUI(); toast("It was " + new Date(d + "T12:00:00Z").toUTCString().slice(0, 16)); } else mysteryDay(); }; $("back").onclick = () => { pause(); stepBack(); };
 /* KING_TEMPLATES (Nov 13): a template is a named snapshot of every setting (charts, chart settings, tools + favorites, layout, timeframes,
    indicators, theme, glass, sounds, panels, trading rules, hotkeys...). Make as many as you want, switch, update, rename, delete.
    Progress and personal history (XP, streaks, lessons, journal, strategies, last session) are never part of a template. */
@@ -2487,7 +2566,13 @@ $("sh-list").onclick = (e) => { const st = e.target.closest(".star"); if (st) re
 $("sg-add").onclick = addSg; $("sg-text").onkeydown = (e) => { if (e.key === "Enter") addSg(); };
 $("sg-list").onclick = async (e) => { const b = e.target.closest("[data-vote]"); if (!b) return; if (DEMO) { const x = mem.sg.find((z) => z.id === b.dataset.vote); x.votes = x.votes.includes("demo") ? [] : ["demo"]; } else { const { error } = await sb.rpc("vote_suggestion", { sid: b.dataset.vote }); if (error) toast(error.message); } renderSg(); };
 $("sg-list").onchange = async (e) => { const id = e.target.dataset.st; if (id && !DEMO) { await sb.from("suggestions").update({ status: e.target.value }).eq("id", id); renderSg(); } };
-$("lv-list").onclick = (e) => { const b = e.target.closest("[data-inv]"); if (b) invite(b.dataset.inv); }; $("livepill").onclick = () => { view("friends"); ftab("lv"); };
+$("lv-list").onclick = (e) => { const b = e.target.closest("[data-inv]"); if (b) invite(b.dataset.inv); }; $("livepill").onclick = () => { if (duel && !duel.fin) { dlg(`<h3>Finish the 1v1 now?</h3><p class="small">Your P&amp;L locks in at ${money(duelStats().pnl)} and any open trade is closed. Cancel to keep trading.</p>`, () => duelFinish(false)); const ok = $("dl-ok"); if (ok) ok.textContent = "Finish"; return; } view("friends"); ftab(duel ? "dl" : "lv"); };
+$("f-dl").onclick = async (e) => { const b = e.target.closest("button"); if (!b) return; if (b.id === "dl-new") return duelNew(); const rows = await duelRows(), find = (k) => rows.find((d) => d.id === b.dataset[k]);   // KING_DUEL
+  if (b.dataset.dnew) return duelNew(b.dataset.dnew);
+  if (b.dataset.dacc) { const d = find("dacc"); try { Object.assign(d, await duelSave(d.id, { status: "active" })); } catch (x) { return toast(x.message); } return duelStart(d); }
+  if (b.dataset.dplay) return duelStart(find("dplay"));
+  if (b.dataset.ddec) { await duelSave(b.dataset.ddec, { status: "declined" }); return renderDuel(); }
+  if (b.dataset.dcan) { await duelSave(b.dataset.dcan, { status: "cancelled" }); return renderDuel(); } };
 $("chkbtn").onclick = () => { prefs.chkShow = !prefs.chkShow; savePrefs(); chkUI(); };
 $("mediabtn").onclick = () => { prefs.media = prefs.media || {}; prefs.media.show = !prefs.media.show; savePrefs(); mediaUI(); };
 document.querySelectorAll(".mt button").forEach((b) => (b.onclick = () => { prefs.media.tab = b.dataset.m; savePrefs(); mediaUI(); }));
@@ -3509,7 +3594,7 @@ async function heatCard(tr) { let el = $("st-heat"); if (!el) { el = document.cr
   const bars = (arr, k, col) => { const b = [0, 0, 0, 0, 0, 0]; arr.forEach((h) => b[Math.min(5, Math.floor(h[k] / 0.5))]++); const mx = Math.max(1, ...b); return `<div class="hbars">${b.map((n, i) => `<div><i style="height:${Math.round((60 * n) / mx)}px;background:${col}"></i><span>${i * 0.5}${i === 5 ? "+" : ""}</span></div>`).join("")}</div>`; };
   el.innerHTML = `<h4>Heat: how far trades go against you <i class="qm" data-help="MAE = the most a trade went against you before it closed. MFE = the most it went in your favour. Both in R (1R = your stop distance), from the real 1-minute bars.">?</i></h4>
     <div class="heatk"><div><span>Winners: avg heat</span><b>−${wMae.toFixed(2)}R</b></div><div><span>Winners: worst heat</span><b>−${wMax.toFixed(2)}R</b></div><div><span>Losers: best they got</span><b>+${lMfe.toFixed(2)}R</b></div><div><span>Winners: best they got</span><b>+${wMfe.toFixed(2)}R</b></div></div>
-    <div class="heatg"><div><div class="tiny muted">Winners' heat (R against)</div>${bars(W, "mae", "#2bd4a0")}</div><div><div class="tiny muted">Losers' best (R in favour)</div>${bars(L, "mfe", "#ff6b7a")}</div></div>
+    <div class="heatg"><div><div class="tiny muted">Winners' heat (R against)</div>${bars(W, "mae", ivCol("#2bd4a0"))}</div><div><div class="tiny muted">Losers' best (R in favour)</div>${bars(L, "mfe", ivCol("#ff6b7a"))}</div></div>
     <p class="small">💡 ${tip}</p><div class="tiny muted">${H.length} trades with a stop measured.</div>`; }
 { const _rs = renderStats; renderStats = async function () { await _rs(); try { let tr = (await db.allTrades()).slice(); const A = $("st-acct").value, S = $("st-sym").value; if (A === "none") tr = tr.filter((t) => !t.account_id); else if (A) tr = tr.filter((t) => t.account_id === A); if (S) tr = tr.filter((t) => t.symbol === S); await heatCard(tr); } catch (e) {} }; }
 
@@ -3720,16 +3805,16 @@ addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && (e.key === 
 
 /* KING_UI2 (Nov 20): King's new look, Daylight (light) + Graphite (dark). Off by default until he confirms it.
    Turn on: Settings > Appearance > New look, or add ?ui2=light / ?ui2=dark to the link. A friend skin (Waifu/Sweden/Rave) wins over it. */
-function ui2Mode() { const q = window.__ui2m || new URLSearchParams(location.search).get("ui2"); if (q === "light" || q === "dark") return q; if (q === "off") return ""; if (prefs.ui2 === "off") return ""; return prefs.ui2 === "dark" ? "dark" : "light"; }   // KING_UI2DEFAULT (Nov 22): new look on by default, Daylight; "Off" in Settings keeps the old look
+function ui2Mode() { const q = window.__ui2m || new URLSearchParams(location.search).get("ui2"); if (q === "light" || q === "dark" || q === "ivory") return q; if (q === "off") return ""; if (prefs.ui2 === "off") return ""; return prefs.ui2 === "dark" ? "dark" : prefs.ui2 === "ivory" ? "ivory" : "light"; }   // KING_UI2DEFAULT (Nov 22): new look on by default, Daylight; "Off" in Settings keeps the old look
 function ui2Apply() { const m = ui2Mode(), skin = !!(prefs.skin || prefs.waifu), on = !!m && !skin, B = document.body;
-  B.classList.toggle("ui2", on); B.classList.toggle("ui2-light", on && m === "light"); B.classList.toggle("ui2-dark", on && m === "dark");
-  if ($("s-ui2")) $("s-ui2").value = prefs.ui2 === "off" ? "off" : (prefs.ui2 === "dark" ? "dark" : "light");
-  if (on && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== m && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][m]) { try { applyChartTheme(prefs.chTheme.id, m, true); } catch (e) {} }
+  B.classList.toggle("ui2", on); B.classList.toggle("ui2-light", on && (m === "light" || m === "ivory")); B.classList.toggle("ui2-dark", on && m === "dark"); B.classList.toggle("ui2-ivory", on && m === "ivory");   // KING_IVORY: Ivory = Daylight + the soft serif paper look
+  if ($("s-ui2")) $("s-ui2").value = prefs.ui2 === "off" ? "off" : (prefs.ui2 === "dark" || prefs.ui2 === "ivory" ? prefs.ui2 : "light");
+  if (on && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== (m === "ivory" ? "light" : m) && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][m === "ivory" ? "light" : m]) { try { applyChartTheme(prefs.chTheme.id, m === "ivory" ? "light" : m, true); } catch (e) {} }
   ui2Banner(on ? m : ""); }
 function ui2Banner(m) { let b = document.getElementById("ui2banner"); const want = !!new URLSearchParams(location.search).get("ui2");
   if (!want || !m) { if (b) b.remove(); return; }
   if (!b) { b = document.createElement("div"); b.id = "ui2banner"; document.body.appendChild(b); }
-  b.innerHTML = `New look preview <button data-m="light" class="${m === "light" ? "on" : ""}">Daylight</button><button data-m="dark" class="${m === "dark" ? "on" : ""}">Graphite</button>`;
+  b.innerHTML = `New look preview <button data-m="light" class="${m === "light" ? "on" : ""}">Daylight</button><button data-m="dark" class="${m === "dark" ? "on" : ""}">Graphite</button><button data-m="ivory" class="${m === "ivory" ? "on" : ""}">Ivory</button>`;
   b.querySelectorAll("button").forEach((x) => (x.onclick = () => { window.__ui2m = x.dataset.m; ui2Apply(); })); }
 // KING_UI2: the mockups' "Search or jump to… ⌘K" box in the top bar (opens the same quick-actions search)
 (() => { const T = document.querySelector("header.top"); if (!T || $("ui2search")) return; const b = document.createElement("button"); b.id = "ui2search"; b.type = "button";

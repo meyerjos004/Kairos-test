@@ -1,0 +1,39 @@
+/* KING_IVORY (Nov 22): King's soft / professional / elegant look, matched to the OTHRYS logo.
+   Sits on top of Daylight (body.ui2.ui2-light.ui2-ivory) so every Daylight fix still applies.
+   Rules: warm off-white paper, ink-black text, classic serif (Bodoni Moda) for titles and the big numbers,
+   hairline borders, almost no shadow, green/red only for P&L, no purple/orange, nothing glossy, 3D or glowing. */
+@font-face{font-family:"Bodoni Moda";src:url(assets/fonts/bodoni-moda-latin-500-normal.woff2) format("woff2");font-weight:400 500;font-display:swap}
+@font-face{font-family:"Bodoni Moda";src:url(assets/fonts/bodoni-moda-latin-600-normal.woff2) format("woff2");font-weight:600 900;font-display:swap}
+body.ui2-ivory{
+  --bg:#f7f5f0;--bg2:#f4f1ea;--panel:#fcfbf8;--panel2:#f8f6f1;--glass:#fcfbf8;--glass2:#f8f6f1;
+  --line:rgba(20,18,14,.08);--edge:rgba(20,18,14,.11);--sel:rgba(20,18,14,.05);
+  --txt:#141310;--mut:#5b574f;--mut2:#6e695f;--acc:#141310;--acc2:#3a362e;
+  --up:#1f6f4e;--dn:#a8343a;--warn:#8a6417;
+  --hov:rgba(20,18,14,.045);--chip:rgba(20,18,14,.035);--ink:#141310;--inktxt:#fbf9f4;--shadow:0 10px 30px rgba(40,32,20,.07);
+  --serif:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif;
+}
+html:has(body.ui2-ivory){background:#f7f5f0}
+/* surfaces: paper on paper, hairlines, softer corners */
+body.ui2-ivory .glass,body.ui2-ivory .card,body.ui2-ivory .dlg,body.ui2-ivory .menu,body.ui2-ivory .tools.float{border-color:var(--edge)!important}
+body.ui2-ivory .card,body.ui2-ivory .stats div,body.ui2-ivory #st-kpi>div{box-shadow:none!important;background:var(--panel)!important}
+body.ui2-ivory .pad,body.ui2-ivory .favbar,body.ui2-ivory .menu,body.ui2-ivory .tools.float{background:rgba(252,251,248,.97)!important;box-shadow:0 12px 34px rgba(40,32,20,.09)!important}
+/* type: serif for titles and the most important numbers */
+body.ui2-ivory .vh,body.ui2-ivory h2,body.ui2-ivory .dlg h3{font-family:var(--serif)!important;font-weight:600;letter-spacing:0;font-size:24px}
+body.ui2-ivory .dlg h3{font-size:21px}
+body.ui2-ivory .brand{font-family:var(--serif)!important;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+body.ui2-ivory #st-kpi b{font-family:var(--serif)!important;font-weight:600;font-size:30px;letter-spacing:0;font-variant-numeric:lining-nums tabular-nums}
+body.ui2-ivory #st-kpi b .kpis{font-family:var(--body)!important;font-size:11.5px}
+body.ui2-ivory #st-kpi span,body.ui2-ivory .stats div span,body.ui2-ivory .card h4{text-transform:uppercase;letter-spacing:.1em;font-size:11px;color:var(--mut)}
+body.ui2-ivory #st-week .kvs b{font-family:var(--serif);font-size:19px}
+body.ui2-ivory .acct b,body.ui2-ivory .riskcard b{font-family:var(--serif)}
+/* controls: ink, not blue */
+body.ui2-ivory button.primary,body.ui2-ivory .primary{background:var(--ink)!important;color:var(--inktxt)!important}
+body.ui2-ivory .seg button.on,body.ui2-ivory .tf.on,body.ui2-ivory .btab.on,body.ui2-ivory #ftabs button.on{background:var(--panel)!important;color:var(--txt)!important;box-shadow:inset 0 0 0 1px var(--edge)!important}
+body.ui2-ivory input:focus,body.ui2-ivory select:focus,body.ui2-ivory textarea:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(20,18,14,.08)}
+body.ui2-ivory a{color:var(--txt);text-decoration-color:rgba(20,18,14,.35)}
+body.ui2-ivory button.buy{background:var(--up)!important}body.ui2-ivory button.sell{background:var(--dn)!important}
+body.ui2-ivory ::selection{background:rgba(20,18,14,.14)}
+body.ui2-ivory #pbuy,body.ui2-ivory button.buy{background:var(--up)!important;color:#fbf9f4!important}
+body.ui2-ivory #psell,body.ui2-ivory button.sell{background:var(--dn)!important;color:#fbf9f4!important}
+body.ui2-ivory :is(.tf,.tool,.ib,.pb,.ranges button,.btab){border-color:transparent}
+body.ui2-ivory :is(.tf,.ranges button,.btab):hover{border-color:var(--edge)}

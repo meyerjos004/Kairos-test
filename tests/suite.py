@@ -745,6 +745,20 @@ async def main():
         # KING_UI2DEFAULT: the new look opens in Daylight unless someone picked Off or Graphite
         check("ui2default: opens in Daylight", await E("(()=>{const o=prefs.ui2,w=window.__ui2m;window.__ui2m=null;delete prefs.ui2;const m=ui2Mode();prefs.ui2=o;window.__ui2m=w;return m})()") == "light")
         check("ui2default: Off keeps the old look", await E("(()=>{const o=prefs.ui2,w=window.__ui2m;window.__ui2m=null;prefs.ui2='off';const m=ui2Mode();prefs.ui2=o;window.__ui2m=w;return m})()") == "")
+        # KING_IVORY: third look (soft serif paper) on top of Daylight
+        check("ivory: ?ui2=ivory mode", await E("(()=>{const w=window.__ui2m;window.__ui2m='ivory';const m=ui2Mode();ui2Apply();const ok=document.body.classList.contains('ui2-ivory')&&document.body.classList.contains('ui2-light');window.__ui2m=w;ui2Apply();return m==='ivory'&&ok})()"))
+        check("ivory: stats colors go quiet", await E("(()=>{document.body.classList.add('ui2-ivory');const c=ivCol('#2bd4a0'),q=ivEq().topLineColor;document.body.classList.remove('ui2-ivory');return c==='#1f6f4e'&&q==='#1f6f4e'&&ivCol('#2bd4a0')==='#2bd4a0'})()"))
+        # KING_DUEL: competitive 1v1 (demo): accept, trade, finish -> locked, result saved, winner picked, record counts it
+        await E("view('friends'); ftab('dl')"); await pg.wait_for_timeout(500)
+        check("duel: 1v1 tab lists the challenge", await E("!!document.querySelector('[data-dacc=\"d1\"]')"))
+        await E("mem.duels.find(d=>d.id==='d1').status='active'; duelStart(mem.duels.find(d=>d.id==='d1'))"); await pg.wait_for_timeout(2500)
+        check("duel: starts on the hidden day", await E("!!duel && !!blind && blind.day==='2024-03-12' && duel.me==='b'"), await E("JSON.stringify({b:blind,d:duel&&duel.id})"))
+        check("duel: can't change the date mid-match", await E("(()=>{$('start').value='2025-01-06T09:00';$('start').dispatchEvent(new Event('change'));return $('start').value.startsWith('2024-03-12')})()"))
+        await E("duelFinish(false)"); await pg.wait_for_timeout(600)
+        check("duel: finishing locks trading", await E("lockedNow() && duel.fin"))
+        check("duel: result saved with a winner", await E("(()=>{const d=mem.duels.find(x=>x.id==='d1');return d.status==='done'&&d.b_done&&d.a_done&&d.b_pnl!=null})()"))
+        check("duel: record counts it", await E("(async()=>{const r=duelRecord(await duelRows(),'b');return r.w+r.l+r.t>=2})()"))
+        await E("$('dl-ok')&&$('dl-ok').click()")
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
