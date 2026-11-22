@@ -1,39 +1,52 @@
-/* KING_IVORY (Nov 22): King's soft / professional / elegant look, matched to the OTHRYS logo.
-   Sits on top of Daylight (body.ui2.ui2-light.ui2-ivory) so every Daylight fix still applies.
-   Rules: warm off-white paper, ink-black text, classic serif (Bodoni Moda) for titles and the big numbers,
-   hairline borders, almost no shadow, green/red only for P&L, no purple/orange, nothing glossy, 3D or glowing. */
+/* KING_IVORY + KING_ONYX (Nov 22): King's look. Soft, professional, elegant, matched to the OTHRYS logo.
+   Ivory = light (sits on Daylight's fixes: body.ui2.ui2-light.ui2-iv.ui2-ivory). Onyx = dark (body.ui2.ui2-dark.ui2-iv.ui2-onyx).
+   Rules: warm paper / warm ink, readable serif (Newsreader) for titles and the key numbers, Bodoni only for the wordmark,
+   hairline borders, almost no shadow, quiet green/red only for money, no purple/orange, nothing glossy, 3D or glowing. */
+@font-face{font-family:"Newsreader";src:url(assets/fonts/newsreader-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Newsreader";src:url(assets/fonts/newsreader-latin-500-normal.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"Newsreader";src:url(assets/fonts/newsreader-latin-600-normal.woff2) format("woff2");font-weight:600 900;font-display:swap}
 @font-face{font-family:"Bodoni Moda";src:url(assets/fonts/bodoni-moda-latin-500-normal.woff2) format("woff2");font-weight:400 500;font-display:swap}
 @font-face{font-family:"Bodoni Moda";src:url(assets/fonts/bodoni-moda-latin-600-normal.woff2) format("woff2");font-weight:600 900;font-display:swap}
+body.ui2-iv{--serif:"Newsreader",Georgia,"Times New Roman",serif;--mark:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif}
 body.ui2-ivory{
   --bg:#f7f5f0;--bg2:#f4f1ea;--panel:#fcfbf8;--panel2:#f8f6f1;--glass:#fcfbf8;--glass2:#f8f6f1;
   --line:rgba(20,18,14,.08);--edge:rgba(20,18,14,.11);--sel:rgba(20,18,14,.05);
-  --txt:#141310;--mut:#5b574f;--mut2:#6e695f;--acc:#141310;--acc2:#3a362e;
+  --txt:#1b1a17;--mut:#5b574f;--mut2:#6e695f;--acc:#1b1a17;--acc2:#3a362e;
   --up:#1f6f4e;--dn:#a8343a;--warn:#8a6417;
-  --hov:rgba(20,18,14,.045);--chip:rgba(20,18,14,.035);--ink:#141310;--inktxt:#fbf9f4;--shadow:0 10px 30px rgba(40,32,20,.07);
-  --serif:"Bodoni Moda","Didot","Bodoni 72",Georgia,serif;
+  --hov:rgba(20,18,14,.045);--chip:rgba(20,18,14,.035);--ink:#1b1a17;--inktxt:#fbf9f4;--shadow:0 10px 30px rgba(40,32,20,.07);
 }
-html:has(body.ui2-ivory){background:#f7f5f0}
-/* surfaces: paper on paper, hairlines, softer corners */
-body.ui2-ivory .glass,body.ui2-ivory .card,body.ui2-ivory .dlg,body.ui2-ivory .menu,body.ui2-ivory .tools.float{border-color:var(--edge)!important}
-body.ui2-ivory .card,body.ui2-ivory .stats div,body.ui2-ivory #st-kpi>div{box-shadow:none!important;background:var(--panel)!important}
+body.ui2-onyx{
+  --bg:#121110;--bg2:#151413;--panel:#1a1917;--panel2:#201f1c;--glass:#1a1917;--glass2:#201f1c;
+  --line:rgba(236,232,224,.07);--edge:rgba(236,232,224,.10);--sel:rgba(236,232,224,.06);
+  --txt:#ece8e0;--mut:#a7a196;--mut2:#8d887e;--acc:#ece8e0;--acc2:#d6d0c4;
+  --up:#5bb48f;--dn:#d36a70;--warn:#d3a85a;
+  --hov:rgba(236,232,224,.05);--chip:rgba(236,232,224,.04);--ink:#ece8e0;--inktxt:#121110;--shadow:0 14px 36px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+html:has(body.ui2-ivory){background:#f7f5f0}html:has(body.ui2-onyx){background:#121110}
+/* surfaces: paper on paper, hairlines */
+body.ui2-iv .glass,body.ui2-iv .card,body.ui2-iv .dlg,body.ui2-iv .menu,body.ui2-iv .tools.float{border-color:var(--edge)!important}
+body.ui2-iv .card,body.ui2-iv .stats div,body.ui2-iv #st-kpi>div{box-shadow:none!important;background:var(--panel)!important}
 body.ui2-ivory .pad,body.ui2-ivory .favbar,body.ui2-ivory .menu,body.ui2-ivory .tools.float{background:rgba(252,251,248,.97)!important;box-shadow:0 12px 34px rgba(40,32,20,.09)!important}
-/* type: serif for titles and the most important numbers */
-body.ui2-ivory .vh,body.ui2-ivory h2,body.ui2-ivory .dlg h3{font-family:var(--serif)!important;font-weight:600;letter-spacing:0;font-size:24px}
-body.ui2-ivory .dlg h3{font-size:21px}
-body.ui2-ivory .brand{font-family:var(--serif)!important;font-weight:600;letter-spacing:.14em;text-transform:uppercase}
-body.ui2-ivory #st-kpi b{font-family:var(--serif)!important;font-weight:600;font-size:30px;letter-spacing:0;font-variant-numeric:lining-nums tabular-nums}
-body.ui2-ivory #st-kpi b .kpis{font-family:var(--body)!important;font-size:11.5px}
-body.ui2-ivory #st-kpi span,body.ui2-ivory .stats div span,body.ui2-ivory .card h4{text-transform:uppercase;letter-spacing:.1em;font-size:11px;color:var(--mut)}
-body.ui2-ivory #st-week .kvs b{font-family:var(--serif);font-size:19px}
-body.ui2-ivory .acct b,body.ui2-ivory .riskcard b{font-family:var(--serif)}
+body.ui2-onyx .pad,body.ui2-onyx .favbar,body.ui2-onyx .menu,body.ui2-onyx .tools.float{background:rgba(26,25,23,.97)!important;box-shadow:0 14px 36px rgba(0,0,0,.4)!important}
+/* type: readable serif for titles + the key numbers (regular weight, not heavy) */
+body.ui2-iv .vh,body.ui2-iv h2,body.ui2-iv .dlg h3{font-family:var(--serif)!important;font-weight:500;letter-spacing:-.005em;font-size:24px}
+body.ui2-iv .dlg h3{font-size:21px}
+body.ui2-iv .brand{font-family:var(--mark)!important;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
+body.ui2-iv #st-kpi b{font-family:var(--serif)!important;font-weight:500;font-size:27px;letter-spacing:-.01em;font-variant-numeric:lining-nums tabular-nums}
+body.ui2-iv #st-kpi b .kpis{font-family:var(--body)!important;font-size:11.5px}
+body.ui2-iv #st-kpi span,body.ui2-iv .stats div span,body.ui2-iv .card h4{text-transform:uppercase;letter-spacing:.08em;font-size:11px;color:var(--mut)}
+body.ui2-iv #st-week .kvs b{font-family:var(--serif);font-weight:500;font-size:18px}
+body.ui2-iv .dlscore{font-family:var(--serif)!important;font-weight:500}
 /* controls: ink, not blue */
-body.ui2-ivory button.primary,body.ui2-ivory .primary{background:var(--ink)!important;color:var(--inktxt)!important}
-body.ui2-ivory .seg button.on,body.ui2-ivory .tf.on,body.ui2-ivory .btab.on,body.ui2-ivory #ftabs button.on{background:var(--panel)!important;color:var(--txt)!important;box-shadow:inset 0 0 0 1px var(--edge)!important}
-body.ui2-ivory input:focus,body.ui2-ivory select:focus,body.ui2-ivory textarea:focus{border-color:var(--ink);box-shadow:0 0 0 3px rgba(20,18,14,.08)}
-body.ui2-ivory a{color:var(--txt);text-decoration-color:rgba(20,18,14,.35)}
-body.ui2-ivory button.buy{background:var(--up)!important}body.ui2-ivory button.sell{background:var(--dn)!important}
-body.ui2-ivory ::selection{background:rgba(20,18,14,.14)}
-body.ui2-ivory #pbuy,body.ui2-ivory button.buy{background:var(--up)!important;color:#fbf9f4!important}
-body.ui2-ivory #psell,body.ui2-ivory button.sell{background:var(--dn)!important;color:#fbf9f4!important}
-body.ui2-ivory :is(.tf,.tool,.ib,.pb,.ranges button,.btab){border-color:transparent}
-body.ui2-ivory :is(.tf,.ranges button,.btab):hover{border-color:var(--edge)}
+body.ui2-iv button.primary,body.ui2-iv .primary{background:var(--ink)!important;color:var(--inktxt)!important}
+body.ui2-iv .seg button.on,body.ui2-iv .tf.on,body.ui2-iv .btab.on,body.ui2-iv #ftabs button.on{background:var(--panel)!important;color:var(--txt)!important;box-shadow:inset 0 0 0 1px var(--edge)!important}
+body.ui2-onyx .seg button.on,body.ui2-onyx .tf.on,body.ui2-onyx .btab.on,body.ui2-onyx #ftabs button.on{background:var(--panel2)!important}
+body.ui2-iv input:focus,body.ui2-iv select:focus,body.ui2-iv textarea:focus{border-color:var(--ink);box-shadow:0 0 0 3px var(--sel)}
+body.ui2-iv a{color:var(--txt);text-decoration-color:var(--edge)}
+body.ui2-iv #pbuy,body.ui2-iv button.buy{background:var(--up)!important;color:#fbf9f4!important}
+body.ui2-iv #psell,body.ui2-iv button.sell{background:var(--dn)!important;color:#fbf9f4!important}
+body.ui2-onyx #pbuy,body.ui2-onyx button.buy,body.ui2-onyx #psell,body.ui2-onyx button.sell{color:#121110!important}
+body.ui2-iv :is(.tf,.tool,.ib,.pb,.ranges button,.btab){border-color:transparent}
+body.ui2-iv :is(.tf,.ranges button,.btab):hover{border-color:var(--edge)}
+body.ui2-iv ::selection{background:var(--sel)}

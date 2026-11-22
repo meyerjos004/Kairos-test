@@ -59,7 +59,7 @@ async def main():
             check(f"place {t}", ok, await E("[drawings.length, typeof tool!=='undefined'?tool:null]"))
         # KING_MYTHEME: one-tap personal themes set candles, background and per-tool colors (no hard-coded green/red zones)
         th=await E("(()=>{applyChartTheme('sandslate','dark',true); const a=[prefs.up,prefs.dn,prefs.cs.bg1,prefs.toolCols.hline,UPC(.5)].join(','); applyChartTheme('ryan','light',true); const b=[prefs.up,prefs.cs.bg1,prefs.toolCols.trend].join(','); prefs.chTheme=null; return a+'|'+b})()")
-        check("personal chart themes apply", th=="#e8d9b5,#6f8396,#16181b,#7fd1e0,rgba(232,217,181,0.5)|#097564,#b8b8b8,#4259c1", th)
+        check("personal chart themes apply", th=="#e8d9b5,#6f8396,#131210,#7fd1e0,rgba(232,217,181,0.5)|#097564,#b8b8b8,#4259c1", th)
         wf = await E("applyChartTheme('ben','waifu',true); const r=[prefs.waifu, prefs.cs.bgk, prefs.cs.body]; applyChartTheme('sandslate','dark',true); r.concat([prefs.waifu, prefs.cs.body]).join(',')")
         check("Ben's Waifu mode turns on and off", wf == "true,waifu,false,false,true", wf)
         wu = await E("applyChartTheme('ben','waifu',true); const a=[document.body.classList.contains('waifu'), !!document.getElementById('wpetals')]; applyChartTheme('sandslate','dark',true); a.concat([document.body.classList.contains('waifu')]).join(',')")
@@ -743,11 +743,13 @@ async def main():
         check("iconguard: no squashed icon buttons on any page (Daylight)", not _sq, _sq[:8])
         await E("window.__ui2m=null; ui2Apply()")
         # KING_UI2DEFAULT: the new look opens in Daylight unless someone picked Off or Graphite
-        check("ui2default: opens in Daylight", await E("(()=>{const o=prefs.ui2,w=window.__ui2m;window.__ui2m=null;delete prefs.ui2;const m=ui2Mode();prefs.ui2=o;window.__ui2m=w;return m})()") == "light")
+        check("ui2default: opens in Ivory", await E("(()=>{const o=prefs.ui2,w=window.__ui2m;window.__ui2m=null;delete prefs.ui2;const m=ui2Mode();prefs.ui2=o;window.__ui2m=w;return m})()") == "ivory")
+        check("onyx: old Graphite choice maps to Onyx", await E("(()=>{const o=prefs.ui2,w=window.__ui2m;window.__ui2m=null;prefs.ui2='dark';const m=ui2Mode();prefs.ui2=o;window.__ui2m=w;return m})()") == "onyx")
         check("ui2default: Off keeps the old look", await E("(()=>{const o=prefs.ui2,w=window.__ui2m;window.__ui2m=null;prefs.ui2='off';const m=ui2Mode();prefs.ui2=o;window.__ui2m=w;return m})()") == "")
         # KING_IVORY: third look (soft serif paper) on top of Daylight
         check("ivory: ?ui2=ivory mode", await E("(()=>{const w=window.__ui2m;window.__ui2m='ivory';const m=ui2Mode();ui2Apply();const ok=document.body.classList.contains('ui2-ivory')&&document.body.classList.contains('ui2-light');window.__ui2m=w;ui2Apply();return m==='ivory'&&ok})()"))
-        check("ivory: stats colors go quiet", await E("(()=>{document.body.classList.add('ui2-ivory');const c=ivCol('#2bd4a0'),q=ivEq().topLineColor;document.body.classList.remove('ui2-ivory');return c==='#1f6f4e'&&q==='#1f6f4e'&&ivCol('#2bd4a0')==='#2bd4a0'})()"))
+        check("onyx: dark mode classes", await E("(()=>{const w=window.__ui2m;window.__ui2m='onyx';ui2Apply();const c=document.body.classList,ok=c.contains('ui2-onyx')&&c.contains('ui2-dark')&&c.contains('ui2-iv')&&!c.contains('ui2-light');window.__ui2m=w;ui2Apply();return ok})()"))
+        check("ivory: stats colors go quiet", await E("(()=>{const B=document.body.classList,had=B.contains('ui2-iv'),hadO=B.contains('ui2-onyx');B.add('ui2-iv');B.remove('ui2-onyx');const c=ivCol('#2bd4a0'),q=ivEq().topLineColor;B.remove('ui2-iv');const off=ivCol('#2bd4a0');if(had)B.add('ui2-iv');if(hadO)B.add('ui2-onyx');return c==='#1f6f4e'&&q==='rgb(31,111,78)'&&off==='#2bd4a0'})()"))
         # KING_DUEL: competitive 1v1 (demo): accept, trade, finish -> locked, result saved, winner picked, record counts it
         await E("view('friends'); ftab('dl')"); await pg.wait_for_timeout(500)
         check("duel: 1v1 tab lists the challenge", await E("!!document.querySelector('[data-dacc=\"d1\"]')"))

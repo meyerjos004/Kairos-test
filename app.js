@@ -66,7 +66,7 @@ const UPC = (a) => hexA(prefs.zUp || prefs.up, a), DNC = (a) => hexA(prefs.zDn |
    King picked Sand and slate; Will, Ryan and Ben are matched to their own chart screenshots. Anyone can switch in Chart settings → Symbol → Theme. */
 const CHART_THEMES = {
   sandslate: ["Sand and slate", {
-    dark: { bg: "#16181b", grid: "#20242a", txt: "#8f969e", up: "#e8d9b5", dn: "#6f8396", bord: false, zUp: "#e8d9b5", zDn: "#6f8396", tools: { trend: "#a9c7e0", ray: "#a9c7e0", channel: "#a9c7e0", hline: "#7fd1e0", hray: "#7fd1e0", rect: "#b7c4cf", fib: "#a9c7e0", text: "#efe9dc", arrow: "#efe9dc" } },
+    dark: { bg: "#131210", grid: "#1e1d1a", txt: "#9a958b", up: "#e8d9b5", dn: "#6f8396", bord: false, zUp: "#e8d9b5", zDn: "#6f8396", tools: { trend: "#a9c7e0", ray: "#a9c7e0", channel: "#a9c7e0", hline: "#7fd1e0", hray: "#7fd1e0", rect: "#b7c4cf", fib: "#a9c7e0", text: "#efe9dc", arrow: "#efe9dc" } },
     light: { bg: "#faf8f3", grid: "#ebe6db", txt: "#6f6a60", up: "#a8894a", dn: "#4f6274", bord: false, zUp: "#a8894a", zDn: "#4f6274", tools: { trend: "#2f6f9a", ray: "#2f6f9a", channel: "#2f6f9a", hline: "#0f8fa6", hray: "#0f8fa6", rect: "#8a99a8", fib: "#2f6f9a", text: "#2b2a26", arrow: "#2b2a26" } } }],
   will: ["Will's gray", {
     // KING_SKINS (Nov 20): Will's hardcore Sweden mode. Art is original, made on King's PC.
@@ -1375,9 +1375,9 @@ function mcUI(tr) { const el = $("st-mc"); if (!el) return; const pnls = tr.map(
     <canvas id="mc-cv" class="mccv"></canvas><div class="tiny muted">${r.N.toLocaleString()} reshuffles of your ${pnls.length} trades in this filter. Green = hit the target, red = hit the drawdown. Past replay results, not a promise.</div>`;
   mcDraw($("mc-cv"), r, o); $("mc-go").onclick = () => mcUI(tr); }
 // KING_IVORY: Ivory look uses quiet ink-green / brick-red instead of the bright mint / pink
-function ivOn() { return document.body.classList.contains("ui2-ivory"); }
-function ivEq() { return ivOn() ? { topLineColor: "#1f6f4e", topFillColor1: "rgba(31,111,78,.22)", topFillColor2: "rgba(31,111,78,.02)", bottomLineColor: "#a8343a", bottomFillColor1: "rgba(168,52,58,.02)", bottomFillColor2: "rgba(168,52,58,.22)" } : { topLineColor: "#2bd4a0", topFillColor1: "rgba(43,212,160,.55)", topFillColor2: "rgba(43,212,160,.04)", bottomLineColor: "#ff5d6c", bottomFillColor1: "rgba(255,93,108,.04)", bottomFillColor2: "rgba(255,93,108,.55)" }; }
-function ivCol(c) { return !ivOn() ? c : /^#(2bd4a0|5ee6b8|26a69a)$/i.test(c) ? "#1f6f4e" : /^#(ff6b7a|ff5d6c|ff4d5e|ef5350)$/i.test(c) ? "#a8343a" : c; }
+function ivOn() { return document.body.classList.contains("ui2-iv"); }
+function ivEq() { const dk = document.body.classList.contains("ui2-onyx"), u = dk ? "91,180,143" : "31,111,78", d = dk ? "211,106,112" : "168,52,58"; return ivOn() ? { topLineColor: `rgb(${u})`, topFillColor1: `rgba(${u},.22)`, topFillColor2: `rgba(${u},.02)`, bottomLineColor: `rgb(${d})`, bottomFillColor1: `rgba(${d},.02)`, bottomFillColor2: `rgba(${d},.22)` } : { topLineColor: "#2bd4a0", topFillColor1: "rgba(43,212,160,.55)", topFillColor2: "rgba(43,212,160,.04)", bottomLineColor: "#ff5d6c", bottomFillColor1: "rgba(255,93,108,.04)", bottomFillColor2: "rgba(255,93,108,.55)" }; }
+function ivCol(c) { const dk = document.body.classList.contains("ui2-onyx"); return !ivOn() ? c : /^#(2bd4a0|5ee6b8|26a69a)$/i.test(c) ? (dk ? "#5bb48f" : "#1f6f4e") : /^#(ff6b7a|ff5d6c|ff4d5e|ef5350)$/i.test(c) ? (dk ? "#d36a70" : "#a8343a") : c; }
 async function renderStats() {
   $("st-acct").innerHTML = `<option value="">All accounts</option><option value="none">Replay (no account)</option>` + accts.map((a) => `<option value="${a.id}">${a.name}</option>`).join(""); $("st-acct").value = prefs.stAcct || "";
   let tr = (await db.allTrades()).slice().sort((a, b) => a.t_exit - b.t_exit); const A = $("st-acct").value, S = $("st-sym").value, D = +$("st-range").value;
@@ -3805,20 +3805,24 @@ addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && (e.key === 
 
 /* KING_UI2 (Nov 20): King's new look, Daylight (light) + Graphite (dark). Off by default until he confirms it.
    Turn on: Settings > Appearance > New look, or add ?ui2=light / ?ui2=dark to the link. A friend skin (Waifu/Sweden/Rave) wins over it. */
-function ui2Mode() { const q = window.__ui2m || new URLSearchParams(location.search).get("ui2"); if (q === "light" || q === "dark" || q === "ivory") return q; if (q === "off") return ""; if (prefs.ui2 === "off") return ""; return prefs.ui2 === "dark" ? "dark" : prefs.ui2 === "ivory" ? "ivory" : "light"; }   // KING_UI2DEFAULT (Nov 22): new look on by default, Daylight; "Off" in Settings keeps the old look
-function ui2Apply() { const m = ui2Mode(), skin = !!(prefs.skin || prefs.waifu), on = !!m && !skin, B = document.body;
-  B.classList.toggle("ui2", on); B.classList.toggle("ui2-light", on && (m === "light" || m === "ivory")); B.classList.toggle("ui2-dark", on && m === "dark"); B.classList.toggle("ui2-ivory", on && m === "ivory");   // KING_IVORY: Ivory = Daylight + the soft serif paper look
-  if ($("s-ui2")) $("s-ui2").value = prefs.ui2 === "off" ? "off" : (prefs.ui2 === "dark" || prefs.ui2 === "ivory" ? prefs.ui2 : "light");
-  if (on && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== (m === "ivory" ? "light" : m) && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][m === "ivory" ? "light" : m]) { try { applyChartTheme(prefs.chTheme.id, m === "ivory" ? "light" : m, true); } catch (e) {} }
+// KING_ONYX (Nov 22): Ivory (light) and Onyx (dark) replace Daylight and Graphite. Old saved choices map over: light→ivory, dark→onyx. "Off" keeps the old look.
+function ui2Norm(v) { return v === "dark" || v === "onyx" ? "onyx" : v === "off" ? "" : v === "light" || v === "ivory" ? "ivory" : null; }
+function ui2Mode() { const q = ui2Norm(window.__ui2m || new URLSearchParams(location.search).get("ui2")); if (q != null) return q; const p = ui2Norm(prefs.ui2); return p != null ? p : "ivory"; }
+function ui2Apply() { const m = ui2Mode(), skin = !!(prefs.skin || prefs.waifu), on = !!m && !skin, B = document.body, base = m === "onyx" ? "dark" : "light";
+  B.classList.toggle("ui2", on); B.classList.toggle("ui2-light", on && base === "light"); B.classList.toggle("ui2-dark", on && base === "dark");
+  B.classList.toggle("ui2-iv", on); B.classList.toggle("ui2-ivory", on && m === "ivory"); B.classList.toggle("ui2-onyx", on && m === "onyx");
+  try { document.querySelector('meta[name="theme-color"]') && document.querySelector('meta[name="theme-color"]').setAttribute("content", !on ? "#0a0a0d" : m === "onyx" ? "#121110" : "#f7f5f0"); } catch (e) {}
+  if ($("s-ui2")) { const p = ui2Norm(prefs.ui2); $("s-ui2").value = p === "" ? "off" : p || "ivory"; }
+  if (on && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== base && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][base]) { try { applyChartTheme(prefs.chTheme.id, base, true); } catch (e) {} }
   ui2Banner(on ? m : ""); }
 function ui2Banner(m) { let b = document.getElementById("ui2banner"); const want = !!new URLSearchParams(location.search).get("ui2");
   if (!want || !m) { if (b) b.remove(); return; }
   if (!b) { b = document.createElement("div"); b.id = "ui2banner"; document.body.appendChild(b); }
-  b.innerHTML = `New look preview <button data-m="light" class="${m === "light" ? "on" : ""}">Daylight</button><button data-m="dark" class="${m === "dark" ? "on" : ""}">Graphite</button><button data-m="ivory" class="${m === "ivory" ? "on" : ""}">Ivory</button>`;
+  b.innerHTML = `Look <button data-m="ivory" class="${m === "ivory" ? "on" : ""}">Ivory</button><button data-m="onyx" class="${m === "onyx" ? "on" : ""}">Onyx</button>`;
   b.querySelectorAll("button").forEach((x) => (x.onclick = () => { window.__ui2m = x.dataset.m; ui2Apply(); })); }
 // KING_UI2: the mockups' "Search or jump to… ⌘K" box in the top bar (opens the same quick-actions search)
 (() => { const T = document.querySelector("header.top"); if (!T || $("ui2search")) return; const b = document.createElement("button"); b.id = "ui2search"; b.type = "button";
   b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2"/></svg><span>Search or jump to…</span><kbd>${/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl "}K</kbd>`;
   b.onclick = () => { try { cmdkOpen(); } catch (e) {} }; const g = T.querySelector(".grp.replay"); T.insertBefore(b, g || null); })();
-if ($("s-ui2")) $("s-ui2").onchange = (e) => { prefs.ui2 = e.target.value || "off"; savePrefs(); ui2Apply(); };
+if ($("s-ui2")) $("s-ui2").onchange = (e) => { prefs.ui2 = e.target.value || "ivory"; savePrefs(); ui2Apply(); };
 ui2Apply(); setTimeout(ui2Apply, 1500); setTimeout(ui2Apply, 4000);
