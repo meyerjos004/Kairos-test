@@ -734,6 +734,13 @@ async def main():
         check("ui2fix: icon buttons show icons 16px+", all(x >= 16 for x in _ic), _ic)
         _ny = await E("[getComputedStyle(document.getElementById('skipny')).color, document.body.className, document.getElementById('skipny').matches(':hover')]"); check("ui2fix: NY open readable in daylight", sum(abs(a-b) for a,b in zip([int(v) for v in __import__("re").findall(r"\d+", _ny[0])[:3]],[15,122,63])) < 12, _ny)   # tolerant: color may be mid-transition
         check("ui2fix: Daylight toast is dark with light text", await E("(()=>{toast('x');const c=getComputedStyle(document.getElementById('toast'));return c.backgroundColor!==c.color})()"))
+        # KING_ICONGUARD (night Nov 22): repeat-bug guard. A broad style rule squashed icons once; scan every page for icon buttons under 12px (carets excluded)
+        _sq = []
+        for _v in ["trade","tj","journal","stats","accounts","learn","friends","tax","help","settings"]:
+            await E("view('%s')" % _v); await pg.wait_for_timeout(250)
+            _sq += await E("""[...document.querySelectorAll('button, .tool')].filter(b=>!b.matches('.tgx,.ddb')&&b.offsetParent).map(b=>{const v=b.querySelector('svg');if(!v)return null;const r=v.getBoundingClientRect();return r.width&&Math.min(r.width,r.height)<12?(b.id||String(b.className).slice(0,24))+' '+Math.round(r.width)+'x'+Math.round(r.height):null}).filter(Boolean)""")
+        await E("view('trade')")
+        check("iconguard: no squashed icon buttons on any page (Daylight)", not _sq, _sq[:8])
         await E("window.__ui2m=null; ui2Apply()")
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
@@ -745,4 +752,10 @@ _dupf = [k for k, v in collections.Counter(re.findall(r"(?:^|[^.\w$])function\s+
 check("no duplicate function names in app.js", not _dupf, _dupf)
 _dupi = [k for k, v in collections.Counter(re.findall(r'\sid="([^"]+)"', _html)).items() if v > 1]
 check("no duplicate ids in index.html", not _dupi, _dupi)
+# KING_IDGUARD (night Nov 22): every element id the code looks up exists (tour stop 1 pointed at a removed control). Known guarded leftovers listed.
+_jsall = "".join(open(ROOT + "/" + f).read() for f in ["app.js", "journal.js", "bots.js", "prank.js"])
+_have = set(re.findall(r'\sid="([^"]+)"', _html)) | set(re.findall(r'id="([\w-]+)"', _jsall)) | set(re.findall(r'\.id\s*=\s*"([\w-]+)"', _jsall)) | set(re.findall(r"id='([\w-]+)'", _jsall))
+_used = set(re.findall(r'\$\("([\w-]+)"\)', _jsall)) | set(re.findall(r'getElementById\("([\w-]+)"\)', _jsall)) | set(re.findall(r'sel: "#([\w-]+)"', _jsall))
+_miss = sorted(_used - _have - {"skipnext", "st-lf"})
+check("idguard: every id the code looks up exists", not _miss, _miss)
 print("PASS %d  FAIL %d" % (len(OK), len(FAIL))); print("\n".join("FAIL " + f for f in FAIL))
