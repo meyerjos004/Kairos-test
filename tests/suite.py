@@ -728,6 +728,12 @@ async def main():
         _ov = await E("(()=>{const a=document.getElementById('s-save').getBoundingClientRect();return [...document.querySelectorAll('#s2-q, button[data-s2]')].filter(e=>e.offsetParent).some(e=>{const b=e.getBoundingClientRect();return a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top})})()")
         check("phonesave: Save button clear of the search box and tabs", not _ov, await E("(()=>{const a=document.getElementById('s-save').getBoundingClientRect();return [[a.left,a.top,a.right,a.bottom].map(Math.round),[...document.querySelectorAll('#s2-q, button[data-s2]')].filter(e=>e.offsetParent).map(e=>{const b=e.getBoundingClientRect();return (e.dataset.s2||e.id)+' '+[b.left,b.top,b.right,b.bottom].map(Math.round)})]})()"))
         await pg.set_viewport_size({"width": 1680, "height": 945}); await E("view('trade')"); await pg.wait_for_timeout(300)
+        # KING_UI2FIX (#330): in the new look, icon buttons keep real icons (they were squashed to 0-4px) and daylight text is readable
+        await E("view('trade'); window.__ui2m='light'; ui2Apply()"); await pg.wait_for_timeout(300)
+        _ic = await E("['#chartsetbtn','#fullbtn','#padx','#padmore','.tools .tool.hashk','.fbtools .tool.hashk'].map(s=>{const e=document.querySelector(s+' svg');return e?Math.round(Math.min(e.getBoundingClientRect().width,e.getBoundingClientRect().height)):99})")
+        check("ui2fix: icon buttons show icons 16px+", all(x >= 16 for x in _ic), _ic)
+        check("ui2fix: NY open readable in daylight", await E("getComputedStyle(document.getElementById('skipny')).color") == "rgb(15, 122, 63)")
+        await E("window.__ui2m=null; ui2Apply()")
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())

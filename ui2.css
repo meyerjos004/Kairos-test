@@ -1,0 +1,144 @@
+/* KING_UI2 (Nov 20): King's new look, from his Nov 19 answers + saved design reels.
+   Two modes of one look: Daylight (body.ui2-light) and Graphite (body.ui2-dark).
+   Rules: flat (no glass blur, no aurora), round corners (inner = outer - padding), roomy, text one step bigger,
+   see-through borders, sidebar labels on hover, motion that answers clicks. Every feature stays; only the look changes.
+   Off unless body has .ui2 (Settings > Appearance > New look, or ?ui2=light|dark). Skins (Waifu/Sweden/Rave) turn it off. */
+
+body.ui2{
+  --r:14px;--r2:10px;--ease:cubic-bezier(.2,.8,.2,1);--spring:cubic-bezier(.3,1.25,.4,1);
+  --display:"Geist","Helvetica Neue",Arial,sans-serif;--body:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:"Geist Mono","Geist",ui-monospace,monospace;
+  font-size:14px;letter-spacing:-.003em;
+}
+body.ui2-dark{
+  --bg:#16181b;--bg2:#191b1e;--panel:#1f2226;--panel2:#24282d;--glass:#1f2226;--glass2:#272b30;
+  --line:rgba(255,255,255,.08);--edge:rgba(255,255,255,.08);--edge-hi:transparent;--sel:rgba(255,255,255,.07);
+  --txt:#eceef1;--mut:#a0a7b2;--mut2:#7b838f;--acc:#5b9bff;--acc2:#8ab6ff;--up:#2cc48b;--dn:#f2575d;--warn:#f2b84b;
+  --hov:rgba(255,255,255,.06);--chip:rgba(255,255,255,.05);--ink:#eceef1;--inktxt:#16181b;--shadow:0 16px 40px rgba(0,0,0,.35);
+  color-scheme:dark;
+}
+body.ui2-light{
+  --bg:#edeff2;--bg2:#f2f3f5;--panel:#ffffff;--panel2:#f6f7f9;--glass:#ffffff;--glass2:#f6f7f9;
+  --line:rgba(16,18,21,.09);--edge:rgba(16,18,21,.10);--edge-hi:transparent;--sel:rgba(16,18,21,.06);
+  --txt:#101215;--mut:#555c68;--mut2:#737a86;--acc:#2563eb;--acc2:#1d4ed8;--up:#15996a;--dn:#dc4349;--warn:#b7791f;
+  --hov:rgba(16,18,21,.05);--chip:rgba(16,18,21,.04);--ink:#101215;--inktxt:#ffffff;--shadow:0 16px 40px rgba(16,18,21,.12);
+  color-scheme:light;
+}
+html:has(body.ui2-light){color-scheme:light;background:#edeff2}
+body.ui2,body.ui2 #app{background:var(--bg);color:var(--txt)}
+body.ui2 .aurora{display:none}
+
+/* flat surfaces: no blur, no inner shine, one border style */
+body.ui2 .glass,body.ui2.glass .glass,body.ui2 .dlg,body.ui2 .menu,body.ui2 .card,body.ui2 .tools.float{
+  background:var(--panel)!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important;
+  border:1px solid var(--edge)!important;box-shadow:var(--shadow)}
+body.ui2 .glass:not(.dlg):not(.menu):not(.float){box-shadow:none}
+body.ui2 *{-webkit-backdrop-filter:none;backdrop-filter:none}
+body.ui2 .dlgwrap{background:rgba(10,12,16,.45);-webkit-backdrop-filter:none;backdrop-filter:none}
+body.ui2-light .dlgwrap{background:rgba(16,18,21,.28)}
+body.ui2 .dlg{border-radius:20px!important;padding:24px}
+body.ui2 .dlg h3{font:600 18px var(--display);letter-spacing:-.01em}
+
+/* controls: flat, one step roomier, press-in on click */
+body.ui2 button,body.ui2 input,body.ui2 select,body.ui2 textarea{
+  background:var(--chip);border:1px solid var(--edge);border-radius:var(--r2);color:var(--txt);padding:8px 12px;box-shadow:none}
+body.ui2 button:hover{background:var(--hov);border-color:var(--edge)}
+body.ui2 button:active{transform:scale(.97)}
+body.ui2 button:focus-visible,body.ui2 input:focus-visible,body.ui2 select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+body.ui2 input:focus,body.ui2 select:focus,body.ui2 textarea:focus{border-color:var(--acc);box-shadow:0 0 0 3px color-mix(in srgb,var(--acc) 18%,transparent)}
+body.ui2 button.primary,body.ui2 .primary{background:var(--ink)!important;color:var(--inktxt)!important;border-color:transparent!important;font-weight:600}
+body.ui2 button.buy{background:var(--up)!important;color:#fff!important;border:none;font-weight:600;border-radius:12px}
+body.ui2 button.sell{background:var(--dn)!important;color:#fff!important;border:none;font-weight:600;border-radius:12px}
+body.ui2 .seg{background:var(--chip);border:0;border-radius:12px;padding:3px;gap:2px}
+body.ui2 .seg button{border:0;background:transparent;border-radius:9px;color:var(--mut)}
+body.ui2 .seg button.on{background:var(--panel);color:var(--txt);box-shadow:0 1px 2px rgba(0,0,0,.12),inset 0 0 0 1px var(--edge)}
+body.ui2-dark .seg button.on{background:var(--glass2)}
+body.ui2 kbd{border:1px solid var(--edge);border-radius:6px;background:var(--chip);color:var(--mut);font:500 12px var(--mono)}
+body.ui2 .vh,body.ui2 h2{font:600 20px var(--display);letter-spacing:-.015em}
+body.ui2 .tbl th{color:var(--mut);font-weight:500;font-size:12.5px}
+body.ui2 .tbl td{border-top:1px solid var(--line)}
+
+/* left sidebar: icons only, the name shows on hover */
+body.ui2 .rail{background:var(--panel);border-right:1px solid var(--line)}
+@media (min-width:901px){body.ui2 .rail:not(.wide){width:64px;padding:14px 0;gap:6px;overflow:visible;z-index:60}}
+body.ui2 .ri{width:44px;height:44px;border-radius:12px;color:var(--mut)}
+body.ui2 .ri svg{width:21px;height:21px}
+body.ui2 .ri:hover{background:var(--hov);color:var(--txt)}
+body.ui2 .ri.on{background:var(--sel);color:var(--txt);box-shadow:none}
+body.ui2 .ri.on svg{color:var(--txt)}
+@media (max-width:900px){body.ui2 .rail .ri .rl{display:none!important}}
+body.ui2 .rail:not(.wide) .ri .rl{display:block;position:absolute;left:54px;top:50%;transform:translate(-4px,-50%);opacity:0;pointer-events:none;
+  padding:6px 10px;border-radius:8px;background:var(--ink);color:var(--inktxt);font:500 13px var(--body);white-space:nowrap;z-index:80;
+  transition:opacity .14s var(--ease),transform .14s var(--ease)}
+body.ui2 .rail:not(.wide) .ri:hover .rl{opacity:1;transform:translate(0,-50%)}
+body.ui2 .rlogo img{border-radius:10px}
+body.ui2 .avatar{background:var(--chip);border:1px solid var(--edge);color:var(--txt)}
+
+/* top bar: account, money, then the replay controls; roomier */
+body.ui2 header.top{background:var(--panel);border-bottom:1px solid var(--line)}
+@media (min-width:901px){body.ui2 header.top{height:60px;gap:22px;padding:0 20px}}
+body.ui2 .acct{background:var(--chip);border:1px solid var(--edge);border-radius:10px;padding:7px 12px;font-weight:600}
+@media (min-width:901px){body.ui2 .kv{flex-direction:column;gap:1px;align-items:flex-start}}
+body.ui2 .kv label{font-size:11.5px;color:var(--mut)}
+body.ui2 .kv b{font:500 14.5px var(--mono)}
+body.ui2 .status{border-radius:999px;padding:4px 10px;font-size:12.5px}
+body.ui2 .fxtop{background:transparent!important;border:1px solid var(--edge)!important;color:var(--mut)!important}
+
+/* chart area sits in a rounded card with breathing room */
+body.ui2 .work{gap:0}
+body.ui2 .tools,body.ui2 .side,body.ui2 .dock{background:var(--panel)}
+body.ui2 .tools .tool{color:var(--mut);border-radius:10px}
+body.ui2 .tools .tool:hover{color:var(--txt);background:var(--hov)}
+body.ui2 .tools .tool.on{background:var(--sel);color:var(--acc)}
+body.ui2 .tools .tsep{background:var(--line)}
+body.ui2 .side{border-left:1px solid var(--line)}
+body.ui2 .side h4,body.ui2 .side .sh{font:600 14px var(--display)}
+body.ui2 .dock{border-top:1px solid var(--line)}
+
+/* menus and toasts */
+body.ui2 .menu{border-radius:14px!important;padding:6px}
+body.ui2 .menu .mi{border-radius:9px;padding:8px 10px}
+body.ui2 .menu .mi:hover{background:var(--hov)}
+body.ui2 .toast{background:var(--ink)!important;color:var(--inktxt)!important;border:0!important;border-radius:12px!important;box-shadow:var(--shadow)}
+
+/* cards everywhere (stats, journal, settings, learn, friends) */
+body.ui2 .stat,body.ui2 .scard,body.ui2 .sbox,body.ui2 .panel,body.ui2 .box{background:var(--panel);border:1px solid var(--edge);border-radius:16px;box-shadow:none}
+
+/* motion answers clicks only; respect reduced motion */
+body.ui2 .view.enter{animation:ui2in .26s var(--ease) both}
+@keyframes ui2in{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){body.ui2 *{animation:none!important;transition:none!important}}
+
+/* small preview banner (only in the hosted preview copy) */
+#ui2banner{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:9999;display:flex;gap:8px;align-items:center;padding:8px 10px 8px 14px;border-radius:999px;
+  background:var(--ink);color:var(--inktxt);font:500 13px var(--body);box-shadow:var(--shadow)}
+#ui2banner button{background:transparent;color:var(--inktxt);border:1px solid color-mix(in srgb,var(--inktxt) 25%,transparent);border-radius:999px;padding:5px 11px;font-size:12.5px}
+#ui2banner button.on{background:var(--inktxt);color:var(--ink)}
+
+/* dialogs built by the app (date picker, wide dialogs, command search) */
+body.ui2 .dp,body.ui2 .wdlg,body.ui2 .ck-box{background:var(--panel)!important;border:1px solid var(--edge)!important;border-radius:20px!important;box-shadow:var(--shadow)!important}
+body.ui2 .dp-title{font:600 22px var(--display);letter-spacing:-.015em;text-transform:none}
+body.ui2 .dp-big{background:var(--chip);border:1px solid var(--edge);font:600 17px var(--body)}
+body.ui2 .dp-big:hover:not(:disabled){border-color:var(--acc);background:color-mix(in srgb,var(--acc) 10%,transparent)}
+body.ui2 .dpwrap{background:rgba(10,12,16,.45)}
+body.ui2-light .dpwrap{background:rgba(16,18,21,.28)}
+
+@media (max-width:900px){#ui2banner{bottom:76px;font-size:12px;padding:5px 6px 5px 10px}#ui2banner button{padding:4px 9px}}
+
+/* top-bar search (only in the new look, desktop) */
+#ui2search{display:none}
+@media (min-width:1100px){body.ui2 #ui2search{display:flex;align-items:center;gap:10px;min-width:220px;color:var(--mut);background:var(--chip);border:1px solid var(--edge);border-radius:10px;padding:7px 8px 7px 11px;margin-left:auto}
+body.ui2 #ui2search svg{width:17px;height:17px}body.ui2 #ui2search span{flex:1;text-align:left;font-size:13.5px}body.ui2 #ui2search kbd{font-size:11.5px;padding:1px 6px}}
+
+/* KING_UI2FIX (King, Nov 21: "almost all button icons are too small"). Root cause: the generic button padding above (8px 12px)
+   beat .ib/.pb/.tool{padding:0}, so a 30px icon button kept 4px for its icon and the pad buttons kept 0px.
+   Icon-only buttons get their padding back and their icons one size up. */
+body.ui2 :is(.ib,.pb,.ri,.tool,.tgx,.fbpop,.ptbr,.ptrev,.ptx){padding:0}
+body.ui2 .ib{width:34px;height:34px}
+body.ui2 .ib svg{width:20px;height:20px;flex-shrink:0}
+body.ui2 .ib.sm{width:30px;height:28px}body.ui2 .ib.sm svg{width:17px;height:17px}
+body.ui2 .pb{width:28px;height:28px}body.ui2 .pb svg{width:17px;height:17px;flex-shrink:0}
+body.ui2 .tools .tool svg{width:24px;height:24px;flex-shrink:0}
+body.ui2 .tool.hashk svg{width:22px;height:22px;flex-shrink:0}
+body.ui2 .tool .hk{font-size:9.5px;opacity:.9}
+body.ui2 .fbtools .tool svg{width:20px;height:20px;flex-shrink:0}
+body.ui2 .ri svg{flex-shrink:0}

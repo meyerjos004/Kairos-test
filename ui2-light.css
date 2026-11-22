@@ -1,0 +1,347 @@
+/* KING_UI2 generated light overrides (tools: /home/claude/ui2tools/genlight.py) */
+body.ui2-light .glass{box-shadow:inset 0 1px 0 var(--edge-hi),0 10px 30px rgba(16,18,21,0.0625)}
+body.ui2-light button,body.ui2-light input,body.ui2-light select{background:rgba(16,18,21,0.044)}
+body.ui2-light button:hover{background:rgba(16,18,21,0.088);border-color:rgba(16,18,21,0.132)}
+body.ui2-light button.danger{color:#101215}
+body.ui2-light kbd{border:1px solid rgba(16,18,21,0.275)}
+body.ui2-light .dom .r{border-bottom:1px solid rgba(16,18,21,0.0275)}
+body.ui2-light .dom .r.last .p{background:rgba(16,18,21,0.11);color:#101215}
+body.ui2-light .dom .ma{color:#101215}
+body.ui2-light .menu .mi:hover{background:rgba(16,18,21,0.077)}
+body.ui2-light .dlgwrap{background:rgba(16,18,21,0.21)}
+body.ui2-light .tbl td{border-top:1px solid rgba(16,18,21,0.044)}
+body.ui2-light .ri:hover{background:rgba(16,18,21,0.055)}
+body.ui2-light .acct{background:rgba(16,18,21,0.033)}
+body.ui2-light .seg{background:rgba(16,18,21,0.033)}
+body.ui2-light .symsearch{background:rgba(16,18,21,0.033)}
+body.ui2-light .tf.on{background:rgba(16,18,21,0.088)}
+body.ui2-light .lay i b{background:rgba(16,18,21,0.198)}
+body.ui2-light .tool:hover{background:rgba(16,18,21,0.055)}
+body.ui2-light .wmark{color:rgba(16,18,21,0.044)}
+body.ui2-light .mode.on{background:rgba(16,18,21,0.077)}
+body.ui2-light .riskcard{background:rgba(16,18,21,0.033)}
+body.ui2-light .ranges button:hover{background:rgba(16,18,21,0.055)}
+body.ui2-light .btab.on{background:rgba(16,18,21,0.066)}
+body.ui2-light .bt td{border-top:1px solid rgba(16,18,21,0.044)}
+body.ui2-light .pad{background:rgba(255,255,255,0.94);border:1px solid rgba(16,18,21,0.099);box-shadow:0 14px 40px rgba(16,18,21,0.113),inset 0 1px 0 rgba(16,18,21,0.066)}
+body.ui2-light .qstep{background:rgba(16,18,21,0.033)}
+body.ui2-light .prow2 button{background:rgba(16,18,21,0.055)}
+body.ui2-light .menu{background:rgba(255,255,255,0.96);border:1px solid rgba(16,18,21,0.099);box-shadow:0 14px 40px rgba(16,18,21,0.113)}
+body.ui2-light .tools.float{border:1px solid rgba(16,18,21,0.099);background:rgba(255,255,255,0.94);box-shadow:0 14px 40px rgba(16,18,21,0.113)}
+body.ui2-light .favbar{background:rgba(255,255,255,0.94);border:1px solid rgba(16,18,21,0.099);box-shadow:0 10px 30px rgba(16,18,21,0.1)}
+body.ui2-light .pill{background:rgba(16,18,21,0.066)}
+body.ui2-light .bar{background:rgba(16,18,21,0.066)}
+body.ui2-light .acct:hover{border-color:rgba(16,18,21,0.154)}
+body.ui2-light #ftabs button.on{background:rgba(16,18,21,0.088)}
+body.ui2-light .cm{background:rgba(16,18,21,0.055)}
+body.ui2-light .xpb{background:rgba(16,18,21,0.077)}
+body.ui2-light .qzbar{background:rgba(255,255,255,0.95);border:1px solid rgba(16,18,21,0.11);box-shadow:0 18px 50px rgba(16,18,21,0.12)}
+body.ui2-light .taxout div{background:rgba(16,18,21,0.033)}
+body.ui2-light .livepill{color:#101215}
+body.ui2-light .media{background:rgba(255,255,255,0.94);border:1px solid rgba(16,18,21,0.099);box-shadow:0 14px 40px rgba(16,18,21,0.113)}
+body.ui2-light .mt button.on{background:rgba(16,18,21,0.088)}
+body.ui2-light .tour-hole{box-shadow:0 0 0 9999px rgba(16,18,21,0.12),0 0 0 2px var(--acc)}
+body.ui2-light .tour-card{background:rgba(255,255,255,0.97);border:1px solid rgba(16,18,21,0.11);box-shadow:0 18px 50px rgba(16,18,21,0.12)}
+body.ui2-light .review{background:rgba(255,255,255,0.96);border:1px solid rgba(16,18,21,0.11);box-shadow:0 14px 40px rgba(16,18,21,0.113)}
+body.ui2-light .chip.on{color:#101215}
+body.ui2-light .rbars i{background:rgba(16,18,21,0.165)}
+body.ui2-light select{background-color:var(--panel,#ffffff);border:1px solid var(--edge,rgba(16,18,21,0.088))}
+body.ui2-light select option,body.ui2-light select optgroup{background:#f5f6f8}
+body.ui2-light .tip{background:rgba(255,255,255,0.96);border:1px solid rgba(16,18,21,0.11);color:#101215;box-shadow:0 8px 24px rgba(16,18,21,0.113)}
+body.ui2-light .dtb{background:rgba(255,255,255,0.96);border:1px solid rgba(16,18,21,0.11);box-shadow:0 10px 30px rgba(16,18,21,0.12)}
+body.ui2-light .dtb button{color:#101215}
+body.ui2-light .dtb button:hover,body.ui2-light .dtb button.on{background:rgba(16,18,21,0.088);color:#101215}
+body.ui2-light .dtb .dc{box-shadow:inset 0 0 0 1px rgba(16,18,21,0.075)}
+body.ui2-light .dtb .dc.on{outline:2px solid #101215}
+body.ui2-light .dtb .dsep{background:rgba(16,18,21,0.11)}
+body.ui2-light .legend .lname:hover{background:rgba(16,18,21,0.088)}
+body.ui2-light .chartset{background:rgba(16,18,21,0.33)}
+body.ui2-light .jcd,body.ui2-light .jcw{border:1px solid rgba(16,18,21,0.066);background:rgba(16,18,21,0.022)}
+body.ui2-light .jcd:hover{border-color:rgba(16,18,21,0.198)}
+body.ui2-light .jcw{background:rgba(16,18,21,0.0385)}
+body.ui2-light .ddb{border:1px solid rgba(16,18,21,0.099);background:rgba(16,18,21,0.0385)}
+body.ui2-light .ddb:hover,body.ui2-light .dd.open .ddb{border-color:rgba(16,18,21,0.22);background:rgba(16,18,21,0.066)}
+body.ui2-light .ddm{background:rgba(255,255,255,0.98);border:1px solid rgba(16,18,21,0.11);box-shadow:0 18px 40px rgba(16,18,21,0.12)}
+body.ui2-light .ddo{color:#101215}
+body.ui2-light .ddo:hover{background:rgba(16,18,21,0.077);color:#101215}
+body.ui2-light .filebtn{border:1px dashed rgba(16,18,21,0.198)}
+body.ui2-light .sp-name{color:#101215}
+body.ui2-light .vfr{background:#ffffff}
+body.ui2-light .vc:hover{background:rgba(16,18,21,0.055)}
+body.ui2-light .vc .vt{background:#ffffff}
+body.ui2-light .vc em{background:rgba(255,255,255,0.94)}
+body.ui2-light .spnow{background:rgba(16,18,21,0.044)}
+body.ui2-light .pl img{background:#f5f6f8}
+body.ui2-light .slay{border-top:1px solid rgba(16,18,21,0.077)}
+body.ui2-light .sl:hover{background:rgba(16,18,21,0.066)}
+body.ui2-light .mxi{border:2px solid rgba(16,18,21,0.198)}
+body.ui2-light .mxxp{color:#101215}
+body.ui2-light .mxbar{background:rgba(16,18,21,0.077)}
+body.ui2-light .chkl .ck.on{color:#101215}
+body.ui2-light .mccv{background:rgba(16,18,21,0.022)}
+body.ui2-light .pane.tradesym.active .lname{color:#101215}
+body.ui2-light #welcome{background:#ffffff;color:#101215}
+body.ui2-light #welcome .wgate span{color:#6b7280}
+body.ui2-light .wtag{color:#555c68}
+body.ui2-light .tourspot{box-shadow:0 0 0 9999px rgba(16,18,21,0.12),0 0 0 2px #b98cff,0 0 28px rgba(139,92,246,.6)}
+body.ui2-light .tourbox{background:rgba(255,255,255,0.96);box-shadow:0 20px 60px -10px rgba(16,18,21,0.12)}
+body.ui2-light .tourbox p{color:#555c68}
+body.ui2-light .tdots i{background:rgba(16,18,21,0.132)}
+body.ui2-light #fxl.loss .fxt{color:#555c68}
+body.ui2-light .fxrow{border-bottom:1px solid rgba(16,18,21,0.055)}
+body.ui2-light .fxup{border:1px solid rgba(16,18,21,0.132)}
+body.ui2-light .vend{background:rgba(255,255,255,0.94);color:#101215}
+body.ui2-light .vend span{color:#555c68}
+body.ui2-light .askclip{background:var(--panel,#ffffff);box-shadow:0 12px 40px rgba(16,18,21,0.12)}
+body.ui2-light .askclip b{color:var(--muted,#555c68)}
+body.ui2-light .tools .tool{color:#555c68}
+body.ui2-light .tools .tool:hover{color:#101215;background:rgba(16,18,21,0.066)}
+body.ui2-light .tools .tool.on{color:#101215}
+body.ui2-light .tg.act .tgm:not(.on){color:#101215}
+body.ui2-light .tgx:hover,body.ui2-light .tgx.open{color:#101215}
+body.ui2-light .tfly{background:rgba(255,255,255,0.98);border:1px solid rgba(16,18,21,0.088);box-shadow:0 18px 50px rgba(16,18,21,0.12)}
+body.ui2-light .tfly .tfh{color:#6b7280}
+body.ui2-light .tools .tfly .tool.fi{color:#101215}
+body.ui2-light .tfly .tool.fi kbd{color:#6b7280;background:rgba(16,18,21,0.055);border:1px solid rgba(16,18,21,0.077)}
+body.ui2-light .tfly .tool.fi.on{color:#101215}
+body.ui2-light .tools .tsep{background:rgba(16,18,21,0.077)}
+body.ui2-light .lblpop{background:rgba(255,255,255,0.98);border:1px solid rgba(16,18,21,0.099);box-shadow:0 18px 50px rgba(16,18,21,0.12)}
+body.ui2-light .lp-h{color:#6b7280}
+body.ui2-light .lp-c{border:1px solid rgba(16,18,21,0.11);background:rgba(16,18,21,0.044);color:#101215}
+body.ui2-light .lp-c:hover,body.ui2-light .lp-c.on{color:#101215}
+body.ui2-light .fxb-b{border:1px solid rgba(16,18,21,0.132);background:rgba(255,255,255,0.94);color:#101215;box-shadow:0 8px 24px rgba(16,18,21,0.113)}
+body.ui2-light .fxb-b:hover{color:#101215}
+body.ui2-light .fxb-card{background:rgba(255,255,255,0.98);border:1px solid rgba(16,18,21,0.099);box-shadow:0 18px 50px rgba(16,18,21,0.12)}
+body.ui2-light .fxb-h button{color:#6b7280}
+body.ui2-light .fxb-tip{background:rgba(255,255,255,0.97);box-shadow:0 12px 34px rgba(16,18,21,0.12);color:#101215}
+body.ui2-light #fxb-tx{color:#6b7280}
+body.ui2-light .fxb-off{color:#6b7280}
+body.ui2-light .sp-tip{color:#555c68}
+body.ui2-light .fxb-card textarea{background:rgba(16,18,21,0.044);color:#101215;border:1px solid rgba(16,18,21,0.11)}
+body.ui2-light .mtitle{color:#101215}
+body.ui2-light .mbar label.mop{background:rgba(16,18,21,0.044);color:#555c68}
+body.ui2-light .mbar label.mop b{color:#101215}
+body.ui2-light .mres{background:linear-gradient(135deg,transparent 55%,rgba(16,18,21,0.275) 56%,rgba(16,18,21,0.275) 62%,transparent 63%,transparent 72%,rgba(16,18,21,0.275) 73%,rgba(16,18,21,0.275) 79%,transparent 80%)}
+@media (max-width:900px){body.ui2-light .rail{background:rgba(255,255,255,0.96)}
+}body.ui2-light .vc .vlesson{color:#555c68}
+body.ui2-light .dtb{background:#f5f6f8;border-color:rgba(16,18,21,0.077)}
+body.ui2-light .dtb button.dtxt{color:#101215}
+body.ui2-light .dtb .dcols{border-top:1px solid rgba(16,18,21,0.066)}
+body.ui2-light .cstabs .ah{border-bottom:1px solid rgba(16,18,21,0.077)}
+body.ui2-light .csnav{border-right:1px solid rgba(16,18,21,0.077)}
+body.ui2-light .csnav button{color:#101215}
+body.ui2-light .csnav button.on{color:#101215}
+body.ui2-light .csp h4{color:#6b7280}
+body.ui2-light .csfoot{border-top:1px solid rgba(16,18,21,0.077)}
+@media (max-width:600px){body.ui2-light .csnav{border-bottom:1px solid rgba(16,18,21,0.077)}
+}body.ui2-light .review .mfe{color:#555c68}
+body.ui2-light .plpill{color:#101215}
+body.ui2-light .fbreplay{border-right:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .tg:hover .tgx,body.ui2-light .tgx.open{color:#101215}
+body.ui2-light .tgx:hover{background:rgba(16,18,21,0.088)!important}
+body.ui2-light .fxtop{background:linear-gradient(180deg,rgba(16,18,21,0.132),rgba(16,18,21,0.033));border:1px solid rgba(16,18,21,0.198);box-shadow:inset 0 1px 0 rgba(16,18,21,0.242),0 6px 20px rgba(16,18,21,0.0875)}
+body.ui2-light .fxtop:hover{box-shadow:inset 0 1px 0 rgba(16,18,21,0.308),0 8px 26px rgba(255,77,94,.22)}
+body.ui2-light .cmy{border-top:1px solid rgba(16,18,21,0.066)}
+body.ui2-light .cadd{border:1px dashed rgba(16,18,21,0.33)}
+body.ui2-light .csp section .ck{color:#101215}
+body.ui2-light .csl{color:#101215}
+body.ui2-light .csc{border:1px solid rgba(16,18,21,0.154);background:rgba(16,18,21,0.044)}
+body.ui2-light .csfoot #cs-cancel,body.ui2-light .csfoot #cs-all{border:1px solid rgba(16,18,21,0.66);color:#101215}
+body.ui2-light .setnav a:hover{background:rgba(16,18,21,0.055)}
+body.ui2-light .setnav a.on{color:#101215}
+body.ui2-light .seth{color:#6b7280}
+body.ui2-light .setc{background:var(--panel,rgba(255,255,255,0.94));border:1px solid rgba(16,18,21,0.077)}
+body.ui2-light .nfx-moon{color:#101215}
+body.ui2-light .psprev{background:rgba(16,18,21,0.044)}
+body.ui2-light .getapp{color:#101215}
+body.ui2-light #dlgbox h4{color:#6b7280}
+body.ui2-light .gstep>b{color:#101215}
+body.ui2-light .cssw{border:1px solid rgba(16,18,21,0.198);box-shadow:inset 0 0 0 2px rgba(16,18,21,0.0875)}
+body.ui2-light .cssw:hover{border-color:rgba(16,18,21,0.495)}
+body.ui2-light #kintro{background:#ffffff;color:#101215}
+body.ui2-light #kintro .ktip{color:#6b7280}
+@media (min-width:901px){body.ui2-light.glass{background:radial-gradient(1100px 520px at 15% -12%,rgba(124,107,255,.09),transparent 60%),radial-gradient(900px 500px at 100% 110%,rgba(72,214,255,.05),transparent 60%),#ffffff}
+body.ui2-light.glass .rail,body.ui2-light.glass header.top,body.ui2-light.glass .tbar,body.ui2-light.glass .tools:not(.float),body.ui2-light.glass .favbar,body.ui2-light.glass .tools.float,body.ui2-light.glass .bottom{background:linear-gradient(180deg,rgba(16,18,21,0.0825) 0%,rgba(16,18,21,0.0308) 38%,rgba(16,18,21,0.0132) 100%),rgba(255,255,255,0.94);border:1px solid rgba(16,18,21,0.0935);box-shadow:inset 0 1px 0 rgba(16,18,21,0.187),inset 0 -1px 0 rgba(16,18,21,0.113),inset 1px 0 0 rgba(16,18,21,0.0385),inset -1px 0 0 rgba(16,18,21,0.022),0 12px 32px rgba(16,18,21,0.095),0 1px 2px rgba(16,18,21,0.12)}
+body.ui2-light.glass .rail{border-right:1px solid rgba(16,18,21,0.0935)}
+body.ui2-light.glass header.top,body.ui2-light.glass .tbar{border-bottom:1px solid rgba(16,18,21,0.0935)}
+body.ui2-light.glass .tools:not(.float){border-right:1px solid rgba(16,18,21,0.0935)}
+body.ui2-light.glass .rail::after,body.ui2-light.glass header.top::after,body.ui2-light.glass .tbar::after,body.ui2-light.glass .tools::after,body.ui2-light.glass .favbar::after{background:radial-gradient(120% 60% at 30% -20%,rgba(16,18,21,0.143),transparent 60%),linear-gradient(180deg,rgba(16,18,21,0.066),transparent 30%)}
+body.ui2-light.glass .tools .tool.on{box-shadow:inset 0 1px 0 rgba(16,18,21,0.242),0 2px 8px rgba(124,107,255,.25)}
+body.ui2-light.glass .tools .tool:hover{background:rgba(16,18,21,0.077);box-shadow:inset 0 1px 0 rgba(16,18,21,0.11)}
+body.ui2-light.glass #charts{border:1px solid rgba(16,18,21,0.066)}
+}body.ui2-light .tgx:hover,body.ui2-light .tgx.open{color:#101215!important}
+body.ui2-light.glass .tools:not(.float),body.ui2-light.glass .tools.float{background:linear-gradient(180deg,rgba(16,18,21,0.0825) 0%,rgba(16,18,21,0.0308) 38%,rgba(16,18,21,0.0132) 100%),rgba(255,255,255,0.94)}
+body.ui2-light .tplgo:hover{background:rgba(16,18,21,0.055)}
+body.ui2-light .tplnew{border:1px dashed rgba(16,18,21,0.176);background:rgba(16,18,21,0.022)}
+body.ui2-light .conn{border-top:1px solid rgba(16,18,21,0.066)}
+body.ui2-light #fxb-thumb{border:1px solid rgba(16,18,21,0.165)}
+body.ui2-light #fxb-rm{background:#f5f6f8;color:#101215}
+body.ui2-light .fxb-img img{border:1px solid rgba(16,18,21,0.154)}
+body.ui2-light .fxb-img button{color:#101215}
+body.ui2-light .fxb-lb{background:rgba(255,255,255,0.94)}
+body.ui2-light .fxb-lb img{box-shadow:0 20px 60px rgba(16,18,21,0.12)}
+body.ui2-light .fxb-lb button{border:1px solid rgba(16,18,21,0.22);background:rgba(255,255,255,0.94);color:#101215}
+body.ui2-light .recap-dev div{background:rgba(16,18,21,0.044)}
+body.ui2-light .sptr:hover{background:rgba(16,18,21,0.066)}
+@media (max-width:600px){body.ui2-light .setnav #s-save{box-shadow:-12px 0 12px var(--bg,#ffffff)}
+}body.ui2-light .dpbtn{background:rgba(16,18,21,0.044)}
+body.ui2-light .dpwrap{background:rgba(16,18,21,0.27)}
+body.ui2-light .dp{background:#f5f6f8;border:1px solid rgba(16,18,21,0.132);box-shadow:0 30px 80px rgba(16,18,21,0.12)}
+body.ui2-light .dp-big{background:rgba(16,18,21,0.044)}
+body.ui2-light .dp-day{background:rgba(16,18,21,0.055)}
+body.ui2-light #dlgbox.wide{border:1px solid rgba(16,18,21,0.198);box-shadow:0 30px 80px rgba(16,18,21,0.12)}
+body.ui2-light #reesepanel{background:rgba(255,255,255,0.94)}
+body.ui2-light .rp-conf span{color:#101215}
+body.ui2-light .rp-n{background:rgba(16,18,21,0.044)}
+body.ui2-light .dp-day.we{background:rgba(16,18,21,0.022)}
+body.ui2-light #dpick .dp-day.in{color:#101215}
+body.ui2-light .lay2:hover{background:rgba(16,18,21,0.066)}
+body.ui2-light .lsync .qm{background:rgba(16,18,21,0.132)}
+body.ui2-light .lsync .sw{background:rgba(16,18,21,0.154)}
+body.ui2-light .lsync input:checked+.sw::after{background:#ffffff}
+body.ui2-light i.qm{background:rgba(16,18,21,0.11)}
+body.ui2-light i.qm:hover{color:#101215}
+body.ui2-light #qmtip{background:#f5f6f8;border:1px solid rgba(16,18,21,0.154);box-shadow:0 12px 30px rgba(16,18,21,0.1)}
+body.ui2-light .wmark .wtf{border:2px solid rgba(16,18,21,0.066)}
+body.ui2-light .dp-title{color:#101215}
+body.ui2-light #rhtip{background:#f5f6f8}
+body.ui2-light .potally{color:#101215}
+body.ui2-light .tax-lines div{border-top:1px solid rgba(16,18,21,0.077)}
+body.ui2-light #jrows tr[data-id]:hover td{background:rgba(16,18,21,0.033)}
+body.ui2-light .jd-chart{border:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .jd-r{border:1px solid rgba(16,18,21,0.077)}
+body.ui2-light #jd-tfs button.on{color:#101215}
+body.ui2-light .jd-cols textarea{background:rgba(16,18,21,0.044);border:1px solid rgba(16,18,21,0.11)}
+body.ui2-light .s2side{background:rgba(16,18,21,0.0385);border:1px solid rgba(16,18,21,0.066)}
+body.ui2-light .s2side button:hover{background:rgba(16,18,21,0.055)}
+body.ui2-light .s2side button.on{color:#101215}
+body.ui2-light .s2i{box-shadow:inset 0 0 0 .5px rgba(16,18,21,0.275)}
+body.ui2-light .relr{border-bottom:1px solid rgba(16,18,21,0.066)}
+body.ui2-light .sw-dots i{background:rgba(16,18,21,0.165)}
+body.ui2-light .sw-opt{border:1px solid rgba(16,18,21,0.088);background:rgba(16,18,21,0.033)}
+body.ui2-light .sw-chip{border:1px solid rgba(16,18,21,0.11);background:rgba(16,18,21,0.033)}
+body.ui2-light.pix .glass,body.ui2-light.pix .card,body.ui2-light.pix .setc{box-shadow:4px 4px 0 rgba(16,18,21,0.12)!important}
+body.ui2-light .nfx-neon{color:#101215}
+body.ui2-light .nfx-glitch{color:#101215}
+body.ui2-light .nfx-tron{color:#101215}
+body.ui2-light .nfx-lightning{color:#101215}
+body.ui2-light .pe-o{border:1px solid rgba(16,18,21,0.11);background:rgba(16,18,21,0.033)}
+body.ui2-light .pcard{border:1px solid rgba(16,18,21,0.088);background:rgba(16,18,21,0.033)}
+body.ui2-light .ban-aurora{background-image:linear-gradient(120deg,#f5f6f8,#2c5364,#00c9a7,#845ec2,#f5f6f8)}
+body.ui2-light .ban-galaxy{background-image:radial-gradient(circle at 20% 40%,rgba(16,18,21,0.88) 0 1px,transparent 2px),radial-gradient(circle at 75% 25%,#fff 0 1px,transparent 2px),linear-gradient(120deg,#0b0b2b,#3a1c71,#d76d77,#0b0b2b)}
+body.ui2-light .ban-mono{background-image:linear-gradient(120deg,#ffffff,#3a3a3a,#ffffff)}
+body.ui2-light .pav{background:#f5f6f8;border:3px solid rgba(16,18,21,.1)}
+body.ui2-light .fr-holo{background:linear-gradient(#f5f6f8,#f5f6f8) padding-box,linear-gradient(110deg,#ff9de6,#9dfcff,#fff59d,#b69dff) border-box}
+body.ui2-light .plv{background:rgba(16,18,21,0.088)}
+body.ui2-light .pstats{background:rgba(16,18,21,0.044)}
+body.ui2-light .wmark{color:rgba(16,18,21,0.077)}
+body.ui2-light .wmark .wtf{border-color:rgba(16,18,21,0.099)}
+body.ui2-light .fxb-seg button{border:1px solid rgba(16,18,21,0.11);background:rgba(16,18,21,0.033);color:#101215}
+body.ui2-light .fxb-card[data-kind="fix"] .fxb-seg [data-k="fix"]{color:#101215}
+body.ui2-light .fxb-card[data-kind="idea"] .fxb-seg [data-k="idea"]{color:#101215}
+body.ui2-light .fxb-card[data-kind="fix"]{box-shadow:0 18px 50px rgba(16,18,21,0.12),inset 3px 0 0 #ff6b4a}
+body.ui2-light .fxb-card[data-kind="idea"]{box-shadow:0 18px 50px rgba(16,18,21,0.12),inset 3px 0 0 #ffc65c}
+body.ui2-light .s2r img{border:1px solid rgba(16,18,21,0.11);background:#ffffff}
+body.ui2-light .indx{background:rgba(255,255,255,0.94);box-shadow:0 6px 20px rgba(16,18,21,0.1)}
+body.ui2-light #tfpop{background:rgba(255,255,255,0.94);box-shadow:0 12px 40px rgba(16,18,21,0.113)}
+body.ui2-light .favbar .tool{border:1px solid rgba(16,18,21,0.0605)}
+body.ui2-light .favbar .tool:hover{border-color:rgba(16,18,21,0.132)}
+body.ui2-light .spreq{border:1px solid rgba(16,18,21,0.088);background:rgba(16,18,21,0.033)}
+body.ui2-light .sphero img,body.ui2-light .spnoart{box-shadow:0 10px 30px rgba(16,18,21,0.113)}
+body.ui2-light .spnoart{background:rgba(16,18,21,0.066)}
+body.ui2-light .spplay:focus-visible{outline:2px solid #101215}
+body.ui2-light .sptr img{background:rgba(16,18,21,0.055)}
+body.ui2-light .acard.on{box-shadow:inset 0 0 0 1px rgba(16,18,21,0.154);background:linear-gradient(180deg,rgba(16,18,21,0.055),rgba(16,18,21,0.022))}
+body.ui2-light .sw-dot.on{outline:2px solid #101215}
+body.ui2-light #st-week .kvs div{background:rgba(16,18,21,0.033);border:1px solid rgba(16,18,21,0.066)}
+body.ui2-light .acempty{border:1px dashed rgba(16,18,21,0.132)}
+body.ui2-light #krel{background:#ffffff}
+body.ui2-light #krel .rnote{background:linear-gradient(180deg,rgba(16,18,21,0.042) 0,rgba(16,18,21,0) 30px),radial-gradient(130% 90% at 30% 20%,#fff1a8 0%,#ffe680 45%,#f7d55c 100%);box-shadow:0 1px 1px rgba(16,18,21,0.045),0 10px 18px -6px rgba(16,18,21,0.113),0 30px 60px -20px rgba(16,18,21,0.12),inset 0 -14px 24px -16px rgba(120,80,0,.28),inset 0 0 0 1px rgba(16,18,21,0.198)}
+body.ui2-light #krel .rnote::after{background:linear-gradient(135deg,rgba(16,18,21,0) 50%,rgba(170,130,30,.35) 50%,#f4dd8a 70%);box-shadow:-2px -2px 6px rgba(16,18,21,0.03)}
+body.ui2-light #krel .rnote .rgo{color:rgba(16,18,21,0.605)}
+body.ui2-light .jbook{background:rgba(16,18,21,0.033);border:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .jw{background:rgba(16,18,21,0.033);border:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .jwsz,body.ui2-light .jwx{border:1px solid rgba(16,18,21,0.132)}
+body.ui2-light .jacc{background:rgba(16,18,21,0.033);border:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .jtag{color:#101215}
+body.ui2-light .jcd{background:rgba(16,18,21,0.0275);border:1px solid rgba(16,18,21,0.066)}
+body.ui2-light .jcw{background:rgba(16,18,21,0.022)}
+body.ui2-light .jviews button,body.ui2-light .jtabs button{border:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .jtbl tr[data-open]:hover td{background:rgba(16,18,21,0.033)}
+body.ui2-light .jcard{background:rgba(16,18,21,0.033);border:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .jcov{background:rgba(16,18,21,0.044) center/cover no-repeat}
+body.ui2-light .jpage{background:rgba(16,18,21,0.27)}
+body.ui2-light .jpagebox{background:var(--panel,#ffffff);border-left:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .tpbig input{background:rgba(16,18,21,0.033);border:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .tpprops{border-top:1px solid rgba(16,18,21,0.066)}
+body.ui2-light .tpv input:hover,body.ui2-light .tpv textarea:hover{background:rgba(16,18,21,0.033)}
+body.ui2-light .tpchips:hover{background:rgba(16,18,21,0.044)}
+body.ui2-light .tpfiles{border-top:1px solid rgba(16,18,21,0.066)}
+body.ui2-light .tpimg{background:rgba(16,18,21,0.044) center/cover no-repeat}
+body.ui2-light .tpimg button{background:rgba(255,255,255,0.94);color:#101215}
+body.ui2-light .tpadd{border:1px dashed rgba(16,18,21,0.198)}
+body.ui2-light .jpop{background:#f5f6f8;border:1px solid rgba(16,18,21,0.132);box-shadow:0 10px 30px rgba(16,18,21,0.12)}
+body.ui2-light .jpl button:hover,body.ui2-light .jpl button.on{background:rgba(16,18,21,0.066)}
+body.ui2-light .jsw button{border:1px solid rgba(16,18,21,0.165)}
+body.ui2-light .jsw button.on{outline:2px solid #101215}
+body.ui2-light .qrow{border-bottom:1px solid rgba(16,18,21,0.044)}
+body.ui2-light .qr{background:rgba(16,18,21,0.044);border:1px solid rgba(16,18,21,0.11)}
+body.ui2-light .qb.on{border-color:rgba(16,18,21,0.55)}
+body.ui2-light .njc{background:rgba(16,18,21,0.033);border:1px solid rgba(16,18,21,0.088)}
+body.ui2-light .botpop{background:var(--panel,#ffffff);border:1px solid rgba(16,18,21,0.11);box-shadow:0 18px 50px rgba(16,18,21,0.12)}
+body.ui2-light .bempty{border:1px dashed rgba(16,18,21,0.132)}
+body.ui2-light .btxt{background:rgba(16,18,21,0.055)}
+body.ui2-light .tplpop{background:rgba(16,18,21,0.3)}
+body.ui2-light .tplbox{background:var(--panel,#ffffff);border:1px solid rgba(16,18,21,0.11)}
+body.ui2-light .tplth button{background:rgba(255,255,255,0.94);color:#101215}
+body.ui2-light .tpladd{border:1px dashed rgba(16,18,21,0.22)}
+body.ui2-light .tplprev{background:rgba(16,18,21,0.033);border:1px solid rgba(16,18,21,0.088)}
+body.ui2-light #kprank{background:#ffffff;color:#101215}
+body.ui2-light .kp-nav{border-bottom:1px solid rgba(16,18,21,.1);color:#101215}
+body.ui2-light .kp-logo{color:#101215}
+body.ui2-light .kp-pill{background:#f5f6f8}
+body.ui2-light .kp-trial{color:#555c68}
+body.ui2-light .kp-toggle{background:#ffffff}
+body.ui2-light .kp-toggle span{color:#555c68}
+body.ui2-light .kp-toggle .on{background:#f5f6f8;color:#101215}
+body.ui2-light .kp-card{background:#ffffff;border:1px solid rgba(16,18,21,.1)}
+body.ui2-light .kp-card.pro .kp-tag{border-color:rgba(16,18,21,0.44)}
+body.ui2-light .kp-card p{color:#555c68}
+body.ui2-light .kp-price span{color:#101215}
+body.ui2-light .kp-dark{background:#f5f6f8;color:#101215}
+body.ui2-light .kp-card small{color:#555c68}
+body.ui2-light .kp-card ul{border-top:1px solid rgba(16,18,21,.1)}
+body.ui2-light .kp-card ul.blue svg{color:#555c68}
+body.ui2-light .kp-term{background:#ffffff}
+body.ui2-light .kp-sep{color:#6b7280}
+body.ui2-light .kp-typed{color:#101215}
+body.ui2-light .brow{border-bottom:1px solid rgba(16,18,21,0.055)}
+body.ui2-light .kp-tline.out .kp-who{color:#6b7280}
+body.ui2-light .kp-tline.out .kp-typed{color:#555c68}
+@media (max-width:640px){body.ui2-light .jtbl tr{border-bottom:1px solid rgba(16,18,21,0.066)}
+}body.ui2-light .qrow textarea,body.ui2-light .qrow input[type=number],body.ui2-light .qrow input[type=text]{background:rgba(16,18,21,0.033);border:1px solid rgba(16,18,21,0.088)}
+@media (max-width:640px){body.ui2-light .jfr[data-fi]{border-bottom:1px solid rgba(16,18,21,0.066)}
+}@media (max-width:640px){body.ui2-light .jfr:not([data-fi]):not([data-oi]){border-bottom:1px solid rgba(16,18,21,0.066)}
+}body.ui2-light .bform textarea{background:rgba(16,18,21,0.044);border:1px solid rgba(16,18,21,0.11)}
+body.ui2-light.skinon{background:#ffffff var(--wbgimg,none) center/cover fixed no-repeat}
+body.ui2-light.skinon ::before{background:radial-gradient(120% 90% at 50% 0%,rgba(255,170,205,.10),rgba(16,18,21,0.33) 70%),rgba(16,18,21,0.228)}
+body.ui2-light.skinon select,body.ui2-light.skinon input:not([type=range]):not([type=checkbox]):not([type=color]){background-color:rgba(255,255,255,0.94)}
+body.ui2-light .postag button,body.ui2-light .postag span{background:rgba(255,255,255,0.94);border:1px solid rgba(16,18,21,0.242)}
+body.ui2-light .postag button:hover{border-color:rgba(16,18,21,0.55)}
+body.ui2-light .postag .ptx{color:#101215}
+body.ui2-light #cmdk{background:rgba(16,18,21,0.252)}
+body.ui2-light #cmdk .ck-box{background:color-mix(in srgb,var(--panel,#ffffff) 88%,transparent)}
+
+
+/* KING_UI2FIX light (King, Nov 21: "poor contrast, buttons are hard to see"). Buttons get a visible fill + edge,
+   muted text darkens, and the neon greens/ambers built for the dark look get daylight versions (4.5:1 or better on white). */
+body.ui2-light{--mut:#4a505b}
+body.ui2-light button,body.ui2-light select,body.ui2-light input{background:rgba(16,18,21,.06);border-color:rgba(16,18,21,.2)}
+body.ui2-light button:hover{background:rgba(16,18,21,.11);border-color:rgba(16,18,21,.3)}
+body.ui2-light :is(.tool,.ib,.pb,.ri,.tf,.btab,.ranges button,.ftag){color:#1d2026}
+body.ui2-light .tool .hk{color:#4a505b}
+body.ui2-light #skipny{color:#0f7a3f;border-color:#0f7a3f}
+body.ui2-light #skipasia{color:#9a5a00;border-color:#9a5a00}
+body.ui2-light .fbtools .tool.lp{color:#0b8462}body.ui2-light .fbtools .tool.sp{color:#c42f42}
+body.ui2-light .seg button{color:#1d2026;border-color:rgba(16,18,21,.25)}
+body.ui2-light :is(.tgx){border-color:rgba(16,18,21,.35)}

@@ -1,0 +1,94 @@
+/* KING_UI2 generated: old purple accents -> the new accent */
+body.ui2 .bmk{background:linear-gradient(135deg,var(--acc),var(--acc));box-shadow:0 0 18px color-mix(in srgb,var(--acc) 35%,transparent)}
+body.ui2 .kbrand .kmark{filter:drop-shadow(0 0 18px color-mix(in srgb,var(--acc) 35%,transparent))}
+body.ui2 .kver{color:var(--acc);border:1px solid color-mix(in srgb,var(--acc) 35%,transparent)}
+body.ui2 .rlogo img{filter:drop-shadow(0 0 10px color-mix(in srgb,var(--acc) 35%,transparent))}
+body.ui2 .sp-in img.sp-logo{filter:drop-shadow(0 0 30px color-mix(in srgb,var(--acc) 55%,transparent))}
+body.ui2 .sp-name i{color:var(--acc)}
+body.ui2 .kbrand .klock{filter:drop-shadow(0 0 22px color-mix(in srgb,var(--acc) 35%,transparent))}
+body.ui2 .sp-in img.sp-lock{filter:drop-shadow(0 0 34px color-mix(in srgb,var(--acc) 50%,transparent))}
+body.ui2 .mxxp{color:var(--acc)}
+body.ui2 .mxbar i{background:linear-gradient(90deg,var(--acc),var(--acc))}
+body.ui2 .pane.tradesym.active .lname{color:var(--acc)}
+body.ui2 .wring i{border:1px solid color-mix(in srgb,var(--acc) 50%,transparent)}
+body.ui2 .wring img{filter:drop-shadow(0 0 18px color-mix(in srgb,var(--acc) 60%,transparent))}
+body.ui2 .wwel em{color:var(--acc)}
+body.ui2 .wlock{filter:drop-shadow(0 0 40px color-mix(in srgb,var(--acc) 45%,transparent))}
+body.ui2 #welcome.drop::after{background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--acc) 55%,transparent),transparent 55%)}
+body.ui2 .tourspot{box-shadow:0 0 0 9999px rgba(5,5,8,.62),0 0 0 2px var(--acc),0 0 28px color-mix(in srgb,var(--acc) 60%,transparent)}
+body.ui2 .tourbox{background:color-mix(in srgb,var(--acc) 96%,transparent);border:1px solid color-mix(in srgb,var(--acc) 30%,transparent)}
+body.ui2 .tourbox .tk{color:var(--acc)}
+body.ui2 .tdots i.done{background:var(--acc)}
+body.ui2 .tdots i.on{background:var(--acc)}
+body.ui2 .vc em.cl{background:color-mix(in srgb,var(--acc) 85%,transparent)}
+body.ui2 .askclip{background:var(--panel,var(--acc));border:1px solid color-mix(in srgb,var(--acc) 35%,transparent)}
+body.ui2 .tools .tool.on{background:color-mix(in srgb,var(--acc) 16%,transparent)}
+body.ui2 .tfly .tool.fi.on{background:color-mix(in srgb,var(--acc) 16%,transparent)}
+body.ui2 .fxb-b:hover{background:color-mix(in srgb,var(--acc) 25%,transparent)}
+body.ui2 .fxb-tip{border:1px solid color-mix(in srgb,var(--acc) 35%,transparent)}
+body.ui2 .fxb-tip:before{color:var(--acc)}
+body.ui2 .sp-tip b{color:var(--acc)}
+body.ui2 .fxb-card textarea:focus{border-color:color-mix(in srgb,var(--acc) 60%,transparent)}
+body.ui2 .rgrip:hover{background:color-mix(in srgb,var(--acc) 35%,transparent)}
+body.ui2 .mbar label.mop input[type=range]{accent-color:var(--acc)}
+body.ui2 .vc .vlesson{color:var(--acc)}
+body.ui2 .plpill{background:color-mix(in srgb,var(--acc) 14%,transparent)}
+body.ui2 .setnav a.on{border-color:color-mix(in srgb,var(--acc) 55%,transparent);background:color-mix(in srgb,var(--acc) 12%,transparent)}
+body.ui2 .nfx-degen{background:linear-gradient(90deg,#ff3d3d,#ffb000,#3dff8b,#2fd6ff,var(--acc),#ff3d3d)}
+body.ui2 .getapp{border:1px solid color-mix(in srgb,var(--acc) 35%,transparent);color:var(--acc)}
+body.ui2 .getapp:hover{background:color-mix(in srgb,var(--acc) 12%,transparent)}
+body.ui2 .gstep>b{background:color-mix(in srgb,var(--acc) 20%,transparent);color:var(--acc)}
+body.ui2 a.gdl{background:linear-gradient(180deg,var(--acc),var(--acc));color:var(--acc)!important}
+body.ui2 #kintro.drop::after{background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--acc) 55%,transparent),transparent 55%)}
+body.ui2 #kintro .ktip b{color:var(--acc)}
+@media (min-width:901px){body.ui2.glass{background:radial-gradient(1100px 520px at 15% -12%,color-mix(in srgb,var(--acc) 9%,transparent),transparent 60%),radial-gradient(900px 500px at 100% 110%,rgba(72,214,255,.05),transparent 60%),#06070a}
+body.ui2.glass .tools .tool.on{background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 28%,transparent),color-mix(in srgb,var(--acc) 12%,transparent));box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 2px 8px color-mix(in srgb,var(--acc) 25%,transparent)}
+}
+body.ui2 .tplrow.on{background:color-mix(in srgb,var(--acc) 14%,transparent)}
+body.ui2 .tplnew:hover{border-color:color-mix(in srgb,var(--acc) 60%,transparent)}
+body.ui2 .dp-big:hover:not(:disabled){border-color:var(--acc,var(--acc));background:color-mix(in srgb,var(--acc) 12%,transparent)}
+body.ui2 .dp-day.in{background:color-mix(in srgb,var(--acc) 35%,transparent)}
+body.ui2 .dp-day.end{background:var(--acc)}
+body.ui2 .dp-chip.on{background:var(--acc);border-color:var(--acc)}
+body.ui2 #reesepanel{border:1px solid color-mix(in srgb,var(--acc) 45%,transparent)}
+body.ui2 .rp-conf span{background:color-mix(in srgb,var(--acc) 18%,transparent)}
+body.ui2 .playday.on{color:var(--acc,var(--acc))}
+body.ui2 #dpick .dp-day.in{background:color-mix(in srgb,var(--acc) 38%,transparent)}
+body.ui2 #dpick .dp-day.end{background:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+body.ui2 .gw:hover{border-color:color-mix(in srgb,var(--acc) 35%,transparent)}
+body.ui2 i.qm:hover{background:color-mix(in srgb,var(--acc) 35%,transparent)}
+body.ui2 #rhtip{background:var(--acc);border:1px solid var(--acc)}
+body.ui2 .acard.ac-payout{border:1.5px solid var(--acc)!important}
+body.ui2 .potally{color:var(--acc);background:color-mix(in srgb,var(--acc) 18%,transparent)}
+body.ui2 #jd-tfs button.on{background:color-mix(in srgb,var(--acc) 22%,transparent)}
+body.ui2 .sw-dots i.done{background:color-mix(in srgb,var(--acc) 55%,transparent)}
+body.ui2 .nfx-holo{background:linear-gradient(110deg,#ff9de6,#9dfcff,#fff59d,var(--acc),#ff9de6)}
+body.ui2 .nfx-rainbow{background:linear-gradient(90deg,#ff3d3d,#ffb000,#ffee00,#3dff8b,#2fd6ff,var(--acc),#ff3d3d)}
+body.ui2 .nfx-galaxy{background:radial-gradient(circle at 20% 30%,#fff 0 1px,transparent 2px),radial-gradient(circle at 70% 60%,#fff 0 1px,transparent 2px),linear-gradient(90deg,var(--acc),#7597de,#d53369,var(--acc))}
+body.ui2 .pe-o.on{background:color-mix(in srgb,var(--acc) 18%,transparent)}
+body.ui2 .ban-aurora{background-image:linear-gradient(120deg,#0f2027,#2c5364,#00c9a7,var(--acc),#0f2027)}
+body.ui2 .ban-ember{background-image:linear-gradient(120deg,var(--acc),#6f0000,#ff6a00,#ee0979)}
+body.ui2 .ban-galaxy{background-image:radial-gradient(circle at 20% 40%,rgba(255,255,255,.8) 0 1px,transparent 2px),radial-gradient(circle at 75% 25%,#fff 0 1px,transparent 2px),linear-gradient(120deg,#0b0b2b,var(--acc),#d76d77,#0b0b2b)}
+body.ui2 .ban-grid{background-image:linear-gradient(rgba(255,42,109,.35) 1px,transparent 1px),linear-gradient(90deg,rgba(5,217,232,.35) 1px,transparent 1px),linear-gradient(180deg,var(--acc),var(--acc))}
+body.ui2 .fr-holo{background:linear-gradient(#1d1d27,#1d1d27) padding-box,linear-gradient(110deg,#ff9de6,#9dfcff,#fff59d,var(--acc)) border-box}
+body.ui2 #tfpop{border:1px solid color-mix(in srgb,var(--acc) 35%,transparent)}
+body.ui2 .jbook.on{background:color-mix(in srgb,var(--acc) 14%,transparent);border-color:color-mix(in srgb,var(--acc) 40%,transparent)}
+body.ui2.jedit .jw[data-w]{outline:1px dashed color-mix(in srgb,var(--acc) 45%,transparent)}
+body.ui2 .jacc.on{border-color:color-mix(in srgb,var(--acc) 60%,transparent);background:color-mix(in srgb,var(--acc) 12%,transparent)}
+body.ui2 .jviews button.on,body.ui2 .jtabs button.on{background:color-mix(in srgb,var(--acc) 18%,transparent);border-color:color-mix(in srgb,var(--acc) 45%,transparent)}
+body.ui2 .tpv input:focus,body.ui2 .tpv textarea:focus{border-color:color-mix(in srgb,var(--acc) 50%,transparent)}
+body.ui2 .njsync{background:color-mix(in srgb,var(--acc) 8%,transparent);border:1px solid color-mix(in srgb,var(--acc) 25%,transparent)}
+body.ui2 .bmsg.me .btxt{background:color-mix(in srgb,var(--acc) 22%,transparent)}
+body.ui2 .bchoices button{border:1px solid color-mix(in srgb,var(--acc) 45%,transparent);background:color-mix(in srgb,var(--acc) 10%,transparent)}
+body.ui2 .jtplcta{background:color-mix(in srgb,var(--acc) 8%,transparent);border:1px solid color-mix(in srgb,var(--acc) 25%,transparent)}
+body.ui2 .kp-btn{background:var(--acc)}
+body.ui2 .kp-card.pro{background:linear-gradient(160deg,var(--acc) 0%,var(--acc) 45%,var(--acc) 100%);border-color:var(--acc)}
+body.ui2 .kp-card ul.blue svg{color:var(--acc)}
+body.ui2 .kp-who{color:var(--acc)}
+body.ui2 .kp-cur{color:var(--acc)}
+body.ui2 .kp-tline.out .kp-typed{color:var(--acc)}
+body.ui2 .qrow textarea:focus,body.ui2 .qrow input:focus{border-color:color-mix(in srgb,var(--acc) 50%,transparent)}
+body.ui2 .bform textarea:focus{border-color:color-mix(in srgb,var(--acc) 55%,transparent)}
+body.ui2.skinon ::before{background:radial-gradient(120% 90% at 50% 0%,rgba(255,170,205,.10),color-mix(in srgb,var(--acc) 55%,transparent) 70%),color-mix(in srgb,var(--acc) 38%,transparent)}
+body.ui2.skinon select,body.ui2.skinon input:not([type=range]):not([type=checkbox]):not([type=color]){background-color:color-mix(in srgb,var(--acc) 80%,transparent)}
+
