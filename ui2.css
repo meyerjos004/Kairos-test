@@ -149,3 +149,7 @@ body.ui2 .toast.glass{background:var(--ink)!important;color:var(--inktxt)!import
 body.ui2-dark button.buy,body.ui2-dark #pbuy{color:#04150f!important}
 body.ui2-dark button.sell,body.ui2-dark #psell{color:#22050a!important}
 body.ui2-dark{--mut2:#959dab}
+
+/* KING_STARFILL (night Nov 22, waits on King's yes): selected Favorites star uses the accent fill like other selected buttons, not purple */
+body.ui2 #favbtn.on{background:color-mix(in srgb,var(--acc) 16%,transparent)!important;color:var(--acc)!important}
+body.ui2 #pbuy{background:#2f7cf0!important;color:#fff!important}

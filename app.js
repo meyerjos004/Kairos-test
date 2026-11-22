@@ -1379,6 +1379,7 @@ async function renderStats() {
   let tr = (await db.allTrades()).slice().sort((a, b) => a.t_exit - b.t_exit); const A = $("st-acct").value, S = $("st-sym").value, D = +$("st-range").value;
   if (A === "none") tr = tr.filter((t) => !t.account_id); else if (A) tr = tr.filter((t) => t.account_id === A); if (S) tr = tr.filter((t) => t.symbol === S);
   if (D && tr.length) { const end = tr[tr.length - 1].t_exit; tr = tr.filter((t) => t.t_exit >= end - D * 86400); }
+  { const v = $("v-stats"); v.classList.toggle("st-empty", !tr.length); let e = $("st-none"); if (!e) { e = document.createElement("div"); e.id = "st-none"; e.className = "empty"; e.textContent = "Trade a few replay days and your stats fill in here."; v.querySelector(".toolbar").after(e); } }   // KING_STEMPTY (night Nov 22, waits on King's yes): one line instead of six "No trades yet" cards
   const n = tr.length, W = tr.filter(isW), L = tr.filter(isL), BEs = tr.filter(isBE), sum = (a) => a.reduce((s, t) => s + (+t.pnl || 0), 0), gw = sum(W), gl = -sum(L);
   let run = 0, pk = 0, dd = 0, cw = 0, cl = 0, bw = 0, bl = 0; const eq = [];
   for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); dd = Math.max(dd, pk - run); if (isW(t)) { cw++; cl = 0; } else if (isL(t)) { cl++; cw = 0; } bw = Math.max(bw, cw); bl = Math.max(bl, cl); eq.push({ time: t.t_exit, value: +run.toFixed(2) }); }
