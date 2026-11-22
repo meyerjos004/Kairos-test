@@ -732,7 +732,7 @@ async def main():
         await E("view('trade'); window.__ui2m='light'; ui2Apply()"); await pg.wait_for_timeout(300)
         _ic = await E("['#chartsetbtn','#fullbtn','#padx','#padmore','.tools .tool.hashk','.fbtools .tool.hashk'].map(s=>{const e=document.querySelector(s+' svg');return e?Math.round(Math.min(e.getBoundingClientRect().width,e.getBoundingClientRect().height)):99})")
         check("ui2fix: icon buttons show icons 16px+", all(x >= 16 for x in _ic), _ic)
-        check("ui2fix: NY open readable in daylight", await E("getComputedStyle(document.getElementById('skipny')).color") == "rgb(15, 122, 63)")
+        _ny = await E("[getComputedStyle(document.getElementById('skipny')).color, document.body.className, document.getElementById('skipny').matches(':hover')]"); check("ui2fix: NY open readable in daylight", sum(abs(a-b) for a,b in zip([int(v) for v in __import__("re").findall(r"\d+", _ny[0])[:3]],[15,122,63])) < 12, _ny)   # tolerant: color may be mid-transition
         check("ui2fix: Daylight toast is dark with light text", await E("(()=>{toast('x');const c=getComputedStyle(document.getElementById('toast'));return c.backgroundColor!==c.color})()"))
         await E("window.__ui2m=null; ui2Apply()")
         check("upgrade: no page errors", not errs, errs[:3])
