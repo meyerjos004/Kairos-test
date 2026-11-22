@@ -2125,7 +2125,7 @@ function wField(cv) { const g = cv.getContext("2d"), D = Math.min(devicePixelRat
 
 /* onboarding tour: spotlight each real control, one short line each */
 const TOUR = [
-  { sel: "#start", t: "Pick any day", d: "Five years of real NQ and ES. Pick a date (or hit the dice for a mystery day) and it loads itself." },
+  { sel: "#choosedates", t: "Pick any day", d: "Five years of real NQ and ES. Pick a date (or hit the dice for a mystery day) and it loads itself." },
   { sel: "#play", t: "Replay it", d: "Play, pause, or step one bar at a time. Nothing from the future shows until it happens. 120x means two minutes of market every second, on every timeframe down to 15 seconds." },
   { sel: "#pad", t: "Trade it like it's live", d: "Buy, sell, join bid/ask, brackets, breakeven. Hotkeys B and S work too. Prop rules (daily loss, drawdown) are on." },
   { sel: "#laybtn", t: "Two charts, both tradable", d: "Split the screen, put NQ on one and ES on the other, and click a chart to trade it. Save layouts you like." },
@@ -2139,12 +2139,13 @@ const TOUR = [
   { sel: '[data-view="friends"]', t: "The group", d: "Leaderboard, challenges, shared trades and chat with the crew." },
   { sel: '[data-view="settings"]', t: "Make it yours", d: "Themes, hotkeys, and your own sounds for take profits and stop-outs. Found a bug? The fix box goes straight to the build queue." }];
 function tour(i = 0) { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); if (i >= TOUR.length) { prefs.toured = APP_VERSION; savePrefs(); toast("🎉 You're set. Have fun."); return setTimeout(dlPrompt, 900); }
-  view("trade"); const s = TOUR[i], el = document.querySelector(s.sel); if (!el || !el.offsetParent) return tour(i + 1); const r = el.getBoundingClientRect();
+  view("trade"); const s = TOUR[i], el = document.querySelector(s.sel); if (!el || !el.offsetParent) return tour(i + 1); try { el.scrollIntoView({ block: "nearest", inline: "center" }); } catch (e) {} const r = el.getBoundingClientRect();   // KING_TOURFIX: on phones the toolbar scrolls sideways, bring the control into view first
   const sp = document.createElement("div"); sp.className = "tourspot"; Object.assign(sp.style, { left: r.left - 6 + "px", top: r.top - 6 + "px", width: r.width + 12 + "px", height: r.height + 12 + "px" }); document.body.appendChild(sp);
   const bx = document.createElement("div"); bx.className = "tourbox"; bx.innerHTML = `<div class="tk">${i + 1} / ${TOUR.length}</div><b>${s.t}</b><p>${s.d}</p><div class="tdots">${TOUR.map((_, k) => `<i class="${k === i ? "on" : k < i ? "done" : ""}"></i>`).join("")}</div><div class="tb2"><button class="ghost small" data-t="x">Skip</button>${i ? '<button class="small" data-t="b">Back</button>' : ""}<button class="primary small" data-t="n">${i === TOUR.length - 1 ? "Done" : "Next"}</button></div>`;
   document.body.appendChild(bx); const bw = 320, bh = bx.offsetHeight || 190; let x = r.right + 16, y = r.top; if (x + bw > innerWidth - 10) x = Math.max(10, r.left - bw - 16); if (x < 10 || r.width > innerWidth * 0.5) { x = Math.min(innerWidth - bw - 10, Math.max(10, r.left)); y = r.bottom + 14; } if (y + bh > innerHeight - 10) y = Math.max(10, r.top - bh - 14);
   if (innerWidth < bw + 40) { bx.style.width = innerWidth - 20 + "px"; x = 10; y = r.bottom + 14 + bh > innerHeight - 10 ? Math.max(10, r.top - bh - 14) : r.bottom + 14; }   // KING_TOURPHONE: full-width card on phones
   x = Math.min(Math.max(10, x), innerWidth - Math.min(bw, innerWidth - 20) - 10); y = Math.min(Math.max(10, y), innerHeight - bh - 10);
+  { const cw = Math.min(bw, innerWidth - 20); if (x < r.right + 6 && x + cw > r.left - 6 && y < r.bottom + 6 && y + bh > r.top - 6) { y = r.bottom + 14 + bh <= innerHeight - 10 ? r.bottom + 14 : Math.max(10, r.top - bh - 14); } }   // KING_TOURFIX: the card never covers the control it points at
   Object.assign(bx.style, { left: x + "px", top: y + "px" }); try { tone("click"); } catch (e) {}
   bx.onclick = (e) => { const b = e.target.closest("[data-t]"); if (!b) return; if (b.dataset.t === "n") tour(i + 1); else if (b.dataset.t === "b") tour(i - 1); else { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); prefs.toured = APP_VERSION; savePrefs(); } }; }
 /* ---------------- trade sounds (your own clips) + fun effects: price running to your target/stop, take profit, stop-out ---------------- */

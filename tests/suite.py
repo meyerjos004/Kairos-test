@@ -711,6 +711,16 @@ async def main():
         _dn = await E("(panes[0].series.markers()||[]).filter(m=>m.shape==='arrowDown')")
         check("arrows: sell arrow is red", bool(_dn) and all(m["color"] == "#ff4d5e" for m in _dn), _dn)
         await pg.keyboard.press("f")
+        # KING_TOURFIX: every tour stop points at a visible control, and the card never covers it
+        _tr = await E("TOUR.map(s=>{const e=document.querySelector(s.sel);return !!(e&&e.offsetParent)})")
+        check("tour: all stops have a visible target", all(_tr), _tr)
+        _bad = []
+        for _i in range(len(_tr)):
+            await E("tour(%d)" % _i); await pg.wait_for_timeout(80)
+            _o = await E("(()=>{const a=document.querySelector('.tourbox'),b=document.querySelector('.tourspot');if(!a||!b)return -1;const A=a.getBoundingClientRect(),B=b.getBoundingClientRect();return Math.max(0,Math.min(A.right,B.right)-Math.max(A.left,B.left))*Math.max(0,Math.min(A.bottom,B.bottom)-Math.max(A.top,B.top))})()")
+            if _o != 0: _bad.append((_i + 1, _o))
+        await E("document.querySelectorAll('.tourbox,.tourspot').forEach(x=>x.remove())")
+        check("tour: card never covers its control", not _bad, _bad)
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
