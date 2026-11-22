@@ -1264,3 +1264,5 @@ body.ptdragging,body.ptdragging *{cursor:ns-resize!important}
 }
 /* KING_PHONESAVE (night Nov 22): on phones the Settings Save button floated on top of the search box and category tabs. Give it its own row, right-aligned. */
 @media (max-width:600px){#v-settings .setnav{height:auto;position:sticky;top:0;z-index:3;padding:4px 12px 8px;justify-content:flex-end;box-shadow:none}#v-settings .setnav #s-save{transform:none;position:static;box-shadow:none}}
+/* KING_FOCUS (night Nov 22): keyboard users could not see which field was focused (settings search, checkboxes) */
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
