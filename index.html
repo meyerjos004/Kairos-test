@@ -16,6 +16,9 @@
 <script defer src="https://cdn.jsdelivr.net/npm/animejs@4.5.0/dist/bundles/anime.umd.min.js"></script>
 </head>
 <body>
+<script>/* KING_LOOKSAVE: paint the saved look before anything else loads, and hide the chart page if the refresh is going back to another page */
+try{var u=localStorage.getItem("kz-uid")||"",L=JSON.parse(localStorage.getItem("kz-look:"+u)||localStorage.getItem("kz-look")||"null");if(L){document.body.className=L.c;for(var k in L.v)document.body.style.setProperty(k,L.v[k]);if(L.bg)document.documentElement.style.background=L.bg;}
+var kv=sessionStorage.getItem("kz-view");if(kv&&kv!=="trade")document.documentElement.setAttribute("data-kv",kv);}catch(e){}</script>
 <div id="auth" class="screen hidden">
   <div class="glass authcard pop">
     <div class="kbrand"><img class="klock" src="brand/kairos-intro.svg" alt="KAIROS OS">
@@ -419,7 +422,7 @@
 <div id="toast" class="toast glass hidden"></div>
 <footer class="tiny muted hidden-trade" id="foot">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> · practice tool, not financial advice</footer>
 <script src="config.js?v=1113c"></script>
-<script src="app.js?v=1113c"></script>
+<script src="k3d.js?v=1"></script><script src="app.js?v=1113c"></script>
 <script src="journal.js?v=1118n"></script>
 <script src="bots.js?v=1118n"></script>
 <script src="prank.js?v=1118s"></script>

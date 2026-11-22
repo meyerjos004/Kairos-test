@@ -44,8 +44,8 @@ body.ui2.at-blocky{font-family:"Pixelify Sans",system-ui,sans-serif!important;
   background:#3b3b3b url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' shape-rendering='crispEdges'%3E%3Crect width='64' height='64' fill='%23454545'/%3E%3Cpath fill='%23505050' d='M0 0h16v8H0zM24 8h16v8H24zM48 0h16v16H48zM8 24h16v8H8zM32 32h16v8H32zM0 48h16v16H0zM40 48h8v16h-8z'/%3E%3Cpath fill='%233a3a3a' d='M16 16h8v8h-8zM40 16h8v8h-8zM24 40h8v8h-8zM56 32h8v8h-8zM8 40h8v8H8z'/%3E%3C/svg%3E")!important;image-rendering:pixelated}
 body.ui2.at-blocky :is(h1,h2,h3,h4,.vh,.seth,.kword,.rl,.vtab){font-family:"Silkscreen","Pixelify Sans",monospace!important;letter-spacing:.02em}
 body.ui2.at-blocky .rail{background:#866043 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' shape-rendering='crispEdges'%3E%3Crect width='32' height='32' fill='%23866043'/%3E%3Cpath fill='%23744f35' d='M4 4h4v4H4zM20 8h4v4h-4zM12 20h4v4h-4zM26 24h4v4h-4z'/%3E%3Cpath fill='%2396704f' d='M14 6h4v4h-4zM2 22h4v4H2zM24 16h4v4h-4z'/%3E%3C/svg%3E")!important;border-top:8px solid #5d9b2f;border-bottom:4px solid #4a3324!important;box-shadow:inset 0 2px 0 #7fbf47}
-body.ui2.at-blocky :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,.tbar,.toolbar .pill){border-radius:0!important;background:#c6c6c6!important;color:#2a2a2a!important;border:3px solid #1e1e1e!important;box-shadow:inset 3px 3px 0 #fff,inset -3px -3px 0 #555!important}
-body.ui2.at-blocky :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div) :is(.muted,span,em,label){color:#3f3f3f!important}
+body.ui2.at-blocky :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop,.tbar,.toolbar .pill){border-radius:0!important;background:#c6c6c6!important;color:#2a2a2a!important;border:3px solid #1e1e1e!important;box-shadow:inset 3px 3px 0 #fff,inset -3px -3px 0 #555!important}
+body.ui2.at-blocky :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop) :is(.muted,span,em,label){color:#3f3f3f!important}
 body.ui2.at-blocky :is(:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),.btn,select,input){border-radius:0!important;font-family:inherit!important}
 body.ui2.at-blocky :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)):not(.atdot):not(.vtab){background:#8b8b8b!important;color:#fff!important;border:2px solid #1e1e1e!important;box-shadow:inset 2px 2px 0 #b9b9b9,inset -2px -3px 0 #5a5a5a!important;text-shadow:2px 2px 0 #3f3f3f}
 body.ui2.at-blocky :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)):not(.atdot):not(.vtab):hover{background:#7e95c9!important;box-shadow:inset 2px 2px 0 #a7bbea,inset -2px -3px 0 #4d5f8c!important}
@@ -57,7 +57,7 @@ body.ui2.at-blocky #navline{background:#fff!important;height:4px!important;borde
 /* ---------- Pixel (soft pixel art) ---------- */
 body.ui2.at-pixel{font-family:"Pixelify Sans",system-ui,sans-serif!important;background:#f4efe6 radial-gradient(#e6dccb 1px,transparent 1.5px) 0 0/8px 8px!important}
 body.ui2.at-pixel :is(h1,h2,h3,h4,.vh,.seth,.kword){font-family:"Silkscreen",monospace!important;letter-spacing:.03em}
-body.ui2.at-pixel :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),select,input,.pill,.chip){border-radius:0!important;border-color:transparent!important;
+body.ui2.at-pixel :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop,:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),select,input,.pill,.chip){border-radius:0!important;border-color:transparent!important;
   box-shadow:0 -3px 0 0 #2d2438,0 3px 0 0 #2d2438,-3px 0 0 0 #2d2438,3px 0 0 0 #2d2438,4px 7px 0 0 rgba(45,36,56,.18)!important}
 body.ui2.at-pixel :is(:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),select,input){box-shadow:0 -2px 0 0 #2d2438,0 2px 0 0 #2d2438,-2px 0 0 0 #2d2438,2px 0 0 0 #2d2438!important}
 body.ui2.at-pixel :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)).primary{background:#5b4b8a!important;color:#fffaf0!important}
@@ -69,7 +69,7 @@ body.ui2.at-pixel #navline{border-radius:0!important;height:4px!important;backgr
 body.ui2.at-bit8{font-family:"Pixelify Sans",system-ui,sans-serif!important;background:#000!important}
 body.ui2.at-bit8 :is(h1,h2,h3,h4,.vh,.seth,.kword,.rl,.vtab,#st-kpi>div>span){font-family:"Press Start 2P",monospace!important;font-size:max(9px,.72em)!important;line-height:1.5;letter-spacing:0!important;text-transform:uppercase}
 body.ui2.at-bit8 .vh,body.ui2.at-bit8 .seth{font-size:14px!important;color:#f8b800!important}
-body.ui2.at-bit8 :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div){border-radius:0!important;background:#000!important;border:4px solid #fcfcfc!important;box-shadow:none!important;outline:2px solid #000;outline-offset:-8px}
+body.ui2.at-bit8 :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop){border-radius:0!important;background:#000!important;border:4px solid #fcfcfc!important;box-shadow:none!important;outline:2px solid #000;outline-offset:-8px}
 body.ui2.at-bit8 :is(:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),select,input,.pill,.chip){border-radius:0!important;border:3px solid #fcfcfc!important;background:#000!important;color:#fcfcfc!important;box-shadow:3px 3px 0 #0078f8!important}
 body.ui2.at-bit8 :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)).primary{background:#e40058!important;box-shadow:3px 3px 0 #f8b800!important}
 body.ui2.at-bit8 :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)):active{transform:translate(3px,3px);box-shadow:none!important}
@@ -82,15 +82,15 @@ body.ui2.at-bit8 #navline{background:#f8b800!important;height:4px!important;bord
 /* ---------- Terminal ---------- */
 body.ui2.at-terminal,body.ui2.at-terminal :is(:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),input,select,textarea){font-family:"VT323",ui-monospace,"SFMono-Regular",Consolas,monospace!important}
 body.ui2.at-terminal{font-size:17px;text-shadow:0 0 6px rgba(61,255,122,.35)}
-body.ui2.at-terminal :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),select,input,.pill,.chip,.tbar){border-radius:0!important;box-shadow:none!important}
-body.ui2.at-terminal :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div){border:1px solid rgba(61,255,122,.35)!important;background:#040a04!important}
+body.ui2.at-terminal :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop,:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),select,input,.pill,.chip,.tbar){border-radius:0!important;box-shadow:none!important}
+body.ui2.at-terminal :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop){border:1px solid rgba(61,255,122,.35)!important;background:#040a04!important}
 body.ui2.at-terminal :is(.vh,.seth,h3,h4):before{content:"> ";opacity:.7}
 body.ui2.at-terminal .vh:after{content:"_";animation:atBlink 1s steps(1) infinite;margin-left:2px}
 body.ui2.at-terminal :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)).primary{background:#3dff7a!important;color:#030703!important;text-shadow:none}
 body.ui2.at-terminal :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)):not(.primary){background:transparent!important;border:1px solid rgba(61,255,122,.45)!important;color:#3dff7a!important}
 body.ui2.at-terminal :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)):not(.primary):hover{background:#3dff7a!important;color:#030703!important}
 body.ui2.at-terminal .kword{font-family:"VT323",monospace!important;letter-spacing:.3em!important}
-body.ui2.at-terminal .rlogo .kmark{background:transparent!important;color:#3dff7a!important;box-shadow:inset 0 0 0 1px #3dff7a!important;border-radius:0!important}
+body.ui2.at-terminal .rlogo .kmark{background:transparent!important;color:#3dff7a!important;box-shadow:inset 0 0 0 1px #3dff7a!important;border-radius:8px!important}
 body.ui2.at-terminal #atfx{display:block;position:fixed;inset:0;z-index:2147483000;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(0,0,0,.18) 0 1px,transparent 1px 3px);mix-blend-mode:multiply}
 body.ui2.at-terminal #atfx i{display:none}
 @keyframes atBlink{50%{opacity:0}}
@@ -100,7 +100,7 @@ body.ui2.at-luxury :is(h1,h2,h3,h4,.vh,.seth,.kword,#st-kpi b,.jw header b){font
 body.ui2.at-luxury :is(.vh,.seth){font-size:1.7em!important;letter-spacing:.06em}
 body.ui2.at-luxury .kword{letter-spacing:.42em!important;color:#c9a45c!important}
 body.ui2.at-luxury .rlogo .kmark{background:linear-gradient(135deg,#e6c98a,#9b7a3c)!important;color:#0b0a08!important}
-body.ui2.at-luxury :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div){border-radius:2px!important;border:1px solid rgba(201,164,92,.28)!important;box-shadow:inset 0 1px 0 rgba(201,164,92,.10)!important;background:linear-gradient(180deg,#14110c,#0f0d0a)!important}
+body.ui2.at-luxury :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop){border-radius:14px!important;border:1px solid rgba(201,164,92,.28)!important;box-shadow:inset 0 1px 0 rgba(201,164,92,.10)!important;background:linear-gradient(180deg,#14110c,#0f0d0a)!important}
 body.ui2.at-luxury :is(:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),select,input,.pill,.chip){border-radius:2px!important}
 body.ui2.at-luxury :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)).primary{background:linear-gradient(135deg,#e6c98a,#b08a45)!important;color:#0b0a08!important;border:0!important}
 body.ui2.at-luxury :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)):not(.primary){border:1px solid rgba(201,164,92,.35)!important;background:transparent!important;color:#efe1c0!important}
@@ -113,7 +113,7 @@ body.ui2.at-aero,body.ui2.at-aero :is(:is(button:not(.rail *):not(.s2side *):not
 body.ui2.at-aero{background:linear-gradient(180deg,#9fdcff 0%,#d9f1ff 45%,#eefaff 70%,#c9efb4 100%) fixed!important}
 body.ui2.at-aero :is(h1,h2,h3,h4,.vh,.seth,.kword){font-family:"Nunito","Segoe UI",sans-serif!important;font-weight:800!important}
 body.ui2.at-aero .kword{background:linear-gradient(180deg,#2aa9ff,#0a6fc2);-webkit-background-clip:text;background-clip:text;color:transparent!important}
-body.ui2.at-aero :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,.tbar){border-radius:14px!important;border:1px solid rgba(255,255,255,.95)!important;
+body.ui2.at-aero :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop,.tbar){border-radius:14px!important;border:1px solid rgba(255,255,255,.95)!important;
   background:linear-gradient(180deg,rgba(255,255,255,.86),rgba(255,255,255,.55) 50%,rgba(235,248,255,.6))!important;backdrop-filter:blur(12px) saturate(1.3)!important;-webkit-backdrop-filter:blur(12px) saturate(1.3)!important;
   box-shadow:inset 0 1px 0 #fff,0 8px 24px rgba(20,100,160,.16)!important}
 body.ui2.at-aero :is(:is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)),select,input,.pill,.chip){border-radius:999px!important}
@@ -128,17 +128,29 @@ body.ui2.at-aero #atfx i:nth-child(2){width:70px;height:70px;left:62%;bottom:-90
 body.ui2.at-aero #atfx i:nth-child(3){width:180px;height:180px;left:82%;bottom:-200px;animation-duration:28s;animation-delay:-12s}
 @keyframes atBub{to{transform:translateY(-125vh)}}
 
-/* ---------- 3D (raised + pressable) ---------- */
-body.ui2.at-d3 :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div){border-radius:14px!important;border:1px solid #fff!important;background:linear-gradient(180deg,#fdfdff,#eef0f5)!important;
-  box-shadow:0 1px 0 #fff inset,0 2px 0 #cfd4de,0 4px 0 #bfc5d2,0 14px 24px -8px rgba(28,34,48,.28)!important;transition:transform .25s cubic-bezier(.22,1,.36,1),box-shadow .25s}
-body.ui2.at-d3 :is(.card,.jw,#st-kpi>div):hover{transform:translateY(-3px);box-shadow:0 1px 0 #fff inset,0 3px 0 #cfd4de,0 6px 0 #bfc5d2,0 22px 30px -10px rgba(28,34,48,.32)!important}
-body.ui2.at-d3 :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)){border-radius:10px!important;border:1px solid #c6ccd8!important;background:linear-gradient(180deg,#fff,#e7eaf0)!important;box-shadow:0 3px 0 #b7bdca,0 5px 8px -2px rgba(28,34,48,.2)!important;transform:translateY(-1px);transition:transform .08s,box-shadow .08s}
-body.ui2.at-d3 :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)):active{transform:translateY(2px);box-shadow:0 0 0 #b7bdca,0 1px 2px rgba(28,34,48,.2)!important}
-body.ui2.at-d3 :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)).primary{background:linear-gradient(180deg,#4b7bf0,#2a5bd7)!important;border-color:#1f47b0!important;color:#fff!important;box-shadow:0 3px 0 #1a3c94,0 6px 10px -2px rgba(42,91,215,.4)!important}
+/* ---------- 3D: keyboard keys (KING_KEYCAPS) ---------- */
+body.ui2.at-d3{background:#e3e6ec!important}
+body.ui2.at-d3 :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop){border-radius:16px!important;border:1px solid #fff!important;
+  background:linear-gradient(180deg,#fbfcfe,#eef1f6)!important;box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 rgba(28,34,48,.05),0 3px 0 #cfd4de,0 6px 0 #b9c0cd,0 18px 26px -12px rgba(28,34,48,.35)!important}
+body.ui2.at-d3 :is(.card,.jw,#st-kpi>div){transition:transform .3s cubic-bezier(.95,.05,.795,.035),box-shadow .3s}
+body.ui2.at-d3 :is(.card,.jw,#st-kpi>div):hover{transform:translateY(-2px)}
+body.ui2.at-d3 :is(button:not(.rail *):not(.atdot)){position:relative;border-radius:9px!important;border:1px solid #cdd3dd!important;color:#2b3242!important;font-weight:600;
+  background:radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#f2f4f8 55%,#e6e9ef 100%)!important;
+  box-shadow:inset 0 1px 0 #fff,inset 0 -3px 0 rgba(28,34,48,.07),inset 0 0 0 3px rgba(255,255,255,.5),0 4px 0 #aeb5c3,0 5px 0 #9ea6b5,0 8px 10px -2px rgba(28,34,48,.3)!important;
+  transform:translateY(-3px);transition:transform .07s ease-out,box-shadow .07s ease-out!important}
+body.ui2.at-d3 :is(button:not(.rail *):not(.atdot)):hover{background:radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#f6f8fb 55%,#eceff4 100%)!important}
+body.ui2.at-d3 :is(button:not(.rail *):not(.atdot)):active{transform:translateY(1px);box-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 rgba(28,34,48,.07),0 0 0 #aeb5c3,0 1px 2px rgba(28,34,48,.25)!important}
+body.ui2.at-d3 :is(button:not(.rail *):not(.atdot)).primary,body.ui2.at-d3 :is(button.buy,#pbuy){color:#fff!important;border-color:#1f47b0!important;background:radial-gradient(120% 90% at 50% 0%,#5c8bff 0%,#3366e6 55%,#2a5bd7 100%)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.35),inset 0 -3px 0 rgba(0,0,0,.12),0 4px 0 #1d3f99,0 5px 0 #173580,0 8px 12px -2px rgba(42,91,215,.45)!important}
+body.ui2.at-d3 :is(input,select,textarea){border-radius:9px!important;box-shadow:inset 0 2px 3px rgba(28,34,48,.12)!important;border:1px solid #cdd3dd!important;background:#f4f6f9!important}
+body.ui2.at-d3 .rail{background:linear-gradient(180deg,#f9fafc,#eceff4)!important;box-shadow:0 2px 0 #cfd4de,0 4px 0 #bcc3cf,0 12px 20px -10px rgba(28,34,48,.3)}
+body.ui2.at-d3 .rail .vtab.on{background:radial-gradient(120% 90% at 50% 0%,#fff,#eef1f6)!important;border-radius:9px;box-shadow:inset 0 1px 0 #fff,0 3px 0 #b9c0cd,0 5px 8px -2px rgba(28,34,48,.25)}
 body.ui2.at-d3 :is(.vh,.seth,.kword){text-shadow:0 1px 0 #fff,0 2px 0 #c9ced9,0 3px 4px rgba(28,34,48,.18)}
-body.ui2.at-d3 .rail{box-shadow:0 2px 0 #d4d8e1,0 8px 18px -8px rgba(28,34,48,.25)}
 body.ui2.at-d3 #navline{height:4px!important;border-radius:4px!important;box-shadow:0 2px 0 #1a3c94}
-
+body.ui2.at-d3 #k3d{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .8s cubic-bezier(.95,.05,.795,.035)}
+body.ui2.at-d3 #k3d.on{opacity:1}
+body.ui2.at-d3 #app{position:relative;z-index:1}
+body.ui2.at-d3 .view:not(#v-trade){background:transparent!important}
 /* ---------- Animated (moving aurora) ---------- */
 body.ui2.at-anim #atfx{display:block;position:fixed;inset:-20%;z-index:2147482000;pointer-events:none;filter:blur(80px);opacity:.22;mix-blend-mode:screen}
 body.ui2.at-anim #atfx i{position:absolute;width:55vmax;height:55vmax;border-radius:50%;mix-blend-mode:screen;animation:atDrift 26s ease-in-out infinite alternate}
@@ -146,7 +158,7 @@ body.ui2.at-anim #atfx i:nth-child(1){background:#2b6cff;left:5%;top:0}
 body.ui2.at-anim #atfx i:nth-child(2){background:#11c79a;left:45%;top:25%;animation-duration:32s;animation-delay:-8s}
 body.ui2.at-anim #atfx i:nth-child(3){background:#ff3d7f;left:20%;top:50%;animation-duration:38s;animation-delay:-16s;opacity:.6}
 @keyframes atDrift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(12vw,-8vh) scale(1.15)}100%{transform:translate(-10vw,10vh) scale(.92)}}
-body.ui2.at-anim :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div){backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important;border:1px solid rgba(140,160,255,.16)!important;position:relative}
+body.ui2.at-anim :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop){backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important;border:1px solid rgba(140,160,255,.16)!important}
 body.ui2.at-anim :is(.card,.jw,#st-kpi>div):hover{border-color:rgba(124,196,255,.5)!important;box-shadow:0 0 0 1px rgba(124,196,255,.25),0 10px 40px -10px rgba(124,196,255,.35)!important;transition:box-shadow .35s,border-color .35s}
 body.ui2.at-anim :is(.vh,.seth,.kword){background:linear-gradient(90deg,#7cc4ff,#5af0b0,#ff8ab0,#7cc4ff);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:atSheen 8s linear infinite}
 body.ui2.at-anim :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)).primary{background:linear-gradient(90deg,#3d7bff,#11c79a,#3d7bff)!important;background-size:200% 100%!important;animation:atSheen 6s linear infinite;color:#fff!important;border:0!important}
@@ -164,5 +176,26 @@ body.ui2.at-terminal{--serif:"VT323",ui-monospace,monospace}
 body.ui2.at-luxury{--serif:"Cormorant Garamond",Georgia,serif}
 body.ui2.at-aero{--serif:"Nunito","Segoe UI",sans-serif}
 body.ui2.at-d3,body.ui2.at-anim{--serif:"Inter",system-ui,sans-serif}
-body.ui2.at-blocky :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div) :is(h3,h4,header b,.atlbl){color:#2a2a2a!important}
+body.ui2.at-blocky :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop) :is(h3,h4,header b,.atlbl){color:#2a2a2a!important}
 body.ui2.at-blocky #s-themes .atc{background:#8b8b8b;color:#fff;border-radius:0}
+body.ui2.at-d3 #app,body.ui2.at-d3 .main{background:transparent!important}
+/* ---------- Animated: the site is alive (KING_ALIVE) ---------- */
+@keyframes atIdle{0%,100%{transform:translate3d(0,0,0) rotate(0)}25%{transform:translate3d(0,-1.5px,0) rotate(-.08deg)}75%{transform:translate3d(0,1px,0) rotate(.08deg)}}
+@keyframes atBreath{0%,100%{box-shadow:0 0 0 0 rgba(124,196,255,0)}50%{box-shadow:0 0 22px -6px rgba(124,196,255,.35)}}
+body.ui2.at-anim :is(.card,.jw,#st-kpi>div,.setc,.acard){animation:atIdle 7s ease-in-out infinite}
+body.ui2.at-anim :is(.card,.jw,#st-kpi>div,.setc,.acard):nth-child(3n+1){animation-duration:8.3s;animation-delay:-2s}
+body.ui2.at-anim :is(.card,.jw,#st-kpi>div,.setc,.acard):nth-child(3n+2){animation-duration:6.1s;animation-delay:-4s}
+body.ui2.at-anim .rail .vtab svg,body.ui2.at-anim .rail .ri svg{animation:atIdle 5s ease-in-out infinite}
+body.ui2.at-anim .rlogo .kmark{animation:atBreath 4s ease-in-out infinite}
+body.ui2.at-anim button.primary{animation:atSheen 6s linear infinite,atBreath 3.2s ease-in-out infinite}
+body.ui2.at-anim .view.enter{animation:atEnter .7s cubic-bezier(.95,.05,.795,.035) backwards!important;transform-origin:50% 0}
+@keyframes atEnter{from{opacity:0;transform:perspective(1200px) rotateX(10deg) translateY(40px) scale(.97);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+#critters{position:fixed;inset:0;pointer-events:none;z-index:2147480000;overflow:hidden}
+#critters .cr{position:absolute;left:0;top:0;width:26px;height:26px;will-change:transform}
+#critters .cr svg{display:block;width:100%;height:100%;overflow:visible}
+#critters .cr .lg{transform-origin:50% 0;animation:crLeg .32s ease-in-out infinite alternate}#critters .cr .lg2{animation-delay:-.16s}
+#critters .cr.stop .lg{animation:none}
+#critters .cr .ey{animation:crBlink 4s steps(1) infinite}
+@keyframes crLeg{from{transform:rotate(-22deg)}to{transform:rotate(22deg)}}
+@keyframes crBlink{0%,92%{transform:scaleY(1)}94%{transform:scaleY(.1)}96%,100%{transform:scaleY(1)}}
+@media (prefers-reduced-motion: reduce){ body.ui2.at-anim *{animation:none!important} #critters{display:none} }

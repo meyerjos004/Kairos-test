@@ -107,7 +107,7 @@ function waifuPaint(p, g, W, H) { const K = SKINS[prefs.skin] || SKINS.waifu, bg
    cross = Sweden's Nordic cross, neon = Ryan's rave (gradient + glow), pill = Ryan's teal (rounded), stamp = Ben's tan (inset line). */
 function candlePaint(p, g, W, kind) {
   const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (!vr || !p.candles.length) return;
-  const sp = ts.options().barSpacing || 6, bw = Math.max(1, Math.floor(sp * 0.78)), C = csG(), from = Math.max(0, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to));
+  const sp = ts.options().barSpacing || 6, bw = Math.max(1, Math.floor(sp * 0.78)), C = csG(), from = Math.max(0, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to), p._lim ?? Infinity);
   const U = prefs.up || "#2bd4a0", D = prefs.dn || "#ff4d5e", WU = C.wu || U, WD = C.wd || D, BU = C.bu || U, BD = C.bd || D;
   const rr = (x, y, w, h, r) => { r = Math.max(0, Math.min(r, w / 2, h / 2)); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
   g.save();
@@ -146,7 +146,7 @@ function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) 
   prefs.waifu = !!c.waifu;   // KING_WAIFU
   prefs.skin = c.skin || (c.waifu ? "waifu" : null);   // KING_SKINS
   prefs.chTheme = { id, mode }; try { panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: c.wu || prefs.up, wickDownColor: c.wd || prefs.dn })); csApplyAll(); repaintAll(); } catch (e) {}
-  try { if (typeof ui2Apply === "function") { if (!c.skin && !c.waifu && typeof ui2Norm === "function" && ui2Norm(prefs.ui2) !== "") prefs.ui2 = mode === "light" ? "ivory" : "onyx"; ui2Apply(); } } catch (e) {}   // KING_THEMEALL: theme mode drives the look
+  try { if (typeof ui2Apply === "function") { if (!c.skin && !c.waifu && prefs.appTheme && prefs.appTheme.id === "person" && typeof ui2Norm === "function" && ui2Norm(prefs.ui2) !== "") prefs.ui2 = mode === "light" ? "ivory" : "onyx"; ui2Apply(); waifuUI(); } } catch (e) {}   // KING_THEMEALL: theme mode drives the look
   savePrefs(); if (!quiet) try { toast(T[0] + " · " + (mode === "light" ? "Light" : (SKINS[mode] ? SKINS[mode].label : "Dark"))); } catch (e) {} }
 // KING_WAIFU: Ben gets a one-time heads-up the first time he opens a build that has Waifu mode
 function waifuHint() { const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase(); if (prefs.waifuHint || !/\bben\b|jinx/.test(n)) return;
@@ -154,7 +154,16 @@ function waifuHint() { const n = ((me && (me.name + " " + (me.username || ""))) 
 function themeAutoPick() { waifuHint(); if (prefs.chTheme && prefs.chTheme.id === "king") { applyChartTheme("sandslate", prefs.chTheme.mode === "light" ? "light" : "dark", true); return; } if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
   const id = isAdmin ? "sandslate" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true); }
 let csTmp = null, csSnap = null; const execs = [], profs = {};
-const csG = () => Object.assign({}, CS_DEF, (prefs && prefs.cs) || {}, csTmp || {});
+const csG = () => Object.assign({}, CS_DEF, (prefs && prefs.cs) || {}, csTmp || {}, csStyleOv());
+// KING_CHARTSTYLE (Nov 22, King): style themes dress the chart too (background, grid, type, candle colors), so Blocky/Aero/etc. don't sit on a mismatched chart.
+const CHART_STY = { kairos: ["#0a0a0d", "rgba(167,139,250,.07)", "#8b8a99", "#2bd4a0", "#ff4d5e", ""], blocky: ["#2e2e2e", "rgba(0,0,0,.45)", "#e6e6e6", "#6cbf3a", "#c8372d", "Silkscreen", "#151515"],
+  pixel: ["#fffaf0", "rgba(45,36,56,.09)", "#6b5f78", "#2f9e6a", "#d6455d", "Pixelify Sans", "#2d2438"], bit8: ["#000000", "rgba(0,120,248,.28)", "#fcfcfc", "#00b800", "#e40058", "Press Start 2P", "#fcfcfc"],
+  terminal: ["#030703", "rgba(61,255,122,.09)", "#23a34c", "#3dff7a", "#ff5f56", "VT323"], luxury: ["#0b0a08", "rgba(201,164,92,.08)", "#a99c80", "#d8b56a", "#8a3a3f", "Cormorant Garamond"],
+  aero: ["#f2faff", "rgba(20,90,140,.08)", "#3f6580", "#2fae3a", "#e0453a", "Nunito"], d3: ["#f7f8fb", "rgba(28,34,48,.06)", "#5b6478", "#1f9a62", "#d6404e", ""], anim: ["#08080f", "rgba(140,160,255,.07)", "#9ea3c4", "#5af0b0", "#ff6b8a", ""] };
+function cssCol(c) { try { const d = document.createElement("i"); d.style.color = c; document.body.appendChild(d); const v = getComputedStyle(d).color; d.remove(); return v; } catch (e) { return c; } }
+function csStyleOv() { try { if (typeof appThemeDef !== "function" || !document.body.classList.contains("ui2")) return {}; const T = appThemeDef(); if (!T) return {};
+  let a = CHART_STY[T.cls]; if (T.cls === "rainbow") { const v = T.v, lt = T.base === "light"; a = csStyleOv.k === JSON.stringify(v) ? csStyleOv.a : [cssCol(v.panel), cssCol(v.mut).replace("rgb(", "rgba(").replace(")", ",.14)"), cssCol(v.mut), lt ? "#1f8a5a" : "#4fd39a", lt ? "#c2414b" : "#ff6b78", ""]; csStyleOv.k = JSON.stringify(v); csStyleOv.a = a; }
+  if (!a) return {}; return { bgk: "solid", bg1: a[0], bg2: a[0], gridc: a[1], txc: a[2], lnc: a[1], styUp: a[3], styDn: a[4], font: a[5], bord: !!a[6], bu: a[6] || a[3], bd: a[6] || a[4], wu: a[6] || "", wd: a[6] || "", body: true, wick: true, paint: "" }; } catch (e) { return {}; } }
 /* ---------------- time (shown in New York time) ---------------- */
 const offCache = new Map();
 function nyOffset(t) {
@@ -1254,6 +1263,9 @@ function sfx(kind) {
   const noise = (at, dur, o = {}) => { const s = t0 + at, n = AC.createBufferSource(), b = AC.createBuffer(1, Math.ceil(AC.sampleRate * dur), AC.sampleRate), c = b.getChannelData(0);
     for (let i = 0; i < c.length; i++) c[i] = Math.random() * 2 - 1; n.buffer = b; const f = AC.createBiquadFilter(); f.type = o.ft || "bandpass"; f.frequency.setValueAtTime(o.f || 2000, s); if (o.fTo) f.frequency.exponentialRampToValueAtTime(o.fTo, s + dur); f.Q.value = o.q || 1;
     const g = AC.createGain(), v = (o.v ?? 1) * V; g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(v, s + (o.a || 0.004)); g.gain.exponentialRampToValueAtTime(0.0001, s + dur); n.connect(f).connect(g).connect(bus); n.start(s); };
+  const saw = (f, at, dur, o = {}) => [-24, -12, 0, 12, 24].forEach((dt) => tone(f, at, dur, { ...o, type: "sawtooth", det: dt + (o.det2 || 0) * Math.sign(dt), v: (o.v ?? 1) * 0.42, a: o.a || 0.004 }));
+  const sub = (at, f, dur, v) => tone(f, at, dur, { to: Math.max(28, f * 0.36), glide: dur * 0.6, v: v ?? 1, a: 0.002 });
+  if (pack === "rave") { try { bus.disconnect(); const sh = AC.createWaveShaper(), n = 1024, cu = new Float32Array(n); for (let k = 0; k < n; k++) { const x = (k / n) * 2 - 1; cu[k] = Math.tanh(x * 3.2); } sh.curve = cu; const lim = AC.createDynamicsCompressor(); lim.threshold.value = -10; lim.ratio.value = 12; bus.connect(sh).connect(lim).connect(AC.destination); } catch (e) {} }
   const P = {
     soft: {   // all regular themes: felt + glass, very quiet
       tap: () => noise(0, 0.03, { f: 1800, q: 0.9, v: 0.35 }),
@@ -1297,20 +1309,20 @@ function sfx(kind) {
       win: () => [587, 698, 880, 1175].forEach((f, i) => tone(f, i * 0.08, 0.6, { v: 0.42 })),
       loss: () => [440, 349].forEach((f, i) => tone(f, i * 0.12, 0.7, { v: 0.4 })),
       error: () => noise(0, 0.08, { f: 400, q: 4, v: 0.6 }) },
-    rave: {   // club: kick, hats, claps, risers, a saw stab on the drop
-      tap: () => noise(0, 0.03, { ft: "highpass", f: 8000, v: 0.4 }),
-      nav: () => { tone(160, 0, 0.18, { to: 42, glide: 0.12, v: 1.1 }); noise(0.0, 0.08, { f: 1600, q: 0.8, v: 0.45 }); },
-      select: () => { noise(0, 0.05, { ft: "highpass", f: 7000, v: 0.4 }); noise(0.06, 0.04, { ft: "highpass", f: 9000, v: 0.25 }); },
-      open: () => noise(0, 0.3, { f: 400, fTo: 6000, q: 2, v: 0.35, a: 0.2 }),
-      close: () => noise(0, 0.2, { f: 6000, fTo: 400, q: 2, v: 0.3, a: 0.01 }),
-      sheet: () => { tone(150, 0, 0.2, { to: 40, glide: 0.15, v: 1 }); [262, 330, 392].forEach((f) => tone(f, 0, 0.3, { type: "sawtooth", lp: 2400, lpTo: 600, v: 0.18 })); },
-      notify: () => { noise(0, 0.12, { f: 1500, q: 0.8, v: 0.4 }); [523, 659, 784].forEach((f) => tone(f, 0, 0.22, { type: "sawtooth", lp: 3000, v: 0.14 })); },
-      on: () => tone(120, 0, 0.12, { to: 50, v: 0.8 }), off: () => noise(0, 0.05, { ft: "highpass", f: 6000, v: 0.35 }),
-      type: () => noise(0, 0.012, { ft: "highpass", f: 9000, v: 0.15 }),
-      fill: () => { tone(160, 0, 0.18, { to: 45, v: 1 }); [440, 554, 659].forEach((f) => tone(f, 0.01, 0.2, { type: "sawtooth", lp: 3200, v: 0.16 })); },
-      win: () => { noise(0, 0.6, { f: 400, fTo: 8000, q: 2, v: 0.3, a: 0.5 }); tone(160, 0.6, 0.3, { to: 40, v: 1.1 }); [523, 659, 784, 1046].forEach((f) => tone(f, 0.6, 0.4, { type: "sawtooth", lp: 3500, v: 0.16 })); },
-      loss: () => tone(200, 0, 0.5, { type: "sawtooth", to: 60, lp: 1200, lpTo: 150, v: 0.4 }),
-      error: () => tone(90, 0, 0.25, { type: "square", lp: 600, v: 0.35 }) },
+    rave: {   // Ryan (KING_RAVEBASS, Nov 22): no notes, no music. Heavy detuned saw walls and sub-bass hits through a drive.
+      tap: () => { sub(0, 70, 0.09, 0.7); },
+      nav: () => { saw(55, 0, 0.32, { lp: 180, lpTo: 2400, v: 0.5 }); sub(0, 90, 0.28, 1.1); },
+      select: () => { saw(110, 0, 0.12, { lp: 900, lpTo: 300, v: 0.35 }); },
+      open: () => { saw(41, 0, 0.42, { lp: 120, lpTo: 3200, q: 9, v: 0.45, a: 0.2 }); },
+      close: () => { saw(82, 0, 0.3, { lp: 3000, lpTo: 120, q: 9, v: 0.4 }); },
+      sheet: () => { sub(0, 110, 0.5, 1.2); saw(41, 0, 0.55, { lp: 200, lpTo: 2600, q: 6, v: 0.5 }); },
+      notify: () => { sub(0, 80, 0.2, 0.9); sub(0.16, 80, 0.22, 0.9); },
+      on: () => { sub(0, 100, 0.16, 0.9); saw(73, 0, 0.12, { lp: 400, lpTo: 1800, v: 0.3 }); }, off: () => { saw(73, 0, 0.14, { lp: 1800, lpTo: 200, v: 0.3 }); },
+      type: () => { sub(0, 60, 0.04, 0.35); },
+      fill: () => { sub(0, 120, 0.4, 1.3); saw(55, 0, 0.36, { lp: 300, lpTo: 4000, q: 7, v: 0.55 }); },
+      win: () => { saw(36, 0, 0.9, { lp: 100, lpTo: 5000, q: 10, v: 0.5, a: 0.6 }); sub(0.62, 130, 0.7, 1.4); saw(55, 0.62, 0.5, { lp: 3500, lpTo: 400, v: 0.6 }); },
+      loss: () => { saw(65, 0, 0.8, { lp: 2400, lpTo: 90, q: 6, v: 0.5, to: 30 }); sub(0, 70, 0.6, 1.1); },
+      error: () => { saw(46, 0, 0.3, { lp: 600, v: 0.5, det2: 40 }); } },
     chip: {   // Blocky / Pixel / 8-bit: square-wave console blips
       tap: () => tone(1046, 0, 0.04, { type: "square", v: 0.12 }),
       nav: () => [523, 784].forEach((f, i) => tone(f, i * 0.05, 0.07, { type: "square", v: 0.14 })),
@@ -1347,9 +1359,14 @@ function buzz(ms) { if (prefs.haptics !== false && navigator.vibrate) try { navi
 // KING_STAGELOAD (Nov 22, King): Stats + Journal load in three beats: empty widgets, then their titles, then the data,
 // each widget's numbers counting up in reading order (left to right, top to bottom) until the page is full.
 const STAGE = { "v-stats": { w: "#st-kpi > div, .card", t: "h4, #st-kpi > div > span" }, "v-tj": { w: ".jw:not(.jadd), .jkpi > div, .jsts > div", t: "header > b, .jst > span" } };
-function stagePre(id) { const r = $(id); if (!r || !document.body.classList.contains("ui2") || matchMedia("(prefers-reduced-motion: reduce)").matches) return; r.classList.add("kpre"); clearTimeout(r._kpre); r._kpre = setTimeout(() => r.classList.remove("kpre"), 4000); }
-function stageLoad(id) {
-  const r = $(id), cf = STAGE[id]; if (!r) return; clearTimeout(r._kpre);
+function stagePre(id) { const r = $(id); if (!r || !document.body.classList.contains("ui2") || matchMedia("(prefers-reduced-motion: reduce)").matches) return; r.classList.add("kpre"); clearTimeout(r._kpre); r._kpre = setTimeout(() => r.classList.remove("kpre"), 6000); }
+// KING_STAGEQUIET (Nov 22): wait until the page stops re-drawing (data arriving in pieces caused the glitching), then play the load once
+function stageLoad(id) { const r = $(id); if (!r || !r.classList.contains("kpre")) return; clearTimeout(r._kpre); clearTimeout(r._kq); if (r._mo) r._mo.disconnect();
+  const t0 = performance.now(), go = () => { if (r._mo) r._mo.disconnect(); r._mo = null; stageRun(id); };
+  r._mo = new MutationObserver(() => { clearTimeout(r._kq); r._kq = setTimeout(go, performance.now() - t0 > 2200 ? 0 : 220); }); r._mo.observe(r, { childList: true, subtree: true, characterData: true });
+  r._kq = setTimeout(go, 220); }
+function stageRun(id) {
+  const r = $(id), cf = STAGE[id]; if (!r) return;
   if (!r.classList.contains("kpre")) return; const tok = (r._ktok = (r._ktok || 0) + 1);
   const W = [...r.querySelectorAll(cf.w)].filter((e) => e.getClientRects().length).map((e) => ({ e, b: e.getBoundingClientRect() }));
   W.sort((a, b) => Math.abs(a.b.top - b.b.top) > 12 ? a.b.top - b.b.top : a.b.left - b.b.left);
@@ -1371,6 +1388,90 @@ function countUp(el, tsel) {
 // KING_SPOT: feed the pointer position to the card under it (one listener, rAF-batched)
 { let q = null, ev = null; addEventListener("pointermove", (e) => { ev = e; if (q) return; q = requestAnimationFrame(() => { q = null; if (!document.body.classList.contains("ui2")) return;
   const c = ev.target.closest && ev.target.closest(".card,.jw,#st-kpi>div,.setc,.acard"); if (!c) return; const r = c.getBoundingClientRect(); c.style.setProperty("--mx", ev.clientX - r.left + "px"); c.style.setProperty("--my", ev.clientY - r.top + "px"); }); }, { passive: true }); }
+// KING_DIAL (Nov 22, King): every slider is now a horizontal dial. Drag it sideways (or scroll / arrow keys), it ticks as it turns,
+// and it always reaches the exact min and max. The real <input type=range> stays underneath so every setting keeps working.
+const KDIAL = { list: new Set() };
+function dialTick(big) { if (prefs.sound === false) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain(), f = AC.createBiquadFilter();
+  o.type = "square"; o.frequency.value = big ? 2400 : 3200; f.type = "bandpass"; f.frequency.value = big ? 2200 : 3400; f.Q.value = 4; const v = (prefs.vol ?? 60) / 100 * (big ? 0.07 : 0.035);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.018); o.connect(f).connect(g).connect(AC.destination); o.start(t); o.stop(t + 0.03); } catch (e) {} }
+function dialMake(inp) {
+  if (inp._kd || !inp.isConnected) return; const d = document.createElement("div"); inp._kd = d; d.className = "kdial"; d.tabIndex = 0; d.setAttribute("role", "slider");
+  d.setAttribute("aria-label", inp.getAttribute("aria-label") || (inp.closest("label") && inp.closest("label").textContent.trim()) || "Dial");
+  d.innerHTML = '<div class="kdr"></div><i class="kdn"></i><b class="kdv"></b>'; inp.after(d); inp.classList.add("kdhid"); KDIAL.list.add(d);
+  const mn = () => +(inp.min || 0), mx = () => +(inp.max || 100), st = () => +(inp.step) || 1, span = () => Math.max(st(), mx() - mn());
+  const PX = () => Math.max(1.6, Math.min(9, 220 / (span() / st())));   // pixels per step: small ranges turn chunky, big ones fine
+  const draw = () => { const v = +inp.value, s = st(), px = PX(), off = ((v - mn()) / s) * px, R = d.firstChild;
+    R.style.setProperty("--px", px + "px"); R.style.setProperty("--maj", px * Math.max(1, Math.round(10 / Math.max(1, Math.round(span() / s / 100) || 1))) + "px"); R.style.backgroundPositionX = `calc(50% - ${off}px)`;
+    d.querySelector(".kdv").textContent = (inp.dataset.fmt === "%" ? Math.round(((v - mn()) / span()) * 100) + "%" : String(+v.toFixed(4)));
+    d.setAttribute("aria-valuenow", v); d.setAttribute("aria-valuemin", mn()); d.setAttribute("aria-valuemax", mx());
+    d.classList.toggle("atmin", v <= mn()); d.classList.toggle("atmax", v >= mx()); d._last = v; };
+  const set = (v, fire) => { const s = st(); v = Math.min(mx(), Math.max(mn(), Math.round((v - mn()) / s) * s + mn())); v = +v.toFixed(6); if (v === +inp.value) { draw(); return; }
+    const prev = +inp.value, crossedBig = Math.floor((prev - mn()) / (span() / 10)) !== Math.floor((v - mn()) / (span() / 10)) || v === mn() || v === mx();
+    inp.value = v; draw(); dialTick(crossedBig); inp.dispatchEvent(new Event("input", { bubbles: true })); if (fire) inp.dispatchEvent(new Event("change", { bubbles: true })); };
+  let drag = null; d.addEventListener("pointerdown", (e) => { e.stopPropagation(); e.preventDefault(); d.setPointerCapture(e.pointerId); drag = { x: e.clientX, v: +inp.value }; d.classList.add("drag"); d.focus({ preventScroll: true }); });
+  d.addEventListener("pointermove", (e) => { if (!drag) return; e.stopPropagation(); set(drag.v + ((e.clientX - drag.x) / PX()) * st()); });
+  const end = (e) => { if (!drag) return; drag = null; d.classList.remove("drag"); inp.dispatchEvent(new Event("change", { bubbles: true })); };
+  d.addEventListener("pointerup", end); d.addEventListener("pointercancel", end); ["mousedown", "touchstart"].forEach((ev) => d.addEventListener(ev, (e) => e.stopPropagation()));
+  d.addEventListener("wheel", (e) => { e.preventDefault(); set(+inp.value + Math.sign(e.deltaY || e.deltaX) * st() * -1, true); }, { passive: false });
+  d.addEventListener("keydown", (e) => { const k = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1 }[e.key]; if (k) { e.preventDefault(); set(+inp.value + k * st() * (e.shiftKey ? 10 : 1), true); }
+    if (e.key === "Home") set(mn(), true); if (e.key === "End") set(mx(), true); });
+  d._draw = draw; draw();
+}
+function dialScan(root) { (root || document).querySelectorAll('input[type="range"]').forEach(dialMake); }
+new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches && n.matches('input[type="range"]')) dialMake(n); else if (n.querySelector) dialScan(n); } }).observe(document.documentElement, { childList: true, subtree: true });
+setInterval(() => { for (const d of KDIAL.list) { if (!d.isConnected) { KDIAL.list.delete(d); continue; } const inp = d.previousElementSibling; if (inp && +inp.value !== d._last && d.offsetParent) d._draw(); } }, 400);
+dialScan();
+// KING_POPFROM (Nov 22, King): every pop-out grows out of the spot you clicked and shrinks back into it when it closes (inExpo).
+const POPSEL = "#ctx,.menu,.dlg,.ddm,.lblpop,.cspop,.tplpop,.botpop,.fbpop,.rmenu,.dpwrap,#review,.csbox,.toast,#qmtip,#rhtip,.tip,.wdlg,#media,.sheet";
+const POPE = { in: "cubic-bezier(.95,.05,.795,.035)", out: "cubic-bezier(.95,.05,.795,.035)" }; let popPt = { x: innerWidth / 2, y: innerHeight / 2, t: 0 };
+addEventListener("pointerdown", (e) => { popPt = { x: e.clientX, y: e.clientY, t: performance.now() }; }, true);
+addEventListener("contextmenu", (e) => { popPt = { x: e.clientX, y: e.clientY, t: performance.now() }; }, true);
+function popOn() { return document.body.classList.contains("ui2") && !matchMedia("(prefers-reduced-motion: reduce)").matches; }
+function popOrigin(el) { const r = el.getBoundingClientRect(), fresh = performance.now() - popPt.t < 1500, x = fresh ? popPt.x : r.left + r.width / 2, y = fresh ? popPt.y : r.top + r.height / 2;
+  return { r, ox: Math.max(-40, Math.min(r.width + 40, x - r.left)), oy: Math.max(-40, Math.min(r.height + 40, y - r.top)) }; }
+function popIn(el) { if (!popOn() || el._popIn) return; const big = el.matches(".dlg,.csbox,#media,.wdlg"), small = el.matches(".toast,.tip,#qmtip,#rhtip");
+  requestAnimationFrame(() => { if (!el.isConnected || !el.getClientRects().length) return; const { ox, oy } = popOrigin(el); el._popO = { ox, oy };
+    try { el._popIn = el.animate([{ transformOrigin: `${ox}px ${oy}px`, transform: `scale(${small ? .7 : big ? .55 : .35})`, opacity: 0 }, { transformOrigin: `${ox}px ${oy}px`, transform: "none", opacity: 1 }], { duration: small ? 220 : big ? 420 : 300, easing: POPE.in });
+      el._popIn.onfinish = el._popIn.oncancel = () => (el._popIn = null); } catch (e) {} }); }
+function popOut(el, rect) { if (!popOn() || !rect || rect.width < 4 || el.matches(".toast,.tip,#qmtip,#rhtip")) return; const c = el.cloneNode(true); c.removeAttribute("id"); c.classList.remove("hidden"); c.querySelectorAll("[id]").forEach((x) => x.removeAttribute("id"));
+  const cs = el._popCS; Object.assign(c.style, { position: "fixed", left: rect.left + "px", top: rect.top + "px", width: rect.width + "px", height: rect.height + "px", margin: "0", pointerEvents: "none", zIndex: 2147481000, display: cs || "" }); c.classList.add("kpopghost");
+  document.body.appendChild(c); const o = el._popO || { ox: rect.width / 2, oy: rect.height / 2 };
+  try { const a = c.animate([{ transformOrigin: `${o.ox}px ${o.oy}px`, transform: "none", opacity: 1 }, { transformOrigin: `${o.ox}px ${o.oy}px`, transform: "scale(.4)", opacity: 0 }], { duration: 240, easing: POPE.out, fill: "forwards" }); a.onfinish = () => c.remove(); } catch (e) { c.remove(); }
+  setTimeout(() => c.remove(), 600); }
+(() => { const seen = new WeakMap(); const isPop = (n) => n.nodeType === 1 && n.matches && n.matches(POPSEL);
+  const vis = (n) => !n.classList.contains("hidden") && n.getClientRects().length > 0;
+  const remember = (n) => { if (vis(n)) { const r = n.getBoundingClientRect(); seen.set(n, r); n._popCS = getComputedStyle(n).display; } };
+  new MutationObserver((ms) => { if (!popOn()) return; for (const m of ms) {
+    if (m.type === "attributes" && isPop(m.target)) { const n = m.target, was = (m.oldValue || "").split(/\s+/).includes("hidden"), now = n.classList.contains("hidden");
+      if (was && !now) { popIn(n); setTimeout(() => remember(n), 450); } else if (!was && now) { popOut(n, seen.get(n)); seen.delete(n); } }
+    if (m.type === "childList") { m.addedNodes.forEach((n) => { if (isPop(n) && vis(n)) { popIn(n); setTimeout(() => remember(n), 450); } else if (n.querySelectorAll) n.querySelectorAll(".dlg").forEach((d) => { popIn(d); setTimeout(() => remember(d), 450); }); });
+      m.removedNodes.forEach((n) => { if (n.nodeType !== 1 || n.classList.contains("kpopghost")) return; const d = isPop(n) ? n : n.querySelector && n.querySelector(".dlg"); if (d && seen.get(d)) { popOut(d, seen.get(d)); seen.delete(d); } }); } } })
+    .observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class"], attributeOldValue: true });
+  // keep rects fresh for things that move while open (menus repositioned after showing)
+  setInterval(() => document.querySelectorAll(POPSEL).forEach((n) => { if (vis(n)) remember(n); }), 500); })();
+// KING_ALIVE (Nov 22, King): the Animated theme lives. Small original critters walk along the bottom of the screen and the top bar,
+// stop to look around, hop when your pointer gets close, and turn back at the edges. Pointer-proof (they never block a click).
+const CRIT = { on: false, list: [], raf: 0, mx: -999, my: -999 };
+addEventListener("pointermove", (e) => { CRIT.mx = e.clientX; CRIT.my = e.clientY; }, { passive: true });
+function critSvg(c1, c2) { return `<svg viewBox="0 0 26 26"><g class="lg"><rect x="8" y="17" width="2.4" height="7" rx="1.2" fill="${c2}"/></g><g class="lg lg2"><rect x="15.6" y="17" width="2.4" height="7" rx="1.2" fill="${c2}"/></g>
+  <path d="M13 3.5v-2.2" stroke="${c2}" stroke-width="1.6" stroke-linecap="round"/><circle cx="13" cy="1.2" r="1.5" fill="${c1}"/><rect x="3" y="4" width="20" height="15" rx="7.5" fill="${c1}"/>
+  <g class="ey" style="transform-origin:13px 11px"><circle cx="9.6" cy="11" r="1.7" fill="#07070c"/><circle cx="16.4" cy="11" r="1.7" fill="#07070c"/></g></svg>`; }
+function critters(on) { if (on === CRIT.on) return; CRIT.on = on; let L = document.getElementById("critters");
+  if (!on || matchMedia("(prefers-reduced-motion: reduce)").matches) { cancelAnimationFrame(CRIT.raf); CRIT.raf = 0; if (L) L.remove(); CRIT.list = []; return; }
+  if (!L) { L = document.createElement("div"); L.id = "critters"; L.setAttribute("aria-hidden", "true"); document.body.appendChild(L); }
+  const C = [["#7cc4ff", "#3b6fb0"], ["#5af0b0", "#1f8f63"], ["#ff8ab0", "#b0476d"], ["#ffd36b", "#a07c22"]];
+  CRIT.list = C.map((c, i) => { const el = document.createElement("div"); el.className = "cr"; el.innerHTML = critSvg(c[0], c[1]); L.appendChild(el);
+    return { el, lane: i === 3 ? "top" : "bottom", x: Math.random() * innerWidth, vx: (Math.random() < 0.5 ? -1 : 1) * (22 + Math.random() * 18), y: 0, vy: 0, pause: 0, s: 0.8 + Math.random() * 0.45 }; });
+  let last = performance.now();
+  const loop = (now) => { const dt = Math.min(0.05, (now - last) / 1000); last = now; const rail = document.querySelector(".rail"), topY = rail ? rail.getBoundingClientRect().bottom : 58;
+    for (const c of CRIT.list) { const gy = c.lane === "top" ? topY - 25 * c.s + 1 : innerHeight - 25 * c.s - 4;
+      if (c.pause > 0) { c.pause -= dt; c.el.classList.add("stop"); } else { c.el.classList.remove("stop"); c.x += c.vx * dt; if (Math.random() < dt * 0.12) c.pause = 0.8 + Math.random() * 2.2; if (Math.random() < dt * 0.05) c.vx *= -1; }
+      if (c.x < 8) { c.x = 8; c.vx = Math.abs(c.vx); } if (c.x > innerWidth - 34) { c.x = innerWidth - 34; c.vx = -Math.abs(c.vx); }
+      const near = Math.hypot(CRIT.mx - (c.x + 13), CRIT.my - (gy + c.y + 13)) < 70; if (near && c.y === 0) { c.vy = -260; c.vx = (c.x + 13 > CRIT.mx ? 1 : -1) * 70; c.pause = 0; }
+      if (c.y < 0 || c.vy < 0) { c.vy += 900 * dt; c.y = Math.min(0, c.y + c.vy * dt); if (c.y === 0) { c.vy = 0; c.vx = Math.sign(c.vx) * (22 + Math.random() * 18); } }
+      c.el.style.transform = `translate3d(${c.x.toFixed(1)}px,${(gy + c.y).toFixed(1)}px,0) scale(${(c.vx < 0 ? -1 : 1) * c.s},${c.s})`; }
+    CRIT.raf = requestAnimationFrame(loop); };
+  CRIT.raf = requestAnimationFrame(loop); }
 // KING_NAVLINE (Nov 22): one underline that slides between the top-nav pages (the per-tab line can't move)
 function navLine(instant) { const R = $("rail"); if (!R) return; let L = $("navline"); if (!L) { L = document.createElement("i"); L.id = "navline"; R.appendChild(L); }
   const on = R.querySelector(".vtab.on"); if (!on || !document.body.classList.contains("ui2-iv") || innerWidth <= 900) { L.style.opacity = "0"; return; }
@@ -2178,7 +2279,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); try { navLine(); } catch (e) {} document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) { stagePre("v-tj"); Promise.resolve(JN.open()).then(() => stageLoad("v-tj"), () => stageLoad("v-tj")); } /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") { stagePre("v-stats"); renderStats().then(() => stageLoad("v-stats"), () => stageLoad("v-stats")); } if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
+function view(v) { try { document.documentElement.removeAttribute("data-kv"); } catch (e) {} try { window.k3dView && k3dView(v); } catch (e) {} try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); clearTimeout(el._ent); el._ent = setTimeout(() => el.classList.remove("enter"), 900); }   /* KING_STAGEQUIET: re-drawn cards must not replay the entrance */ sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); try { navLine(); } catch (e) {} document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) { stagePre("v-tj"); Promise.resolve(JN.open()).then(() => stageLoad("v-tj"), () => stageLoad("v-tj")); } /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") { stagePre("v-stats"); renderStats().then(() => stageLoad("v-stats"), () => stageLoad("v-stats")); } if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
 function layMenu() { const sv = prefs.saved || [];
   return layMenu2(); }
 function saveLayout() { const name = (prompt("Name this layout (e.g. NQ/ES SMT, 1m + 15m)") || "").trim().slice(0, 30); if (!name) return;
@@ -2231,7 +2332,7 @@ function splash(force) {   // launch intro (Settings → "Intro animation when t
   el.innerHTML = `<canvas class="wfield"></canvas><div class="wwel${n > 18 ? " long" : ""}">${chars.map((c, i) => `<span style="--d:${(i * 0.042).toFixed(3)}s">${c === " " ? "&nbsp;" : esc(c)}</span>`).join("")}<em style="--e:${(0.2 + n * 0.042).toFixed(2)}s">…</em></div><img class="wlock" alt="KAIROS OS Beta"><div class="ktip"><b>Tip</b>${esc(KTIPS[Math.floor(Math.random() * KTIPS.length)])}</div>`;
   document.body.appendChild(el); try { wField(el.querySelector(".wfield")); } catch (e) {}
   if (prefs.sound !== false && !DEMO) { const A = wAudio(); if (A) A.ac.resume().then(() => { if (A.ac.state === "running") kScore(A, D - (performance.now() - t0) / 1000); else A.ac.close(); }).catch(() => {}); }
-  const tm = [setTimeout(() => { el.classList.add("drop"); el.querySelector(".wlock").src = "brand/kairos-intro.svg?d=" + Date.now(); }, D * 1000), setTimeout(() => end(), (D + 2.5) * 1000)];
+  const tm = [setTimeout(() => { el.classList.add("drop"); if (document.body.classList.contains("ui2") && !document.body.classList.contains("at-kairos")) { const w = el.querySelector(".wlock"), n = document.createElement("div"); n.className = "wlock wlock2"; n.innerHTML = '<span class="kmark">K</span><span class="kword">KAIROS</span>'; w.replaceWith(n); } else el.querySelector(".wlock").src = "brand/kairos-intro.svg?d=" + Date.now(); /* KING_INTROLOGO: the new mark in the theme's own ink (the old pale lockup vanished on light) */ }, D * 1000), setTimeout(() => end(), (D + 2.5) * 1000)];
   let ended = false; const end = () => { if (ended) return; ended = true; tm.forEach(clearTimeout); el.classList.add("out"); setTimeout(() => el.remove(), 750);
     setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 250); };
   el.addEventListener("pointerdown", end); addEventListener("keydown", function k(e) { if (e.key === "Escape" || e.key === " " || e.key === "Enter") { removeEventListener("keydown", k); end(); } }); }
@@ -2297,21 +2398,33 @@ function assembleBuild(full, T) {
     { k: [{ opacity: 0, transform: "scale(.35)" }, { opacity: 1, transform: "scale(1.04)", offset: .75 }, { opacity: 1, transform: "none" }], e: E } ];
   let skip = false, ended = false, k = 0; const anims = [], base = full ? 1 : .6;
   const finish = () => { if (ended) return; ended = true; anims.forEach((a) => { try { a.finish(); } catch (e) {} });
-    T.forEach((t) => { t.el.style.opacity = t.prev || ""; }); panes.forEach((p) => { try { p.series.applyOptions({ visible: true }); p.el.style.clipPath = ""; } catch (e) {} });
+    T.forEach((t) => { t.el.style.opacity = t.prev || ""; }); panes.forEach((p) => { try { if (p._fin) p._fin(); p.series.applyOptions({ visible: true }); p.el.style.clipPath = ""; } catch (e) {} }); document.querySelectorAll(".kwin").forEach((x) => x.remove());
     removeEventListener("pointerdown", onSkip, true); mark.remove(); dispatchEvent(new Event("kz-built")); };
   const onSkip = () => { skip = true; finish(); }; addEventListener("pointerdown", onSkip, true);
   if (reduce) return finish();
   let t = 0; items.forEach((it, i) => {
     if (it.z === 1) return; const st = it.z === 0 ? styles[i % 2 ? 1 : 0] : styles[(i * 7 + 1) % 3];
-    const d = it.z === 0 ? 460 : 520, at = t; t += (it.z === 0 ? 70 : 26) * base;
+    const d = it.z === 0 ? 460 : 520, at = t; t += (it.z === 0 ? 60 : Math.min(26, 950 / Math.max(1, items.length))) * base;
     setTimeout(() => { if (skip) return; it.el.style.opacity = it.prev || ""; try { const a = it.el.animate(st.k, { duration: d * (full ? 1 : .8), easing: st.e, fill: "backwards" }); anims.push(a); } catch (e) {} if (i % 3 === 0) try { sfx("tap"); } catch (e) {} }, at);
   });
-  const pz = items.filter((x) => x.z === 1), tc = t + 120;
-  setTimeout(() => { if (skip) return; pz.forEach((it, j) => { const el = it.el; el.style.opacity = it.prev || "";
-      try { anims.push(el.animate([{ opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0)" }], { duration: 420, easing: EF, fill: "backwards", delay: j * 90 })); } catch (e) {} });
-    setTimeout(() => { if (skip) return; panes.forEach((p, j) => { try { p.series.applyOptions({ visible: true });
-        anims.push(p.el.animate([{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }], { duration: full ? 1100 : 700, easing: "cubic-bezier(.65,0,.35,1)", delay: j * 120 })); } catch (e) {} });
-      try { sfx("sheet"); } catch (e) {} setTimeout(finish, (full ? 1100 : 700) + panes.length * 120 + 60); }, 380); }, tc);
+  // KING_CHARTWIN (Nov 22, King): each chart starts as a small rounded frosted-glass window with its data already behind it, then opens up
+  // to full size with anime.js "inExpo" easing while the candles fill in one by one.
+  const pz = items.filter((x) => x.z === 1), tc = t + 80, IE = "cubic-bezier(.95,.05,.795,.035)", DW = full ? 1150 : 750, inExpo = (x) => (x === 0 ? 0 : Math.pow(2, 10 * x - 10));
+  setTimeout(() => { if (skip) return; pz.forEach((it, j) => { const el = it.el, p = panes.find((q) => q.el === el); el.style.opacity = it.prev || ""; const r = el.getBoundingClientRect();
+      const sq = Math.min(r.width, r.height) * 0.3, ix = Math.max(0, (r.width - sq) / 2), iy = Math.max(0, (r.height - sq) / 2), from = `inset(${iy}px ${ix}px ${iy}px ${ix}px round 22px)`, to = "inset(0px 0px 0px 0px round 14px)";
+      const cv = document.createElement("div"); cv.className = "kwin"; Object.assign(cv.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" }); document.body.appendChild(cv);
+      const kf = [{ clipPath: from }, { clipPath: to }], o = { duration: DW, easing: IE, delay: j * 110, fill: "backwards" };
+      try { anims.push(el.animate(kf, o)); anims.push(cv.animate(kf, { ...o, fill: "both" })); anims.push(cv.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 520, delay: j * 110 + DW * 0.6, easing: "ease-out", fill: "forwards" })); } catch (e) {}
+      setTimeout(() => cv.remove(), j * 110 + DW + 420);
+      if (!p) return; let D; try { D = p.series.data().slice(); } catch (e) { return; } const ts = p.chart.timeScale(), lr = ts.getVisibleLogicalRange(); if (!lr || D.length < 3) { try { p.series.applyOptions({ visible: true }); } catch (e) {} return; }
+      const s0 = Math.max(0, Math.min(D.length - 1, Math.floor(lr.from))), s1 = D.length, ps = p.chart.priceScale("right"), auto = ps.options().autoScale, shift = ts.options().shiftVisibleRangeOnNewBar;
+      try { ps.applyOptions({ autoScale: false }); ts.applyOptions({ shiftVisibleRangeOnNewBar: false }); p.series.setData(D.slice(0, s0 + 1)); ts.setVisibleLogicalRange(lr); p.series.applyOptions({ visible: true }); } catch (e) {}
+      let k = s0 + 1; p._lim = k; const t0 = performance.now() + j * 110;
+      const step = (now) => { if (ended) return; const u = Math.max(0, Math.min(1, (now - t0) / DW)), want = s0 + 1 + Math.round(inExpo(u) * (s1 - s0 - 1));
+        while (k < want) { try { p.series.update(D[k]); } catch (e) {} k++; } p._lim = k; if (u < 1) requestAnimationFrame(step); else done(); };
+      const done = () => { if (p._done) return; p._done = 1; try { if (k < s1) p.series.setData(D); ts.setVisibleLogicalRange(lr); ps.applyOptions({ autoScale: auto }); ts.applyOptions({ shiftVisibleRangeOnNewBar: shift }); } catch (e) {} p._lim = undefined; try { repaintAll(); } catch (e) {} };
+      p._done = 0; p._fin = done; requestAnimationFrame(step); });
+    try { sfx("sheet"); } catch (e) {} setTimeout(finish, DW + pz.length * 110 + 450); }, tc);
   setTimeout(() => { if (!ended) finish(); }, 9000);
 }
 function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min(devicePixelRatio || 1, 2), cv = document.createElement("canvas"); cv.id = "kbuild";
@@ -2404,11 +2517,12 @@ function welcomeIntro(force) { if (document.getElementById("welcome")) return; c
   el.querySelector("#w-go").onclick = () => { const A = wAudio(); if (A && prefs.sound !== false) { A.ac.resume(); wScore(A); } el.classList.add("play");
     setTimeout(() => el.classList.add("drop"), 3600); setTimeout(() => { const img = el.querySelector(".wlock"); img.src = "brand/kairos-intro.svg?d=" + Date.now(); }, 3600); setTimeout(() => el.classList.add("cta"), 6200); };
   el.querySelector("#w-skip").onclick = done; el.querySelector("#w-tour").onclick = () => { done(); setTimeout(tour, 500); }; }
+function wFieldCol(a) { if (!document.body.classList.contains("ui2")) return `rgba(185,140,255,${a})`; if (!wFieldCol.c) { const d = document.createElement("i"); d.style.color = getComputedStyle(document.body).getPropertyValue("--ink") || "#888"; document.body.appendChild(d); wFieldCol.c = getComputedStyle(d).color.match(/[\d.]+/g).slice(0, 3).join(","); d.remove(); setTimeout(() => (wFieldCol.c = null), 4000); } return `rgba(${wFieldCol.c},${a})`; }
 function wField(cv) { const g = cv.getContext("2d"), D = Math.min(devicePixelRatio || 1, 2); let W, H, T = 0; const rs = () => { W = cv.width = innerWidth * D; H = cv.height = innerHeight * D; }; rs(); addEventListener("resize", rs);
   const fr = () => { if (!cv.isConnected) return; T += 0.004; g.clearRect(0, 0, W, H); const L = 36;
     for (let i = 0; i < L; i++) { const b = i / (L - 1), y0 = H * (0.08 + b * 0.92), a = 0.04 + 0.16 * Math.sin(Math.PI * b) ** 2; g.beginPath();
       for (let x = 0; x <= W + 12; x += 12 * D) { const u = x / W, y = y0 + Math.sin(u * 6 + T * 3 + b * 4) * 14 * D + Math.sin(u * 2.2 - T * 1.7 + b * 9) * 22 * D; x ? g.lineTo(x, y) : g.moveTo(x, y); }
-      g.strokeStyle = `rgba(185,140,255,${a})`; g.lineWidth = D * 0.8; g.stroke(); } requestAnimationFrame(fr); }; requestAnimationFrame(fr); }
+      g.strokeStyle = wFieldCol(a); g.lineWidth = D * 0.8; g.stroke(); } requestAnimationFrame(fr); }; requestAnimationFrame(fr); }
 
 /* onboarding tour: spotlight each real control, one short line each */
 const TOUR = [
@@ -2478,6 +2592,7 @@ async function boot() {
     const { data: fs } = await sb.from("features").select("key,enabled"); (fs || []).forEach((f) => (features[f.key] = f.enabled)); await loadPrefs();
   }
   $("auth").classList.add("hidden"); $("app").classList.remove("hidden");
+  try { sameScreen(); } catch (e) {}
   if (features.journal === false) document.querySelector('[data-view="journal"]').classList.add("hidden"); if (features.dom === false) $("m-dom").classList.add("hidden");
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
@@ -2495,8 +2610,7 @@ async function boot() {
 }
 // KING_SAMESCREEN (fix 11): a reload plays the intro/build animation, then puts you back on the screen you were on (same tab).
 function sameScreen() { const sv = KZ_VIEW0; if (!sv || sv === "trade" || !$("v-" + sv) || location.hash.startsWith("#notion=")) return;
-  const go = () => { if (!document.body.classList.contains("v-trade")) return; view(sv); };   // the person already moved on → leave them there
-  afterIntro(() => setTimeout(() => { if ($("kbuild")) addEventListener("kz-built", go, { once: true }); else go(); }, 60)); }
+  if (document.body.classList.contains("v-trade")) view(sv); }   // KING_REFRESHPAGE (Nov 22): straight back to that page, no detour through the charts
 $("a-in").onclick = async () => { try { kChime(new (window.AudioContext || window.webkitAudioContext)()); } catch (e) {} const { error } = await sb.auth.signInWithPassword({ email: $("a-email").value.trim(), password: $("a-pass").value }); $("a-msg").textContent = error ? error.message : ""; if (!error) boot(); };
 $("a-up").onclick = async () => { const { data, error } = await sb.auth.signUp({ email: $("a-email").value.trim(), password: $("a-pass").value, options: { emailRedirectTo: location.origin + location.pathname } }); $("a-msg").textContent = error ? error.message : data.session ? "" : "Check your email to confirm, then sign in here."; if (data && data.session) boot(); };
 $("logout").onclick = async () => { try { localStorage.removeItem("kz-name"); } catch (e) {} await sb.auth.signOut(); location.reload(); }; 
@@ -3114,11 +3228,11 @@ function csClock(d, C, sec) { let h = d.getUTCHours(); const mm = String(d.getUT
 function csHover(t) { const C = csG(), d = new Date(t * 1000); return csDate(d, Object.assign({}, C, { df: C.df === "tv" ? "tv" : C.df })) + "  " + csClock(d, C, true); }
 function csTick(t, k) { const C = csG(), d = new Date(t * 1000); if (k === 0) return String(d.getUTCFullYear()); if (k === 1) return MON[d.getUTCMonth()];
   if (k === 2) return (C.dow ? DOW[d.getUTCDay()] + " " : "") + d.getUTCDate(); return csClock(d, C, k === 4); }
-function csApply(p) { if (!p || p.dead) return; const C = csG(), up = prefs.up, dn = prefs.dn, clear = "rgba(0,0,0,0)";
+function csApply(p) { if (!p || p.dead) return; const C = csG(), up = C.styUp || prefs.up, dn = C.styDn || prefs.dn, clear = "rgba(0,0,0,0)";
   try { p.series.applyOptions({ upColor: C.body ? up : clear, downColor: C.body ? dn : clear, borderVisible: !!C.bord, borderUpColor: C.bu || up, borderDownColor: C.bd || dn, wickVisible: !!C.wick, wickUpColor: C.wu || up, wickDownColor: C.wd || dn,
       priceFormat: { type: "price", precision: C.prec === "0.01" ? 2 : C.prec === "1" ? 0 : 2, minMove: C.prec === "def" ? TICK : +C.prec }, lastValueVisible: C.last === "vl" || C.last === "v", priceLineVisible: C.last === "vl" || C.last === "l" });
     const bg = C.bgk === "solid" ? { type: "solid", color: C.bg1 } : C.bgk === "grad" ? { type: "gradient", topColor: C.bg1, bottomColor: C.bg2 } : { type: "solid", color: "transparent" }, xc = _rgba(C.xc, 0.35);
-    p.chart.applyOptions({ layout: { background: bg, textColor: C.txc, fontSize: +C.txs }, grid: gridOpts(), rightPriceScale: { borderColor: C.lnc, scaleMargins: { top: (+C.mt || 0) / 100, bottom: (+C.mb || 0) / 100 } }, timeScale: { borderColor: C.lnc, tickMarkFormatter: blind ? undefined : csTick },
+    p.chart.applyOptions({ layout: { background: bg, textColor: C.txc, fontSize: C.font === "Press Start 2P" ? 9 : +C.txs, fontFamily: C.font ? `"${C.font}", ${C.font === "VT323" ? "monospace" : "system-ui, sans-serif"}` : "Geist, -apple-system, Segoe UI, sans-serif" }, grid: gridOpts(), rightPriceScale: { borderColor: C.lnc, scaleMargins: { top: (+C.mt || 0) / 100, bottom: (+C.mb || 0) / 100 } }, timeScale: { borderColor: C.lnc, tickMarkFormatter: blind ? undefined : csTick },
       localization: blind ? {} : { timeFormatter: csHover }, crosshair: { vertLine: { color: xc, style: +C.xs }, horzLine: { color: xc, style: +C.xs } } });
   } catch (e) {}
   const L = p.el.querySelector(".legend"), nm = p.el.querySelector(".lname"), s = paneSym(p), tf = prefs.tfs[p.i] || "5m";
@@ -3911,7 +4025,10 @@ if ($("cs-theme")) { $("cs-theme").onchange = (e) => { if (e.target.value) apply
 document.querySelectorAll("#cs-wbg [data-b]").forEach((b) => (b.onclick = () => { if (!prefs.skin || prefs.skin === "waifu") prefs.waifuBg = b.dataset.b; else { prefs.skinBg = prefs.skinBg || {}; prefs.skinBg[prefs.skin] = b.dataset.b; } savePrefs(); repaintAll(); chThemeUI(); }));
 
 // KING_WAIFUUI (Ben, Nov 20): Waifu mode dresses the whole app (glass panels over his backdrop, pink/blue buttons, a few falling petals).
-function waifuUI() { const k = prefs.skin || (prefs.waifu ? "waifu" : null), b = document.body;
+// KING_SITESKIN (Nov 22, King): chart themes (everyone's own + the specialty ones) only change the chart. They dress the whole site only when
+// Settings → Appearance & themes is set to "My chart theme".
+function siteSkin() { return prefs.appTheme && prefs.appTheme.id === "person" ? (prefs.skin || (prefs.waifu ? "waifu" : null)) : null; }
+function waifuUI() { const k = siteSkin(), b = document.body;
   b.classList.toggle("skinon", !!k); Object.keys(SKINS).forEach((x) => b.classList.toggle(x === "waifu" ? "waifu" : "skin-" + x, k === x));
   if (k) b.style.setProperty("--wbgimg", `url(assets/${SKINS[k].dir}/${skinBg()}.jpg)`); else b.style.removeProperty("--wbgimg");
   let fx = document.getElementById("wpetals"); if (fx && fx.dataset.k !== k) { fx.remove(); fx = null; }
@@ -4025,7 +4142,7 @@ const THEME_UI = {
          dark: { bg: "#211e1a", panel: "#2a2722", panel2: "#322e28", txt: "#efe6d4", mut: "#a39a88", line: "239,230,212", ink: "#efe6d4", inktxt: "#211e1a" },
          waifu: { bg: "#15161c", panel: "rgba(21,22,28,.78)", panel2: "rgba(30,31,40,.84)", txt: "#f5efe2", mut: "#c9c1b4", line: "255,209,220", ink: "#ffd1dc", inktxt: "#2a1420", up: "#ffd1dc", dn: "#8fa3c8" } } };
 const THEME_VARS = ["--bg", "--bg2", "--panel", "--panel2", "--glass", "--glass2", "--txt", "--mut", "--mut2", "--line", "--edge", "--sel", "--hov", "--chip", "--ink", "--inktxt", "--acc", "--acc2", "--blue", "--up", "--dn"];
-function themeUI(on) { const B = document.body, t = prefs.chTheme, P = on && t && THEME_UI[t.id] && THEME_UI[t.id][t.mode];
+function themeUI(on) { const B = document.body, t = prefs.chTheme, P = on && prefs.appTheme && prefs.appTheme.id === "person" && t && THEME_UI[t.id] && THEME_UI[t.id][t.mode];
   THEME_VARS.forEach((v) => B.style.removeProperty(v)); B.classList.toggle("themed", !!P); B.dataset.theme = P ? t.id + "-" + t.mode : ""; if (!P) return;
   const L = (a) => `rgba(${P.line},${a})`, set = (k, v) => v && B.style.setProperty(k, v);
   set("--bg", P.bg); set("--bg2", P.bg); set("--panel", P.panel); set("--glass", P.panel); set("--panel2", P.panel2); set("--glass2", P.panel2);
@@ -4059,10 +4176,10 @@ function rainbowPal(h, shade, vib) {
   if (!P) return null; const dk = P[0] === "dark";
   return { base: P[0], v: { bg: P[1], panel: P[2], panel2: P[3], txt: P[4], mut: P[5], ink: P[6], inktxt: P[7], blue: P[6], lineRaw: dk ? "255,255,255" : "0,0,0" } };
 }
-function appThemeDef() { const a = prefs.appTheme || {}; if (!a.id || a.id === "def") return null;
+function appThemeDef() { const a = prefs.appTheme || {}; if (!a.id || a.id === "def" || a.id === "person") return null;
   if (RAINBOW[a.id]) { const r = rainbowPal(RAINBOW[a.id][1], a.shade || "light", a.vib); return r && { ...r, cls: "rainbow" }; }
   const s = STYLE_THEMES[a.id]; return s ? { base: s.base, v: s.v, cls: a.id } : null; }
-function appTheme(on) { const B = document.body, skin = !!(prefs.skin || prefs.waifu), T = on && !skin ? appThemeDef() : null;
+function appTheme(on, noUI) { const B = document.body, T = on ? appThemeDef() : null;
   [...B.classList].filter((c) => c.startsWith("at-")).forEach((c) => B.classList.remove(c)); B.classList.toggle("apptheme", !!T);
   if (T) { const P = T.v, L = (a) => P.lineRaw ? `rgba(${P.lineRaw},${a})` : `rgba(${P.line},${a})`, set = (k, v) => v && B.style.setProperty(k, v);
     B.classList.add("at-" + T.cls); const lt = T.base === "light";
@@ -4071,35 +4188,40 @@ function appTheme(on) { const B = document.body, skin = !!(prefs.skin || prefs.w
     set("--txt", P.txt); set("--mut", P.mut); set("--mut2", P.mut); set("--line", L(.12)); set("--edge", L(.18)); set("--sel", L(.10)); set("--hov", L(.07)); set("--chip", L(.05));
     set("--ink", P.ink); set("--inktxt", P.inktxt); set("--acc", P.ink); set("--acc2", P.ink); set("--blue", P.blue); set("--blue2", P.blue); if (P.up) set("--up", P.up); if (P.dn) set("--dn", P.dn);
     try { document.documentElement.style.background = /^(#|hsl)/.test(P.bg) ? P.bg : ""; } catch (e) {} }
-  appThemeUI(); }
+  if (!noUI) appThemeUI(); try { critters(!!T && T.cls === "anim"); } catch (e) {} try { csApplyAll(); repaintAll(); } catch (e) {} try { const cv = [...document.body.classList].find((c) => c.startsWith("v-")); window.k3dView && k3dView(cv ? cv.slice(2) : "trade"); } catch (e) {} }
 function appThemeUI() { const el = $("s-themes"); if (!el) return; const a = prefs.appTheme || {}, id = a.id || "def", skin = !!(prefs.skin || prefs.waifu);
   const card = (k, nm, sub, sw) => `<button class="atc ${id === k ? "on" : ""}" data-at="${k}"><i class="atsw">${sw.map((c) => `<b style="background:${c}"></b>`).join("")}</i><span><b>${esc(nm)}</b><em>${esc(sub)}</em></span></button>`;
   const rb = RAINBOW[id];
-  el.innerHTML = (skin ? `<div class="tiny muted atnote">A specialty chart theme is on, so it styles the app right now. Pick a regular chart theme to use these.</div>` : "")
-    + `<div class="atgrid">${card("def", "Default", "Ivory / Onyx", ["#f7f5f0", "#1b1a17", "#121110"])}${card("kairos", ...[STYLE_THEMES.kairos.nm, STYLE_THEMES.kairos.sub, STYLE_THEMES.kairos.sw])}</div>`
+  const ct = prefs.chTheme && CHART_THEMES[prefs.chTheme.id], cm = ct && ct[1][prefs.chTheme.mode], csw = cm ? [cm.bg || "#222", cm.up || "#2bd4a0", cm.dn || "#ff4d5e"] : ["#444", "#2bd4a0", "#ff4d5e"];
+  el.innerHTML = `<div class="atgrid">${card("def", "Default", "Ivory / Onyx · chart keeps your colors", ["#f7f5f0", "#1b1a17", "#121110"])}${card("kairos", ...[STYLE_THEMES.kairos.nm, STYLE_THEMES.kairos.sub, STYLE_THEMES.kairos.sw])}${card("person", "My chart theme", (ct ? ct[0] : "Your chart theme") + " on the whole site", csw)}</div>`
     + `<div class="atlbl">Colors</div><div class="atrb">${Object.entries(RAINBOW).map(([k, [nm, h]]) => `<button class="atdot ${id === k ? "on" : ""}" data-at="${k}" title="${nm}" style="--h:${h}"><i></i><span>${nm}</span></button>`).join("")}</div>`
     + (rb ? `<div class="atsub"><div class="atlbl">${rb[0]} shade</div><div class="atsh">${SHADES.map(([s, nm]) => { const p = rainbowPal(rb[1], s, a.vib); return `<button class="${(a.shade || "light") === s ? "on" : ""}" data-sh="${s}"><i style="background:${p.v.bg};box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)"><b style="background:${p.v.ink}"></b></i>${nm}</button>`; }).join("")}</div>
        <div class="atlbl">Vibrancy <i class="qm" data-help="Left is calm and gray, right is full color.">?</i></div><label class="atvib"><span>Calm</span><input type="range" id="at-vib" min="0" max="100" step="5" value="${a.vib ?? 60}"><span>Vivid</span></label></div>` : "")
     + `<div class="atlbl">Styles</div><div class="atgrid">${Object.entries(STYLE_THEMES).filter(([k]) => k !== "kairos").map(([k, s]) => card(k, s.nm, s.sub, s.sw)).join("")}</div>`; }
-function setAppTheme(p) { prefs.appTheme = Object.assign({}, prefs.appTheme || {}, p); savePrefs(); ui2Apply(); sfx("select"); }
+function setAppTheme(p) { prefs.appTheme = Object.assign({}, prefs.appTheme || {}, p); savePrefs(); ui2Apply(); try { waifuUI(); csApplyAll(); repaintAll(); } catch (e) {} sfx("select"); }
 document.addEventListener("click", (e) => { const s = $("s-themes"); if (!s || !s.contains(e.target)) return; const b = e.target.closest("[data-at]"), sh = e.target.closest("[data-sh]");
   if (b) setAppTheme({ id: b.dataset.at, shade: RAINBOW[b.dataset.at] ? (prefs.appTheme && prefs.appTheme.shade) || "light" : undefined }); else if (sh) setAppTheme({ shade: sh.dataset.sh }); });
-document.addEventListener("input", (e) => { if (e.target.id === "at-vib") { prefs.appTheme = Object.assign({}, prefs.appTheme, { vib: +e.target.value }); try { appTheme(true); } catch (x) {} } });
+document.addEventListener("input", (e) => { if (e.target.id === "at-vib") { prefs.appTheme = Object.assign({}, prefs.appTheme, { vib: +e.target.value }); try { appTheme(true, true); } catch (x) {} } });
 document.addEventListener("change", (e) => { if (e.target.id === "at-vib") savePrefs(); });
 (() => { let fx = document.getElementById("atfx"); if (!fx) { fx = document.createElement("div"); fx.id = "atfx"; fx.setAttribute("aria-hidden", "true"); fx.innerHTML = "<i></i><i></i><i></i>"; document.body.prepend(fx); } })();
 // KING_ONYX (Nov 22): Ivory (light) and Onyx (dark) replace Daylight and Graphite. Old saved choices map over: light→ivory, dark→onyx. "Off" keeps the old look.
 function ui2Norm(v) { return v === "dark" || v === "onyx" ? "onyx" : v === "off" ? "" : v === "light" || v === "ivory" ? "ivory" : null; }
 function ui2Mode() { const q = ui2Norm(window.__ui2m || new URLSearchParams(location.search).get("ui2")); if (q != null) return q; const p = ui2Norm(prefs.ui2); return p != null ? p : "ivory"; }
-function ui2Apply() { const m = ui2Mode(), skin = !!(prefs.skin || prefs.waifu), on = !!m, B = document.body, base = skin ? "dark" : m === "onyx" ? "dark" : "light";   // KING_THEMEALL: skins (Sweden/Rave/Waifu) now ride on the new look too
+function ui2Apply() { const m = ui2Mode(), skin = !!siteSkin(), on = !!m, B = document.body, base = skin ? "dark" : m === "onyx" ? "dark" : "light";   // KING_THEMEALL: skins (Sweden/Rave/Waifu) now ride on the new look too
   B.classList.toggle("ui2", on); B.classList.toggle("ui2-light", on && base === "light"); B.classList.toggle("ui2-dark", on && base === "dark");
   B.classList.toggle("ui2-iv", on); B.classList.toggle("ui2-ivory", on && base === "light"); B.classList.toggle("ui2-onyx", on && base === "dark");
   try { document.querySelector('meta[name="theme-color"]') && document.querySelector('meta[name="theme-color"]').setAttribute("content", !on ? "#0a0a0d" : m === "onyx" ? "#121110" : "#f7f5f0"); } catch (e) {}
   if ($("s-ui2")) { const p = ui2Norm(prefs.ui2); $("s-ui2").value = p === "" ? "off" : p || "ivory"; }
-  if (on && !skin && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== base && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][base]) { try { applyChartTheme(prefs.chTheme.id, base, true); } catch (e) {} }
+  if (on && skin === false && prefs.appTheme && prefs.appTheme.id === "person" && !prefs.skin && !prefs.waifu && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== base && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][base]) { try { applyChartTheme(prefs.chTheme.id, base, true); } catch (e) {} }
   try { themeUI(on); } catch (e) {}
   try { appTheme(on); } catch (e) {}
   if (on) B.classList.remove("glass"); else B.classList.toggle("glass", prefs.glass !== false);   // KING_FLAT (Nov 22): no Apple-glass look in the new look; flat bars, frosted glass only on things that float
-  ui2Banner(on ? m : ""); }
+  ui2Banner(on ? m : ""); lookSave(); }
+// KING_LOOKSAVE (Nov 22): remember the exact look (classes + colors) per person so a refresh paints it from the first frame (see the inline script in index.html)
+function lookSave() { try { const B = document.body, c = [...B.classList].filter((x) => /^(ui2|at-|apptheme|themed|skinon|skin-|waifu)/.test(x)).join(" "), v = {};
+  for (let i = 0; i < B.style.length; i++) { const k = B.style[i]; if (k.startsWith("--")) v[k] = B.style.getPropertyValue(k); }
+  const L = JSON.stringify({ c, v, bg: document.documentElement.style.background || "", i: B.style.getPropertyValue("--wbgimg") }), u = localStorage.getItem("kz-uid") || "";
+  localStorage.setItem("kz-look:" + u, L); localStorage.setItem("kz-look", L); } catch (e) {} }
 function ui2Banner(m) { let b = document.getElementById("ui2banner"); const want = !!new URLSearchParams(location.search).get("ui2");
   if (!want || !m) { if (b) b.remove(); return; }
   if (!b) { b = document.createElement("div"); b.id = "ui2banner"; document.body.appendChild(b); }

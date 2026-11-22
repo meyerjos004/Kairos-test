@@ -56,12 +56,12 @@ body.ui2-iv .btab{border:0!important;background:transparent!important;color:var(
 body.ui2-iv .btab.on{color:var(--txt)!important;box-shadow:inset 0 -1.5px 0 var(--ink)!important;border-radius:0!important}
 
 /* ================= KING_MOTION: one clean motion system ================= */
-body.ui2-iv{--m-fast:.14s;--m-med:.24s;--m-slow:.38s;--m-ease:cubic-bezier(.2,.8,.2,1);--m-out:cubic-bezier(.16,1,.3,1)}
+body.ui2-iv{--m-fast:.14s;--m-med:.3s;--m-slow:.5s;--m-ease:cubic-bezier(.2,.8,.2,1);--m-out:cubic-bezier(.95,.05,.795,.035);--inexpo:cubic-bezier(.95,.05,.795,.035)}   /* KING_INEXPO (Nov 22, King): anime.js inExpo is the house easing for movement */
 body.ui2-iv :is(button,.tool,.tf,.vtab,.jcd,.card,a,input,select,.ddb){transition:background-color var(--m-fast) var(--m-ease),border-color var(--m-fast) var(--m-ease),color var(--m-fast) var(--m-ease),box-shadow var(--m-med) var(--m-ease),transform var(--m-fast) var(--m-ease),opacity var(--m-fast) var(--m-ease)}
 body.ui2-iv :is(button,.tool,.tf,.jcd):active{transform:scale(.97)}
 /* page enter: content rises in, cards stagger */
 body.ui2-iv .view.enter{animation:kmIn var(--m-slow) var(--m-out) backwards}
-body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jcal,.jw,.s2sec:not(.hidden)>*){animation:kmUp var(--m-slow) var(--m-out) backwards}
+body.ui2-iv .view.enter:not(#v-stats):not(#v-tj) :is(.card,.stats>div,#st-kpi>div,.jcal,.jw,.s2sec:not(.hidden)>*){animation:kmUp var(--m-slow) var(--m-out) backwards}
 body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jw):nth-child(2){animation-delay:30ms}
 body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jw):nth-child(3){animation-delay:60ms}
 body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jw):nth-child(4){animation-delay:90ms}
@@ -104,7 +104,7 @@ body.ui2-iv .tbar .ddb:hover{border-color:var(--edge)!important}
 /* KING_NAVLINE: one sliding underline for the top nav */
 body.ui2-iv .rail .vtab.on:after{display:none!important}
 #navline{display:none}
-@media (min-width:901px){ body.ui2-iv #navline{display:block;position:absolute;left:0;bottom:-1px;height:2px;border-radius:2px;background:var(--ink);pointer-events:none;transition:transform .42s cubic-bezier(.22,1,.36,1),width .42s cubic-bezier(.22,1,.36,1),opacity .2s;opacity:0}
+@media (min-width:901px){ body.ui2-iv #navline{display:block;position:absolute;left:0;bottom:-1px;height:2px;border-radius:2px;background:var(--ink);pointer-events:none;transition:transform .5s cubic-bezier(.95,.05,.795,.035),width .5s cubic-bezier(.95,.05,.795,.035),opacity .2s;opacity:0}
   body.ui2-iv .rail{position:relative} }
 body.ui2.skin-sweden #navline{background:#fecc02!important;height:3px}
 body.ui2.skin-rave #navline{background:linear-gradient(90deg,#20f0ff,#ff3ea5)!important;box-shadow:0 0 10px rgba(32,240,255,.6)}
@@ -118,7 +118,7 @@ body.ui2 .kst1 .ksk > .ksk-t, body.ui2 .kst1 .ksk > header{opacity:1!important;t
 body.ui2 .kst1 .ksk > header > *:not(.ksk-t){opacity:0!important}
 body.ui2 .ksk:after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(100deg,transparent 30%,color-mix(in srgb,var(--ink,#888) 6%,transparent) 50%,transparent 70%);background-size:220% 100%;animation:kShim 1.1s linear infinite}
 @keyframes kShim{from{background-position:120% 0}to{background-position:-120% 0}}
-body.ui2 .kshow > *{animation:kmUp .42s cubic-bezier(.22,1,.36,1) backwards}
+body.ui2 .kshow > *{animation:kmUp .45s cubic-bezier(.95,.05,.795,.035) backwards}
 body.ui2 .kshow > .ksk-t, body.ui2 .kshow > header{animation:none}
 @media (prefers-reduced-motion: reduce){ body.ui2 .ksk > *{opacity:1!important} body.ui2 .ksk:after{display:none} }
 /* KING_SPOT (Nov 22): Aceternity-style spotlight: a soft light follows the pointer across cards and widgets */
@@ -127,3 +127,28 @@ body.ui2 :is(.card,.jw,#st-kpi>div,.setc,.acard):before{content:"";position:abso
   background:radial-gradient(320px circle at var(--mx,50%) var(--my,50%),color-mix(in srgb,var(--ink,#888) 7%,transparent),transparent 70%);z-index:0}
 body.ui2 :is(.card,.jw,#st-kpi>div,.setc,.acard):hover:before{opacity:1}
 @media (hover:none),(prefers-reduced-motion:reduce){ body.ui2 :is(.card,.jw,#st-kpi>div,.setc,.acard):before{display:none} }
+/* KING_DIAL: horizontal drag dials instead of sliders */
+input[type=range].kdhid{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;margin:0!important}
+.kdial{position:relative;display:flex;align-items:center;flex:1;min-width:120px;height:30px;border-radius:10px;background:var(--chip,rgba(127,127,127,.08));box-shadow:inset 0 0 0 1px var(--line,rgba(127,127,127,.2));cursor:ew-resize;touch-action:none;user-select:none;outline:none;overflow:hidden;margin:4px 0}
+.kdial:focus-visible{box-shadow:inset 0 0 0 1px var(--ink,#888),0 0 0 3px color-mix(in srgb,var(--ink,#888) 18%,transparent)}
+.kdial .kdr{position:absolute;inset:0 52px 0 0;-webkit-mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent);mask-image:linear-gradient(90deg,transparent,#000 22%,#000 78%,transparent);
+  background-image:linear-gradient(90deg,var(--mut,#888) 1px,transparent 1px),linear-gradient(90deg,var(--txt,#ccc) 1.5px,transparent 1.5px);
+  background-size:var(--px,6px) 9px,var(--maj,60px) 15px;background-repeat:repeat-x;background-position-y:center,center;opacity:.55;transition:background-position-x .12s cubic-bezier(.22,1,.36,1)}
+.kdial.drag .kdr{transition:none;opacity:.8}
+.kdial .kdn{position:absolute;left:calc((100% - 52px) / 2);top:5px;bottom:5px;width:2px;margin-left:-1px;border-radius:2px;background:var(--ink,#e5e5e5);box-shadow:0 0 6px color-mix(in srgb,var(--ink,#888) 45%,transparent)}
+.kdial .kdv{position:absolute;right:0;top:0;bottom:0;width:52px;display:flex;align-items:center;justify-content:center;font:600 12px/1 var(--serif,inherit);font-variant-numeric:tabular-nums;color:var(--txt);border-left:1px solid var(--line,rgba(127,127,127,.2))}
+.kdial.atmin .kdn,.kdial.atmax .kdn{background:var(--blue,#2f6fdb)}
+.spvol .kdial{min-width:110px;height:26px}
+label > .kdial{width:100%}
+html[data-kv] #v-trade{visibility:hidden}
+/* KING_INTROLOGO: intro uses the theme's colors from frame one + the new mark */
+body.ui2 #kintro{background:var(--bg)!important;color:var(--txt)!important}
+body.ui2 #kintro .ktip{color:var(--mut)!important}
+body.ui2 #kintro .wlock2{position:absolute;display:flex;align-items:center;gap:22px;opacity:0}
+body.ui2 #kintro.drop .wlock2{animation:wlk 1.4s cubic-bezier(.16,1,.3,1) forwards}
+body.ui2 #kintro .wlock2 .kmark{width:84px;height:84px;font-size:52px;border-radius:20px;display:grid;place-items:center;background:var(--ink);color:var(--inktxt);font-family:var(--mark,"Bodoni Moda",serif);font-weight:600}
+body.ui2 #kintro .wlock2 .kword{font-family:var(--mark,"Bodoni Moda",serif);font-size:64px;letter-spacing:.34em;color:var(--ink);font-weight:500}
+/* KING_CHARTWIN: frosted glass window over each chart while it opens */
+.kwin{position:fixed;z-index:30;pointer-events:none;background:color-mix(in srgb,var(--panel,#fff) 42%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt,#000) 10%,transparent),inset 0 1px 0 rgba(255,255,255,.25)}
+/* KING_PRIMARY: important buttons stand out in every theme (filled, high contrast, a touch heavier) */
+body.ui2 :is(button.primary,.btn.primary){font-weight:650!important;box-shadow:0 1px 0 rgba(0,0,0,.08),0 6px 16px -8px color-mix(in srgb,var(--ink,#000) 70%,transparent)}
