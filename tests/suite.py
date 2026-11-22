@@ -24,7 +24,7 @@ async def main():
         E = lambda js: pg.evaluate(js)
         check("boots with candles", await E("panes[0].candles.length > 100"))
         # hotkeys
-        await pg.click("#charts"); await pg.keyboard.press("b"); await pg.wait_for_timeout(100)
+        await pg.click("#charts", position={"x": 160, "y": 120}); await pg.keyboard.press("b"); await pg.wait_for_timeout(100)
         check("hotkey B buys", await E("pos.qty") == 1, await E("pos.qty"))
         await pg.keyboard.press("x"); check("hotkey X closes", await E("pos.qty") == 0)
         await pg.keyboard.press("s"); check("hotkey S sells", await E("pos.qty") == -1); await pg.keyboard.press("f"); check("hotkey F flattens", await E("pos.qty") == 0)
@@ -50,12 +50,12 @@ async def main():
         for t in ["hline","vline","long","short","text"]:
             if t == "text": await E("window.prompt=()=>'note'; 1")
             # KING_FLAKY: each tool clicks its own empty spot (short used to land on the long box and select it) and we poll up to 1s
-            i = ["hline","vline","long","short","text"].index(t); n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.click(cx-150+i*70-(320 if t=='vline' else 0), cy+60-i*30)   # KING_UI2DEFAULT: in the new look the old vline spot is under the order pad
+            i = ["hline","vline","long","short","text"].index(t); n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.click(box['x']+140+i*90, box['y']+90+i*45)   # KING_MAST: upper-left spots, clear of the order pad   # KING_UI2DEFAULT: in the new look the old vline spot is under the order pad
             ok = False
             for k in range(20):
                 await pg.wait_for_timeout(100)
                 if await E("drawings.length") >= n0 + 1: ok = True; break
-                if k == 9: await E(f"setTool('{t}')"); await pg.mouse.click(cx-150+i*70+7, cy+60-i*30+5)   # one retry a few px over if the first click got eaten
+                if k == 9: await E(f"setTool('{t}')"); await pg.mouse.click(box['x']+147+i*90, box['y']+95+i*45)   # one retry a few px over if the first click got eaten
             check(f"place {t}", ok, await E("[drawings.length, typeof tool!=='undefined'?tool:null]"))
         # KING_MYTHEME: one-tap personal themes set candles, background and per-tool colors (no hard-coded green/red zones)
         th=await E("(()=>{applyChartTheme('sandslate','dark',true); const a=[prefs.up,prefs.dn,prefs.cs.bg1,prefs.toolCols.hline,UPC(.5)].join(','); applyChartTheme('ryan','light',true); const b=[prefs.up,prefs.cs.bg1,prefs.toolCols.trend].join(','); prefs.chTheme=null; return a+'|'+b})()")
@@ -501,9 +501,13 @@ async def main():
         r = await E("(()=>{const r=$('dockgrip').getBoundingClientRect();return [r.x+400,r.y+3]})()"); h0 = await E("$('dock').offsetHeight")
         await pg.mouse.move(r[0], r[1]); await pg.mouse.down(); await pg.mouse.move(r[0], r[1]-150, steps=6); await pg.mouse.up(); await pg.wait_for_timeout(200); h1 = await E("$('dock').offsetHeight"); check("bottom panel drags taller", h1 > h0 + 100, (h0, h1, r, await E(f"(()=>{{const e=document.elementFromPoint({r[0]},{r[1]});return e&&(e.id+'.'+e.className)}})()")))
         await E("prefs.dockClosed=true; dockUI()")
+        await E("window.__ui2m='off'; ui2Apply()")   # KING_MAST: the side rail only exists in the classic look now (new look = masthead)
         r = await E("(()=>{const r=$('railgrip').getBoundingClientRect();return [r.x+3,r.y+300]})()")
         await pg.mouse.move(r[0], r[1]); await pg.mouse.down(); await pg.mouse.move(r[0]+150, r[1], steps=6); await pg.mouse.up(); check("sidebar drags wider + shows names", await E("$('rail').offsetWidth>150 && $('rail').classList.contains('wide')"), await E(f"(()=>{{const e=document.elementFromPoint({r[0]},{r[1]});return (e&&(e.id+'.'+e.className))+' w='+$('rail').offsetWidth}})()"))
         await pg.click("#railx"); await pg.wait_for_timeout(700); check("sidebar collapse button", await E("$('rail').offsetWidth<60"), await E("$('rail').offsetWidth+' '+prefs.railW"))
+        await E("window.__ui2m='ivory'; ui2Apply()"); await pg.wait_for_timeout(300)
+        check("masthead: pages run across the top with names", await E("(()=>{const r=$('rail');return r.offsetHeight<80 && r.offsetWidth>900 && [...r.querySelectorAll('.vtab .rl')].some(e=>e.offsetWidth>20 && getComputedStyle(e).opacity==='1')})()"), await E("(()=>{const r=$('rail');return [r.offsetHeight,r.offsetWidth,document.body.className]})()"))
+        await E("window.__ui2m=null; ui2Apply()")
         await E("prefs.media={show:true,tab:'lib',op:100}; mediaUI()"); await pg.wait_for_timeout(300)
         r = await E("(()=>{const r=$('mgrip').querySelector('.mtitle').getBoundingClientRect();return [r.x+5,r.y+5]})()"); x0 = await E("$('media').getBoundingClientRect().left")
         await pg.mouse.move(r[0], r[1]); await pg.mouse.down(); await pg.mouse.move(r[0]-200, r[1]+40, steps=6); await pg.mouse.up(); await pg.wait_for_timeout(250); xm = await E("$('media').getBoundingClientRect().left"); check("media window drags", abs(xm - (x0-200)) < 6, (x0, xm))
@@ -692,7 +696,7 @@ async def main():
         check("release10: due only on 1.x", await E("/^1\\./.test(APP_VERSION) || !releaseDue() || /release=1/.test(location.search)"))
         check("conf: Stats card exists", await E("!!document.getElementById('st-conf')"))
         # KING_NIGHT1122: lock in #249 (KING_POSTAG drag TP/SL), #250 + #255 (KING_ARROWS blue/red, one arrow per candle+side)
-        await E("view('trade'); closeAll && closeAll()"); await pg.wait_for_timeout(200); await pg.click("#charts")
+        await E("view('trade'); closeAll && closeAll()"); await pg.wait_for_timeout(200); await pg.click("#charts", position={"x": 160, "y": 120})
         for _k in "bbb": await pg.keyboard.press(_k)
         await pg.wait_for_timeout(250)
         _ar = await E("(panes[0].series.markers()||[]).filter(m=>m.shape==='arrowUp')")
@@ -732,7 +736,7 @@ async def main():
         await E("view('trade'); window.__ui2m='light'; ui2Apply()"); await pg.wait_for_timeout(1000)
         _ic = await E("['#chartsetbtn','#fullbtn','#padx','#padmore','.tools .tool.hashk','.fbtools .tool.hashk'].map(s=>{const e=document.querySelector(s+' svg');return e?Math.round(Math.min(e.getBoundingClientRect().width,e.getBoundingClientRect().height)):99})")
         check("ui2fix: icon buttons show icons 16px+", all(x >= 16 for x in _ic), _ic)
-        _ny = await E("[getComputedStyle(document.getElementById('skipny')).color, document.body.className, document.getElementById('skipny').matches(':hover')]"); check("ui2fix: NY open readable in daylight", sum(abs(a-b) for a,b in zip([int(v) for v in __import__("re").findall(r"\d+", _ny[0])[:3]],[15,122,63])) < 12, _ny)   # tolerant: color may be mid-transition
+        _ny = await E("[getComputedStyle(document.getElementById('skipny')).color, document.body.className, document.getElementById('skipny').matches(':hover')]"); check("ui2fix: NY open readable in daylight", sum(abs(a-b) for a,b in zip([int(v) for v in __import__("re").findall(r"\d+", _ny[0])[:3]],[47,111,219])) < 12, _ny)   # KING_MAST: skip buttons are blue now (King, Nov 22)   # tolerant: color may be mid-transition
         check("ui2fix: Daylight toast is dark with light text", await E("(()=>{toast('x');const c=getComputedStyle(document.getElementById('toast'));return c.backgroundColor!==c.color})()"))
         # KING_ICONGUARD (night Nov 22): repeat-bug guard. A broad style rule squashed icons once; scan every page for icon buttons under 12px (carets excluded)
         _sq = []

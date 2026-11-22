@@ -50,3 +50,64 @@ body.ui2-onyx #pbuy,body.ui2-onyx button.buy,body.ui2-onyx #psell,body.ui2-onyx 
 body.ui2-iv :is(.tf,.tool,.ib,.pb,.ranges button,.btab){border-color:transparent}
 body.ui2-iv :is(.tf,.ranges button,.btab):hover{border-color:var(--edge)}
 body.ui2-iv ::selection{background:var(--sel)}
+
+/* KING_MAST (Nov 22, King picked shell B): masthead. Pages run across the top as icon + word, the K logo + KAIROS wordmark
+   on the left, the account numbers in a row under it, the chart gets the full width. Desktop only; phones keep the bottom bar. */
+body.ui2-iv{--blue:#2f6fdb;--blue2:#2a63c6}body.ui2-onyx{--blue:#6b9cf0;--blue2:#5b8de6}
+.kmark,.kword{display:none}
+@media (min-width:901px){
+  body.ui2-iv #app{flex-direction:column}
+  body.ui2-iv .rail{width:100%!important;height:58px;flex:none;flex-direction:row;align-items:center;gap:2px;padding:0 18px!important;border-right:0!important;border-bottom:1px solid var(--line);background:var(--bg)!important;overflow:visible}
+  body.ui2-iv .rail .rgrip,body.ui2-iv #railx{display:none!important}
+  body.ui2-iv .rlogo{height:auto;margin:0 26px 0 0!important;gap:11px;align-items:center;cursor:default}
+  body.ui2-iv .rlogo img{display:none}
+  body.ui2-iv .kmark{display:grid;place-items:center;width:32px;height:32px;border-radius:9px;background:var(--ink);color:var(--inktxt);font:600 19px/1 var(--mark);padding-top:2px}
+  body.ui2-iv .kword{display:block;font:600 15px var(--mark);letter-spacing:.24em;color:var(--txt)}
+  body.ui2-iv .rail .vtab{width:auto!important;height:36px!important;padding:0 11px!important;gap:7px;border-radius:9px;color:var(--mut);position:relative;justify-content:center}
+  body.ui2-iv .rail .vtab svg{width:17px;height:17px}
+  body.ui2-iv .rail .vtab .rl{display:block!important;position:static!important;opacity:1!important;transform:none!important;pointer-events:none;background:none!important;box-shadow:none!important;border:0!important;padding:0!important;color:inherit!important;font:500 13.5px var(--body)!important;letter-spacing:0}
+  body.ui2-iv .rail .ri{border:0!important;background:transparent;box-shadow:none!important}
+  body.ui2-iv .rail .ri::before{display:none!important}
+  body.ui2-iv .rail .vtab:hover{background:var(--hov);color:var(--txt)}
+  body.ui2-iv .rail .vtab.on{color:var(--txt);background:transparent}
+  body.ui2-iv .rail .vtab.on:after{content:"";position:absolute;left:11px;right:11px;bottom:-11px;height:1.5px;background:var(--ink);border-radius:2px}
+  body.ui2-iv .rail .ri:not(.vtab){width:34px!important;height:34px!important;padding:0!important}
+  body.ui2-iv .rail .ri:not(.vtab) .rl{display:none!important}
+  body.ui2-iv .rail .avatar{margin:0 4px}
+  body.ui2-iv .rail .rsp{flex:1}
+  body.ui2-iv .main{flex:1;min-height:0;min-width:0}
+  /* account row */
+  body.ui2-iv header.top{background:var(--bg)!important;border-bottom:1px solid var(--line);height:64px!important;gap:30px!important;padding:0 26px!important;border-radius:0!important;margin:0!important;box-shadow:none!important}
+  body.ui2-iv header.top .kv label{font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;color:var(--mut)}
+  body.ui2-iv header.top .kv b{font:500 17px var(--serif)!important;font-variant-numeric:lining-nums tabular-nums}
+  body.ui2-iv header.top .kv:first-of-type b{font-size:22px!important}
+  body.ui2-iv header.top .acct{font-weight:500;background:transparent!important;border-color:var(--line)!important}
+  body.ui2-iv header.top .acct img.logo{display:none}
+}
+@media (min-width:901px) and (max-width:1500px){ body.ui2-iv .rail .vtab:is([data-view="tax"],[data-view="help"],[data-view="settings"],[data-view="admin"]) .rl{display:none!important} }
+@media (min-width:901px) and (max-width:1200px){ body.ui2-iv .kword{display:none} body.ui2-iv .rail .vtab .rl{font-size:12.5px} body.ui2-iv .rail .vtab{padding:0 7px!important} }
+/* King: every skip button and every buy button is blue */
+body.ui2-iv #pbuy,body.ui2-iv button.buy{background:var(--blue)!important;color:#fff!important}
+body.ui2-onyx #pbuy,body.ui2-onyx button.buy{color:#0f1420!important}
+body.ui2-iv .skips button,body.ui2-iv #skipny,body.ui2-iv #skipasia,body.ui2-iv [id^="skip"],body.ui2-iv .skipbtn{color:var(--blue)!important;border-color:color-mix(in srgb,var(--blue) 45%,transparent)!important}
+body.ui2-iv .skips button:hover,body.ui2-iv [id^="skip"]:hover{background:color-mix(in srgb,var(--blue) 12%,transparent)!important}
+
+/* KING_THEMEALL: a person's theme restyles everything (vars come inline from THEME_UI). Skins keep their backdrop across the whole site. */
+body.ui2.themed .rail,body.ui2.themed header.top{background:var(--bg)!important}
+body.ui2.skinon,body.ui2.waifu{background:#07090d var(--wbgimg,none) center/cover fixed no-repeat!important}
+body.ui2.skinon #app,body.ui2.waifu #app,body.ui2.skinon .main,body.ui2.waifu .main{background:transparent!important}
+body.ui2.skinon .rail,body.ui2.skinon header.top,body.ui2.waifu .rail,body.ui2.waifu header.top{background:var(--panel)!important;-webkit-backdrop-filter:blur(14px)!important;backdrop-filter:blur(14px)!important}
+body.ui2.skinon .view,body.ui2.waifu .view{background:transparent!important}
+body.ui2.skin-sweden .rail .vtab.on:after{background:#fecc02;height:2px}
+body.ui2.skin-sweden header.top{box-shadow:inset 0 -2px 0 rgba(254,204,2,.55),inset 0 -4px 0 rgba(47,111,181,.55)!important}
+body.ui2.skin-sweden .kmark{background:#fecc02;color:#0b1a2c}
+body.ui2.skin-rave .kmark{background:#020309;color:#20f0ff;box-shadow:0 0 0 1px rgba(32,240,255,.6),0 0 14px rgba(32,240,255,.45)}
+body.ui2.skin-rave .rail .vtab.on:after{background:linear-gradient(90deg,#20f0ff,#ff3ea5);height:2px}
+body.ui2.waifu .kmark{background:#ffd1dc;color:#2a1420}
+/* Legacy (King dark): the faintest cold edge light on the frame, nothing glowing */
+body.ui2[data-theme="king-dark"] .rail{box-shadow:inset 0 -1px 0 rgba(111,211,230,.22)}
+body.ui2[data-theme="king-dark"] .rail .vtab.on:after{background:#6fd3e6}
+/* Rave without the lasers (King, Nov 22): the light beams are gone; the beat flash stays but darker */
+body.skin-rave #wpetals b{display:none!important}
+@media (min-width:901px){ body.ui2-iv .favbar:not(.docked){top:150px;z-index:60} }   /* KING_MAST: the floating favorites bar sits under the masthead + account row */
+@media (min-width:901px){ body.ui2-iv .media{top:136px;z-index:61} }   /* KING_MAST: media window opens under the masthead + account row */

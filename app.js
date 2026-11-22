@@ -65,29 +65,34 @@ const UPC = (a) => hexA(prefs.zUp || prefs.up, a), DNC = (a) => hexA(prefs.zDn |
 /* KING_MYTHEME (Nov 19): personal chart themes = background, grid, candles, drawing tools and position boxes together, each with dark + light.
    King picked Sand and slate; Will, Ryan and Ben are matched to their own chart screenshots. Anyone can switch in Chart settings → Symbol → Theme. */
 const CHART_THEMES = {
+  // KING_SOVEREIGN (Nov 22): King's own theme. Light "Ivory": paper + ink, hollow up candles, solid ink down candles (like a printed
+  // financial page and the OTHRYS O). Dark "Legacy": near-black, ivory up candles, hollow down candles edged in a thin cold light.
+  king: ["Sovereign", {
+    light: { bg: "#f7f5f0", grid: "#ece8df", txt: "#5b574f", up: "#f7f5f0", dn: "#1b1a17", bord: true, bu: "#1b1a17", bd: "#1b1a17", wu: "#1b1a17", wd: "#1b1a17", zUp: "#1f6f4e", zDn: "#a8343a", zA: .5, tools: { trend: "#1b1a17", ray: "#1b1a17", channel: "#1b1a17", hline: "#2f6fdb", hray: "#2f6fdb", rect: "#8a857b", fib: "#1b1a17", text: "#1b1a17", arrow: "#2f6fdb" } },
+    dark: { bg: "#0c0d0f", grid: "#16181b", txt: "#8d939a", up: "#ece8e0", dn: "#0c0d0f", bord: true, bu: "#ece8e0", bd: "#6fd3e6", wu: "#ece8e0", wd: "#6fd3e6", zUp: "#5bb48f", zDn: "#d36a70", zA: .5, tools: { trend: "#ece8e0", ray: "#ece8e0", channel: "#ece8e0", hline: "#6fd3e6", hray: "#6fd3e6", rect: "#8d939a", fib: "#ece8e0", text: "#ece8e0", arrow: "#6fd3e6" } } }],
   sandslate: ["Sand and slate", {
     dark: { bg: "#131210", grid: "#1e1d1a", txt: "#9a958b", up: "#e8d9b5", dn: "#6f8396", bord: false, zUp: "#e8d9b5", zDn: "#6f8396", tools: { trend: "#a9c7e0", ray: "#a9c7e0", channel: "#a9c7e0", hline: "#7fd1e0", hray: "#7fd1e0", rect: "#b7c4cf", fib: "#a9c7e0", text: "#efe9dc", arrow: "#efe9dc" } },
     light: { bg: "#faf8f3", grid: "#ebe6db", txt: "#6f6a60", up: "#a8894a", dn: "#4f6274", bord: false, zUp: "#a8894a", zDn: "#4f6274", tools: { trend: "#2f6f9a", ray: "#2f6f9a", channel: "#2f6f9a", hline: "#0f8fa6", hray: "#0f8fa6", rect: "#8a99a8", fib: "#2f6f9a", text: "#2b2a26", arrow: "#2b2a26" } } }],
   will: ["Will's gray", {
     // KING_SKINS (Nov 20): Will's hardcore Sweden mode. Art is original, made on King's PC.
-    sweden: { skin: "sweden", bg: "#0b1a2c", grid: "#17304a", txt: "#cfdbe8", up: "#fecc02", dn: "#2f6fb5", bord: true, bu: "#fecc02", bd: "#7fb0e6", wu: "#fecc02", wd: "#7fb0e6", zUp: "#fecc02", zDn: "#2f6fb5", zA: .5, tools: { trend: "#eef3f8", ray: "#eef3f8", channel: "#eef3f8", hline: "#eef3f8", hray: "#eef3f8", rect: "#7fb0e6", fib: "#eef3f8", text: "#ffffff", arrow: "#fecc02" } },
-    dark: { bg: "#2c2c2c", grid: "#2c2c2c", txt: "#9a9a9a", up: "#dddee2", dn: "#050505", bord: true, bu: "#050505", bd: "#050505", wu: "#050505", wd: "#050505", zUp: "#633420", zDn: "#4d4d4d", zA: .6, tools: { trend: "#d7d7d7", ray: "#d7d7d7", channel: "#d7d7d7", hline: "#d7d7d7", hray: "#d7d7d7", rect: "#8c8c8c", fib: "#d7d7d7", text: "#ececec", arrow: "#5d71b0" } },
+    sweden: { skin: "sweden", paint: "cross", bg: "#0b1a2c", grid: "#17304a", txt: "#cfdbe8", up: "#fecc02", dn: "#2f6fb5", bord: true, bu: "#fecc02", bd: "#7fb0e6", wu: "#fecc02", wd: "#7fb0e6", zUp: "#fecc02", zDn: "#2f6fb5", zA: .5, tools: { trend: "#eef3f8", ray: "#eef3f8", channel: "#eef3f8", hline: "#eef3f8", hray: "#eef3f8", rect: "#7fb0e6", fib: "#eef3f8", text: "#ffffff", arrow: "#fecc02" } },
+    dark: { bg: "#363636", grid: "#363636", txt: "#a3a3a3", up: "#dddee2", dn: "#050505", bord: true, bu: "#050505", bd: "#050505", wu: "#050505", wd: "#050505", zUp: "#633420", zDn: "#4d4d4d", zA: .6, tools: { trend: "#d7d7d7", ray: "#d7d7d7", channel: "#d7d7d7", hline: "#d7d7d7", hray: "#d7d7d7", rect: "#8c8c8c", fib: "#d7d7d7", text: "#ececec", arrow: "#5d71b0" } },
     light: { bg: "#ededed", grid: "#e2e2e2", txt: "#606060", up: "#ffffff", dn: "#1a1a1a", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#a8603a", zDn: "#9a9a9a", zA: .6, tools: { trend: "#2a2a2a", ray: "#2a2a2a", channel: "#2a2a2a", hline: "#2a2a2a", hray: "#2a2a2a", rect: "#7a7a7a", fib: "#2a2a2a", text: "#1a1a1a", arrow: "#3f56a8" } } }],
   ryan: ["Ryan's teal", {
     // KING_SKINS (Nov 20): Ryan's rave mode (lasers, stage lights, pulses on the beat).
-    rave: { skin: "rave", bg: "#05060a", grid: "#121626", txt: "#cfe9f2", up: "#20f0ff", dn: "#ff3ea5", bord: true, bu: "#20f0ff", bd: "#ff3ea5", wu: "#20f0ff", wd: "#ff3ea5", zUp: "#20f0ff", zDn: "#ff3ea5", zA: .45, tools: { trend: "#e8fbff", ray: "#e8fbff", channel: "#e8fbff", hline: "#e8fbff", hray: "#e8fbff", rect: "#7fd8ff", fib: "#e8fbff", text: "#ffffff", arrow: "#ffe94d" } },
-    light: { bg: "#b8b8b8", grid: "#a9a9a9", txt: "#3a3a3a", up: "#097564", dn: "#0a0a0a", bord: false, zUp: "#097564", zDn: "#c0575f", tools: { trend: "#4259c1", ray: "#4259c1", channel: "#4259c1", hline: "#4259c1", hray: "#4259c1", rect: "#5a5a5a", fib: "#4259c1", text: "#111111", arrow: "#111111" } },
-    dark: { bg: "#1d2022", grid: "#272b2e", txt: "#8e969a", up: "#1aa58d", dn: "#3a3f43", bord: true, bu: "#1aa58d", bd: "#8e969a", wu: "#1aa58d", wd: "#8e969a", zUp: "#1aa58d", zDn: "#c0575f", tools: { trend: "#6f86e8", ray: "#6f86e8", channel: "#6f86e8", hline: "#6f86e8", hray: "#6f86e8", rect: "#8e969a", fib: "#6f86e8", text: "#e6eaec", arrow: "#e6eaec" } } }],
+    rave: { skin: "rave", paint: "neon", bg: "#05060a", grid: "#121626", txt: "#cfe9f2", up: "#20f0ff", dn: "#ff3ea5", bord: true, bu: "#20f0ff", bd: "#ff3ea5", wu: "#20f0ff", wd: "#ff3ea5", zUp: "#20f0ff", zDn: "#ff3ea5", zA: .45, tools: { trend: "#e8fbff", ray: "#e8fbff", channel: "#e8fbff", hline: "#e8fbff", hray: "#e8fbff", rect: "#7fd8ff", fib: "#e8fbff", text: "#ffffff", arrow: "#ffe94d" } },
+    light: { paint: "pill", bg: "#b8b8b8", grid: "#a9a9a9", txt: "#3a3a3a", up: "#097564", dn: "#0a0a0a", bord: false, zUp: "#097564", zDn: "#c0575f", tools: { trend: "#4259c1", ray: "#4259c1", channel: "#4259c1", hline: "#4259c1", hray: "#4259c1", rect: "#5a5a5a", fib: "#4259c1", text: "#111111", arrow: "#111111" } },
+    dark: { paint: "pill", bg: "#1d2022", grid: "#272b2e", txt: "#8e969a", up: "#1aa58d", dn: "#3a3f43", bord: true, bu: "#1aa58d", bd: "#8e969a", wu: "#1aa58d", wd: "#8e969a", zUp: "#1aa58d", zDn: "#c0575f", tools: { trend: "#6f86e8", ray: "#6f86e8", channel: "#6f86e8", hline: "#6f86e8", hray: "#6f86e8", rect: "#8e969a", fib: "#6f86e8", text: "#e6eaec", arrow: "#e6eaec" } } }],
   ben: ["Ben's tan", {
-    light: { bg: "#c0b39b", grid: "#b6a991", txt: "#4a4438", up: "#ffffff", dn: "#3f3f3d", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#1a1a1a", ray: "#1a1a1a", channel: "#1a1a1a", hline: "#1a1a1a", hray: "#1a1a1a", rect: "#8a8578", fib: "#1a1a1a", text: "#1a1a1a", arrow: "#2f5fd0" } },
-    dark: { bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#c54557", zDn: "#8a8578", zA: .6, tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } },
+    light: { paint: "stamp", bg: "#c0b39b", grid: "#b6a991", txt: "#4a4438", up: "#ffffff", dn: "#3f3f3d", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#1a1a1a", ray: "#1a1a1a", channel: "#1a1a1a", hline: "#1a1a1a", hray: "#1a1a1a", rect: "#8a8578", fib: "#1a1a1a", text: "#1a1a1a", arrow: "#2f5fd0" } },
+    dark: { paint: "stamp", bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#c54557", zDn: "#8a8578", zA: .6, tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } },
     // KING_WAIFU (Ben, Nov 20): anime backdrop + picture candles. Art is original, made on King's PC.
     waifu: { waifu: true, bg: "#15161c", grid: "#2a2c34", txt: "#e8e2d6", up: "#ffd1dc", dn: "#8fa3c8", bord: true, bu: "#ffd1dc", bd: "#8fa3c8", wu: "#ffd1dc", wd: "#8fa3c8", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#f5efe2", ray: "#f5efe2", channel: "#f5efe2", hline: "#f5efe2", hray: "#f5efe2", rect: "#c9d3e6", fib: "#f5efe2", text: "#ffffff", arrow: "#8fb4ff" } } }] };
 // KING_SKINS: full-app looks tied to a friend's theme. waifu = Ben, sweden = Will, rave = Ryan.
 const SKINS = {
   waifu: { label: "Waifu", owner: "ben", dir: "waifu", bgs: ["bg1", "bg2", "bg3", "bg4"], names: ["Meadow", "Sunset", "Night", "Festival"], dim: 0.62, tint: "rgba(12,13,18," },
   sweden: { label: "Sweden", owner: "will", dir: "sweden", bgs: ["sw1", "sw2", "sw3", "sw4"], names: ["Fjord", "Aurora", "Stockholm", "Viking"], dim: 0.5, tint: "rgba(6,14,26," },
-  rave: { label: "Rave", owner: "ryan", dir: "rave", bgs: ["rv1", "rv2", "rv3", "rv4"], names: ["Main stage", "Warehouse", "Festival", "Decks"], dim: 0.55, tint: "rgba(3,4,8," } };
+  rave: { label: "Rave", owner: "ryan", dir: "rave", bgs: ["rv1", "rv2", "rv3", "rv4"], names: ["Main stage", "Warehouse", "The drop", "Decks"], dim: 0.55, tint: "rgba(3,4,8," } };
 function skinBg() { const k = prefs.skin || "waifu", K = SKINS[k]; const v = k === "waifu" ? prefs.waifuBg : (prefs.skinBg || {})[k]; return K.bgs.includes(v) ? v : K.bgs[0]; }
 const WAIFU = { bgs: ["bg1", "bg2", "bg3", "bg4"], up: ["up1", "up2", "up3", "up4", "up5", "up6", "up7", "up8"], dn: ["dn1", "dn2", "dn3", "dn4", "dn5", "dn6", "dn7", "dn8"], img: {} };
 function wImg(n, ext, dir) { dir = dir || "waifu"; const key = dir + "/" + n; let im = WAIFU.img[key]; if (im) return im.complete && im.naturalWidth ? im : null;
@@ -99,6 +104,28 @@ function wSkin(g, im, x, y, w, h) { const iw = im.naturalWidth, ih = im.naturalH
 function waifuPaint(p, g, W, H) { const K = SKINS[prefs.skin] || SKINS.waifu, bgN = skinBg(), bg = wImg(bgN, "jpg", K.dir);
   if (bg) { const s = Math.max(W / bg.naturalWidth, H / bg.naturalHeight); g.drawImage(bg, (W - bg.naturalWidth * s) / 2, (H - bg.naturalHeight * s) / 2, bg.naturalWidth * s, bg.naturalHeight * s); }
   g.fillStyle = K.tint + (prefs.skin === "waifu" || !prefs.skin ? (prefs.waifuDim ?? K.dim) : K.dim) + ")"; g.fillRect(0, 0, W, H); }
+/* KING_CANDLESKIN (Nov 22): every theme gets its own candles. Painted kinds draw body + wick here (the chart's own are switched off):
+   cross = Sweden's Nordic cross, neon = Ryan's rave (gradient + glow), pill = Ryan's teal (rounded), stamp = Ben's tan (inset line). */
+function candlePaint(p, g, W, kind) {
+  const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (!vr || !p.candles.length) return;
+  const sp = ts.options().barSpacing || 6, bw = Math.max(1, Math.floor(sp * 0.78)), C = csG(), from = Math.max(0, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to));
+  const U = prefs.up || "#2bd4a0", D = prefs.dn || "#ff4d5e", WU = C.wu || U, WD = C.wd || D, BU = C.bu || U, BD = C.bd || D;
+  const rr = (x, y, w, h, r) => { r = Math.max(0, Math.min(r, w / 2, h / 2)); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); };
+  g.save();
+  for (let k = from; k <= to; k++) { const c = p.candles[k], xm = ts.logicalToCoordinate(k); if (xm == null) continue;
+    const yo = p.series.priceToCoordinate(c.open), yc = p.series.priceToCoordinate(c.close), yh = p.series.priceToCoordinate(c.high), yl = p.series.priceToCoordinate(c.low); if (yo == null || yc == null) continue;
+    const up = c.close >= c.open, x = Math.round(xm - bw / 2), top = Math.min(yo, yc), h = Math.max(1, Math.abs(yc - yo)), col = up ? U : D;
+    // wick
+    if (yh != null && yl != null) { g.fillStyle = up ? WU : WD; const ww = bw >= 9 ? 2 : 1; g.fillRect(Math.round(xm) - (ww >> 1), yh, ww, Math.max(1, yl - yh)); }
+    if (kind === "pill") { g.fillStyle = col; rr(x, top, bw, h, bw >= 5 ? Math.min(3, bw / 2) : 0); g.fill(); }
+    else if (kind === "stamp") { g.fillStyle = col; g.fillRect(x, top, bw, h); g.strokeStyle = up ? BU : BD; g.lineWidth = 1; g.strokeRect(x + 0.5, top + 0.5, bw - 1, h - 1);
+      if (bw >= 6 && h >= 6) { g.strokeStyle = up ? "rgba(0,0,0,.28)" : "rgba(255,255,255,.22)"; g.strokeRect(x + 2.5, top + 2.5, bw - 5, h - 5); } }
+    else if (kind === "cross") { const Y = "#fecc02", B = "#2f6fb5"; g.fillStyle = up ? Y : B; g.fillRect(x, top, bw, h);
+      if (bw >= 5 && h >= 6) { g.fillStyle = up ? B : Y; const t = Math.max(1, Math.round(Math.min(bw, h) * 0.2)); g.fillRect(x + Math.round(bw * 0.34), top, t, h); g.fillRect(x, top + Math.round(Math.min(h * 0.42, h - t)), bw, t); } }
+    else if (kind === "neon") { const gr = g.createLinearGradient(0, top, 0, top + h); if (up) { gr.addColorStop(0, "#8ffcff"); gr.addColorStop(1, "#0aa6d6"); } else { gr.addColorStop(0, "#ff5cc1"); gr.addColorStop(1, "#a3125c"); }
+      g.fillStyle = gr; if (bw >= 3) { g.shadowColor = up ? "rgba(32,240,255,.65)" : "rgba(255,62,165,.65)"; g.shadowBlur = Math.min(10, bw * 1.2); } g.fillRect(x, top, bw, h); g.shadowBlur = 0; }
+    else { g.fillStyle = col; g.fillRect(x, top, bw, h); } }
+  g.restore(); }
 function waifuSkins(p, g, W) {   // after the trade-box fills, so pictures sit on top of them like normal candles do
   const ts = p.chart.timeScale(), vr = ts.getVisibleLogicalRange(); if (!vr || !p.candles.length) return; const sp = ts.options().barSpacing || 6, bw = Math.max(1, Math.floor(sp * 0.8));
   const from = Math.max(0, Math.floor(vr.from)), to = Math.min(p.candles.length - 1, Math.ceil(vr.to));
@@ -113,16 +140,17 @@ function wAvg(n) { const c = WAIFU.avg || (WAIFU.avg = {}); if (c[n]) return c[n
     for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; } const k = d.length / 4; return (c[n] = `rgb(${(r / k) | 0},${(g / k) | 0},${(b / k) | 0})`); } catch (e) { return (c[n] = null); } }
 function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) return; mode = T[1][mode] ? mode : Object.keys(T[1])[0]; const c = T[1][mode];
   prefs.up = c.up; prefs.dn = c.dn; prefs.zUp = c.zUp; prefs.zDn = c.zDn; prefs.zA = c.zA || 0; prefs.toolCols = Object.assign({}, c.tools); prefs.toolCol = c.tools.trend;
-  prefs.cs = Object.assign({}, prefs.cs || {}, { bgk: (c.waifu || c.skin) ? "waifu" : "solid", bg1: c.bg, bg2: c.bg, gridc: c.grid, txc: c.txt, lnc: c.grid, bord: !!c.bord, bu: c.bu || c.up, bd: c.bd || c.dn, wu: c.wu || "", wd: c.wd || "", body: !c.waifu });
+  prefs.cs = Object.assign({}, prefs.cs || {}, { bgk: (c.waifu || c.skin) ? "waifu" : "solid", bg1: c.bg, bg2: c.bg, gridc: c.grid, txc: c.txt, lnc: c.grid, bord: !!c.bord && !c.paint, bu: c.bu || c.up, bd: c.bd || c.dn, wu: c.wu || "", wd: c.wd || "", body: !c.waifu && !c.paint, wick: !c.paint, paint: c.paint || "" });   // KING_CANDLESKIN: painted themes draw their own bodies + wicks
   prefs.waifu = !!c.waifu;   // KING_WAIFU
   prefs.skin = c.skin || (c.waifu ? "waifu" : null);   // KING_SKINS
   prefs.chTheme = { id, mode }; try { panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: c.wu || prefs.up, wickDownColor: c.wd || prefs.dn })); csApplyAll(); repaintAll(); } catch (e) {}
+  try { if (typeof ui2Apply === "function") { if (!c.skin && !c.waifu && typeof ui2Norm === "function" && ui2Norm(prefs.ui2) !== "") prefs.ui2 = mode === "light" ? "ivory" : "onyx"; ui2Apply(); } } catch (e) {}   // KING_THEMEALL: theme mode drives the look
   savePrefs(); if (!quiet) try { toast(T[0] + " · " + (mode === "light" ? "Light" : (SKINS[mode] ? SKINS[mode].label : "Dark"))); } catch (e) {} }
 // KING_WAIFU: Ben gets a one-time heads-up the first time he opens a build that has Waifu mode
 function waifuHint() { const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase(); if (prefs.waifuHint || !/\bben\b|jinx/.test(n)) return;
   prefs.waifuHint = 1; savePrefs(); setTimeout(() => { try { toast("New for you: Waifu mode. Chart settings → Theme → Ben's tan → Waifu"); } catch (e) {} }, 4000); }
 function themeAutoPick() { waifuHint(); if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
-  const id = isAdmin ? "sandslate" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true); }
+  const id = isAdmin ? "king" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true); }
 let csTmp = null, csSnap = null; const execs = [], profs = {};
 const csG = () => Object.assign({}, CS_DEF, (prefs && prefs.cs) || {}, csTmp || {});
 /* ---------------- time (shown in New York time) ---------------- */
@@ -708,6 +736,7 @@ function drawShade(p, g, W, H) {
     if (!prefs.hideDraw) for (const d of drawings) { if ((d.type !== "long" && d.type !== "short") || !(d.pane === p.i || (SHARED.includes(d.type) && paneSym(d.pane) === paneSym(p)))) continue;
       try { posFill(p, g, d, W); } catch (e) {} }
     if (prefs.waifu) try { waifuSkins(p, g, W); } catch (e) {}
+    { const P_ = csG().paint; if (P_ && !prefs.waifu) try { candlePaint(p, g, W, P_); } catch (e) {} }   // KING_CANDLESKIN
 }
 function posFill(p, g, d, W) { const x1 = xOf(p, d.a.t), x2 = xOf(p, d.b.t), xa = x1 ?? 0, xb = x2 ?? W, ye = yOf(p, d.entry), ys = yOf(p, d.sl), yt = yOf(p, d.tp); if (ye == null || ys == null || yt == null) return;
   const live = d.state === "armed" || d.state === "filled", done = d.state === "done", zA = prefs.zA || 0, a = zA ? (done ? zA * .3 : zA) : done ? 0.06 : live ? 0.22 : 0.14;
@@ -2775,7 +2804,8 @@ $("s-live1s") && ($("s-live1s").onchange = () => { prefs.live1s = $("s-live1s").
 $("s-tips") && ($("s-tips").onchange = () => { prefs.tips = $("s-tips").checked; savePrefs(); if (prefs.tips) window.kTipNow && kTipNow(); });
 
 /* KING_RAIL (Nov 11, Brief 3): the left sidebar expands to show names (button at the bottom) and its edge drags to any width; the width is remembered per user */
-(() => { const R = $("rail"); R.querySelectorAll(".ri").forEach((b) => { if (b.querySelector(".rl")) return; const t = (b.title || "").split(/[:(]/)[0].trim(); if (!t) return; const s = document.createElement("span"); s.className = "rl"; s.textContent = b.id === "railx" ? "Collapse" : t; b.appendChild(s); });
+(() => { const R = $("rail"); try { const lg = R.querySelector(".rlogo"); if (lg && !lg.querySelector(".kmark")) lg.insertAdjacentHTML("beforeend", '<span class="kmark">K</span><span class="kword">KAIROS</span>'); } catch (e) {}   // KING_MAST: new logo (K square + wordmark) for the masthead
+  R.querySelectorAll(".ri").forEach((b) => { if (b.querySelector(".rl")) return; const t = (b.title || "").split(/[:(]/)[0].trim(); if (!t) return; const s = document.createElement("span"); s.className = "rl"; s.textContent = b.id === "railx" ? "Collapse" : ({ "KAIROS helper": "Helper", "Calendar": "Calendar" })[t] || t; b.appendChild(s); });
   const W = (w) => { w = Math.round(w); if (innerWidth <= 900) { R.style.width = ""; R.classList.remove("wide"); return; } R.style.width = w + "px"; R.classList.toggle("wide", w >= 120); $("railx").title = w >= 120 ? "Collapse the sidebar" : "Expand the sidebar (drag its edge to resize)"; };
   window.railUI = () => W(prefs.railW || 52);
   $("railx").onclick = () => { const cur = prefs.railW || 52; prefs.railW = cur >= 120 ? 52 : prefs.railWide || 200; savePrefs(); W(prefs.railW); };
@@ -3805,15 +3835,40 @@ addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && (e.key === 
 
 /* KING_UI2 (Nov 20): King's new look, Daylight (light) + Graphite (dark). Off by default until he confirms it.
    Turn on: Settings > Appearance > New look, or add ?ui2=light / ?ui2=dark to the link. A friend skin (Waifu/Sweden/Rave) wins over it. */
+// KING_THEMEALL (Nov 22): a theme changes the whole site, not just the chart. Each theme/mode has a full palette for the new look;
+// it is set as inline CSS variables on <body> so it wins over Ivory/Onyx. Custom (no theme) = plain Ivory / Onyx.
+const THEME_UI = {
+  king: { light: { bg: "#f7f5f0", panel: "#fcfbf8", panel2: "#f3f0e9", txt: "#1b1a17", mut: "#5b574f", line: "20,18,14", ink: "#1b1a17", inktxt: "#fbf9f4" },
+          dark: { bg: "#0c0d0f", panel: "#131518", panel2: "#191c20", txt: "#ece8e0", mut: "#9aa0a6", line: "111,211,230", ink: "#ece8e0", inktxt: "#0c0d0f" } },
+  sandslate: { light: { bg: "#faf8f3", panel: "#fffdf8", panel2: "#f3efe6", txt: "#2b2a26", mut: "#6f6a60", line: "43,42,38", ink: "#2b2a26", inktxt: "#faf8f3" },
+               dark: { bg: "#131210", panel: "#1b1a17", panel2: "#22201c", txt: "#ece5d6", mut: "#9a958b", line: "232,217,181", ink: "#e8d9b5", inktxt: "#131210" } },
+  will: { light: { bg: "#ededed", panel: "#f6f6f6", panel2: "#e4e4e4", txt: "#1a1a1a", mut: "#5a5a5a", line: "26,26,26", ink: "#1a1a1a", inktxt: "#f6f6f6" },
+          dark: { bg: "#333333", panel: "#3c3c3c", panel2: "#444444", txt: "#ededed", mut: "#b0b0b0", line: "255,255,255", ink: "#ededed", inktxt: "#2c2c2c" },
+          sweden: { bg: "#081322", panel: "rgba(8,20,36,.82)", panel2: "rgba(12,28,48,.86)", txt: "#eef3f8", mut: "#a9bdd3", line: "254,204,2", ink: "#fecc02", inktxt: "#0b1a2c", blue: "#3d82cc", up: "#fecc02", dn: "#7fb0e6" } },
+  ryan: { light: { bg: "#bcbcbc", panel: "#c8c8c8", panel2: "#b2b2b2", txt: "#101010", mut: "#353535", line: "16,16,16", ink: "#097564", inktxt: "#f2f2f2" },
+          dark: { bg: "#1b1e20", panel: "#23272a", panel2: "#2a2f33", txt: "#e6eaec", mut: "#9aa2a6", line: "26,165,141", ink: "#1aa58d", inktxt: "#0d1112" },
+          rave: { bg: "#030306", panel: "rgba(6,6,12,.80)", panel2: "rgba(12,12,22,.86)", txt: "#f4f5ff", mut: "#a3a8c6", line: "32,240,255", ink: "#20f0ff", inktxt: "#020309", up: "#5ff6ff", dn: "#ff4fb0" } },
+  ben: { light: { bg: "#c6baa3", panel: "#d1c6b1", panel2: "#bcb098", txt: "#16140f", mut: "#463f33", line: "22,20,15", ink: "#1a1a1a", inktxt: "#efe6d4" },
+         dark: { bg: "#211e1a", panel: "#2a2722", panel2: "#322e28", txt: "#efe6d4", mut: "#a39a88", line: "239,230,212", ink: "#efe6d4", inktxt: "#211e1a" },
+         waifu: { bg: "#15161c", panel: "rgba(21,22,28,.78)", panel2: "rgba(30,31,40,.84)", txt: "#f5efe2", mut: "#c9c1b4", line: "255,209,220", ink: "#ffd1dc", inktxt: "#2a1420", up: "#ffd1dc", dn: "#8fa3c8" } } };
+const THEME_VARS = ["--bg", "--bg2", "--panel", "--panel2", "--glass", "--glass2", "--txt", "--mut", "--mut2", "--line", "--edge", "--sel", "--hov", "--chip", "--ink", "--inktxt", "--acc", "--acc2", "--blue", "--up", "--dn"];
+function themeUI(on) { const B = document.body, t = prefs.chTheme, P = on && t && THEME_UI[t.id] && THEME_UI[t.id][t.mode];
+  THEME_VARS.forEach((v) => B.style.removeProperty(v)); B.classList.toggle("themed", !!P); B.dataset.theme = P ? t.id + "-" + t.mode : ""; if (!P) return;
+  const L = (a) => `rgba(${P.line},${a})`, set = (k, v) => v && B.style.setProperty(k, v);
+  set("--bg", P.bg); set("--bg2", P.bg); set("--panel", P.panel); set("--glass", P.panel); set("--panel2", P.panel2); set("--glass2", P.panel2);
+  set("--txt", P.txt); set("--mut", P.mut); set("--mut2", P.mut); set("--line", L(.10)); set("--edge", L(.14)); set("--sel", L(.09)); set("--hov", L(.07)); set("--chip", L(.05));
+  set("--ink", P.ink); set("--inktxt", P.inktxt); set("--acc", P.ink); set("--acc2", P.ink); set("--blue", P.blue); set("--up", P.up); set("--dn", P.dn);
+  try { document.documentElement.style.background = /^#/.test(P.bg) ? P.bg : ""; } catch (e) {} }
 // KING_ONYX (Nov 22): Ivory (light) and Onyx (dark) replace Daylight and Graphite. Old saved choices map over: light→ivory, dark→onyx. "Off" keeps the old look.
 function ui2Norm(v) { return v === "dark" || v === "onyx" ? "onyx" : v === "off" ? "" : v === "light" || v === "ivory" ? "ivory" : null; }
 function ui2Mode() { const q = ui2Norm(window.__ui2m || new URLSearchParams(location.search).get("ui2")); if (q != null) return q; const p = ui2Norm(prefs.ui2); return p != null ? p : "ivory"; }
-function ui2Apply() { const m = ui2Mode(), skin = !!(prefs.skin || prefs.waifu), on = !!m && !skin, B = document.body, base = m === "onyx" ? "dark" : "light";
+function ui2Apply() { const m = ui2Mode(), skin = !!(prefs.skin || prefs.waifu), on = !!m, B = document.body, base = skin ? "dark" : m === "onyx" ? "dark" : "light";   // KING_THEMEALL: skins (Sweden/Rave/Waifu) now ride on the new look too
   B.classList.toggle("ui2", on); B.classList.toggle("ui2-light", on && base === "light"); B.classList.toggle("ui2-dark", on && base === "dark");
-  B.classList.toggle("ui2-iv", on); B.classList.toggle("ui2-ivory", on && m === "ivory"); B.classList.toggle("ui2-onyx", on && m === "onyx");
+  B.classList.toggle("ui2-iv", on); B.classList.toggle("ui2-ivory", on && base === "light"); B.classList.toggle("ui2-onyx", on && base === "dark");
   try { document.querySelector('meta[name="theme-color"]') && document.querySelector('meta[name="theme-color"]').setAttribute("content", !on ? "#0a0a0d" : m === "onyx" ? "#121110" : "#f7f5f0"); } catch (e) {}
   if ($("s-ui2")) { const p = ui2Norm(prefs.ui2); $("s-ui2").value = p === "" ? "off" : p || "ivory"; }
-  if (on && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== base && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][base]) { try { applyChartTheme(prefs.chTheme.id, base, true); } catch (e) {} }
+  if (on && !skin && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== base && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][base]) { try { applyChartTheme(prefs.chTheme.id, base, true); } catch (e) {} }
+  try { themeUI(on); } catch (e) {}
   ui2Banner(on ? m : ""); }
 function ui2Banner(m) { let b = document.getElementById("ui2banner"); const want = !!new URLSearchParams(location.search).get("ui2");
   if (!want || !m) { if (b) b.remove(); return; }
