@@ -156,7 +156,6 @@ body.ui2 :is(button.primary,.btn.primary){font-weight:650!important;box-shadow:0
 @media (max-width:1100px){ body.ui2 header.top,body.ui2 .tbar{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;scrollbar-width:none} body.ui2 header.top::-webkit-scrollbar,body.ui2 .tbar::-webkit-scrollbar{display:none}
   body.ui2 header.top > *,body.ui2 .tbar > *{flex:none} }
 @media (max-width:900px){ body.ui2 header.top{gap:8px!important;padding:6px 10px!important;min-height:0!important} body.ui2 header.top .kv label{font-size:9px} body.ui2 #fxtop,body.ui2 .tsearch,body.ui2 #ui2search{display:none!important} }
-@media (max-width:760px){ body.ui2 #charts{grid-template-columns:minmax(0,1fr)!important;grid-auto-rows:minmax(0,1fr);grid-template-rows:none!important} }
 body.ui2 #acctpill img.logo{display:none}
 body.ui2 #acctpill:before{content:"K";display:grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--ink);color:var(--inktxt);font:600 12px/1 var(--mark,"Bodoni Moda",serif);margin-right:6px;flex:none}
 /* KING_MORPH: page changes grow out of the tab you clicked */
@@ -213,3 +212,5 @@ html.kprebuild :is(.rail,header.top,.tbar,.tools,#favbar,.bottom,#pad,#charts){o
 #review #rv-note{width:100%;margin-top:10px;border-radius:9px;resize:vertical;font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--edge);background:var(--panel2,var(--panel));color:var(--txt);box-sizing:border-box}
 #review .rvend{margin-top:10px}#review .rvend button{flex:none}#review .rvend #rv-save{margin-left:auto;padding:7px 20px}
 @media (min-width:901px){ body.ui2 .review{right:84px!important;bottom:56px!important;width:340px!important} }   /* KING_RATE2: sits left of the price scale so it never covers prices */
+
+body.ui2 header.top :is(button,.status,.pill,label){white-space:nowrap}

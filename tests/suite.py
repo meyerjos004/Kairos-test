@@ -503,7 +503,7 @@ async def main():
         await E("prefs.dockClosed=true; dockUI()")
         await E("window.__ui2m='off'; ui2Apply()")   # KING_MAST: the side rail only exists in the classic look now (new look = masthead)
         r = await E("(()=>{const r=$('railgrip').getBoundingClientRect();return [r.x+3,r.y+300]})()")
-        await pg.mouse.move(r[0], r[1]); await pg.mouse.down(); await pg.mouse.move(r[0]+150, r[1], steps=6); await pg.mouse.up(); check("sidebar drags wider + shows names", await E("$('rail').offsetWidth>150 && $('rail').classList.contains('wide')"), await E(f"(()=>{{const e=document.elementFromPoint({r[0]},{r[1]});return (e&&(e.id+'.'+e.className))+' w='+$('rail').offsetWidth}})()"))
+        await pg.mouse.move(r[0], r[1]); await pg.mouse.down(); await pg.mouse.move(r[0]+150, r[1], steps=6); await pg.mouse.up(); await pg.wait_for_timeout(400); check("sidebar drags wider + shows names", await E("$('rail').offsetWidth>150 && $('rail').classList.contains('wide')"), await E(f"(()=>{{const e=document.elementFromPoint({r[0]},{r[1]});return (e&&(e.id+'.'+e.className))+' w='+$('rail').offsetWidth}})()"))
         await pg.click("#railx"); await pg.wait_for_timeout(700); check("sidebar collapse button", await E("$('rail').offsetWidth<60"), await E("$('rail').offsetWidth+' '+prefs.railW"))
         await E("window.__ui2m='ivory'; ui2Apply()"); await pg.wait_for_timeout(300)
         check("masthead: pages run across the top with names", await E("(()=>{const r=$('rail');return r.offsetHeight<80 && r.offsetWidth>900 && [...r.querySelectorAll('.vtab .rl')].some(e=>e.offsetWidth>20 && getComputedStyle(e).opacity==='1')})()"), await E("(()=>{const r=$('rail');return [r.offsetHeight,r.offsetWidth,document.body.className]})()"))

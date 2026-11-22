@@ -491,9 +491,9 @@ function sideUI() { $("side").classList.toggle("hidden", !prefs.side); $("sidebt
 function dockUI() { $("dock").classList.toggle("closed", !!prefs.dockClosed); dockH(); }
 function buildPanes() {
   panes.forEach((p) => { p.dead = true; try { if (p.prim) p.series.detachPrimitive(p.prim); } catch (e) {} p.chart.remove(); }); $("charts").innerHTML = ""; panes = [];
-  const LY = layOf(prefs.layout), n = LY.rects.length; $("charts").style.gridTemplateColumns = `repeat(${LY.cols},minmax(0,1fr))`; $("charts").style.gridTemplateRows = `repeat(${LY.rows},minmax(0,1fr))`;   // KING_LAYOUT2
+  const LY = layOf(prefs.layout), n = LY.rects.length; $("charts").style.gridTemplateColumns = `repeat(${innerWidth < 760 ? 1 : LY.cols},minmax(0,1fr))`; $("charts").style.gridTemplateRows = `repeat(${innerWidth < 760 ? n : LY.rows},minmax(0,1fr))`;   /* KING_RESIZE: narrow windows stack the charts */   // KING_LAYOUT2
   while (prefs.tfs.length < 8) prefs.tfs.push(DEF_TFS[prefs.tfs.length]);
-  for (let i = 0; i < n; i++) { const p = makePane(i); const [x, y, w, h] = LY.rects[i]; p.el.style.gridArea = `${y} / ${x} / span ${h} / span ${w}`; panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
+  for (let i = 0; i < n; i++) { const p = makePane(i); const [x, y, w, h] = LY.rects[i]; p.el.style.gridArea = innerWidth < 760 ? `${i + 1} / 1 / span 1 / span 1` : `${y} / ${x} / span ${h} / span ${w}`; p._ga = [x, y, w, h]; panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
 }
 function rebuildPane(p) {
   p.sec = paneSec(p.i); p.candles = []; const S = storeOf(paneSym(p)), src = p.sec < 60 ? S["15s"] : S["1m"];
@@ -1536,6 +1536,9 @@ function statClose() { const v = $("v-stats"), d = $("stdet"); if (!v || !v.clas
 document.addEventListener("click", (e) => { const v = $("v-stats"); if (!v || !v.contains(e.target) || v.classList.contains("sdopen")) return; if (e.target.closest("select,button,input,a,.qm,label,#stdet")) return;
   const c = e.target.closest("#st-kpi > div, #v-stats > .card, #v-stats .grid3 > .card"); if (c) statDetail(c); });
 addEventListener("keydown", (e) => { if (e.key === "Escape") statClose(); });
+addEventListener("resize", () => { clearTimeout(window.__lyT); window.__lyT = setTimeout(() => { try { const L = layOf(prefs.layout), c = $("charts"), nw = innerWidth < 760;   // KING_RESIZE
+  c.style.gridTemplateColumns = `repeat(${nw ? 1 : L.cols},minmax(0,1fr))`; c.style.gridTemplateRows = `repeat(${nw ? panes.length : L.rows},minmax(0,1fr))`;
+  panes.forEach((p, i) => { const [x, y, w, h] = p._ga || [1, 1, 1, 1]; p.el.style.gridArea = nw ? `${i + 1} / 1 / span 1 / span 1` : `${y} / ${x} / span ${h} / span ${w}`; }); } catch (e) {} }, 150); });
 // KING_NAVLINE (Nov 22): one underline that slides between the top-nav pages (the per-tab line can't move)
 function navLine(instant) { const R = $("rail"); if (!R) return; let L = $("navline"); if (!L) { L = document.createElement("i"); L.id = "navline"; R.appendChild(L); }
   const on = R.querySelector(".vtab.on"); if (!on || !document.body.classList.contains("ui2-iv") || innerWidth <= 900) { L.style.opacity = "0"; return; }
