@@ -111,3 +111,14 @@ body.ui2[data-theme="king-dark"] .rail .vtab.on:after{background:#6fd3e6}
 body.skin-rave #wpetals b{display:none!important}
 @media (min-width:901px){ body.ui2-iv .favbar:not(.docked){top:150px;z-index:60} }   /* KING_MAST: the floating favorites bar sits under the masthead + account row */
 @media (min-width:901px){ body.ui2-iv .media{top:136px;z-index:61} }   /* KING_MAST: media window opens under the masthead + account row */
+
+/* KING_FLAT (Nov 22): flat bars; frosted glass only on things that float over the chart */
+body.ui2-iv .symsearch select{border:0!important;background:transparent!important;box-shadow:none!important;padding:0 16px 0 2px!important;height:auto!important;border-radius:0!important}
+body.ui2-iv .symsearch{background:transparent!important;border-color:var(--line)!important}
+body.ui2-iv .tbar,body.ui2-iv .dock,body.ui2-iv .work{box-shadow:none!important;border-radius:0!important}
+body.ui2-iv :is(.pad,.menu,.favbar:not(.docked),.tools.float,.media,.dlg,#toast){-webkit-backdrop-filter:blur(18px) saturate(1.1)!important;backdrop-filter:blur(18px) saturate(1.1)!important}
+body.ui2-ivory :is(.pad,.menu,.favbar:not(.docked),.tools.float,.media){background:rgba(252,251,248,.82)!important}
+body.ui2-onyx :is(.pad,.menu,.favbar:not(.docked),.tools.float,.media){background:rgba(26,25,23,.80)!important}
+body.ui2-iv :is(.pad,.menu,.tools.float,.media,.dlg){box-shadow:0 10px 30px rgba(0,0,0,.10)!important}
+body.ui2-iv .symsearch .ddb{border:0!important;background:transparent!important;box-shadow:none!important;min-width:0!important;padding:4px 4px 4px 2px!important;font:600 13px var(--mono)}
+body.ui2-iv .symsearch{padding:0 6px 0 10px!important}

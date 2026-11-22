@@ -1,0 +1,73 @@
+/* KING_SKINPAGES (Nov 22): a specialty theme (Sweden, Rave, Waifu, Legacy) redoes every tab in its own style, not just a picture behind.
+   Each one gets its own type, cards, buttons, tables, numbers and nav. Only active with the new look (body.ui2) + the skin class. */
+@font-face{font-family:"Barlow Condensed";src:url(assets/fonts/barlow-condensed-latin-600-normal.woff2) format("woff2");font-weight:600;font-display:swap}
+@font-face{font-family:"Barlow Condensed";src:url(assets/fonts/barlow-condensed-latin-700-normal.woff2) format("woff2");font-weight:700 900;font-display:swap}
+@font-face{font-family:"Unbounded";src:url(assets/fonts/unbounded-latin-500-normal.woff2) format("woff2");font-weight:400 500;font-display:swap}
+@font-face{font-family:"Unbounded";src:url(assets/fonts/unbounded-latin-700-normal.woff2) format("woff2");font-weight:600 900;font-display:swap}
+@font-face{font-family:"M PLUS Rounded 1c";src:url(assets/fonts/m-plus-rounded-1c-latin-500-normal.woff2) format("woff2");font-weight:400 500;font-display:swap}
+@font-face{font-family:"M PLUS Rounded 1c";src:url(assets/fonts/m-plus-rounded-1c-latin-700-normal.woff2) format("woff2");font-weight:600 900;font-display:swap}
+@font-face{font-family:"Michroma";src:url(assets/fonts/michroma-latin-400-normal.woff2) format("woff2");font-weight:400 900;font-display:swap}
+
+/* shared: every tab sits on the skin's backdrop, panels are tinted glass of the skin's color */
+body.ui2.skinon .view,body.ui2.waifu .view{background:transparent!important}
+body.ui2.skinon :is(.card,.acard,.setc,.stats div,#st-kpi>div,.kvs,.bt,.tbl,.jcard,.fpanel>.card),body.ui2.waifu :is(.card,.acard,.setc,.stats div,#st-kpi>div){background:var(--panel)!important;-webkit-backdrop-filter:blur(12px)!important;backdrop-filter:blur(12px)!important}
+body.ui2.skinon :is(.vh,h2,h3,.card h4,.sub),body.ui2.waifu :is(.vh,h2,h3,.card h4,.sub){font-family:var(--skinfont)!important}
+body.ui2.skinon #st-kpi b,body.ui2.waifu #st-kpi b,body.ui2.skinon .dlscore,body.ui2.waifu .dlscore,body.ui2.skinon header.top .kv b,body.ui2.waifu header.top .kv b{font-family:var(--skinnum)!important}
+body.ui2.skinon .rail .vtab .rl,body.ui2.waifu .rail .vtab .rl,body.ui2.skinon .kword,body.ui2.waifu .kword{font-family:var(--skinnav)!important}
+
+/* ---- SWEDEN (Will): Nordic signage. Condensed caps, square corners, yellow rule on top of every card, flag stripe under bars ---- */
+body.ui2.skin-sweden{--skinfont:"Barlow Condensed",sans-serif;--skinnum:"Barlow Condensed",sans-serif;--skinnav:"Barlow Condensed",sans-serif}
+body.ui2.skin-sweden :is(.vh,h2,h3){text-transform:uppercase;letter-spacing:.06em;font-weight:700!important}
+body.ui2.skin-sweden .rail .vtab .rl{text-transform:uppercase;letter-spacing:.08em;font-size:14.5px!important;font-weight:600!important}
+body.ui2.skin-sweden :is(.card,.acard,.setc,.stats div,#st-kpi>div){border-radius:4px!important;border:1px solid rgba(127,176,230,.2)!important;border-top:3px solid #fecc02!important}
+body.ui2.skin-sweden #st-kpi b{font-size:34px!important;font-weight:700!important;color:#fecc02}
+body.ui2.skin-sweden :is(button,select,input,.ddb){border-radius:4px!important}
+body.ui2.skin-sweden button.primary,body.ui2.skin-sweden .primary{background:#fecc02!important;color:#0b1a2c!important;font-weight:700}
+body.ui2.skin-sweden :is(.bt,.tbl) th{color:#fecc02!important;text-transform:uppercase;letter-spacing:.08em;font:700 12.5px "Barlow Condensed"!important}
+body.ui2.skin-sweden .rail{box-shadow:inset 0 -2px 0 rgba(47,111,181,.7)}
+body.ui2.skin-sweden .seg button.on,body.ui2.skin-sweden #ftabs button.on{background:#2f6fb5!important;color:#fff!important;box-shadow:none!important}
+
+/* ---- RAVE (Ryan): festival. Heavy wide type, neon edges, magenta/cyan, dark glass ---- */
+body.ui2.skin-rave{--skinfont:"Unbounded",sans-serif;--skinnum:"Unbounded",sans-serif;--skinnav:"Unbounded",sans-serif}
+body.ui2.skin-rave :is(.vh,h2,h3){font-weight:700!important;letter-spacing:.02em;text-transform:uppercase;background:linear-gradient(90deg,#5ff6ff,#ff4fb0);-webkit-background-clip:text;background-clip:text;color:transparent!important}
+body.ui2.skin-rave .rail .vtab .rl{font-size:12px!important;font-weight:500!important;letter-spacing:.04em;text-transform:uppercase}
+body.ui2.skin-rave :is(.card,.acard,.setc,.stats div,#st-kpi>div){border-radius:14px!important;border:1px solid rgba(32,240,255,.28)!important;box-shadow:0 0 0 1px rgba(255,62,165,.12),0 0 22px rgba(32,240,255,.08)!important}
+body.ui2.skin-rave #st-kpi b{font-size:25px!important;font-weight:700!important;color:#f4f5ff;text-shadow:0 0 14px rgba(32,240,255,.45)}
+body.ui2.skin-rave button.primary,body.ui2.skin-rave .primary{background:linear-gradient(90deg,#20f0ff,#ff3ea5)!important;color:#05060a!important;font-weight:700}
+body.ui2.skin-rave :is(.bt,.tbl) th{color:#5ff6ff!important;text-transform:uppercase;font:500 11px "Unbounded"!important;letter-spacing:.06em}
+body.ui2.skin-rave .seg button.on,body.ui2.skin-rave #ftabs button.on{background:rgba(255,62,165,.22)!important;color:#fff!important;box-shadow:inset 0 0 0 1px rgba(255,62,165,.6)!important}
+body.ui2.skin-rave.rave-live #st-kpi>div{animation:rvcard .46875s ease-out infinite}
+@keyframes rvcard{0%{box-shadow:0 0 0 1px rgba(255,62,165,.3),0 0 30px rgba(32,240,255,.22)}100%{box-shadow:0 0 0 1px rgba(255,62,165,.12),0 0 22px rgba(32,240,255,.06)}}
+
+/* ---- WAIFU (Ben): soft anime. Rounded type, pillowy cards, pink + sky blue, petals ---- */
+body.ui2.waifu{--skinfont:"M PLUS Rounded 1c",sans-serif;--skinnum:"M PLUS Rounded 1c",sans-serif;--skinnav:"M PLUS Rounded 1c",sans-serif}
+body.ui2.waifu :is(.vh,h2,h3){font-weight:700!important;color:#ffd1dc!important}
+body.ui2.waifu .vh:after{content:" ✿";color:#ff9ec4;font-size:.8em}
+body.ui2.waifu .rail .vtab .rl{font-weight:700!important;font-size:13.5px!important}
+body.ui2.waifu :is(.card,.acard,.setc,.stats div,#st-kpi>div){border-radius:22px!important;border:1.5px solid rgba(255,209,220,.35)!important;box-shadow:0 8px 26px rgba(255,158,196,.10)!important}
+body.ui2.waifu #st-kpi b{font-weight:700!important;color:#ffd1dc;font-size:28px!important}
+body.ui2.waifu :is(button,select,input,.ddb){border-radius:999px!important}
+body.ui2.waifu button.primary,body.ui2.waifu .primary{background:linear-gradient(180deg,#ffc2d6,#f08bb0)!important;color:#3a1426!important;font-weight:700}
+body.ui2.waifu :is(.bt,.tbl) th{color:#ffd1dc!important;font:700 12.5px "M PLUS Rounded 1c"!important}
+body.ui2.waifu .seg button.on,body.ui2.waifu #ftabs button.on{background:rgba(255,209,220,.25)!important;color:#fff!important;box-shadow:none!important}
+
+/* ---- LEGACY (King): cold light on black. Wide technical type, hairline frames with corner ticks, ivory + ice blue, nothing loud ---- */
+body.ui2.skin-legacy{--skinfont:"Michroma",sans-serif;--skinnum:"Michroma",sans-serif;--skinnav:"Michroma",sans-serif}
+body.ui2.skin-legacy :is(.vh,h2,h3){font-weight:400!important;letter-spacing:.18em;text-transform:uppercase;font-size:19px!important;color:#e9f6fb!important}
+body.ui2.skin-legacy .rail .vtab .rl{font-size:10.5px!important;letter-spacing:.16em;text-transform:uppercase;font-weight:400!important}
+body.ui2.skin-legacy .kword{letter-spacing:.32em!important;font-size:13px!important}
+body.ui2.skin-legacy .kmark{background:transparent!important;color:#e9f6fb!important;box-shadow:inset 0 0 0 1px #6fd3e6,0 0 12px rgba(111,211,230,.35);font-family:"Michroma"!important;font-size:15px!important}
+body.ui2.skin-legacy :is(.card,.acard,.setc,.stats div,#st-kpi>div){border-radius:2px!important;border:1px solid rgba(111,211,230,.22)!important;position:relative;
+  background-image:linear-gradient(#6fd3e6,#6fd3e6),linear-gradient(#6fd3e6,#6fd3e6),linear-gradient(#6fd3e6,#6fd3e6),linear-gradient(#6fd3e6,#6fd3e6)!important;
+  background-size:10px 1px,1px 10px,10px 1px,1px 10px!important;background-position:0 0,0 0,100% 100%,100% 100%!important;background-repeat:no-repeat!important}
+body.ui2.skin-legacy #st-kpi b{font-size:22px!important;letter-spacing:.04em;color:#e9f6fb;text-shadow:0 0 10px rgba(111,211,230,.35)}
+body.ui2.skin-legacy #st-kpi span,body.ui2.skin-legacy .card h4{font-family:"Michroma"!important;font-size:9.5px!important;letter-spacing:.2em!important;color:#8fa3ad!important}
+body.ui2.skin-legacy :is(button,select,input,.ddb){border-radius:2px!important}
+body.ui2.skin-legacy button.primary,body.ui2.skin-legacy .primary{background:transparent!important;color:#e9f6fb!important;box-shadow:inset 0 0 0 1px #6fd3e6,0 0 14px rgba(111,211,230,.25)!important;letter-spacing:.1em;text-transform:uppercase;font-size:12px}
+body.ui2.skin-legacy :is(.bt,.tbl) th{color:#6fd3e6!important;font:400 10px "Michroma"!important;letter-spacing:.16em;text-transform:uppercase}
+body.ui2.skin-legacy .seg button.on,body.ui2.skin-legacy #ftabs button.on{background:transparent!important;color:#e9f6fb!important;box-shadow:inset 0 -1px 0 #6fd3e6!important}
+body.ui2.skin-legacy .rail .vtab.on:after{background:#6fd3e6!important;box-shadow:0 0 8px rgba(111,211,230,.8)}
+body.ui2.skin-legacy .rail{box-shadow:inset 0 -1px 0 rgba(111,211,230,.35)}
+body.ui2.skin-legacy header.top{box-shadow:inset 0 -1px 0 rgba(111,211,230,.18)!important}
+body.ui2.skin-legacy #wpetals i{top:auto;width:140px;height:1px;border-radius:0;background:linear-gradient(90deg,transparent,rgba(191,239,255,.9),transparent);opacity:.35;animation-name:lgtrail}
+@keyframes lgtrail{0%{transform:translate3d(-30vw,var(--y,40vh),0)}100%{transform:translate3d(130vw,var(--y,40vh),0)}}

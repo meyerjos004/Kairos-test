@@ -696,7 +696,7 @@ async def main():
         check("release10: due only on 1.x", await E("/^1\\./.test(APP_VERSION) || !releaseDue() || /release=1/.test(location.search)"))
         check("conf: Stats card exists", await E("!!document.getElementById('st-conf')"))
         # KING_NIGHT1122: lock in #249 (KING_POSTAG drag TP/SL), #250 + #255 (KING_ARROWS blue/red, one arrow per candle+side)
-        await E("view('trade'); closeAll && closeAll()"); await pg.wait_for_timeout(200); await pg.click("#charts", position={"x": 160, "y": 120})
+        await E("document.querySelectorAll('.tourbox,.tourspot').forEach(x=>x.remove()); view('trade'); closeAll && closeAll()"); await pg.wait_for_timeout(200); await pg.click("#charts", position={"x": 260, "y": 160})
         for _k in "bbb": await pg.keyboard.press(_k)
         await pg.wait_for_timeout(250)
         _ar = await E("(panes[0].series.markers()||[]).filter(m=>m.shape==='arrowUp')")
@@ -718,7 +718,7 @@ async def main():
         check("arrows: sell arrow is red", bool(_dn) and all(m["color"] == "#ff4d5e" for m in _dn), _dn)
         await pg.keyboard.press("f")
         # KING_TOURFIX: every tour stop points at a visible control, and the card never covers it
-        _tr = await E("TOUR.map(s=>{const e=document.querySelector(s.sel);return !!(e&&e.offsetParent)})")
+        _tr = await E("TOUR.map(s=>{const e=document.querySelector(s.sel);if(!e)return false;const c=getComputedStyle(e);return e.getClientRects().length>0&&c.display!=='none'&&c.visibility!=='hidden'})")   # KING_FLAT: fixed elements have no offsetParent once the glass wrapper is gone
         check("tour: all stops have a visible target", all(_tr), _tr)
         _bad = []
         for _i in range(len(_tr)):

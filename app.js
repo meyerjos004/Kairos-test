@@ -65,14 +65,12 @@ const UPC = (a) => hexA(prefs.zUp || prefs.up, a), DNC = (a) => hexA(prefs.zDn |
 /* KING_MYTHEME (Nov 19): personal chart themes = background, grid, candles, drawing tools and position boxes together, each with dark + light.
    King picked Sand and slate; Will, Ryan and Ben are matched to their own chart screenshots. Anyone can switch in Chart settings → Symbol → Theme. */
 const CHART_THEMES = {
-  // KING_SOVEREIGN (Nov 22): King's own theme. Light "Ivory": paper + ink, hollow up candles, solid ink down candles (like a printed
-  // financial page and the OTHRYS O). Dark "Legacy": near-black, ivory up candles, hollow down candles edged in a thin cold light.
-  king: ["Sovereign", {
-    light: { bg: "#f7f5f0", grid: "#ece8df", txt: "#5b574f", up: "#f7f5f0", dn: "#1b1a17", bord: true, bu: "#1b1a17", bd: "#1b1a17", wu: "#1b1a17", wd: "#1b1a17", zUp: "#1f6f4e", zDn: "#a8343a", zA: .5, tools: { trend: "#1b1a17", ray: "#1b1a17", channel: "#1b1a17", hline: "#2f6fdb", hray: "#2f6fdb", rect: "#8a857b", fib: "#1b1a17", text: "#1b1a17", arrow: "#2f6fdb" } },
-    dark: { bg: "#0c0d0f", grid: "#16181b", txt: "#8d939a", up: "#ece8e0", dn: "#0c0d0f", bord: true, bu: "#ece8e0", bd: "#6fd3e6", wu: "#ece8e0", wd: "#6fd3e6", zUp: "#5bb48f", zDn: "#d36a70", zA: .5, tools: { trend: "#ece8e0", ray: "#ece8e0", channel: "#ece8e0", hline: "#6fd3e6", hray: "#6fd3e6", rect: "#8d939a", fib: "#ece8e0", text: "#ece8e0", arrow: "#6fd3e6" } } }],
   sandslate: ["Sand and slate", {
     dark: { bg: "#131210", grid: "#1e1d1a", txt: "#9a958b", up: "#e8d9b5", dn: "#6f8396", bord: false, zUp: "#e8d9b5", zDn: "#6f8396", tools: { trend: "#a9c7e0", ray: "#a9c7e0", channel: "#a9c7e0", hline: "#7fd1e0", hray: "#7fd1e0", rect: "#b7c4cf", fib: "#a9c7e0", text: "#efe9dc", arrow: "#efe9dc" } },
-    light: { bg: "#faf8f3", grid: "#ebe6db", txt: "#6f6a60", up: "#a8894a", dn: "#4f6274", bord: false, zUp: "#a8894a", zDn: "#4f6274", tools: { trend: "#2f6f9a", ray: "#2f6f9a", channel: "#2f6f9a", hline: "#0f8fa6", hray: "#0f8fa6", rect: "#8a99a8", fib: "#2f6f9a", text: "#2b2a26", arrow: "#2b2a26" } } }],
+    light: { bg: "#faf8f3", grid: "#ebe6db", txt: "#6f6a60", up: "#a8894a", dn: "#4f6274", bord: false, zUp: "#a8894a", zDn: "#4f6274", tools: { trend: "#2f6f9a", ray: "#2f6f9a", channel: "#2f6f9a", hline: "#0f8fa6", hray: "#0f8fa6", rect: "#8a99a8", fib: "#2f6f9a", text: "#2b2a26", arrow: "#2b2a26" } },
+    // KING_LEGACY (Nov 22): King's specialty theme (like Will's Sweden / Ben's Waifu). Original art made on King's PC: a night city drawn in
+    // cold light lines, a black car in light trails, a glowing horizon, the OTHRYS summit. Candles are dark glass edged in light.
+    legacy: { skin: "legacy", paint: "light", bg: "#07080a", grid: "#101317", txt: "#8d939a", up: "#e9f6fb", dn: "#6fd3e6", bord: false, bu: "#e9f6fb", bd: "#6fd3e6", wu: "#e9f6fb", wd: "#6fd3e6", zUp: "#5bb48f", zDn: "#d36a70", zA: .45, tools: { trend: "#e9f6fb", ray: "#e9f6fb", channel: "#e9f6fb", hline: "#6fd3e6", hray: "#6fd3e6", rect: "#8d939a", fib: "#e9f6fb", text: "#e9f6fb", arrow: "#6fd3e6" } } }],
   will: ["Will's gray", {
     // KING_SKINS (Nov 20): Will's hardcore Sweden mode. Art is original, made on King's PC.
     sweden: { skin: "sweden", paint: "cross", bg: "#0b1a2c", grid: "#17304a", txt: "#cfdbe8", up: "#fecc02", dn: "#2f6fb5", bord: true, bu: "#fecc02", bd: "#7fb0e6", wu: "#fecc02", wd: "#7fb0e6", zUp: "#fecc02", zDn: "#2f6fb5", zA: .5, tools: { trend: "#eef3f8", ray: "#eef3f8", channel: "#eef3f8", hline: "#eef3f8", hray: "#eef3f8", rect: "#7fb0e6", fib: "#eef3f8", text: "#ffffff", arrow: "#fecc02" } },
@@ -84,14 +82,15 @@ const CHART_THEMES = {
     light: { paint: "pill", bg: "#b8b8b8", grid: "#a9a9a9", txt: "#3a3a3a", up: "#097564", dn: "#0a0a0a", bord: false, zUp: "#097564", zDn: "#c0575f", tools: { trend: "#4259c1", ray: "#4259c1", channel: "#4259c1", hline: "#4259c1", hray: "#4259c1", rect: "#5a5a5a", fib: "#4259c1", text: "#111111", arrow: "#111111" } },
     dark: { paint: "pill", bg: "#1d2022", grid: "#272b2e", txt: "#8e969a", up: "#1aa58d", dn: "#3a3f43", bord: true, bu: "#1aa58d", bd: "#8e969a", wu: "#1aa58d", wd: "#8e969a", zUp: "#1aa58d", zDn: "#c0575f", tools: { trend: "#6f86e8", ray: "#6f86e8", channel: "#6f86e8", hline: "#6f86e8", hray: "#6f86e8", rect: "#8e969a", fib: "#6f86e8", text: "#e6eaec", arrow: "#e6eaec" } } }],
   ben: ["Ben's tan", {
-    light: { paint: "stamp", bg: "#c0b39b", grid: "#b6a991", txt: "#4a4438", up: "#ffffff", dn: "#3f3f3d", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#1a1a1a", ray: "#1a1a1a", channel: "#1a1a1a", hline: "#1a1a1a", hray: "#1a1a1a", rect: "#8a8578", fib: "#1a1a1a", text: "#1a1a1a", arrow: "#2f5fd0" } },
-    dark: { paint: "stamp", bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#c54557", zDn: "#8a8578", zA: .6, tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } },
+    light: { bg: "#c0b39b", grid: "#b6a991", txt: "#4a4438", up: "#ffffff", dn: "#3f3f3d", bord: true, bu: "#1a1a1a", bd: "#1a1a1a", wu: "#1a1a1a", wd: "#1a1a1a", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#1a1a1a", ray: "#1a1a1a", channel: "#1a1a1a", hline: "#1a1a1a", hray: "#1a1a1a", rect: "#8a8578", fib: "#1a1a1a", text: "#1a1a1a", arrow: "#2f5fd0" } },
+    dark: { bg: "#24211c", grid: "#2d2a24", txt: "#a39a88", up: "#efe6d4", dn: "#4a4740", bord: true, bu: "#efe6d4", bd: "#9a917f", wu: "#9a917f", wd: "#9a917f", zUp: "#c54557", zDn: "#8a8578", zA: .6, tools: { trend: "#e6dcc6", ray: "#e6dcc6", channel: "#e6dcc6", hline: "#e6dcc6", hray: "#e6dcc6", rect: "#8a8578", fib: "#e6dcc6", text: "#efe6d4", arrow: "#6f93ff" } },
     // KING_WAIFU (Ben, Nov 20): anime backdrop + picture candles. Art is original, made on King's PC.
     waifu: { waifu: true, bg: "#15161c", grid: "#2a2c34", txt: "#e8e2d6", up: "#ffd1dc", dn: "#8fa3c8", bord: true, bu: "#ffd1dc", bd: "#8fa3c8", wu: "#ffd1dc", wd: "#8fa3c8", zUp: "#c54557", zDn: "#757980", zA: .6, tools: { trend: "#f5efe2", ray: "#f5efe2", channel: "#f5efe2", hline: "#f5efe2", hray: "#f5efe2", rect: "#c9d3e6", fib: "#f5efe2", text: "#ffffff", arrow: "#8fb4ff" } } }] };
 // KING_SKINS: full-app looks tied to a friend's theme. waifu = Ben, sweden = Will, rave = Ryan.
 const SKINS = {
   waifu: { label: "Waifu", owner: "ben", dir: "waifu", bgs: ["bg1", "bg2", "bg3", "bg4"], names: ["Meadow", "Sunset", "Night", "Festival"], dim: 0.62, tint: "rgba(12,13,18," },
   sweden: { label: "Sweden", owner: "will", dir: "sweden", bgs: ["sw1", "sw2", "sw3", "sw4"], names: ["Fjord", "Aurora", "Stockholm", "Viking"], dim: 0.5, tint: "rgba(6,14,26," },
+  legacy: { label: "Legacy", owner: "sandslate", dir: "legacy", bgs: ["lg1", "lg2", "lg3", "lg4"], names: ["Grid city", "Night drive", "Horizon", "Summit"], dim: 0.5, tint: "rgba(3,4,7," },   // KING_LEGACY
   rave: { label: "Rave", owner: "ryan", dir: "rave", bgs: ["rv1", "rv2", "rv3", "rv4"], names: ["Main stage", "Warehouse", "The drop", "Decks"], dim: 0.55, tint: "rgba(3,4,8," } };
 function skinBg() { const k = prefs.skin || "waifu", K = SKINS[k]; const v = k === "waifu" ? prefs.waifuBg : (prefs.skinBg || {})[k]; return K.bgs.includes(v) ? v : K.bgs[0]; }
 const WAIFU = { bgs: ["bg1", "bg2", "bg3", "bg4"], up: ["up1", "up2", "up3", "up4", "up5", "up6", "up7", "up8"], dn: ["dn1", "dn2", "dn3", "dn4", "dn5", "dn6", "dn7", "dn8"], img: {} };
@@ -124,6 +123,9 @@ function candlePaint(p, g, W, kind) {
       if (bw >= 5 && h >= 6) { g.fillStyle = up ? B : Y; const t = Math.max(1, Math.round(Math.min(bw, h) * 0.2)); g.fillRect(x + Math.round(bw * 0.34), top, t, h); g.fillRect(x, top + Math.round(Math.min(h * 0.42, h - t)), bw, t); } }
     else if (kind === "neon") { const gr = g.createLinearGradient(0, top, 0, top + h); if (up) { gr.addColorStop(0, "#8ffcff"); gr.addColorStop(1, "#0aa6d6"); } else { gr.addColorStop(0, "#ff5cc1"); gr.addColorStop(1, "#a3125c"); }
       g.fillStyle = gr; if (bw >= 3) { g.shadowColor = up ? "rgba(32,240,255,.65)" : "rgba(255,62,165,.65)"; g.shadowBlur = Math.min(10, bw * 1.2); } g.fillRect(x, top, bw, h); g.shadowBlur = 0; }
+    else if (kind === "light") { const E = up ? "#e9f6fb" : "#6fd3e6"; g.fillStyle = up ? "rgba(233,246,251,.14)" : "rgba(111,211,230,.10)"; g.fillRect(x, top, bw, h);   // KING_LEGACY: dark glass edged in light
+      g.strokeStyle = E; g.lineWidth = 1; g.strokeRect(x + 0.5, top + 0.5, Math.max(1, bw - 1), Math.max(1, h - 1));
+      if (bw >= 4) { g.shadowColor = up ? "rgba(233,246,251,.75)" : "rgba(111,211,230,.75)"; g.shadowBlur = 6; g.fillStyle = E; g.fillRect(x, up ? top : top + h - 1, bw, 1.5); g.shadowBlur = 0; } }
     else { g.fillStyle = col; g.fillRect(x, top, bw, h); } }
   g.restore(); }
 function waifuSkins(p, g, W) {   // after the trade-box fills, so pictures sit on top of them like normal candles do
@@ -149,8 +151,8 @@ function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) 
 // KING_WAIFU: Ben gets a one-time heads-up the first time he opens a build that has Waifu mode
 function waifuHint() { const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase(); if (prefs.waifuHint || !/\bben\b|jinx/.test(n)) return;
   prefs.waifuHint = 1; savePrefs(); setTimeout(() => { try { toast("New for you: Waifu mode. Chart settings → Theme → Ben's tan → Waifu"); } catch (e) {} }, 4000); }
-function themeAutoPick() { waifuHint(); if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
-  const id = isAdmin ? "king" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true); }
+function themeAutoPick() { waifuHint(); if (prefs.chTheme && prefs.chTheme.id === "king") { applyChartTheme("sandslate", prefs.chTheme.mode === "light" ? "light" : "dark", true); return; } if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
+  const id = isAdmin ? "sandslate" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true); }
 let csTmp = null, csSnap = null; const execs = [], profs = {};
 const csG = () => Object.assign({}, CS_DEF, (prefs && prefs.cs) || {}, csTmp || {});
 /* ---------------- time (shown in New York time) ---------------- */
@@ -2020,7 +2022,7 @@ function saveSettings() {
   Object.assign(prefs, { bal: +$("s-bal").value, dll: +$("s-dll").value, ptg: +$("s-ptg").value, act: $("s-act").value, mdd: +$("s-mdd").value, fee: +$("s-fee").value, mfee: +$("s-mfee").value, opens: $("s-opens").checked, sess: $("s-sess").checked, up: $("s-up").value, dn: $("s-dn").value });
   document.querySelectorAll("[data-key]").forEach((i) => (prefs.keys[i.dataset.key] = i.value.toLowerCase()));
   const nm = $("s-name").value.trim(); if (me && nm && nm !== me.name) { me.name = nm; names[me.user_id] = nm; if (!DEMO) sb.from("profiles").update({ name: nm }).eq("user_id", me.user_id).then(() => {}); }
-  Object.assign(prefs, { sound: $("s-sound").checked, vol: +$("s-vol").value, haptics: $("s-hap").checked, splash: $("s-splash").checked, chartfx: $("s-chartfx") ? $("s-chartfx").checked : true, glass: $("s-glass") ? $("s-glass").checked : true, review: $("s-review").checked }); document.body.classList.toggle("glass", prefs.glass !== false); sfx("fill");
+  Object.assign(prefs, { sound: $("s-sound").checked, vol: +$("s-vol").value, haptics: $("s-hap").checked, splash: $("s-splash").checked, chartfx: $("s-chartfx") ? $("s-chartfx").checked : true, glass: $("s-glass") ? $("s-glass").checked : true, review: $("s-review").checked }); document.body.classList.toggle("glass", prefs.glass !== false && !document.body.classList.contains("ui2")); sfx("fill");
   if (acct) { acct.rules = { ...(acct.rules || {}), mdd: prefs.mdd, dll: prefs.dll, ptg: prefs.ptg }; db.updAccount(acct.id, { rules: acct.rules }).catch(() => {}); }
   panes.forEach((p) => p.series.applyOptions({ upColor: prefs.up, downColor: prefs.dn, wickUpColor: prefs.up, wickDownColor: prefs.dn })); try { csApplyAll(); } catch (e) {} savePrefs(); drawOpens(); repaintAll(); refresh(); $("s-msg").textContent = "Saved";
 }
@@ -2252,7 +2254,7 @@ const TOUR = [
   { sel: '[data-view="friends"]', t: "The group", d: "Leaderboard, challenges, shared trades and chat with the crew." },
   { sel: '[data-view="settings"]', t: "Make it yours", d: "Themes, hotkeys, and your own sounds for take profits and stop-outs. Found a bug? The fix box goes straight to the build queue." }];
 function tour(i = 0) { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); if (i >= TOUR.length) { prefs.toured = APP_VERSION; savePrefs(); toast("🎉 You're set. Have fun."); return setTimeout(dlPrompt, 900); }
-  view("trade"); const s = TOUR[i], el = document.querySelector(s.sel); if (!el || !el.offsetParent) return tour(i + 1); try { el.scrollIntoView({ block: "nearest", inline: "center" }); } catch (e) {} const r = el.getBoundingClientRect();   // KING_TOURFIX: on phones the toolbar scrolls sideways, bring the control into view first
+  view("trade"); const s = TOUR[i], el = document.querySelector(s.sel); if (!el || !el.getClientRects().length) return tour(i + 1); /* KING_FLAT: fixed elements (the order pad) have no offsetParent */ try { el.scrollIntoView({ block: "nearest", inline: "center" }); } catch (e) {} const r = el.getBoundingClientRect();   // KING_TOURFIX: on phones the toolbar scrolls sideways, bring the control into view first
   const sp = document.createElement("div"); sp.className = "tourspot"; Object.assign(sp.style, { left: r.left - 6 + "px", top: r.top - 6 + "px", width: r.width + 12 + "px", height: r.height + 12 + "px" }); document.body.appendChild(sp);
   const bx = document.createElement("div"); bx.className = "tourbox"; bx.innerHTML = `<div class="tk">${i + 1} / ${TOUR.length}</div><b>${s.t}</b><p>${s.d}</p><div class="tdots">${TOUR.map((_, k) => `<i class="${k === i ? "on" : k < i ? "done" : ""}"></i>`).join("")}</div><div class="tb2"><button class="ghost small" data-t="x">Skip</button>${i ? '<button class="small" data-t="b">Back</button>' : ""}<button class="primary small" data-t="n">${i === TOUR.length - 1 ? "Done" : "Next"}</button></div>`;
   document.body.appendChild(bx); const bw = 320, bh = bx.offsetHeight || 190; let x = r.right + 16, y = r.top; if (x + bw > innerWidth - 10) x = Math.max(10, r.left - bw - 16); if (x < 10 || r.width > innerWidth * 0.5) { x = Math.min(innerWidth - bw - 10, Math.max(10, r.left)); y = r.bottom + 14; } if (y + bh > innerHeight - 10) y = Math.max(10, r.top - bh - 14);
@@ -2308,7 +2310,7 @@ async function boot() {
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
   $("avatar").textContent = (user.email || "?")[0]; $("avatar").title = user.email;
-  document.body.classList.toggle("glass", prefs.glass !== false); applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); try { themeAutoPick(); } catch (e) {} loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); speedBestUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
+  document.body.classList.toggle("glass", prefs.glass !== false && !document.body.classList.contains("ui2")); applyTheme(prefs.theme); await loadAccts().catch(() => {}); await loadMe().catch(() => {}); try { themeAutoPick(); } catch (e) {} loadReese().catch(() => {}); try { initLive(); } catch (e) {} initChat().catch(() => {}); fillSettings(); lotsUI(); layMenu(); sideUI(); dockUI(); toolsUI(); buildPanes(); tfUI(); tgRestore(); favUI(); try { if (prefs.media) prefs.media.pop = false; railUI(); gridApply(); magUI(); plUI(); speedUI(); speedBestUI(); } catch (e) {} requestAnimationFrame(padUI); requestAnimationFrame(watchScales); mediaUI(); chkUI();
   if (!$("start").value) $("start").value = prefs.lastStart || new Date(Date.now() - 8 * 864e5).toISOString().slice(0, 10) + "T09:20";
   if (!DEMO) { if (prefs.lastSym) $("sym").value = prefs.lastSym; loadReplay().then(() => { const idle = window.requestIdleCallback || ((f) => setTimeout(f, 300)); idle(() => { ensureAhead().catch(() => {}); db.allTrades().then((t) => { jT = jT.length ? jT : t; }).catch(() => {}); }); }).catch(() => {}); }   // KING_PRELOAD: chart + next month + journal load behind the intro animation   // data loads itself on open (last session you replayed)
   if (!DEMO) notionUI().catch(() => {});
@@ -2527,7 +2529,7 @@ async function tplPersist() { if (DEMO || !user) return; try { await sb.from("pr
 async function tplApply(i) { const t = tplList()[i]; if (!t) return; const keepT = tplList();
   for (const [k, v] of Object.entries(JSON.parse(JSON.stringify(t.data)))) if (!TPL_SKIP.has(k)) prefs[k] = v;
   prefs.templates = keepT; prefs.tplOn = t.name;
-  if (DEMO) { try { applyTheme(prefs.theme); document.body.classList.toggle("glass", prefs.glass !== false); fillSettings(); } catch (e) {} return toast(`Template "${t.name}" (demo: reload not saved)`); }
+  if (DEMO) { try { applyTheme(prefs.theme); document.body.classList.toggle("glass", prefs.glass !== false && !document.body.classList.contains("ui2")); fillSettings(); } catch (e) {} return toast(`Template "${t.name}" (demo: reload not saved)`); }
   toast(`Switching to "${t.name}"…`); await tplPersist(); try { sessionStorage.setItem("kz-nointro", "1"); } catch (e) {} location.reload(); }
 $("tplbtn").onclick = () => { tplMenu(); $("tplmenu").classList.toggle("hidden"); };
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".tplwrap")) $("tplmenu").classList.add("hidden"); });
@@ -3743,7 +3745,7 @@ function waifuUI() { const k = prefs.skin || (prefs.waifu ? "waifu" : null), b =
   let fx = document.getElementById("wpetals"); if (fx && fx.dataset.k !== k) { fx.remove(); fx = null; }
   if (k && !fx) { fx = document.createElement("div"); fx.id = "wpetals"; fx.dataset.k = k; fx.setAttribute("aria-hidden", "true");
     if (k === "rave") { for (let i = 0; i < 6; i++) { const L = document.createElement("b"); L.style.cssText = `left:${8 + i * 17}%;animation-delay:-${(i * 0.7).toFixed(1)}s;--h:${i % 2 ? "#ff3ea5" : "#20f0ff"}`; fx.appendChild(L); } }
-    else { const n = k === "sweden" ? 40 : 14; for (let i = 0; i < n; i++) { const p = document.createElement("i"); const sc = 0.6 + Math.random() * 0.8;
+    else { const n = k === "sweden" ? 40 : k === "legacy" ? 7 : 14; for (let i = 0; i < n; i++) { const p = document.createElement("i"); const sc = 0.6 + Math.random() * 0.8; if (k === "legacy") p.style.setProperty("--y", (8 + Math.random() * 84).toFixed(1) + "vh");
       p.style.cssText = `left:${(Math.random() * 100).toFixed(1)}%;animation-duration:${((k === "sweden" ? 8 : 11) + Math.random() * 12).toFixed(1)}s;animation-delay:-${(Math.random() * 20).toFixed(1)}s;transform:scale(${sc.toFixed(2)});opacity:${(0.35 + Math.random() * 0.45).toFixed(2)}`;
       fx.appendChild(p); } }
     b.appendChild(fx); } }
@@ -3838,10 +3840,9 @@ addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && (e.key === 
 // KING_THEMEALL (Nov 22): a theme changes the whole site, not just the chart. Each theme/mode has a full palette for the new look;
 // it is set as inline CSS variables on <body> so it wins over Ivory/Onyx. Custom (no theme) = plain Ivory / Onyx.
 const THEME_UI = {
-  king: { light: { bg: "#f7f5f0", panel: "#fcfbf8", panel2: "#f3f0e9", txt: "#1b1a17", mut: "#5b574f", line: "20,18,14", ink: "#1b1a17", inktxt: "#fbf9f4" },
-          dark: { bg: "#0c0d0f", panel: "#131518", panel2: "#191c20", txt: "#ece8e0", mut: "#9aa0a6", line: "111,211,230", ink: "#ece8e0", inktxt: "#0c0d0f" } },
   sandslate: { light: { bg: "#faf8f3", panel: "#fffdf8", panel2: "#f3efe6", txt: "#2b2a26", mut: "#6f6a60", line: "43,42,38", ink: "#2b2a26", inktxt: "#faf8f3" },
-               dark: { bg: "#131210", panel: "#1b1a17", panel2: "#22201c", txt: "#ece5d6", mut: "#9a958b", line: "232,217,181", ink: "#e8d9b5", inktxt: "#131210" } },
+               dark: { bg: "#131210", panel: "#1b1a17", panel2: "#22201c", txt: "#ece5d6", mut: "#9a958b", line: "232,217,181", ink: "#e8d9b5", inktxt: "#131210" },
+               legacy: { bg: "#07080a", panel: "rgba(8,10,13,.80)", panel2: "rgba(14,17,22,.86)", txt: "#e9f6fb", mut: "#8fa3ad", line: "111,211,230", ink: "#e9f6fb", inktxt: "#07080a", blue: "#6fd3e6", up: "#7fe3c4", dn: "#ff7d8a" } },
   will: { light: { bg: "#ededed", panel: "#f6f6f6", panel2: "#e4e4e4", txt: "#1a1a1a", mut: "#5a5a5a", line: "26,26,26", ink: "#1a1a1a", inktxt: "#f6f6f6" },
           dark: { bg: "#333333", panel: "#3c3c3c", panel2: "#444444", txt: "#ededed", mut: "#b0b0b0", line: "255,255,255", ink: "#ededed", inktxt: "#2c2c2c" },
           sweden: { bg: "#081322", panel: "rgba(8,20,36,.82)", panel2: "rgba(12,28,48,.86)", txt: "#eef3f8", mut: "#a9bdd3", line: "254,204,2", ink: "#fecc02", inktxt: "#0b1a2c", blue: "#3d82cc", up: "#fecc02", dn: "#7fb0e6" } },
@@ -3869,6 +3870,7 @@ function ui2Apply() { const m = ui2Mode(), skin = !!(prefs.skin || prefs.waifu),
   if ($("s-ui2")) { const p = ui2Norm(prefs.ui2); $("s-ui2").value = p === "" ? "off" : p || "ivory"; }
   if (on && !skin && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== base && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][base]) { try { applyChartTheme(prefs.chTheme.id, base, true); } catch (e) {} }
   try { themeUI(on); } catch (e) {}
+  if (on) B.classList.remove("glass"); else B.classList.toggle("glass", prefs.glass !== false);   // KING_FLAT (Nov 22): no Apple-glass look in the new look; flat bars, frosted glass only on things that float
   ui2Banner(on ? m : ""); }
 function ui2Banner(m) { let b = document.getElementById("ui2banner"); const want = !!new URLSearchParams(location.search).get("ui2");
   if (!want || !m) { if (b) b.remove(); return; }
