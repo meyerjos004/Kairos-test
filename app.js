@@ -51,8 +51,8 @@ const DEF_TFS = ["5m", "1m", "15m", "1h", "4h", "30m", "1D", "15s"];
 const IND_DEF = { sbox: false, data: false, sess: false, pd: false, pw: false, eq: false, fvg: false, fvgTf: "1h", fvgTfs: ["1h"], ifvg: false, ob: false, h4: false, po3: false, htfc: [] };   // KING_INDOFF (Nov 14): all off until the user saves a chart template
 const DEF_KEYS = { buy: "b", sell: "s", joinbid: "j", joinask: "a", reverse: "r", flatten: "f", cancel: "c", close: "x", be: "e", trend: "t", hline: "h", vline: "v", rect: "z", long: "l", short: "k", measure: "m" };
 let user = null, isAdmin = false, features = {}, notionAuto = false;
-let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "1", tfs: DEF_TFS.slice(),
-  lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: true, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false, ind: { ...IND_DEF }, dockH: 150, favs: ["trend", "hline", "rect", "long", "short"], favShow: true, favPos: null, toolsPos: null, sync: { sym: false, int: true, cross: true, time: false, range: false } };
+let prefs = { bal: 50000, dll: 1000, ptg: 0, act: "block", mdd: 2000, fee: 4.5, mfee: 1.5, opens: true, sess: true, up: "#2bd4a0", dn: "#ff6b7a", sym: "NQ", layout: "2", tfs: DEF_TFS.slice(),
+  lots: 1, lotset: [1, 2, 3, 5, 10], slPts: 15, tpPts: 45, autoBr: false, byRisk: false, riskp: 1, trail: 0, keys: { ...DEF_KEYS }, pad: { show: true, x: null, y: null }, magnet: false, dockClosed: true, side: false, ind: { ...IND_DEF }, dockH: 150, favs: ["trend", "hline", "rect", "long", "short"], favShow: true, favPos: null, toolsPos: null, sync: { sym: false, int: true, cross: true, time: false, range: false } };
 
 // KING_CS2 settings defaults (see the Chart settings block near the end)
 const CS_DEF = { prevClr: false, body: true, bord: false, bu: "#2bd4a0", bd: "#ff6b7a", wick: true, wu: "", wd: "", prec: "def", title: true, titleK: "full", mstat: true, vals: true, chg: false, lbg: false, lbga: 40,
@@ -1003,7 +1003,7 @@ function guard() {
   /* KING_GUARD2 (King, Nov 14): DLL = flat + no more trades that replay day, red "DLL hit". Max DD = flat + account blown for the session, red "Account blown".
      Daily profit target = ask "continue this trade or exit?" (no auto-close) + "MAX WINNNNN" */
   if (prefs.dll && dp <= -prefs.dll) { if (!lockedNow()) { hit("DLL hit"); lock = { why: "DLL hit: no more trades this replay day", until: endOfTradingDay(nowT()) }; bigBanner("DLL hit", "dn"); } }
-  else if (prefs.mdd && peak - (balance() + openPnlAll()) >= prefs.mdd) { if (!lockedNow()) { hit("Max drawdown hit · Account blown"); lock = { why: "Account blown", until: Infinity }; bigBanner("Account blown", "dn"); } }
+  else if (prefs.mdd && peak - (balance() + openPnlAll()) >= prefs.mdd) { if (!lockedNow()) { hit("Max drawdown hit · Account blown"); lock = { why: "Account blown", until: Infinity }; bigBanner("Account blown", "dn"); setTimeout(blownNext, 1600); } }
   else if (prefs.ptg && dp >= prefs.ptg && guard.ptgDay !== sessDay(nowT())) { guard.ptgDay = sessDay(nowT()); bigBanner("MAX WINNNNN", "up"); prefs.winDays = (prefs.winDays || 0) + 1; savePrefs();
     if (pos.qty) { pause(); dlg(`<h3>Daily profit target hit 🎯</h3><p class="small">You're up ${money(dp)} today. Keep this trade running, or take it now?</p>`, () => { closeAll("Profit target"); refresh(); }); const ok = $("dl-ok"), x = $("dl-x"); if (ok) ok.textContent = "Exit now"; if (x) x.textContent = "Continue the trade"; } }
 }
@@ -1224,9 +1224,9 @@ $("dom").addEventListener("pointerup", (e) => {
 /* ---------------- panels ---------------- */
 function refresh() { try { duelTick(); } catch (e) {}
   const bal = balance(), op = openPnlAll(), rp = dayRpl(), cls = (v) => (v >= 0 ? "pos-up" : "pos-dn");
-  flashNum("bal", Math.round(bal)); flashNum("rpl", Math.round(rp)); $("bal").textContent = money(bal); $("rpl").textContent = money(rp); $("rpl").className = cls(rp); $("upl").textContent = money(op); $("upl").className = cls(op);
+  flashNum("bal", Math.round(bal)); flashNum("rpl", Math.round(rp)); roll($("bal"), money(bal)); roll($("rpl"), money(rp)); $("rpl").className = cls(rp); roll($("upl"), money(op)); $("upl").className = cls(op);
   let run = sess ? +sess.account_start : prefs.bal, peak = Math.max(run, acctPeak || 0); for (const t of hist) { run += +t.pnl || 0; peak = Math.max(peak, run); }
-  $("ddl").textContent = prefs.mdd ? money(prefs.mdd - (peak - (bal + op))) : "off";
+  roll($("ddl"), prefs.mdd ? money(prefs.mdd - (peak - (bal + op))) : "off");
   const L = lockedNow(); $("status").textContent = L ? (lock.until === Infinity ? "Locked" : "Locked · " + Math.max(0, Math.ceil((lock.until - nowT()) / 60)) + "m") : "Active"; $("status").classList.toggle("locked", L); $("status").title = L ? lock.why : "";
   const lp = last(); $("acctname").textContent = acct ? acct.name : `Replay · ${money(sess ? +sess.account_start : prefs.bal).replace(/\.00$/, "")}`;
   $("b-acct").innerHTML = `<table class="bt"><tr><th>Account</th><th>Start</th><th>Balance</th><th>RP&amp;L today</th><th>UP&amp;L</th><th>Drawdown left</th><th>Daily loss limit</th><th>Status</th></tr><tr><td>${$("acctname").textContent}</td><td>${money(sess ? +sess.account_start : prefs.bal)}</td><td>${money(bal)}</td><td class="${cls(rp)}">${money(rp)}</td><td class="${cls(op)}">${money(op)}</td><td>${$("ddl").textContent}</td><td>${prefs.dll ? money(prefs.dll) : "off"}</td><td>${$("status").textContent}</td></tr></table>`;
@@ -1365,15 +1365,18 @@ function stageLoad(id) { const r = $(id); if (!r || !r.classList.contains("kpre"
   const t0 = performance.now(), go = () => { if (r._mo) r._mo.disconnect(); r._mo = null; stageRun(id); };
   r._mo = new MutationObserver(() => { clearTimeout(r._kq); r._kq = setTimeout(go, performance.now() - t0 > 2200 ? 0 : 220); }); r._mo.observe(r, { childList: true, subtree: true, characterData: true });
   r._kq = setTimeout(go, 220); }
-function stageRun(id) {
+function stageRun(id) {   // KING_STAGE2 (Nov 22, King): empty widgets sweep in left to right (quick), then titles, then the data follows in the same order
   const r = $(id), cf = STAGE[id]; if (!r) return;
-  if (!r.classList.contains("kpre")) return; const tok = (r._ktok = (r._ktok || 0) + 1);
+  if (!r.classList.contains("kpre")) return; const tok = (r._ktok = (r._ktok || 0) + 1), IE = "cubic-bezier(.95,.05,.795,.035)";
   const W = [...r.querySelectorAll(cf.w)].filter((e) => e.getClientRects().length).map((e) => ({ e, b: e.getBoundingClientRect() }));
   W.sort((a, b) => Math.abs(a.b.top - b.b.top) > 12 ? a.b.top - b.b.top : a.b.left - b.b.left);
   W.forEach(({ e }) => { e.classList.add("ksk"); e.querySelectorAll(cf.t).forEach((t) => t.classList.add("ksk-t")); });
+  const gap = Math.min(28, 420 / Math.max(1, W.length)), shellEnd = W.length * gap + 260;
   r.classList.remove("kpre"); r.classList.add("kst0");
-  setTimeout(() => { if (r._ktok === tok) r.classList.add("kst1"); }, 260);
-  W.forEach(({ e }, i) => setTimeout(() => { if (r._ktok !== tok) return; e.classList.remove("ksk"); e.classList.add("kshow"); countUp(e, cf.t); if (i === W.length - 1) setTimeout(() => r.classList.remove("kst0", "kst1"), 900); }, 560 + i * 70));
+  W.forEach(({ e }, i) => { try { e.animate([{ opacity: 0, transform: "translateY(10px) scale(.985)" }, { opacity: 1, transform: "none" }], { duration: 260, delay: i * gap, easing: IE, fill: "backwards" }); } catch (x) {} });
+  setTimeout(() => { if (r._ktok === tok) r.classList.add("kst1"); }, shellEnd);
+  const dataAt = shellEnd + 200, dgap = Math.min(45, 700 / Math.max(1, W.length));
+  W.forEach(({ e }, i) => setTimeout(() => { if (r._ktok !== tok) return; e.classList.remove("ksk"); e.classList.add("kshow"); countUp(e, cf.t); e.querySelectorAll("canvas, svg").forEach((c) => { try { c.animate([{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }], { duration: 900, easing: "cubic-bezier(.95,.05,.795,.035)" }); } catch (x) {} });   /* KING_DRAWON */ if (i === W.length - 1) setTimeout(() => r.classList.remove("kst0", "kst1"), 900); }, dataAt + i * dgap));
 }
 function countUp(el, tsel) {
   const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => /\d/.test(n.nodeValue) && !n.parentElement.closest(tsel + ",.jcal,[class*=cal] header,script,style,svg,canvas,select,option,input,textarea,button") ? 1 : 2 });
@@ -1401,7 +1404,7 @@ function dialMake(inp) {
   const mn = () => +(inp.min || 0), mx = () => +(inp.max || 100), st = () => +(inp.step) || 1, span = () => Math.max(st(), mx() - mn());
   const PX = () => Math.max(1.6, Math.min(9, 220 / (span() / st())));   // pixels per step: small ranges turn chunky, big ones fine
   const draw = () => { const v = +inp.value, s = st(), px = PX(), off = ((v - mn()) / s) * px, R = d.firstChild;
-    R.style.setProperty("--px", px + "px"); R.style.setProperty("--maj", px * Math.max(1, Math.round(10 / Math.max(1, Math.round(span() / s / 100) || 1))) + "px"); R.style.backgroundPositionX = `calc(50% - ${off}px)`;
+    R.style.setProperty("--px", px + "px"); R.style.setProperty("--maj", px * Math.max(1, Math.round(10 / Math.max(1, Math.round(span() / s / 100) || 1))) + "px"); R.style.backgroundPositionX = `calc(50% + ${off}px)`;   /* KING_DIAL: the ruler moves with your finger */
     d.querySelector(".kdv").textContent = (inp.dataset.fmt === "%" ? Math.round(((v - mn()) / span()) * 100) + "%" : String(+v.toFixed(4)));
     d.setAttribute("aria-valuenow", v); d.setAttribute("aria-valuemin", mn()); d.setAttribute("aria-valuemax", mx());
     d.classList.toggle("atmin", v <= mn()); d.classList.toggle("atmax", v >= mx()); d._last = v; };
@@ -1430,7 +1433,7 @@ function popOn() { return document.body.classList.contains("ui2") && !matchMedia
 function popOrigin(el) { const r = el.getBoundingClientRect(), fresh = performance.now() - popPt.t < 1500, x = fresh ? popPt.x : r.left + r.width / 2, y = fresh ? popPt.y : r.top + r.height / 2;
   return { r, ox: Math.max(-40, Math.min(r.width + 40, x - r.left)), oy: Math.max(-40, Math.min(r.height + 40, y - r.top)) }; }
 function popIn(el) { if (!popOn() || el._popIn) return; const big = el.matches(".dlg,.csbox,#media,.wdlg"), small = el.matches(".toast,.tip,#qmtip,#rhtip");
-  requestAnimationFrame(() => { if (!el.isConnected || !el.getClientRects().length) return; const { ox, oy } = popOrigin(el); el._popO = { ox, oy };
+  requestAnimationFrame(() => { if (!el.isConnected || !el.getClientRects().length) return; keepOnScreen(el); const { ox, oy } = popOrigin(el); el._popO = { ox, oy };
     try { el._popIn = el.animate([{ transformOrigin: `${ox}px ${oy}px`, transform: `scale(${small ? .7 : big ? .55 : .35})`, opacity: 0 }, { transformOrigin: `${ox}px ${oy}px`, transform: "none", opacity: 1 }], { duration: small ? 220 : big ? 420 : 300, easing: POPE.in });
       el._popIn.onfinish = el._popIn.oncancel = () => (el._popIn = null); } catch (e) {} }); }
 function popOut(el, rect) { if (!popOn() || !rect || rect.width < 4 || el.matches(".toast,.tip,#qmtip,#rhtip")) return; const c = el.cloneNode(true); c.removeAttribute("id"); c.classList.remove("hidden"); c.querySelectorAll("[id]").forEach((x) => x.removeAttribute("id"));
@@ -1456,7 +1459,8 @@ addEventListener("pointermove", (e) => { CRIT.mx = e.clientX; CRIT.my = e.client
 function critSvg(c1, c2) { return `<svg viewBox="0 0 26 26"><g class="lg"><rect x="8" y="17" width="2.4" height="7" rx="1.2" fill="${c2}"/></g><g class="lg lg2"><rect x="15.6" y="17" width="2.4" height="7" rx="1.2" fill="${c2}"/></g>
   <path d="M13 3.5v-2.2" stroke="${c2}" stroke-width="1.6" stroke-linecap="round"/><circle cx="13" cy="1.2" r="1.5" fill="${c1}"/><rect x="3" y="4" width="20" height="15" rx="7.5" fill="${c1}"/>
   <g class="ey" style="transform-origin:13px 11px"><circle cx="9.6" cy="11" r="1.7" fill="#07070c"/><circle cx="16.4" cy="11" r="1.7" fill="#07070c"/></g></svg>`; }
-function critters(on) { if (on === CRIT.on) return; CRIT.on = on; let L = document.getElementById("critters");
+function critters(on) { try { window.kCritters && kCritters(on); } catch (e) {} return;   // KING_CRITTERS3D: real 3D walkers (k3d.js) replace the flat ones
+  if (on === CRIT.on) return; CRIT.on = on; let L = document.getElementById("critters");
   if (!on || matchMedia("(prefers-reduced-motion: reduce)").matches) { cancelAnimationFrame(CRIT.raf); CRIT.raf = 0; if (L) L.remove(); CRIT.list = []; return; }
   if (!L) { L = document.createElement("div"); L.id = "critters"; L.setAttribute("aria-hidden", "true"); document.body.appendChild(L); }
   const C = [["#7cc4ff", "#3b6fb0"], ["#5af0b0", "#1f8f63"], ["#ff8ab0", "#b0476d"], ["#ffd36b", "#a07c22"]];
@@ -1472,6 +1476,66 @@ function critters(on) { if (on === CRIT.on) return; CRIT.on = on; let L = docume
       c.el.style.transform = `translate3d(${c.x.toFixed(1)}px,${(gy + c.y).toFixed(1)}px,0) scale(${(c.vx < 0 ? -1 : 1) * c.s},${c.s})`; }
     CRIT.raf = requestAnimationFrame(loop); };
   CRIT.raf = requestAnimationFrame(loop); }
+try { $("speed").addEventListener("change", () => { prefs.spd = $("speed").value; savePrefs(); }); } catch (e) {}   // KING_DEF1122: remember replay speed
+// KING_BLOWNNEXT (Nov 22, King): blowing an account no longer ends the replay. That account stays blown; you keep going on the
+// replay account or a brand-new session with the same rules, from the same spot in the day.
+function blownNext() { if (!lock || lock.why !== "Account blown") return; const was = acct; try { pause(); } catch (e) {}
+  const html = `<h3>${was ? esc(was.name) + " is blown" : "Replay account blown"}</h3><p class="small">That account stays blown. Keep replaying from right here on a fresh one?</p>`;
+  dlg(html, () => { lock = null; if (was) pickAcct(null); else newSessionDlg(); refresh(); });
+  const ok = $("dl-ok"), x = $("dl-x"); if (x) x.textContent = "Stop here"; if (ok) ok.textContent = was ? "Continue on replay account" : "Start a new session";
+  if (was && ok) { const nb = document.createElement("button"); nb.textContent = "New session, same rules"; ok.before(nb); nb.onclick = () => { $("dlg").classList.add("hidden"); lock = null; newSessionDlg(); }; } }
+// KING_ONSCREEN (Nov 22, King): anything that pops out (media window, pad, menus, dialogs) always lands fully inside the window,
+// and gets pulled back in when the window is resized.
+function keepOnScreen(el) { if (!el || !el.isConnected || !el.getClientRects().length) return; const cs = getComputedStyle(el); if (cs.position !== "fixed" && cs.position !== "absolute") return;
+  const r = el.getBoundingClientRect(), m = 8, W = innerWidth, H = innerHeight; let dx = 0, dy = 0;
+  if (r.right > W - m) dx = W - m - r.right; if (r.left + dx < m) dx = m - r.left; if (r.bottom > H - m) dy = H - m - r.bottom; if (r.top + dy < m) dy = m - r.top;
+  if (!dx && !dy) return; const L = parseFloat(cs.left), T = parseFloat(cs.top);
+  if (!isNaN(L)) { el.style.left = L + dx + "px"; if (cs.right !== "auto") el.style.right = "auto"; } if (!isNaN(T)) { el.style.top = T + dy + "px"; if (cs.bottom !== "auto") el.style.bottom = "auto"; } }
+addEventListener("resize", () => { clearTimeout(keepOnScreen.t); keepOnScreen.t = setTimeout(() => document.querySelectorAll(POPSEL + ",#pad,#favbar:not(.docked)").forEach(keepOnScreen), 120); });
+// KING_ROLL (Nov 22, King): money in the top bar rolls digit by digit like an odometer instead of blinking to the new number.
+function roll(el, txt) { if (!el) return; if (el._roll === txt) return; el._roll = txt; if (!document.body.classList.contains("ui2") || txt.length > 18) { el.textContent = txt; return; }
+  const ch = [...txt], old = el._rch || []; if (old.length !== ch.length || ch.some((c, i) => /\d/.test(c) !== /\d/.test(old[i] || ""))) {
+    el.innerHTML = ch.map((c) => /\d/.test(c) ? `<span class="rd" style="--d:${c}"><i>${c}</i></span>` : `<span class="rx">${c === " " ? "&nbsp;" : esc(c)}</span>`).join(""); el._rch = ch; return; }
+  const kids = el.children; ch.forEach((c, i) => { const k = kids[i]; if (!k) return; if (/\d/.test(c)) { if (k.firstChild.textContent !== c) { k.firstChild.textContent = c; k.style.setProperty("--d", c); } } else if (k.textContent !== c) k.textContent = c; }); el._rch = ch; }
+// KING_MORPH (Nov 22, King): switching pages morphs: the new page grows out of the tab you clicked (View Transitions), inExpo.
+let morphFrom = null; document.addEventListener("pointerdown", (e) => { const t = e.target.closest && e.target.closest(".vtab,[data-view]"); if (t) { const r = t.getBoundingClientRect(); morphFrom = { x: r.left + r.width / 2, y: r.top + r.height / 2, t: performance.now() }; } }, true);
+function morphView(fn) { const ok = document.startViewTransition && document.body.classList.contains("ui2") && !matchMedia("(prefers-reduced-motion: reduce)").matches && !navigator.webdriver && !$("kbuild") && !introOn;
+  if (!ok) return fn(); const f = morphFrom && performance.now() - morphFrom.t < 1200 ? morphFrom : { x: innerWidth / 2, y: 60 };
+  document.documentElement.style.setProperty("--mx0", f.x + "px"); document.documentElement.style.setProperty("--my0", f.y + "px");
+  try { morphView.on = 1; const vt = document.startViewTransition(() => { fn(); }); vt.finished.finally(() => (morphView.on = 0)); } catch (e) { morphView.on = 0; fn(); } }
+// KING_STATDETAIL (Nov 22, King): everything on Stats is clickable. A tile or card grows (morphs) into a full detail page for it:
+// the number, a trade-by-trade chart that draws itself in, breakdowns (weekday, hour, long/short, symbol) and the trades behind it.
+function statPick(title) { const T = window.stTr || [], t = (title || "").toLowerCase();
+  if (/win/.test(t) && !/rate|streak/.test(t)) return [T.filter(isW), "Winning trades"]; if (/loss/.test(t) && !/streak/.test(t)) return [T.filter(isL), "Losing trades"];
+  if (/avg r|r per trade|spread/.test(t)) return [T.filter((x) => x.r != null), "Trades with an R value"]; if (/confidence/.test(t)) return [T.filter((x) => x.conf != null), "Rated trades"];
+  return [T, "All trades in this view"]; }
+function statDetail(card) {
+  const v = $("v-stats"); if (!v || !card) return; const title = (card.querySelector("h4, span") || {}).textContent || "Detail", big = (card.querySelector("b") || {}).innerHTML || "";
+  const [L, sub] = statPick(title), net = L.reduce((s, x) => s + (+x.pnl || 0), 0), w = L.filter(isW).length, l = L.filter(isL).length;
+  const grp = (f) => { const m = {}; for (const x of L) { const k = f(x); (m[k] = m[k] || []).push(x); } return Object.entries(m).map(([k, a]) => [k, a.length, a.reduce((s, x) => s + (+x.pnl || 0), 0), a.filter(isW).length]); };
+  const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], ny = (x) => new Date((x.t_entry || x.t_exit) * 1000 + (loc ? 0 : 0));
+  const by = (name, rows) => `<div class="sdg"><h5>${name}</h5><table class="bt">${rows.sort((a, b) => b[2] - a[2]).map(([k, n, p, ww]) => `<tr><td>${esc(String(k))}</td><td>${n}</td><td>${n ? Math.round((100 * ww) / n) : 0}%</td><td class="${p >= 0 ? "pos-up" : "pos-dn"}">${money(p)}</td></tr>`).join("")}</table></div>`;
+  const hr = (x) => { try { return new Date(loc(x.t_entry || x.t_exit) * 1000).getUTCHours() + ":00"; } catch (e) { return "?"; } }, dw = (x) => { try { return DOW[new Date(loc(x.t_entry || x.t_exit) * 1000).getUTCDay()]; } catch (e) { return "?"; } };
+  const mx = Math.max(1, ...L.map((x) => Math.abs(+x.pnl || 0))), bw = Math.max(2, Math.min(18, 900 / Math.max(1, L.length)));
+  const bars = L.map((x, i) => { const h = Math.max(1, (Math.abs(+x.pnl || 0) / mx) * 80), up = (+x.pnl || 0) >= 0; return `<rect x="${i * (bw + 2)}" y="${up ? 90 - h : 90}" width="${bw}" height="${h}" rx="${Math.min(3, bw / 3)}" class="${up ? "sdu" : "sdd"}" style="--i:${i}"/>`; }).join("");
+  const rows = L.slice().reverse().slice(0, 80).map((x, i) => `<tr data-i="${L.length - 1 - i}"><td>${fmt ? esc(fmt(loc(x.t_entry || x.t_exit)).replace("T", " ")) : ""}</td><td>${esc(x.symbol || "")}</td><td>${(x.dir === "long" || x.dir > 0) ? "Long" : "Short"}</td><td>${x.r != null ? (+x.r).toFixed(2) + "R" : "—"}</td><td class="${(+x.pnl || 0) >= 0 ? "pos-up" : "pos-dn"}">${money(+x.pnl || 0)}</td></tr>`).join("");
+  let d = $("stdet"); if (!d) { d = document.createElement("section"); d.id = "stdet"; v.appendChild(d); }
+  d.innerHTML = `<div class="sdh"><button class="small" id="sd-back">← Stats</button><div><div class="muted small">${esc(sub)}</div><h3>${esc(title)}</h3></div><b class="sdbig">${big}</b></div>
+    <div class="sdk"><div><span>Trades</span><b>${L.length}</b></div><div><span>Net</span><b class="${net >= 0 ? "pos-up" : "pos-dn"}">${money(net)}</b></div><div><span>Win rate</span><b>${w + l ? Math.round((100 * w) / (w + l)) : 0}%</b></div><div><span>Average</span><b>${L.length ? money(net / L.length) : "—"}</b></div></div>
+    ${card.matches(".card") ? `<div class="card sdclone"></div>` : ""}
+    <div class="card"><h5>Trade by trade</h5><svg class="sdbars" viewBox="0 0 ${Math.max(10, L.length * (bw + 2))} 180" preserveAspectRatio="none"><line x1="0" x2="100%" y1="90" y2="90" class="sdz"/>${bars}</svg></div>
+    <div class="sdgrid">${by("By weekday", grp(dw))}${by("By hour (New York)", grp(hr))}${by("Long vs short", grp((x) => (x.dir === "long" || x.dir > 0) ? "Long" : "Short"))}${by("By symbol", grp((x) => x.symbol || "?"))}</div>
+    <div class="card"><h5>The trades <span class="muted small">(newest first${L.length > 80 ? ", latest 80" : ""}; click one to open it)</span></h5><table class="bt sdtr"><tr><th>When</th><th>Symbol</th><th>Side</th><th>R</th><th>P&amp;L</th></tr>${rows}</table></div>`;
+  if (card.matches(".card")) { const c = card.cloneNode(true); c.querySelectorAll("[id]").forEach((x) => x.removeAttribute("id")); const sc = d.querySelector(".sdclone"); sc.innerHTML = c.innerHTML; if (card.querySelector("canvas")) sc.remove(); }
+  d.querySelector("#sd-back").onclick = () => statClose(); d.querySelectorAll(".sdtr tr[data-i]").forEach((tr) => (tr.onclick = () => { try { tradeDetail(L[+tr.dataset.i]); } catch (e) {} }));
+  const open = () => { v.classList.add("sdopen"); d.scrollTop = 0; v.scrollTop = 0; };
+  if (document.startViewTransition && !navigator.webdriver) { card.style.viewTransitionName = "kstat"; const vt = document.startViewTransition(() => { card.style.viewTransitionName = ""; d.style.viewTransitionName = "kstat"; open(); }); vt.finished.finally(() => (d.style.viewTransitionName = "")); }
+  else open(); try { sfx("open"); } catch (e) {} }
+function statClose() { const v = $("v-stats"), d = $("stdet"); if (!v || !v.classList.contains("sdopen")) return; try { sfx("close"); } catch (e) {}
+  if (document.startViewTransition && !navigator.webdriver) { d.style.viewTransitionName = "kstat"; document.startViewTransition(() => { d.style.viewTransitionName = ""; v.classList.remove("sdopen"); }); } else v.classList.remove("sdopen"); }
+document.addEventListener("click", (e) => { const v = $("v-stats"); if (!v || !v.contains(e.target) || v.classList.contains("sdopen")) return; if (e.target.closest("select,button,input,a,.qm,label,#stdet")) return;
+  const c = e.target.closest("#st-kpi > div, #v-stats > .card, #v-stats .grid3 > .card"); if (c) statDetail(c); });
+addEventListener("keydown", (e) => { if (e.key === "Escape") statClose(); });
 // KING_NAVLINE (Nov 22): one underline that slides between the top-nav pages (the per-tab line can't move)
 function navLine(instant) { const R = $("rail"); if (!R) return; let L = $("navline"); if (!L) { L = document.createElement("i"); L.id = "navline"; R.appendChild(L); }
   const on = R.querySelector(".vtab.on"); if (!on || !document.body.classList.contains("ui2-iv") || innerWidth <= 900) { L.style.opacity = "0"; return; }
@@ -1549,17 +1613,26 @@ function applyTheme(k) { for (const [id, v] of Object.entries(prefs.myThemes || 
   if (false) $("s-themes").innerHTML = Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="th ${id === prefs.theme ? "on" : ""}" data-th="${id}"><i style="background:${c["--bg"]};box-shadow:inset 0 0 0 1px ${c["--line"]}"><b style="background:${c["--acc"]}"></b><b style="background:${c["--acc2"]}"></b></i>${esc(nm)}</button>`).join(""); }
 
 /* ---------------- quick trade review (rules followed? mistakes) ---------------- */
-const MISTAKES = ["No setup", "Chased", "FOMO", "Early exit", "Moved stop", "Too big", "Revenge", "Fought the trend", "Ignored ES", "Off my hours"];
+const MISTAKES = ["FOMO", "Revenge", "Gamble", "Chased", "Moved stop"];   // KING_RATE2 (Nov 22, King): the few that matter
+const GRADES = ["A+", "A", "B", "C", "D", "F"];
 let revQ = [];
 function reviewCard(t) { if (prefs.review === false || !t || !t.id) return; revQ.push(t); if (revQ.length === 1) showReview(); }
+// KING_RATE2: rate a trade with colored buttons (no emoji): rules yes/no, a letter grade, the mistakes that apply, how sure you were, and a note.
 function showReview() { const t = revQ[0], el = $("review"); if (!t) return el.classList.add("hidden");
-  el.innerHTML = `<div class="ah"><b>Rate that ${t.dir > 0 ? "long" : "short"} <span class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</span></b><button class="pb" id="rv-x" title="Skip">×</button></div>
-    ${mfeLine(t)}<div class="small">Did you follow your rules?</div><div class="row"><button data-ok="1" class="small">✅ Yes</button><button data-ok="0" class="small">❌ No</button></div>
-    <div class="chips">${MISTAKES.map((m) => `<button class="chip" data-mk="${m}">${m}</button>`).join("")}</div><div class="small">How sure were you going in? <i class="qm" data-help="1 = guess, 5 = A+ setup. Stats shows if your confident trades actually pay more.">?</i></div><div class="row conf">${[1,2,3,4,5].map((n) => `<button class="small" data-cf="${n}">${n}</button>`).join("")}</div><div class="row"><button id="rv-save" class="primary small">Save</button><button id="rv-card" class="small ghost" title="Make a share card image of this trade">🖼 Card</button></div>`;
-  el.classList.remove("hidden"); el.dataset.ok = ""; el.dataset.cf = ""; el.onclick = (e) => { const b = e.target.closest("button"); if (!b) return;
-    if (b.id === "rv-x") { revQ.shift(); return showReview(); } if (b.id === "rv-card") return shareCard(t, true); if (b.dataset.ok != null) { el.dataset.ok = b.dataset.ok; el.querySelectorAll("[data-ok]").forEach((x) => x.classList.toggle("on", x === b)); }
-    if (b.dataset.mk) b.classList.toggle("on"); if (b.dataset.cf) { el.dataset.cf = b.dataset.cf; el.querySelectorAll("[data-cf]").forEach((x) => x.classList.toggle("on", x === b)); }
-    if (b.id === "rv-save") { const ch = { rules_ok: el.dataset.ok === "" ? null : el.dataset.ok === "1", mistakes: [...el.querySelectorAll(".chip.on")].map((x) => x.dataset.mk) }; if (el.dataset.cf) ch.tags = (t.tags || []).filter((x) => !/^conf:/.test(x)).concat("conf:" + el.dataset.cf); /* KING_CONF */ Object.assign(t, ch); db.review(t.id, ch); if (ch.rules_ok) addXp(5); revQ.shift(); showReview(); } }; }
+  el.innerHTML = `<div class="ah"><b>Rate that ${t.dir > 0 || t.dir === "long" ? "long" : "short"} <span class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</span></b><button class="pb" id="rv-x" title="Skip" aria-label="Skip">×</button></div>
+    ${mfeLine(t)}<div class="rvl">Followed your rules?</div><div class="rvrow rvyn"><button data-ok="1" class="rvy">Yes</button><button data-ok="0" class="rvn">No</button></div>
+    <div class="rvl">Grade</div><div class="rvrow rvgr">${GRADES.map((g, i) => `<button data-gr="${g}" style="--gi:${i}">${g}</button>`).join("")}</div>
+    <div class="rvl">What happened</div><div class="rvrow rvmk">${MISTAKES.map((m) => `<button data-mk="${m}">${m}</button>`).join("")}</div>
+    <div class="rvl">How sure were you going in? <i class="qm" data-help="1 = guess, 5 = A+ setup. Stats shows if your confident trades actually pay more.">?</i></div><div class="rvrow rvcf">${[1, 2, 3, 4, 5].map((n) => `<button data-cf="${n}" style="--ci:${n}">${n}</button>`).join("")}</div>
+    <textarea id="rv-note" rows="2" maxlength="400" placeholder="Note (optional)">${esc(t.notes || "")}</textarea>
+    <div class="rvrow rvend"><button id="rv-card" class="small" title="Make a share card image of this trade">Share card</button><button id="rv-save" class="primary">Save</button></div>`;
+  el.classList.remove("hidden"); el.dataset.ok = ""; el.dataset.cf = ""; el.dataset.gr = ""; el.onclick = (e) => { const b = e.target.closest("button"); if (!b) return;
+    if (b.id === "rv-x") { revQ.shift(); return showReview(); } if (b.id === "rv-card") return shareCard(t, true);
+    const one = (k) => { el.dataset[k] = b.dataset[k]; el.querySelectorAll(`[data-${k}]`).forEach((x) => x.classList.toggle("on", x === b)); };
+    if (b.dataset.ok != null) one("ok"); if (b.dataset.gr) one("gr"); if (b.dataset.cf) one("cf"); if (b.dataset.mk) b.classList.toggle("on");
+    if (b.id === "rv-save") { const ch = { rules_ok: el.dataset.ok === "" ? null : el.dataset.ok === "1", mistakes: [...el.querySelectorAll("[data-mk].on")].map((x) => x.dataset.mk) };
+      let tags = (t.tags || []).filter((x) => !/^(conf|grade):/.test(x)); if (el.dataset.cf) tags.push("conf:" + el.dataset.cf); if (el.dataset.gr) tags.push("grade:" + el.dataset.gr); ch.tags = tags;   /* KING_CONF */
+      const note = ($("rv-note").value || "").trim(); if (note !== (t.notes || "")) ch.notes = note; Object.assign(t, ch); db.review(t.id, ch); if (ch.rules_ok) addXp(5); revQ.shift(); showReview(); } }; }
 
 /* ---------------- mystery day (blind, random) + candle stepping ---------------- */
 let blind = null;
@@ -1658,6 +1731,7 @@ async function renderStats() {
   if (A === "none") tr = tr.filter((t) => !t.account_id); else if (A) tr = tr.filter((t) => t.account_id === A); if (S) tr = tr.filter((t) => t.symbol === S);
   if (D && tr.length) { const end = tr[tr.length - 1].t_exit; tr = tr.filter((t) => t.t_exit >= end - D * 86400); }
   { const v = $("v-stats"); v.classList.toggle("st-empty", !tr.length); let e = $("st-none"); if (!e) { e = document.createElement("div"); e.id = "st-none"; e.className = "empty"; e.textContent = "Trade a few replay days and your stats fill in here."; v.querySelector(".toolbar").after(e); } }   // KING_STEMPTY (night Nov 22, waits on King's yes): one line instead of six "No trades yet" cards
+  window.stTr = tr;   // KING_STATDETAIL: the detail view drills into the same trades
   const n = tr.length, W = tr.filter(isW), L = tr.filter(isL), BEs = tr.filter(isBE), sum = (a) => a.reduce((s, t) => s + (+t.pnl || 0), 0), gw = sum(W), gl = -sum(L);
   let run = 0, pk = 0, dd = 0, cw = 0, cl = 0, bw = 0, bl = 0; const eq = [];
   for (const t of tr) { run += +t.pnl || 0; pk = Math.max(pk, run); dd = Math.max(dd, pk - run); if (isW(t)) { cw++; cl = 0; } else if (isL(t)) { cl++; cw = 0; } bw = Math.max(bw, cw); bl = Math.max(bl, cl); eq.push({ time: t.t_exit, value: +run.toFixed(2) }); }
@@ -2128,22 +2202,28 @@ async function newChallenge() { if (!nowT()) return toast("Load a replay first, 
   view("friends"); ftab("ch"); toast("Challenge posted"); }
 async function takeChallenge(c) { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); $("sym").value = c.symbol; $("start").value = fmt(loc(c.start_ts) + 60).replace(" ", "T"); view("trade"); await loadReplay(); }
 /* share card: a KAIROS-branded image of a trade (P&L, R, side, times, the chart), to download or copy into a chat */
-async function shareCard(t, withChart) { const W = 1200, H = 630, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
-  const bg = g.createLinearGradient(0, 0, W, H); bg.addColorStop(0, "#0b0a12"); bg.addColorStop(1, "#05050a"); g.fillStyle = bg; g.fillRect(0, 0, W, H);
-  const uv = g.createRadialGradient(W * 0.78, H * 0.3, 10, W * 0.78, H * 0.3, 520); uv.addColorStop(0, "rgba(139,92,246,.30)"); uv.addColorStop(1, "rgba(139,92,246,0)"); g.fillStyle = uv; g.fillRect(0, 0, W, H);
-  const img = (src) => new Promise((ok) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = src; });
-  const lock = await img("brand/kairos-lockup.svg"); if (lock) g.drawImage(lock, 56, 50, 380, 380 * lock.height / lock.width || 80);
-  if (withChart && panes[active]) { try { const sc = panes[active].chart.takeScreenshot(), cw = 560, ch = (sc.height / sc.width) * cw; g.save(); g.beginPath(); g.roundRect(W - cw - 56, 120, cw, Math.min(ch, 440), 18); g.clip(); g.drawImage(sc, W - cw - 56, 120, cw, ch); g.restore(); g.strokeStyle = "rgba(185,140,255,.35)"; g.lineWidth = 2; g.beginPath(); g.roundRect(W - cw - 56, 120, cw, Math.min(ch, 440), 18); g.stroke(); } catch (e) {} }
-  const up = +t.pnl >= 0, side = t.dir > 0 ? "LONG" : "SHORT";
-  g.font = "600 22px Geist, sans-serif"; g.fillStyle = "#a98bff"; g.fillText(`${side} · ${t.symbol} · ${t.qty} lot${t.qty > 1 ? "s" : ""}`, 60, 200);
-  g.font = "300 104px Geist, sans-serif"; g.fillStyle = up ? "#4ade80" : "#f87171"; g.fillText((up ? "+" : "−") + money(Math.abs(+t.pnl)).replace("-", ""), 54, 312);
-  g.font = "300 40px Geist, sans-serif"; g.fillStyle = "#efedf6"; if (t.r != null) g.fillText(`${t.r > 0 ? "+" : ""}${t.r}R`, 60, 372);
-  g.font = "400 21px Geist, sans-serif"; g.fillStyle = "#8d8b9c"; g.fillText(`Entry ${px2(t.entry)}  →  Exit ${px2(t.exit)}`, 60, 430);
-  g.fillText(blind && !blind.revealed ? "Mystery day" : `${fmt(loc(t.t_entry))} NY`, 60, 464);
-  g.font = "500 15px Geist, sans-serif"; g.fillStyle = "#5f5d73"; g.fillText("Replayed bar by bar on KAIROS OS · not live trading", 60, H - 46);
+async function shareCard(t, withChart) {   // KING_CARD2 (Nov 22, King): the share card uses the new K mark + wordmark and the theme you're in
+  const W = 1200, H = 630, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  const cs = getComputedStyle(document.body), V = (k, d) => { const v = (cs.getPropertyValue(k) || "").trim(); return v ? cssCol(v) : d; };
+  const bgc = V("--bg", "#121110"), pan = V("--panel", "#1a1917"), txt = V("--txt", "#ece8e0"), mut = V("--mut", "#a7a196"), ink = V("--ink", "#ece8e0"), inkt = V("--inktxt", "#121110"), upc = V("--up", "#5bb48f"), dnc = V("--dn", "#d36a70"), line = V("--line", "rgba(255,255,255,.08)");
+  const serif = (cs.getPropertyValue("--serif") || "Newsreader, Georgia, serif").trim(), mark = (cs.getPropertyValue("--mark") || '"Bodoni Moda", Georgia, serif').trim();
+  try { await Promise.all([document.fonts.load(`500 40px ${mark}`), document.fonts.load(`500 100px ${serif}`)]); } catch (e) {}
+  g.fillStyle = bgc; g.fillRect(0, 0, W, H); const sh = g.createRadialGradient(W * 0.8, H * 0.2, 10, W * 0.8, H * 0.2, 640); sh.addColorStop(0, pan); sh.addColorStop(1, bgc); g.fillStyle = sh; g.fillRect(0, 0, W, H);
+  g.strokeStyle = line; g.lineWidth = 2; g.beginPath(); g.roundRect(24, 24, W - 48, H - 48, 26); g.stroke();
+  g.fillStyle = ink; g.beginPath(); g.roundRect(60, 56, 60, 60, 15); g.fill(); g.fillStyle = inkt; g.font = `600 38px ${mark}`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("K", 90, 88);
+  g.textAlign = "left"; g.fillStyle = ink; g.font = `500 30px ${mark}`; try { g.letterSpacing = "10px"; } catch (e) {} g.fillText("KAIROS", 138, 88); try { g.letterSpacing = "0px"; } catch (e) {} g.textBaseline = "alphabetic";
+  if (withChart && panes[active]) { try { const sc = panes[active].chart.takeScreenshot(), cw = 540, ch = Math.min((sc.height / sc.width) * cw, 420); g.save(); g.beginPath(); g.roundRect(W - cw - 60, 140, cw, ch, 18); g.clip(); g.drawImage(sc, W - cw - 60, 140, cw, (sc.height / sc.width) * cw); g.restore(); g.strokeStyle = line; g.beginPath(); g.roundRect(W - cw - 60, 140, cw, ch, 18); g.stroke(); } catch (e) {} }
+  const up = +t.pnl >= 0, side = t.dir > 0 || t.dir === "long" ? "LONG" : "SHORT";
+  g.font = `600 20px Geist, Inter, sans-serif`; g.fillStyle = mut; try { g.letterSpacing = "3px"; } catch (e) {} g.fillText(`${side} · ${t.symbol} · ${t.qty} LOT${t.qty > 1 ? "S" : ""}`, 62, 206); try { g.letterSpacing = "0px"; } catch (e) {}
+  g.font = `500 108px ${serif}`; g.fillStyle = up ? upc : dnc; g.fillText((up ? "+" : "−") + money(Math.abs(+t.pnl)).replace("-", ""), 56, 318);
+  g.font = `500 40px ${serif}`; g.fillStyle = txt; if (t.r != null) g.fillText(`${t.r > 0 ? "+" : ""}${t.r}R`, 62, 380);
+  const gr = (t.tags || []).find((x) => /^grade:/.test(x)); if (gr) { const G = gr.slice(6); g.fillStyle = ink; g.beginPath(); g.roundRect(t.r != null ? 200 : 62, 350, 64, 40, 10); g.fill(); g.fillStyle = inkt; g.font = `600 22px Geist, Inter, sans-serif`; g.textAlign = "center"; g.fillText(G, (t.r != null ? 200 : 62) + 32, 378); g.textAlign = "left"; }
+  g.font = `400 21px Geist, Inter, sans-serif`; g.fillStyle = mut; g.fillText(`Entry ${px2(t.entry)}  →  Exit ${px2(t.exit)}`, 62, 440);
+  g.fillText(blind && !blind.revealed ? "Mystery day" : `${fmt(loc(t.t_entry))} NY`, 62, 474);
+  g.font = `500 15px Geist, Inter, sans-serif`; g.fillStyle = mut; g.globalAlpha = 0.75; g.fillText("Replayed bar by bar on KAIROS · not live trading", 62, H - 52); g.globalAlpha = 1;
   const blob = await new Promise((ok) => c.toBlob(ok, "image/png")); if (!blob) return toast("Couldn't make the card");
   const url = URL.createObjectURL(blob); let copied = false; try { await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]); copied = true; } catch (e) {}
-  dlg(`<h3>Share card</h3><img src="${url}" style="width:100%;border-radius:10px;border:1px solid rgba(255,255,255,.08)"><div class="tiny muted" style="margin-top:6px">${copied ? "Copied to your clipboard: paste it into Discord or a text." : "Save it, then drop it into Discord or a text."}</div>`, () => { const a = document.createElement("a"); a.href = url; a.download = `kairos-${t.symbol}-${(t.pnl >= 0 ? "win" : "loss")}.png`; a.click(); });
+  dlg(`<h3>Share card</h3><img src="${url}" style="width:100%;border-radius:14px;border:1px solid var(--line)"><div class="tiny muted" style="margin-top:6px">${copied ? "Copied to your clipboard: paste it into Discord or a text." : "Save it, then drop it into Discord or a text."}</div>`, () => { const a = document.createElement("a"); a.href = url; a.download = `kairos-${t.symbol}-${(t.pnl >= 0 ? "win" : "loss")}.png`; a.click(); });
   setTimeout(() => { const ok = $("dl-ok"); if (ok) ok.textContent = "Download"; }, 0); window.__lastCard = c; }
 async function shareTrade(t) { const note = prompt("Add a note for your friends (optional)", t.notes || ""); if (note === null) return;
   const snap = { symbol: t.symbol, dir: t.dir, qty: t.qty, entry: t.entry, stop: t.stop, target: t.target, exit: t.exit, r: t.r, pnl: t.pnl, outcome: t.outcome, t_entry: t.t_entry, t_exit: t.t_exit, tags: t.tags || [], shot: t.shots && t.shots[0] };
@@ -2247,6 +2327,8 @@ async function notionUI() {
 const nmsg = (m) => ($("n-msg").textContent = m);
 
 /* ---------------- prefs / settings / admin ---------------- */
+// KING_DEF1122 (Nov 22, King): everyone starts on MNQ + MES side by side, 60x replay, and no stop/target pre-ticked. Applied once per person.
+function defaults1122(force) { if (prefs.def1122 || (navigator.webdriver && !force)) return; prefs.def1122 = 1; prefs.layout = "2"; prefs.syms = ["MNQ", "MES"]; prefs.autoBr = false; prefs.spd = "60"; if (prefs.sync) prefs.sync.sym = false; try { savePrefs(); } catch (e) {} }
 async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout] && !LAYS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) };
     if (!prefs.syncDef1) { prefs.sync = { sym: false, int: true, cross: true, time: false, range: false }; prefs.syncDef1 = true; }   // KING_SYNCDEF (Nov 14)
   } }   // KING_INDOFF (King, Nov 14): no reset for existing users (Ben, Will, Ryan keep theirs); new users start with everything off via IND_DEF
@@ -2279,7 +2361,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { try { document.documentElement.removeAttribute("data-kv"); } catch (e) {} try { window.k3dView && k3dView(v); } catch (e) {} try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); clearTimeout(el._ent); el._ent = setTimeout(() => el.classList.remove("enter"), 900); }   /* KING_STAGEQUIET: re-drawn cards must not replay the entrance */ sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); try { navLine(); } catch (e) {} document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) { stagePre("v-tj"); Promise.resolve(JN.open()).then(() => stageLoad("v-tj"), () => stageLoad("v-tj")); } /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") { stagePre("v-stats"); renderStats().then(() => stageLoad("v-stats"), () => stageLoad("v-stats")); } if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
+function view(v) { try { document.documentElement.removeAttribute("data-kv"); } catch (e) {} try { $("v-stats").classList.remove("sdopen"); } catch (e) {} try { window.k3dView && k3dView(v); } catch (e) {} try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el && !morphView.on) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); clearTimeout(el._ent); el._ent = setTimeout(() => el.classList.remove("enter"), 900); }   /* KING_STAGEQUIET: re-drawn cards must not replay the entrance */ sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); try { navLine(); } catch (e) {} document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) { stagePre("v-tj"); Promise.resolve(JN.open()).then(() => stageLoad("v-tj"), () => stageLoad("v-tj")); } /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") { stagePre("v-stats"); renderStats().then(() => stageLoad("v-stats"), () => stageLoad("v-stats")); } if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
 function layMenu() { const sv = prefs.saved || [];
   return layMenu2(); }
 function saveLayout() { const name = (prompt("Name this layout (e.g. NQ/ES SMT, 1m + 15m)") || "").trim().slice(0, 30); if (!name) return;
@@ -2382,9 +2464,20 @@ function buildTargets(full) { const vis = (e) => e && e.getClientRects().length 
   panes.forEach((p) => add(p.el, 1)); return out; }
 function buildFx(full) { if (prefs.chartfx === false || (navigator.webdriver && full !== "test")) return; full = full !== false && full !== "quick";
   if (document.getElementById("kbuild")) return; const T = buildTargets(full);
+  setTimeout(() => document.documentElement.classList.remove("kprebuild"), 0);   // KING_NOFLASH: build has taken over hiding the pieces
   T.forEach((t) => { if (t.z !== 1 || full) { t.prev = t.el.style.opacity; t.el.style.opacity = "0"; } });
   panes.forEach((p) => { try { p.series.applyOptions({ visible: false }); } catch (e) {} });
-  afterIntro(() => requestAnimationFrame(() => (document.body.classList.contains("ui2") ? assembleBuild : runBuild)(full, T))); }
+  afterIntro(() => { if (!document.body.classList.contains("ui2")) return requestAnimationFrame(() => runBuild(full, T)); chartsReady(full).then(() => requestAnimationFrame(() => assembleBuild(full, T))); }); }
+// KING_PRELOAD (Nov 22, King): nothing animates until every chart has its data (both symbols), so candles never pop in mid-animation.
+// If that takes a moment, a short loading card shows in the theme's colors.
+function chartsReady(full) { return new Promise((res) => { const t0 = performance.now(); let lastSig = "", same = 0, card = null;
+  const sig = () => panes.map((p) => { try { const d = p.series.data(); return d.length + ":" + (d.length ? d[d.length - 1].time : 0); } catch (e) { return "x"; } }).join("|");
+  const tick = () => { const sg = sig(), ok = panes.length && panes.every((p) => { try { return p.series.data().length > 2; } catch (e) { return false; } });
+    same = sg === lastSig ? same + 1 : 0; lastSig = sg; const el = performance.now() - t0;
+    if ((ok && same >= 3) || el > 6000) { if (card) { card.classList.add("out"); setTimeout(() => card.remove(), 400); } return res(); }
+    if (!card && el > 350 && full) { card = document.createElement("div"); card.id = "kload"; card.innerHTML = '<span class="kmark">K</span><i><b></b></i>'; document.body.appendChild(card); }
+    setTimeout(tick, 90); };
+  tick(); }); }
 // KING_ASSEMBLE (Nov 22, King): the new look loads by putting itself together. Every piece arrives on its own beat in one of three ways:
 // falling into place, rising out of fog, or growing from tiny. Bars first, then their buttons left to right, then the chart wipes in with its candles.
 function assembleBuild(full, T) {
@@ -2591,8 +2684,10 @@ async function boot() {
     isAdmin = !!(await sb.rpc("is_admin")).data; $("vt-admin").classList.toggle("hidden", !isAdmin);
     const { data: fs } = await sb.from("features").select("key,enabled"); (fs || []).forEach((f) => (features[f.key] = f.enabled)); await loadPrefs();
   }
+  try { defaults1122(); if ($("speed")) $("speed").value = prefs.spd || "60"; if ((prefs.syms || [])[0]) $("sym").value = prefs.syms[0]; } catch (e) {}
   $("auth").classList.add("hidden"); $("app").classList.remove("hidden");
   try { sameScreen(); } catch (e) {}
+  setTimeout(() => document.documentElement.classList.remove("kprebuild"), prefs.chartfx === false ? 0 : 7000);
   if (features.journal === false) document.querySelector('[data-view="journal"]').classList.add("hidden"); if (features.dom === false) $("m-dom").classList.add("hidden");
   if (features.drawings === false) document.querySelectorAll("[data-tool]").forEach((b) => !["cursor", "cross"].includes(b.dataset.tool) && b.classList.add("hidden"));
   if (features.multichart === false) { prefs.layout = "1"; $("laybtn").classList.add("hidden"); } if (features.notion === false) $("notioncard").classList.add("hidden");
@@ -2797,7 +2892,7 @@ const FX = {
   const _dlg = dlg; dlg = function () { const r = _dlg.apply(this, arguments); FX.pop($("dlgbox")); return r; };
   const _toast = toast; toast = function (m) { _toast(m); if (m) FX.spring($("toast"), { opacity: [0, 1], y: [16, 0] }, { bounce: 0.35 }); };
   /* old splash bounce removed (KING_STARTFX replaced the splash) */ }
-document.querySelectorAll(".vtab[data-view]").forEach((b) => (b.onclick = () => view(b.dataset.view)));
+document.querySelectorAll(".vtab[data-view]").forEach((b) => (b.onclick = () => morphView(() => view(b.dataset.view))));   // KING_MORPH
 $("start").addEventListener("change", () => { if (duel && !duel.fin) { $("start").value = duel.day + "T" + (DUEL_SESS[duel.sess] || DUEL_SESS.ny)[1]; return toast("Finish your 1v1 first (tap the 1v1 pill up top)"); } if (!pos.qty && !orders.length) { blind = null; blindUI(); loadReplay(); } });   // picking a date loads it right away
 $("go").onclick = () => { blind = null; blindUI(); loadReplay(); }; $("play").onclick = play; $("step").onclick = () => { pause(); stepUnit(); };
 $("blindbtn").onclick = () => { if (duel && !duel.fin) return toast("The day is revealed when the 1v1 ends"); if (blind) { const d = blind.day; blind = null; blindUI(); toast("It was " + new Date(d + "T12:00:00Z").toUTCString().slice(0, 16)); } else mysteryDay(); }; $("back").onclick = () => { pause(); stepBack(); };
@@ -4181,7 +4276,9 @@ function appThemeDef() { const a = prefs.appTheme || {}; if (!a.id || a.id === "
   const s = STYLE_THEMES[a.id]; return s ? { base: s.base, v: s.v, cls: a.id } : null; }
 function appTheme(on, noUI) { const B = document.body, T = on ? appThemeDef() : null;
   [...B.classList].filter((c) => c.startsWith("at-")).forEach((c) => B.classList.remove(c)); B.classList.toggle("apptheme", !!T);
-  if (T) { const P = T.v, L = (a) => P.lineRaw ? `rgba(${P.lineRaw},${a})` : `rgba(${P.line},${a})`, set = (k, v) => v && B.style.setProperty(k, v);
+  // KING_THEMESWAP (Nov 22): leave nothing behind from the last style (vars, page background, fonts cache), so switching never needs a refresh
+  (appTheme._set || []).forEach((k) => B.style.removeProperty(k)); appTheme._set = []; if (!T && !B.classList.contains("themed")) document.documentElement.style.background = ""; csStyleOv.k = null;
+  if (T) { const P = T.v, L = (a) => P.lineRaw ? `rgba(${P.lineRaw},${a})` : `rgba(${P.line},${a})`, set = (k, v) => { if (v) { B.style.setProperty(k, v); appTheme._set.push(k); } };
     B.classList.add("at-" + T.cls); const lt = T.base === "light";
     B.classList.toggle("ui2-light", lt); B.classList.toggle("ui2-dark", !lt); B.classList.toggle("ui2-ivory", lt); B.classList.toggle("ui2-onyx", !lt);
     set("--bg", P.bg); set("--bg2", P.bg); set("--panel", P.panel); set("--glass", P.panel); set("--panel2", P.panel2); set("--glass2", P.panel2);

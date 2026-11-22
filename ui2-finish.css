@@ -111,7 +111,7 @@ body.ui2.skin-rave #navline{background:linear-gradient(90deg,#20f0ff,#ff3ea5)!im
 body.ui2.skin-legacy #navline{background:#6fd3e6!important;box-shadow:0 0 8px rgba(111,211,230,.8)}
 body.ui2.waifu #navline{background:#ff9ec4!important;height:3px}
 /* KING_STAGELOAD: empty widgets -> titles -> data */
-body.ui2 .kpre #st-kpi > div > *, body.ui2 .kpre .card > *, body.ui2 .kpre .jw > *{opacity:0!important}
+body.ui2 .kpre :is(#st-kpi > div, .card, .jw, .jkpi > div, .jsts > div){opacity:0!important}
 body.ui2 .ksk{position:relative}
 body.ui2 .ksk > *{opacity:0!important;transition:none!important}
 body.ui2 .kst1 .ksk > .ksk-t, body.ui2 .kst1 .ksk > header{opacity:1!important;transition:opacity .3s ease!important}
@@ -144,7 +144,7 @@ html[data-kv] #v-trade{visibility:hidden}
 /* KING_INTROLOGO: intro uses the theme's colors from frame one + the new mark */
 body.ui2 #kintro{background:var(--bg)!important;color:var(--txt)!important}
 body.ui2 #kintro .ktip{color:var(--mut)!important}
-body.ui2 #kintro .wlock2{position:absolute;display:flex;align-items:center;gap:22px;opacity:0}
+body.ui2 #kintro .wlock2{position:absolute;inset:0;margin:auto;width:max-content;height:max-content;display:flex;align-items:center;gap:22px;opacity:0}   /* KING_INTROLOGO: dead center */
 body.ui2 #kintro.drop .wlock2{animation:wlk 1.4s cubic-bezier(.16,1,.3,1) forwards}
 body.ui2 #kintro .wlock2 .kmark{width:84px;height:84px;font-size:52px;border-radius:20px;display:grid;place-items:center;background:var(--ink);color:var(--inktxt);font-family:var(--mark,"Bodoni Moda",serif);font-weight:600}
 body.ui2 #kintro .wlock2 .kword{font-family:var(--mark,"Bodoni Moda",serif);font-size:64px;letter-spacing:.34em;color:var(--ink);font-weight:500}
@@ -152,3 +152,64 @@ body.ui2 #kintro .wlock2 .kword{font-family:var(--mark,"Bodoni Moda",serif);font
 .kwin{position:fixed;z-index:30;pointer-events:none;background:color-mix(in srgb,var(--panel,#fff) 42%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt,#000) 10%,transparent),inset 0 1px 0 rgba(255,255,255,.25)}
 /* KING_PRIMARY: important buttons stand out in every theme (filled, high contrast, a touch heavier) */
 body.ui2 :is(button.primary,.btn.primary){font-weight:650!important;box-shadow:0 1px 0 rgba(0,0,0,.08),0 6px 16px -8px color-mix(in srgb,var(--ink,#000) 70%,transparent)}
+/* KING_RESIZE (Nov 22): smaller windows stay tidy. Bars never wrap (they scroll sideways), charts stack when there's no room side by side. */
+@media (max-width:1100px){ body.ui2 header.top,body.ui2 .tbar{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;scrollbar-width:none} body.ui2 header.top::-webkit-scrollbar,body.ui2 .tbar::-webkit-scrollbar{display:none}
+  body.ui2 header.top > *,body.ui2 .tbar > *{flex:none} }
+@media (max-width:900px){ body.ui2 header.top{gap:8px!important;padding:6px 10px!important;min-height:0!important} body.ui2 header.top .kv label{font-size:9px} body.ui2 #fxtop,body.ui2 .tsearch,body.ui2 #ui2search{display:none!important} }
+@media (max-width:760px){ body.ui2 #charts{grid-template-columns:minmax(0,1fr)!important;grid-auto-rows:minmax(0,1fr);grid-template-rows:none!important} }
+body.ui2 #acctpill img.logo{display:none}
+body.ui2 #acctpill:before{content:"K";display:grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--ink);color:var(--inktxt);font:600 12px/1 var(--mark,"Bodoni Moda",serif);margin-right:6px;flex:none}
+/* KING_MORPH: page changes grow out of the tab you clicked */
+::view-transition-group(root){animation-duration:.55s}
+::view-transition-old(root){animation:kvtOld .55s cubic-bezier(.95,.05,.795,.035) both}
+::view-transition-new(root){animation:kvtNew .55s cubic-bezier(.95,.05,.795,.035) both}
+@keyframes kvtNew{from{clip-path:circle(0px at var(--mx0,50%) var(--my0,60px))}to{clip-path:circle(160vmax at var(--mx0,50%) var(--my0,60px))}}
+@keyframes kvtOld{from{transform:none;opacity:1}to{transform:scale(.985);opacity:.7}}
+/* KING_ROLL: odometer digits */
+body.ui2 .rd{position:relative;display:inline-block;overflow:hidden;vertical-align:top;height:1.2em;line-height:1.2em}
+body.ui2 .rd > i{visibility:hidden;font-style:normal}
+body.ui2 .rd::after{content:"0\A 1\A 2\A 3\A 4\A 5\A 6\A 7\A 8\A 9";white-space:pre;position:absolute;left:0;right:0;top:0;text-align:center;line-height:1.2em;transform:translateY(calc(var(--d) * -1.2em));transition:transform .42s cubic-bezier(.95,.05,.795,.035)}
+body.ui2 .rx{display:inline-block;line-height:1.2em;vertical-align:top}
+/* KING_PRELOAD: short loading card while the charts get their data */
+#kload{position:fixed;inset:0;z-index:205;display:grid;place-content:center;justify-items:center;gap:16px;background:var(--bg);transition:opacity .35s ease}
+#kload.out{opacity:0}
+#kload .kmark{width:56px;height:56px;border-radius:14px;display:grid;place-items:center;background:var(--ink);color:var(--inktxt);font:600 34px/1 var(--mark,"Bodoni Moda",serif);animation:kldP 1.2s ease-in-out infinite}
+#kload i{width:140px;height:2px;border-radius:2px;background:var(--line);overflow:hidden}#kload b{display:block;width:40%;height:100%;background:var(--ink);animation:kldB 1s cubic-bezier(.95,.05,.795,.035) infinite}
+@keyframes kldP{50%{transform:scale(.94);opacity:.8}}@keyframes kldB{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
+/* KING_NOFLASH: on refresh the pieces stay hidden until the build animation takes them (no flash of the finished screen first) */
+html.kprebuild :is(.rail,header.top,.tbar,.tools,#favbar,.bottom,#pad,#charts){opacity:0!important}
+/* KING_STATDETAIL */
+#v-stats #st-kpi > div,#v-stats > .card,#v-stats .grid3 > .card{cursor:pointer}
+#v-stats #st-kpi > div:hover,#v-stats > .card:hover,#v-stats .grid3 > .card:hover{box-shadow:0 0 0 1px var(--edge),0 8px 24px -12px rgba(0,0,0,.25)}
+#stdet{display:none}
+#v-stats.sdopen > :not(#stdet){display:none!important}
+#v-stats.sdopen #stdet{display:flex;flex-direction:column;gap:14px;padding:4px 2px 30px}
+#stdet .sdh{display:flex;align-items:center;gap:16px}#stdet .sdh h3{margin:0;font:500 26px/1.1 var(--serif,serif)}#stdet .sdbig{margin-left:auto;font:500 40px/1 var(--serif,serif);font-variant-numeric:tabular-nums}
+#stdet .sdbig .kpis{display:none}
+#stdet .sdk{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}#stdet .sdk > div{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+#stdet .sdk span{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}#stdet .sdk b{font:500 24px/1.2 var(--serif,serif);font-variant-numeric:tabular-nums}
+#stdet h5{margin:0 0 10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+#stdet .sdbars{width:100%;height:180px;display:block}#stdet .sdz{stroke:var(--line);stroke-width:1}
+#stdet .sdu{fill:var(--up)}#stdet .sdd{fill:var(--dn)}
+#stdet .sdbars rect{transform-box:fill-box;transform-origin:50% 100%;animation:sdGrow .5s cubic-bezier(.95,.05,.795,.035) backwards;animation-delay:calc(var(--i) * 12ms)}
+#stdet .sdbars rect.sdd{transform-origin:50% 0}
+@keyframes sdGrow{from{transform:scaleY(0);opacity:0}}
+#stdet .sdgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}#stdet .sdg{padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+#stdet .sdtr tr[data-i]{cursor:pointer}#stdet .sdtr tr[data-i]:hover td{background:var(--hov)}
+@media (max-width:1000px){ #stdet .sdgrid,#stdet .sdk{grid-template-columns:repeat(2,minmax(0,1fr))} }
+::view-transition-group(kstat){animation-duration:.5s;animation-timing-function:cubic-bezier(.95,.05,.795,.035)}
+/* KING_DRAWON: Stats charts draw in left to right as their data arrives */
+/* KING_RATE2: rate-that-trade with colored buttons */
+#review .rvl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mut);margin:10px 0 6px}
+#review .rvrow{display:flex;flex-wrap:wrap;gap:6px}
+#review .rvrow button{flex:1;min-width:0;padding:7px 8px;border-radius:9px;border:1px solid var(--edge);background:var(--panel2,var(--panel));color:var(--txt);font-weight:600;font-size:12.5px;cursor:pointer;transition:transform .12s,background .15s,color .15s,border-color .15s}
+#review .rvrow button:active{transform:scale(.96)}
+#review .rvyn .rvy.on{background:var(--up)!important;border-color:var(--up)!important;color:#fff!important}
+#review .rvyn .rvn.on{background:var(--dn)!important;border-color:var(--dn)!important;color:#fff!important}
+#review .rvyn .rvy{color:var(--up)}#review .rvyn .rvn{color:var(--dn)}
+#review .rvgr button.on{color:#fff!important;border-color:transparent!important;background:color-mix(in srgb,var(--up) calc(100% - var(--gi) * 20%),var(--dn))!important}
+#review .rvmk button.on{background:var(--dn)!important;border-color:var(--dn)!important;color:#fff!important}
+#review .rvcf button.on{background:var(--blue,#2f6fdb)!important;border-color:var(--blue,#2f6fdb)!important;color:#fff!important}
+#review #rv-note{width:100%;margin-top:10px;border-radius:9px;resize:vertical;font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--edge);background:var(--panel2,var(--panel));color:var(--txt);box-sizing:border-box}
+#review .rvend{margin-top:10px}#review .rvend button{flex:none}#review .rvend #rv-save{margin-left:auto;padding:7px 20px}
+@media (min-width:901px){ body.ui2 .review{right:84px!important;bottom:56px!important;width:340px!important} }   /* KING_RATE2: sits left of the price scale so it never covers prices */

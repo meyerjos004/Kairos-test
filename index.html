@@ -18,7 +18,7 @@
 <body>
 <script>/* KING_LOOKSAVE: paint the saved look before anything else loads, and hide the chart page if the refresh is going back to another page */
 try{var u=localStorage.getItem("kz-uid")||"",L=JSON.parse(localStorage.getItem("kz-look:"+u)||localStorage.getItem("kz-look")||"null");if(L){document.body.className=L.c;for(var k in L.v)document.body.style.setProperty(k,L.v[k]);if(L.bg)document.documentElement.style.background=L.bg;}
-var kv=sessionStorage.getItem("kz-view");if(kv&&kv!=="trade")document.documentElement.setAttribute("data-kv",kv);}catch(e){}</script>
+if(L&&/\bui2\b/.test(L.c)&&!navigator.webdriver)document.documentElement.classList.add("kprebuild");var kv=sessionStorage.getItem("kz-view");if(kv&&kv!=="trade")document.documentElement.setAttribute("data-kv",kv);}catch(e){}</script>
 <div id="auth" class="screen hidden">
   <div class="glass authcard pop">
     <div class="kbrand"><img class="klock" src="brand/kairos-intro.svg" alt="KAIROS OS">
@@ -68,14 +68,14 @@ var kv=sessionStorage.getItem("kz-view");if(kv&&kv!=="trade")document.documentEl
       <!-- KING_NOSKIPBTN (King, Nov 21): SKIP button removed --><div class="seg skips"><button id="skipny" title="Skip to the next NY open (9:30 New York)">NY open</button><button id="skipasia" title="Skip to the next Asia open (20:00 New York)">Asia open</button></div>
       <button id="blindbtn" class="small hidden" title="Mystery day: a random day with the date hidden until you finish (no cherry-picking)">🎲</button><button id="plbtn" class="small hidden" title="Session playlist: queue 10 days (random, news days, Mondays, Fridays)">▤</button><span id="plpill" class="plpill hidden"></span>
       <select id="stepsz" title="How far each step / play tick moves"><option value="sync" selected>Sync to timeframe</option><option value="60">1m</option><option value="120">2m</option><option value="180">3m</option><option value="300">5m</option><option value="900">15m</option><option value="1800">30m</option><option value="3600">1h</option><option value="14400">4h</option><option value="86400">D</option></select>
-      <select id="speed" title="Replay speed"><option value="1" selected>1×</option><option value="15">15×</option><option value="30">30×</option><option value="60">60×</option><option value="120">120×</option><option value="300">300×</option></select><button id="playday" class="ib sm playday" title="Play out the day: fast to 3:00 PM New York"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l3-4 3 2 3-5"/><path d="M13 12h5"/><path d="M16 9l3 3-3 3"/><path d="M21 5v14"/></svg></button>
+      <select id="speed" title="Replay speed"><option value="1">1×</option><option value="15">15×</option><option value="30">30×</option><option value="60" selected>60×</option><option value="120">120×</option><option value="300">300×</option></select><button id="playday" class="ib sm playday" title="Play out the day: fast to 3:00 PM New York"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l3-4 3 2 3-5"/><path d="M13 12h5"/><path d="M16 9l3 3-3 3"/><path d="M21 5v14"/></svg></button>
     </div>
         <button id="livepill" class="livepill hidden" title="Friends in your live session"></button><span class="conn" title="Replay data">●</span>
   </header>
 
   <section id="v-trade" class="view">
     <div class="tbar">
-      <label class="symsearch" title="Instrument"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><select id="sym"><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select></label>
+      <label class="symsearch" title="Instrument"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/></svg><select id="sym"><option>NQ</option><option selected>MNQ</option><option>ES</option><option>MES</option></select></label>
       <div class="tfs" id="tfbar"></div>
       <span class="vsep"></span>
       <div class="laywrap"><button id="indbtn" data-menu-from="ind" class="tb" title="Indicators"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c3 0 3-14 6-14M7 11h5"/><path d="M14 11l6 8M20 11l-6 8"/></svg> Indicators</button><div id="indmenu" class="menu hidden"></div></div><button id="chkbtn" class="tb" title="Strategy checklist: tick your rules before you enter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6l1.5 1.5L7.5 5M3.5 12l1.5 1.5 2.5-2.5M3.5 18l1.5 1.5 2.5-2.5"/></svg> Checklist</button>

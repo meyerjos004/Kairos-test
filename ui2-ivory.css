@@ -84,8 +84,8 @@ body.ui2-iv{--blue:#2f6fdb;--blue2:#2a63c6}body.ui2-onyx{--blue:#6b9cf0;--blue2:
   body.ui2-iv header.top .acct{font-weight:500;background:transparent!important;border-color:var(--line)!important}
   body.ui2-iv header.top .acct img.logo{display:none}
 }
-@media (min-width:901px) and (max-width:1500px){ body.ui2-iv .rail .vtab:is([data-view="tax"],[data-view="help"],[data-view="settings"],[data-view="admin"]) .rl{display:none!important} }
-@media (min-width:901px) and (max-width:1200px){ body.ui2-iv .kword{display:none} body.ui2-iv .rail .vtab .rl{font-size:12.5px} body.ui2-iv .rail .vtab{padding:0 7px!important} }
+@media (min-width:901px) and (max-width:1380px){ body.ui2-iv .rail .vtab .rl{display:none!important} body.ui2-iv .rail .vtab{padding:0 10px!important} }   /* KING_RESIZE: below 1380 every tab goes icon-only (with its name on hover) instead of some losing labels */
+@media (min-width:901px) and (max-width:1000px){ body.ui2-iv .kword{display:none} }
 /* King: every skip button and every buy button is blue */
 body.ui2-iv #pbuy,body.ui2-iv button.buy{background:var(--blue)!important;color:#fff!important}
 body.ui2-onyx #pbuy,body.ui2-onyx button.buy{color:#0f1420!important}

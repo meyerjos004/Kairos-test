@@ -134,7 +134,7 @@ body.ui2.at-d3 :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qm
   background:linear-gradient(180deg,#fbfcfe,#eef1f6)!important;box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 rgba(28,34,48,.05),0 3px 0 #cfd4de,0 6px 0 #b9c0cd,0 18px 26px -12px rgba(28,34,48,.35)!important}
 body.ui2.at-d3 :is(.card,.jw,#st-kpi>div){transition:transform .3s cubic-bezier(.95,.05,.795,.035),box-shadow .3s}
 body.ui2.at-d3 :is(.card,.jw,#st-kpi>div):hover{transform:translateY(-2px)}
-body.ui2.at-d3 :is(button:not(.rail *):not(.atdot)){position:relative;border-radius:9px!important;border:1px solid #cdd3dd!important;color:#2b3242!important;font-weight:600;
+body.ui2.at-d3 :is(button:not(.rail *):not(.atdot)){border-radius:9px!important;border:1px solid #cdd3dd!important;color:#2b3242!important;font-weight:600;
   background:radial-gradient(120% 90% at 50% 0%,#ffffff 0%,#f2f4f8 55%,#e6e9ef 100%)!important;
   box-shadow:inset 0 1px 0 #fff,inset 0 -3px 0 rgba(28,34,48,.07),inset 0 0 0 3px rgba(255,255,255,.5),0 4px 0 #aeb5c3,0 5px 0 #9ea6b5,0 8px 10px -2px rgba(28,34,48,.3)!important;
   transform:translateY(-3px);transition:transform .07s ease-out,box-shadow .07s ease-out!important}
@@ -147,18 +147,20 @@ body.ui2.at-d3 .rail{background:linear-gradient(180deg,#f9fafc,#eceff4)!importan
 body.ui2.at-d3 .rail .vtab.on{background:radial-gradient(120% 90% at 50% 0%,#fff,#eef1f6)!important;border-radius:9px;box-shadow:inset 0 1px 0 #fff,0 3px 0 #b9c0cd,0 5px 8px -2px rgba(28,34,48,.25)}
 body.ui2.at-d3 :is(.vh,.seth,.kword){text-shadow:0 1px 0 #fff,0 2px 0 #c9ced9,0 3px 4px rgba(28,34,48,.18)}
 body.ui2.at-d3 #navline{height:4px!important;border-radius:4px!important;box-shadow:0 2px 0 #1a3c94}
-body.ui2.at-d3 #k3d{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .8s cubic-bezier(.95,.05,.795,.035)}
+#k3d{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0;transition:opacity .8s cubic-bezier(.95,.05,.795,.035)}
 body.ui2.at-d3 #k3d.on{opacity:1}
+body:not(.at-d3) #k3d{display:none}
+body:not(.at-anim) #kcrit{display:none}
 body.ui2.at-d3 #app{position:relative;z-index:1}
 body.ui2.at-d3 .view:not(#v-trade){background:transparent!important}
 /* ---------- Animated (moving aurora) ---------- */
-body.ui2.at-anim #atfx{display:block;position:fixed;inset:-20%;z-index:2147482000;pointer-events:none;filter:blur(80px);opacity:.22;mix-blend-mode:screen}
-body.ui2.at-anim #atfx i{position:absolute;width:55vmax;height:55vmax;border-radius:50%;mix-blend-mode:screen;animation:atDrift 26s ease-in-out infinite alternate}
-body.ui2.at-anim #atfx i:nth-child(1){background:#2b6cff;left:5%;top:0}
-body.ui2.at-anim #atfx i:nth-child(2){background:#11c79a;left:45%;top:25%;animation-duration:32s;animation-delay:-8s}
-body.ui2.at-anim #atfx i:nth-child(3){background:#ff3d7f;left:20%;top:50%;animation-duration:38s;animation-delay:-16s;opacity:.6}
+body.ui2.at-anim #atfx{display:block;position:fixed;inset:-20%;z-index:0;pointer-events:none;opacity:.5;contain:strict}
+body.ui2.at-anim #atfx i{position:absolute;width:60vmax;height:60vmax;border-radius:50%;animation:atDrift 26s ease-in-out infinite alternate;will-change:transform}
+body.ui2.at-anim #atfx i:nth-child(1){background:radial-gradient(closest-side,rgba(43,108,255,.55),rgba(43,108,255,0));left:5%;top:0}
+body.ui2.at-anim #atfx i:nth-child(2){background:radial-gradient(closest-side,rgba(17,199,154,.45),rgba(17,199,154,0));left:45%;top:25%;animation-duration:32s;animation-delay:-8s}
+body.ui2.at-anim #atfx i:nth-child(3){background:radial-gradient(closest-side,rgba(255,61,127,.35),rgba(255,61,127,0));left:20%;top:50%;animation-duration:38s;animation-delay:-16s;opacity:.6}
 @keyframes atDrift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(12vw,-8vh) scale(1.15)}100%{transform:translate(-10vw,10vh) scale(.92)}}
-body.ui2.at-anim :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop){backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important;border:1px solid rgba(140,160,255,.16)!important}
+body.ui2.at-anim :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop){backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background:rgba(14,14,24,.86)!important;border:1px solid rgba(140,160,255,.16)!important}
 body.ui2.at-anim :is(.card,.jw,#st-kpi>div):hover{border-color:rgba(124,196,255,.5)!important;box-shadow:0 0 0 1px rgba(124,196,255,.25),0 10px 40px -10px rgba(124,196,255,.35)!important;transition:box-shadow .35s,border-color .35s}
 body.ui2.at-anim :is(.vh,.seth,.kword){background:linear-gradient(90deg,#7cc4ff,#5af0b0,#ff8ab0,#7cc4ff);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:atSheen 8s linear infinite}
 body.ui2.at-anim :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)).primary{background:linear-gradient(90deg,#3d7bff,#11c79a,#3d7bff)!important;background-size:200% 100%!important;animation:atSheen 6s linear infinite;color:#fff!important;border:0!important}
@@ -188,8 +190,8 @@ body.ui2.at-anim :is(.card,.jw,#st-kpi>div,.setc,.acard):nth-child(3n+2){animati
 body.ui2.at-anim .rail .vtab svg,body.ui2.at-anim .rail .ri svg{animation:atIdle 5s ease-in-out infinite}
 body.ui2.at-anim .rlogo .kmark{animation:atBreath 4s ease-in-out infinite}
 body.ui2.at-anim button.primary{animation:atSheen 6s linear infinite,atBreath 3.2s ease-in-out infinite}
-body.ui2.at-anim .view.enter{animation:atEnter .7s cubic-bezier(.95,.05,.795,.035) backwards!important;transform-origin:50% 0}
-@keyframes atEnter{from{opacity:0;transform:perspective(1200px) rotateX(10deg) translateY(40px) scale(.97);filter:blur(10px)}to{opacity:1;transform:none;filter:none}}
+
+@keyframes atEnter{from{opacity:0;transform:perspective(1200px) rotateX(8deg) translateY(36px) scale(.97)}to{opacity:1;transform:none}}
 #critters{position:fixed;inset:0;pointer-events:none;z-index:2147480000;overflow:hidden}
 #critters .cr{position:absolute;left:0;top:0;width:26px;height:26px;will-change:transform}
 #critters .cr svg{display:block;width:100%;height:100%;overflow:visible}
@@ -199,3 +201,5 @@ body.ui2.at-anim .view.enter{animation:atEnter .7s cubic-bezier(.95,.05,.795,.03
 @keyframes crLeg{from{transform:rotate(-22deg)}to{transform:rotate(22deg)}}
 @keyframes crBlink{0%,92%{transform:scaleY(1)}94%{transform:scaleY(.1)}96%,100%{transform:scaleY(1)}}
 @media (prefers-reduced-motion: reduce){ body.ui2.at-anim *{animation:none!important} #critters{display:none} }
+
+body.ui2.at-anim #app{position:relative;z-index:1;background:transparent!important}body.ui2.at-anim .view:not(#v-trade){background:transparent!important}
