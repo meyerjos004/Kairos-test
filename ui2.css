@@ -144,3 +144,8 @@ body.ui2 .fbtools .tool svg{width:20px;height:20px;flex-shrink:0}
 body.ui2 .ri svg{flex-shrink:0}
 /* KING_UI2FIX: toasts are also .glass, and the glass fill won, so Daylight toasts were white text on white */
 body.ui2 .toast.glass{background:var(--ink)!important;color:var(--inktxt)!important;backdrop-filter:none}
+/* KING_UI2FIX Graphite (night Nov 22): white on the bright Graphite green/red was 2.2:1 / 3.3:1. Dark text on the same fills reads at 7:1+.
+   Muted text one step lighter (empty states, chat times, tax labels were 3.6–4.2:1). */
+body.ui2-dark button.buy,body.ui2-dark #pbuy{color:#04150f!important}
+body.ui2-dark button.sell,body.ui2-dark #psell{color:#22050a!important}
+body.ui2-dark{--mut2:#959dab}
