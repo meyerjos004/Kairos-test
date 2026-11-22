@@ -457,7 +457,7 @@ function favUI() {
 // KING_FAVDOCK (fix 9): on desktop the favorites bar lives in the timeframe row, centered in the free space so it grows outward.
 // Falls back to floating if the row is too narrow; right-click → "Float it" / "Dock to top bar".
 function favDock() { const fb = $("favbar"), tb = document.querySelector("#v-trade .tbar") || document.querySelector(".tbar"); if (!fb || !tb) return; const tsp = tb.querySelector(".tsp:not(.tsp2)");
-  const want = innerWidth > 900 && prefs.favDock !== false && tsp;
+  const want = innerWidth > 900 && prefs.favDock === true && tsp;   // KING_FAVPOP (Nov 22): popped out by default; docked only when someone docks it
   if (want) { if (fb.parentElement !== tb) { const sp = tb.querySelector(".tsp2") || Object.assign(document.createElement("div"), { className: "tsp tsp2" }); tb.insertBefore(sp, tsp); tb.insertBefore(fb, tsp); }
     fb.classList.add("docked"); fb.style.left = fb.style.top = fb.style.transform = "";
     if (tb.scrollWidth > tb.clientWidth + 2) want2float(); else fb.classList.remove("tight"); return; }
@@ -1239,35 +1239,144 @@ function refresh() { try { duelTick(); } catch (e) {}
 /* ---------------- feel: sounds (made here with Web Audio, no files), haptics, number flashes ---------------- */
 let AC = null;
 function sfx(kind) {
-  // KING_SOUND2 (Nov 22): one calm sound set for every interaction, voiced per look. Regular looks = soft wood + glass;
-  // specialty themes get their own voice: Legacy = cold glass synth, Sweden = wooden mallet, Rave = punchy, Waifu = bubbly.
+  // KING_SOUND3 (Nov 22): sound packs. Every regular theme shares one soft pack. Each specialty theme has its own pack built
+  // from its world: Legacy = cold synth with echo, Sweden = wooden marimba + woodblock, Rave = kick / hat / riser, Waifu = bubbles + chimes.
   if (prefs.sound === false) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
   const now = performance.now(); sfx._t = sfx._t || {}; if (now - (sfx._t[kind] || 0) < 45) return; sfx._t[kind] = now;
-  const t0 = AC.currentTime, base = (prefs.vol ?? 60) / 100 * 0.16, sk = prefs.skin || (prefs.waifu ? "waifu" : "");
-  const V = { legacy: { w: "sine", det: 7, sh: 1.5, lp: 5200 }, sweden: { w: "triangle", det: 0, sh: 0.8, lp: 2600 }, rave: { w: "sawtooth", det: 12, sh: 1, lp: 3800 }, waifu: { w: "sine", det: 0, sh: 1.25, lp: 6000 } }[sk] || { w: "sine", det: 0, sh: 1, lp: 4200 };
-  const out = AC.createBiquadFilter(); out.type = "lowpass"; out.frequency.value = V.lp; out.connect(AC.destination);
-  const note = (f, at, dur, type = V.w, v = base, bend = 0) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f * V.sh, t0 + at); if (bend) o.frequency.exponentialRampToValueAtTime(f * V.sh * bend, t0 + at + dur); if (V.det) o.detune.value = (Math.random() - 0.5) * V.det;
-    g.gain.setValueAtTime(0, t0 + at); g.gain.linearRampToValueAtTime(v, t0 + at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur); o.connect(g).connect(out); o.start(t0 + at); o.stop(t0 + at + dur + 0.03); };
-  const tick = (v, f = 2400, d = 0.018) => { const n = AC.createBufferSource(), b = AC.createBuffer(1, Math.ceil(AC.sampleRate * d), AC.sampleRate), c = b.getChannelData(0); for (let i = 0; i < c.length; i++) c[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / c.length, 3);
-    const bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = "bandpass"; bp.frequency.value = f * V.sh; bp.Q.value = 1.4; g.gain.value = v; n.buffer = b; n.connect(bp).connect(g).connect(out); n.start(t0); };
-  if (kind === "fill") { note(880, 0, 0.09, "triangle"); note(1320, 0.05, 0.12, "sine", base * 0.7); }
-  else if (kind === "win") { [660, 880, 1320].forEach((f, i) => note(f, i * 0.07, 0.22, "sine")); }
-  else if (kind === "loss") { note(330, 0, 0.18, "triangle"); note(247, 0.1, 0.3, "triangle", base * 0.8); }
-  else if (kind === "lock") { note(220, 0, 0.35, "triangle", base * 0.6); }
-  else if (kind === "click" || kind === "tap") tick(base * 0.55);                                   // any button
-  else if (kind === "nav") { note(1046, 0, 0.07, V.w, base * 0.45); note(1568, 0.035, 0.09, V.w, base * 0.3); }   // page change
-  else if (kind === "select") { tick(base * 0.45, 3200); note(1318, 0, 0.05, V.w, base * 0.22); }    // tab / segment / chip
-  else if (kind === "toggleOn") { note(988, 0, 0.06, V.w, base * 0.35, 1.25); }
-  else if (kind === "toggleOff") { note(1235, 0, 0.06, V.w, base * 0.3, 0.8); }
-  else if (kind === "open") { note(660, 0, 0.09, V.w, base * 0.28, 1.5); }                          // menu / dropdown / popover
-  else if (kind === "close") { note(990, 0, 0.08, V.w, base * 0.22, 0.67); }
-  else if (kind === "sheet") { note(523, 0, 0.16, V.w, base * 0.3, 1.5); note(784, 0.05, 0.14, V.w, base * 0.18); }   // dialog
-  else if (kind === "notify") { note(1175, 0, 0.12, V.w, base * 0.3); note(1568, 0.07, 0.16, V.w, base * 0.24); }      // toast
-  else if (kind === "type") tick(base * 0.18, 4200, 0.01);
-  else if (kind === "error") { note(392, 0, 0.12, "triangle", base * 0.4); note(349, 0.08, 0.16, "triangle", base * 0.35); }
+  const t0 = AC.currentTime + 0.005, V = (prefs.vol ?? 60) / 100 * 0.2, pack = prefs.skin || (prefs.waifu ? "waifu" : prefs.appTheme && STYLE_THEMES[prefs.appTheme.id] && STYLE_THEMES[prefs.appTheme.id].chip ? "chip" : "soft");
+  const bus = AC.createGain(); bus.gain.value = 1; bus.connect(AC.destination);
+  let echo = null; if (pack === "legacy") { const d = AC.createDelay(), fb = AC.createGain(), lp = AC.createBiquadFilter(); d.delayTime.value = 0.16; fb.gain.value = 0.32; lp.type = "lowpass"; lp.frequency.value = 2600; bus.connect(d); d.connect(lp).connect(fb).connect(d); lp.connect(AC.destination); echo = d; }
+  const tone = (f, at, dur, o = {}) => { const osc = AC.createOscillator(), g = AC.createGain(); osc.type = o.type || "sine"; const s = t0 + at;
+    osc.frequency.setValueAtTime(f, s); if (o.to) osc.frequency.exponentialRampToValueAtTime(o.to, s + (o.glide || dur)); if (o.det) osc.detune.value = o.det;
+    let node = osc; if (o.lp) { const fl = AC.createBiquadFilter(); fl.type = "lowpass"; fl.frequency.setValueAtTime(o.lp, s); if (o.lpTo) fl.frequency.exponentialRampToValueAtTime(o.lpTo, s + dur); fl.Q.value = o.q || 0.7; osc.connect(fl); node = fl; }
+    const v = (o.v ?? 1) * V; g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(v, s + (o.a || 0.006)); g.gain.exponentialRampToValueAtTime(0.0001, s + dur);
+    node.connect(g).connect(bus); osc.start(s); osc.stop(s + dur + 0.05); };
+  const noise = (at, dur, o = {}) => { const s = t0 + at, n = AC.createBufferSource(), b = AC.createBuffer(1, Math.ceil(AC.sampleRate * dur), AC.sampleRate), c = b.getChannelData(0);
+    for (let i = 0; i < c.length; i++) c[i] = Math.random() * 2 - 1; n.buffer = b; const f = AC.createBiquadFilter(); f.type = o.ft || "bandpass"; f.frequency.setValueAtTime(o.f || 2000, s); if (o.fTo) f.frequency.exponentialRampToValueAtTime(o.fTo, s + dur); f.Q.value = o.q || 1;
+    const g = AC.createGain(), v = (o.v ?? 1) * V; g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(v, s + (o.a || 0.004)); g.gain.exponentialRampToValueAtTime(0.0001, s + dur); n.connect(f).connect(g).connect(bus); n.start(s); };
+  const P = {
+    soft: {   // all regular themes: felt + glass, very quiet
+      tap: () => noise(0, 0.03, { f: 1800, q: 0.9, v: 0.35 }),
+      nav: () => { noise(0, 0.16, { ft: "lowpass", f: 600, fTo: 2400, q: 0.5, v: 0.22, a: 0.03 }); tone(392, 0.02, 0.18, { v: 0.12, a: 0.02 }); },
+      select: () => { noise(0, 0.025, { f: 2600, v: 0.3 }); tone(784, 0, 0.08, { v: 0.1 }); },
+      open: () => noise(0, 0.12, { ft: "lowpass", f: 500, fTo: 1800, v: 0.2, a: 0.02 }),
+      close: () => noise(0, 0.1, { ft: "lowpass", f: 1800, fTo: 500, v: 0.16, a: 0.01 }),
+      sheet: () => { noise(0, 0.22, { ft: "lowpass", f: 400, fTo: 1600, v: 0.22, a: 0.05 }); tone(523, 0.05, 0.3, { v: 0.1, a: 0.04 }); },
+      notify: () => { tone(880, 0, 0.35, { v: 0.16 }); tone(1318, 0.09, 0.4, { v: 0.12 }); },
+      on: () => tone(660, 0, 0.09, { to: 880, v: 0.14 }), off: () => tone(880, 0, 0.09, { to: 620, v: 0.12 }),
+      type: () => noise(0, 0.012, { f: 3800, v: 0.12 }),
+      fill: () => { tone(880, 0, 0.1, { type: "triangle", v: 0.5 }); tone(1320, 0.05, 0.14, { v: 0.35 }); },
+      win: () => [660, 880, 1320].forEach((f, i) => tone(f, i * 0.07, 0.24, { v: 0.4 })),
+      loss: () => { tone(330, 0, 0.2, { type: "triangle", v: 0.4 }); tone(247, 0.1, 0.32, { type: "triangle", v: 0.32 }); },
+      error: () => { tone(392, 0, 0.12, { type: "triangle", v: 0.3 }); tone(349, 0.08, 0.16, { type: "triangle", v: 0.26 }); } },
+    legacy: {   // cold light: detuned synth through a closing filter, everything leaves an echo trail
+      tap: () => tone(2093, 0, 0.05, { type: "square", lp: 3000, v: 0.12 }),
+      nav: () => { tone(110, 0, 0.5, { type: "sawtooth", lp: 300, lpTo: 2800, q: 6, v: 0.32, a: 0.02, det: -8 }); tone(110, 0, 0.5, { type: "sawtooth", lp: 300, lpTo: 2800, q: 6, v: 0.32, a: 0.02, det: 8 }); },
+      select: () => tone(1568, 0, 0.07, { type: "square", lp: 2400, v: 0.12 }),
+      open: () => [523, 784, 1046].forEach((f, i) => tone(f, i * 0.04, 0.12, { type: "sawtooth", lp: 1800, v: 0.12 })),
+      close: () => [1046, 784].forEach((f, i) => tone(f, i * 0.04, 0.1, { type: "sawtooth", lp: 1500, v: 0.1 })),
+      sheet: () => tone(220, 0, 0.6, { type: "sawtooth", lp: 200, lpTo: 3200, q: 8, v: 0.3, a: 0.05 }),
+      notify: () => { tone(1318, 0, 0.3, { type: "triangle", v: 0.2 }); tone(1975, 0.12, 0.35, { type: "triangle", v: 0.16 }); },
+      on: () => tone(440, 0, 0.12, { type: "square", to: 880, lp: 2000, v: 0.12 }), off: () => tone(880, 0, 0.12, { type: "square", to: 440, lp: 2000, v: 0.1 }),
+      type: () => tone(3136, 0, 0.02, { type: "square", lp: 4000, v: 0.05 }),
+      fill: () => { tone(1046, 0, 0.12, { type: "sawtooth", lp: 2600, v: 0.3 }); tone(1568, 0.06, 0.16, { type: "sawtooth", lp: 2600, v: 0.24 }); },
+      win: () => [523, 784, 1046, 1568].forEach((f, i) => tone(f, i * 0.08, 0.35, { type: "sawtooth", lp: 3000, v: 0.24 })),
+      loss: () => tone(220, 0, 0.6, { type: "sawtooth", to: 110, lp: 900, lpTo: 200, v: 0.32 }),
+      error: () => tone(155, 0, 0.3, { type: "square", lp: 800, v: 0.22 }) },
+    sweden: {   // wood: marimba bars (sine + 4x partial, fast decay) and a woodblock tick, Nordic pentatonic
+      tap: () => { noise(0, 0.025, { f: 1000, q: 6, v: 0.6 }); },
+      nav: () => { [587, 880].forEach((f, i) => { tone(f, i * 0.07, 0.5, { v: 0.45 }); tone(f * 4, i * 0.07, 0.07, { v: 0.12 }); }); },
+      select: () => { tone(784, 0, 0.3, { v: 0.32 }); tone(3136, 0, 0.05, { v: 0.08 }); },
+      open: () => [523, 659, 784].forEach((f, i) => tone(f, i * 0.05, 0.3, { v: 0.26 })),
+      close: () => [784, 523].forEach((f, i) => tone(f, i * 0.05, 0.28, { v: 0.22 })),
+      sheet: () => { tone(392, 0, 0.7, { v: 0.36 }); tone(1568, 0, 0.08, { v: 0.1 }); },
+      notify: () => [880, 1175, 1318].forEach((f, i) => tone(f, i * 0.09, 0.5, { v: 0.3 })),
+      on: () => noise(0, 0.03, { f: 1400, q: 8, v: 0.6 }), off: () => noise(0, 0.03, { f: 900, q: 8, v: 0.55 }),
+      type: () => noise(0, 0.015, { f: 1200, q: 8, v: 0.25 }),
+      fill: () => { tone(880, 0, 0.45, { v: 0.5 }); tone(3520, 0, 0.06, { v: 0.12 }); },
+      win: () => [587, 698, 880, 1175].forEach((f, i) => tone(f, i * 0.08, 0.6, { v: 0.42 })),
+      loss: () => [440, 349].forEach((f, i) => tone(f, i * 0.12, 0.7, { v: 0.4 })),
+      error: () => noise(0, 0.08, { f: 400, q: 4, v: 0.6 }) },
+    rave: {   // club: kick, hats, claps, risers, a saw stab on the drop
+      tap: () => noise(0, 0.03, { ft: "highpass", f: 8000, v: 0.4 }),
+      nav: () => { tone(160, 0, 0.18, { to: 42, glide: 0.12, v: 1.1 }); noise(0.0, 0.08, { f: 1600, q: 0.8, v: 0.45 }); },
+      select: () => { noise(0, 0.05, { ft: "highpass", f: 7000, v: 0.4 }); noise(0.06, 0.04, { ft: "highpass", f: 9000, v: 0.25 }); },
+      open: () => noise(0, 0.3, { f: 400, fTo: 6000, q: 2, v: 0.35, a: 0.2 }),
+      close: () => noise(0, 0.2, { f: 6000, fTo: 400, q: 2, v: 0.3, a: 0.01 }),
+      sheet: () => { tone(150, 0, 0.2, { to: 40, glide: 0.15, v: 1 }); [262, 330, 392].forEach((f) => tone(f, 0, 0.3, { type: "sawtooth", lp: 2400, lpTo: 600, v: 0.18 })); },
+      notify: () => { noise(0, 0.12, { f: 1500, q: 0.8, v: 0.4 }); [523, 659, 784].forEach((f) => tone(f, 0, 0.22, { type: "sawtooth", lp: 3000, v: 0.14 })); },
+      on: () => tone(120, 0, 0.12, { to: 50, v: 0.8 }), off: () => noise(0, 0.05, { ft: "highpass", f: 6000, v: 0.35 }),
+      type: () => noise(0, 0.012, { ft: "highpass", f: 9000, v: 0.15 }),
+      fill: () => { tone(160, 0, 0.18, { to: 45, v: 1 }); [440, 554, 659].forEach((f) => tone(f, 0.01, 0.2, { type: "sawtooth", lp: 3200, v: 0.16 })); },
+      win: () => { noise(0, 0.6, { f: 400, fTo: 8000, q: 2, v: 0.3, a: 0.5 }); tone(160, 0.6, 0.3, { to: 40, v: 1.1 }); [523, 659, 784, 1046].forEach((f) => tone(f, 0.6, 0.4, { type: "sawtooth", lp: 3500, v: 0.16 })); },
+      loss: () => tone(200, 0, 0.5, { type: "sawtooth", to: 60, lp: 1200, lpTo: 150, v: 0.4 }),
+      error: () => tone(90, 0, 0.25, { type: "square", lp: 600, v: 0.35 }) },
+    chip: {   // Blocky / Pixel / 8-bit: square-wave console blips
+      tap: () => tone(1046, 0, 0.04, { type: "square", v: 0.12 }),
+      nav: () => [523, 784].forEach((f, i) => tone(f, i * 0.05, 0.07, { type: "square", v: 0.14 })),
+      select: () => tone(1568, 0, 0.05, { type: "square", v: 0.12 }),
+      open: () => [392, 523, 659].forEach((f, i) => tone(f, i * 0.035, 0.05, { type: "square", v: 0.12 })),
+      close: () => [659, 392].forEach((f, i) => tone(f, i * 0.035, 0.05, { type: "square", v: 0.1 })),
+      sheet: () => tone(262, 0, 0.16, { type: "square", to: 784, glide: 0.12, v: 0.12 }),
+      notify: () => [988, 1318].forEach((f, i) => tone(f, i * 0.08, 0.12, { type: "square", v: 0.14 })),
+      on: () => tone(660, 0, 0.06, { type: "square", to: 990, v: 0.12 }), off: () => tone(990, 0, 0.06, { type: "square", to: 660, v: 0.1 }),
+      type: () => tone(2093, 0, 0.015, { type: "square", v: 0.05 }),
+      fill: () => [784, 1046, 1568].forEach((f, i) => tone(f, i * 0.04, 0.08, { type: "square", v: 0.22 })),
+      win: () => [523, 659, 784, 1046, 784, 1046].forEach((f, i) => tone(f, i * 0.07, 0.09, { type: "square", v: 0.2 })),
+      loss: () => [392, 330, 262, 196].forEach((f, i) => tone(f, i * 0.1, 0.12, { type: "square", v: 0.2 })),
+      error: () => noise(0, 0.12, { ft: "lowpass", f: 900, v: 0.5 }) },
+    waifu: {   // kawaii: bubble pops, sparkles, music-box chimes, boings
+      tap: () => tone(600, 0, 0.06, { to: 1400, glide: 0.04, v: 0.3 }),
+      nav: () => [1568, 2093, 2637, 3136].forEach((f, i) => tone(f, i * 0.035, 0.16, { type: "triangle", v: 0.18 })),
+      select: () => tone(900, 0, 0.08, { to: 1800, glide: 0.05, v: 0.26 }),
+      open: () => tone(400, 0, 0.18, { to: 1200, glide: 0.12, v: 0.26 }),
+      close: () => tone(1200, 0, 0.16, { to: 450, glide: 0.12, v: 0.22 }),
+      sheet: () => [1046, 1318, 1568, 2093].forEach((f, i) => tone(f, i * 0.06, 0.4, { type: "triangle", v: 0.2 })),
+      notify: () => [2093, 2637].forEach((f, i) => tone(f, i * 0.1, 0.6, { type: "triangle", v: 0.22 })),
+      on: () => tone(300, 0, 0.22, { to: 900, glide: 0.08, v: 0.28 }), off: () => tone(900, 0, 0.2, { to: 300, glide: 0.1, v: 0.24 }),
+      type: () => tone(1800, 0, 0.03, { to: 2600, v: 0.08 }),
+      fill: () => [1318, 1760].forEach((f, i) => tone(f, i * 0.05, 0.25, { type: "triangle", v: 0.32 })),
+      win: () => [1046, 1318, 1568, 2093, 2637].forEach((f, i) => tone(f, i * 0.06, 0.45, { type: "triangle", v: 0.26 })),
+      loss: () => tone(700, 0, 0.4, { to: 250, glide: 0.35, v: 0.3 }),
+      error: () => tone(500, 0, 0.2, { to: 300, v: 0.26 }) } };
+  const pk = P[pack] || P.soft, alias = { click: "tap", toggleOn: "on", toggleOff: "off", lock: "error" };
+  const fn = pk[alias[kind] || kind] || P.soft[alias[kind] || kind]; if (fn) try { fn(); } catch (e) {}
 }
 function buzz(ms) { if (prefs.haptics !== false && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {} }
 
+// KING_STAGELOAD (Nov 22, King): Stats + Journal load in three beats: empty widgets, then their titles, then the data,
+// each widget's numbers counting up in reading order (left to right, top to bottom) until the page is full.
+const STAGE = { "v-stats": { w: "#st-kpi > div, .card", t: "h4, #st-kpi > div > span" }, "v-tj": { w: ".jw:not(.jadd), .jkpi > div, .jsts > div", t: "header > b, .jst > span" } };
+function stagePre(id) { const r = $(id); if (!r || !document.body.classList.contains("ui2") || matchMedia("(prefers-reduced-motion: reduce)").matches) return; r.classList.add("kpre"); clearTimeout(r._kpre); r._kpre = setTimeout(() => r.classList.remove("kpre"), 4000); }
+function stageLoad(id) {
+  const r = $(id), cf = STAGE[id]; if (!r) return; clearTimeout(r._kpre);
+  if (!r.classList.contains("kpre")) return; const tok = (r._ktok = (r._ktok || 0) + 1);
+  const W = [...r.querySelectorAll(cf.w)].filter((e) => e.getClientRects().length).map((e) => ({ e, b: e.getBoundingClientRect() }));
+  W.sort((a, b) => Math.abs(a.b.top - b.b.top) > 12 ? a.b.top - b.b.top : a.b.left - b.b.left);
+  W.forEach(({ e }) => { e.classList.add("ksk"); e.querySelectorAll(cf.t).forEach((t) => t.classList.add("ksk-t")); });
+  r.classList.remove("kpre"); r.classList.add("kst0");
+  setTimeout(() => { if (r._ktok === tok) r.classList.add("kst1"); }, 260);
+  W.forEach(({ e }, i) => setTimeout(() => { if (r._ktok !== tok) return; e.classList.remove("ksk"); e.classList.add("kshow"); countUp(e, cf.t); if (i === W.length - 1) setTimeout(() => r.classList.remove("kst0", "kst1"), 900); }, 560 + i * 70));
+}
+function countUp(el, tsel) {
+  const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: (n) => /\d/.test(n.nodeValue) && !n.parentElement.closest(tsel + ",.jcal,[class*=cal] header,script,style,svg,canvas,select,option,input,textarea,button") ? 1 : 2 });
+  const N = []; let n; while ((n = tw.nextNode()) && N.length < 80) N.push({ n, src: n.nodeValue });
+  if (!N.length) return; const RX = /\d{4}-\d\d-\d\d|\d{1,2}:\d\d|\d[\d,]*(?:\.\d+)?/g, t0 = performance.now(), D = 720;
+  const step = (now) => { const k = Math.min(1, (now - t0) / D), e = 1 - Math.pow(1 - k, 3);
+    for (const o of N) { if (!o.n.isConnected) continue; o.n.nodeValue = k >= 1 ? o.src : o.src.replace(RX, (m) => { if (/[-:]/.test(m) || /^(19|20)\d\d$/.test(m) || /^\d{1,2}$/.test(o.src.trim())) return m; const dec = (m.split(".")[1] || "").length, v = parseFloat(m.replace(/,/g, "")) * e;
+      return m.includes(",") || v >= 1000 && /,/.test(m) ? v.toLocaleString("en-US", { minimumFractionDigits: dec, maximumFractionDigits: dec }) : v.toFixed(dec); }); }
+    if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+// KING_SPOT: feed the pointer position to the card under it (one listener, rAF-batched)
+{ let q = null, ev = null; addEventListener("pointermove", (e) => { ev = e; if (q) return; q = requestAnimationFrame(() => { q = null; if (!document.body.classList.contains("ui2")) return;
+  const c = ev.target.closest && ev.target.closest(".card,.jw,#st-kpi>div,.setc,.acard"); if (!c) return; const r = c.getBoundingClientRect(); c.style.setProperty("--mx", ev.clientX - r.left + "px"); c.style.setProperty("--my", ev.clientY - r.top + "px"); }); }, { passive: true }); }
+// KING_NAVLINE (Nov 22): one underline that slides between the top-nav pages (the per-tab line can't move)
+function navLine(instant) { const R = $("rail"); if (!R) return; let L = $("navline"); if (!L) { L = document.createElement("i"); L.id = "navline"; R.appendChild(L); }
+  const on = R.querySelector(".vtab.on"); if (!on || !document.body.classList.contains("ui2-iv") || innerWidth <= 900) { L.style.opacity = "0"; return; }
+  const r = on.getBoundingClientRect(), p = R.getBoundingClientRect(); if (instant) L.style.transition = "none";
+  L.style.opacity = "1"; L.style.width = (r.width - 22) + "px"; L.style.transform = `translateX(${r.left - p.left + 11}px)`; if (instant) { void L.offsetWidth; L.style.transition = ""; } }
+addEventListener("resize", () => navLine(true)); setTimeout(() => navLine(true), 600); setTimeout(() => navLine(true), 2500);
 // KING_SOUND2 + KING_MOTION hooks: every interaction gets a quiet sound (new look only; Settings > Sounds still mutes all)
 (() => { const on = () => document.body.classList.contains("ui2");
   document.addEventListener("pointerdown", (e) => { if (!on()) return; const b = e.target.closest("button,.tool,.tf,.jcd,.ddb,[role=button]"); if (!b || b.disabled) return;
@@ -1336,7 +1445,7 @@ const THEMES = { kairos: ["Kairos", { "--bg": "#0a0a0d", "--panel": "#111116", "
   glacier: ["Glacier", { "--bg": "#070b10", "--panel": "#0d141c", "--acc": "#9fd8ff", "--acc2": "#c3b5ff", "--txt": "#e8f2fb", "--mut": "#8aa0b5", "--line": "rgba(159,216,255,.10)" }],
   mono: ["Mono", { "--bg": "#0a0a0a", "--panel": "#121212", "--acc": "#f2f2f2", "--acc2": "#9a9a9a", "--txt": "#ededed", "--mut": "#8a8a8a", "--line": "rgba(255,255,255,.08)" }] };
 function applyTheme(k) { for (const [id, v] of Object.entries(prefs.myThemes || {})) THEMES[id] = v; const t = THEMES[k] || THEMES.kairos; for (const [v, c] of Object.entries(t[1])) document.documentElement.style.setProperty(v, c); prefs.theme = k in THEMES ? k : "kairos";
-  if ($("s-themes")) $("s-themes").innerHTML = Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="th ${id === prefs.theme ? "on" : ""}" data-th="${id}"><i style="background:${c["--bg"]};box-shadow:inset 0 0 0 1px ${c["--line"]}"><b style="background:${c["--acc"]}"></b><b style="background:${c["--acc2"]}"></b></i>${esc(nm)}</button>`).join(""); }
+  if (false) $("s-themes").innerHTML = Object.entries(THEMES).map(([id, [nm, c]]) => `<button class="th ${id === prefs.theme ? "on" : ""}" data-th="${id}"><i style="background:${c["--bg"]};box-shadow:inset 0 0 0 1px ${c["--line"]}"><b style="background:${c["--acc"]}"></b><b style="background:${c["--acc2"]}"></b></i>${esc(nm)}</button>`).join(""); }
 
 /* ---------------- quick trade review (rules followed? mistakes) ---------------- */
 const MISTAKES = ["No setup", "Chased", "FOMO", "Early exit", "Moved stop", "Too big", "Revenge", "Fought the trend", "Ignored ES", "Off my hours"];
@@ -2069,7 +2178,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) JN.open(); /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
+function view(v) { try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); try { navLine(); } catch (e) {} document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) { stagePre("v-tj"); Promise.resolve(JN.open()).then(() => stageLoad("v-tj"), () => stageLoad("v-tj")); } /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") { stagePre("v-stats"); renderStats().then(() => stageLoad("v-stats"), () => stageLoad("v-stats")); } if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
 function layMenu() { const sv = prefs.saved || [];
   return layMenu2(); }
 function saveLayout() { const name = (prompt("Name this layout (e.g. NQ/ES SMT, 1m + 15m)") || "").trim().slice(0, 30); if (!name) return;
@@ -2174,7 +2283,37 @@ function buildFx(full) { if (prefs.chartfx === false || (navigator.webdriver && 
   if (document.getElementById("kbuild")) return; const T = buildTargets(full);
   T.forEach((t) => { if (t.z !== 1 || full) { t.prev = t.el.style.opacity; t.el.style.opacity = "0"; } });
   panes.forEach((p) => { try { p.series.applyOptions({ visible: false }); } catch (e) {} });
-  afterIntro(() => requestAnimationFrame(() => runBuild(full, T))); }
+  afterIntro(() => requestAnimationFrame(() => (document.body.classList.contains("ui2") ? assembleBuild : runBuild)(full, T))); }
+// KING_ASSEMBLE (Nov 22, King): the new look loads by putting itself together. Every piece arrives on its own beat in one of three ways:
+// falling into place, rising out of fog, or growing from tiny. Bars first, then their buttons left to right, then the chart wipes in with its candles.
+function assembleBuild(full, T) {
+  const mark = document.createElement("i"); mark.id = "kbuild"; mark.style.display = "none"; document.body.appendChild(mark);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches, E = "cubic-bezier(.22,1.2,.36,1)", EF = "cubic-bezier(.16,1,.3,1)";
+  const items = T.map((t) => ({ ...t, b: t.el.getBoundingClientRect() }));
+  items.sort((a, b) => (a.z === 1) - (b.z === 1) || a.z - b.z || (Math.abs(a.b.top - b.b.top) > 14 ? a.b.top - b.b.top : a.b.left - b.b.left));
+  const styles = [
+    { k: [{ opacity: 0, transform: "translateY(-46px)" }, { opacity: 1, transform: "translateY(4px)", offset: .7 }, { opacity: 1, transform: "none" }], e: "cubic-bezier(.3,0,.2,1)" },
+    { k: [{ opacity: 0, transform: "translateY(22px) scale(.98)", filter: "blur(12px)" }, { opacity: 1, transform: "none", filter: "blur(0)" }], e: EF },
+    { k: [{ opacity: 0, transform: "scale(.35)" }, { opacity: 1, transform: "scale(1.04)", offset: .75 }, { opacity: 1, transform: "none" }], e: E } ];
+  let skip = false, ended = false, k = 0; const anims = [], base = full ? 1 : .6;
+  const finish = () => { if (ended) return; ended = true; anims.forEach((a) => { try { a.finish(); } catch (e) {} });
+    T.forEach((t) => { t.el.style.opacity = t.prev || ""; }); panes.forEach((p) => { try { p.series.applyOptions({ visible: true }); p.el.style.clipPath = ""; } catch (e) {} });
+    removeEventListener("pointerdown", onSkip, true); mark.remove(); dispatchEvent(new Event("kz-built")); };
+  const onSkip = () => { skip = true; finish(); }; addEventListener("pointerdown", onSkip, true);
+  if (reduce) return finish();
+  let t = 0; items.forEach((it, i) => {
+    if (it.z === 1) return; const st = it.z === 0 ? styles[i % 2 ? 1 : 0] : styles[(i * 7 + 1) % 3];
+    const d = it.z === 0 ? 460 : 520, at = t; t += (it.z === 0 ? 70 : 26) * base;
+    setTimeout(() => { if (skip) return; it.el.style.opacity = it.prev || ""; try { const a = it.el.animate(st.k, { duration: d * (full ? 1 : .8), easing: st.e, fill: "backwards" }); anims.push(a); } catch (e) {} if (i % 3 === 0) try { sfx("tap"); } catch (e) {} }, at);
+  });
+  const pz = items.filter((x) => x.z === 1), tc = t + 120;
+  setTimeout(() => { if (skip) return; pz.forEach((it, j) => { const el = it.el; el.style.opacity = it.prev || "";
+      try { anims.push(el.animate([{ opacity: 0, filter: "blur(10px)" }, { opacity: 1, filter: "blur(0)" }], { duration: 420, easing: EF, fill: "backwards", delay: j * 90 })); } catch (e) {} });
+    setTimeout(() => { if (skip) return; panes.forEach((p, j) => { try { p.series.applyOptions({ visible: true });
+        anims.push(p.el.animate([{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0 0 0)" }], { duration: full ? 1100 : 700, easing: "cubic-bezier(.65,0,.35,1)", delay: j * 120 })); } catch (e) {} });
+      try { sfx("sheet"); } catch (e) {} setTimeout(finish, (full ? 1100 : 700) + panes.length * 120 + 60); }, 380); }, tc);
+  setTimeout(() => { if (!ended) finish(); }, 9000);
+}
 function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min(devicePixelRatio || 1, 2), cv = document.createElement("canvas"); cv.id = "kbuild";
   Object.assign(cv.style, { left: "0px", top: "0px", width: W + "px", height: H + "px" }); cv.width = W * D; cv.height = H * D; document.body.appendChild(cv); const g = cv.getContext("2d"); g.scale(D, D);
   const L = [];
@@ -2687,7 +2826,7 @@ $("jc-next").onclick = () => { const [y, m] = jMonth.split("-").map(Number), d =
 $("jc-all").onclick = () => { jDay = null; loadJournal(); };
 $("frbtn").onclick = () => { if (prefs.side && !$("md-friends").classList.contains("hidden")) { prefs.side = false; savePrefs(); sideUI(); } else frOpen(); };
 $("sfr-open").onclick = () => view("friends");
-$("s-themes").onclick = (e) => { const b = e.target.closest("[data-th]"); if (b) { applyTheme(b.dataset.th); savePrefs(); sfx("click"); } };
+/* KING_APPTHEMES: old theme grid click handler removed */
 $("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && document.querySelector(".tourbox")) { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); prefs.toured = APP_VERSION; savePrefs(); } });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
 $("ltabs").onclick = (e) => { const b = e.target.closest("[data-l]"); if (b) ltab(b.dataset.l); }; $("rl-spoil").onchange = renderRL;
@@ -3789,8 +3928,8 @@ document.querySelectorAll("#cs-wbg [data-b]").forEach((x) => x.addEventListener(
 setTimeout(() => { try { waifuUI(); } catch (e) {} }, 0);
 
 // KING_FAVPOP (King, Nov 20): one-click pop out / dock back for the favorites bar (was only in the right-click menu)
-{ const pb = $("favpop"); if (pb) { const sync = () => { const fl = prefs.favDock === false; pb.title = fl ? "Dock the favorites bar back in the top row" : "Pop out the favorites bar"; pb.setAttribute("aria-label", pb.title); pb.classList.toggle("on", fl); };
-  pb.onclick = (e) => { e.stopPropagation(); if (prefs.favDock === false) { delete prefs.favDock; delete prefs.favPos; } else prefs.favDock = false; savePrefs(); favUI(); sync(); try { sfx("tap"); } catch (er) {} };
+{ const pb = $("favpop"); if (pb) { const sync = () => { const fl = prefs.favDock !== true; pb.title = fl ? "Dock the favorites bar back in the top row" : "Pop out the favorites bar"; pb.setAttribute("aria-label", pb.title); pb.classList.toggle("on", fl); };
+  pb.onclick = (e) => { e.stopPropagation(); if (prefs.favDock !== true) { prefs.favDock = true; delete prefs.favPos; } else prefs.favDock = false; savePrefs(); favUI(); sync(); try { sfx("tap"); } catch (er) {} };
   const _f = favUI; favUI = function () { _f(); sync(); }; sync(); } }
 
 // KING_POSTAG (King, Nov 20, from his TradingView screenshot): a tag on the position line with ⇅ reverse, TP and SL you drag
@@ -3893,6 +4032,61 @@ function themeUI(on) { const B = document.body, t = prefs.chTheme, P = on && t &
   set("--txt", P.txt); set("--mut", P.mut); set("--mut2", P.mut); set("--line", L(.10)); set("--edge", L(.14)); set("--sel", L(.09)); set("--hov", L(.07)); set("--chip", L(.05));
   set("--ink", P.ink); set("--inktxt", P.inktxt); set("--acc", P.ink); set("--acc2", P.ink); set("--blue", P.blue); set("--up", P.up); set("--dn", P.dn);
   try { document.documentElement.style.background = /^#/.test(P.bg) ? P.bg : ""; } catch (e) {} }
+// KING_APPTHEMES (Nov 22, King): Settings themes rebuilt. The old Kairos/Midnight/Neon grid/... pickers only fed the old look, so they're gone.
+// Now: Default (Ivory/Onyx), Original KAIROS (first colors + first logo), 7 rainbow colors (pick a shade, then a vibrancy),
+// and 8 style themes that restyle every page: Blocky (Minecraft style), Pixel, 8-bit, Terminal, Luxury, Frutiger Aero, 3D, Animated.
+// Specialty chart themes (Legacy, Sweden, Rave, Waifu) still win while they're on.
+const RAINBOW = { red: ["Red", 0], orange: ["Orange", 26], yellow: ["Yellow", 48], green: ["Green", 140], blue: ["Blue", 214], indigo: ["Indigo", 242], violet: ["Violet", 275] };
+const SHADES = [["pastel", "Pastel"], ["light", "Light"], ["mid", "Mid"], ["deep", "Deep"], ["dark", "Dark"]];
+const STYLE_THEMES = {
+  kairos: { nm: "Original KAIROS", sub: "First colors + logo", base: "dark", v: { bg: "#0a0a0d", panel: "#111116", panel2: "#16161d", txt: "#ecebf3", mut: "#8b8a99", line: "167,139,250", ink: "#a78bfa", inktxt: "#0a0a0d", blue: "#7c3aed", up: "#2bd4a0", dn: "#ff4d5e" }, sw: ["#0a0a0d", "#a78bfa", "#ff4d5e"] },
+  blocky: { nm: "Blocky", sub: "Minecraft style", base: "dark", v: { bg: "#3b3b3b", panel: "#6f6f6f", panel2: "#5a5a5a", txt: "#ffffff", mut: "#d8d8d8", line: "0,0,0", ink: "#5d9b2f", inktxt: "#ffffff", blue: "#3f76e4", up: "#7fd650", dn: "#ff5555" }, sw: ["#866043", "#5d9b2f", "#7d7d7d"], chip: 1 },
+  pixel: { nm: "Pixel", sub: "Soft pixel art", base: "light", v: { bg: "#f4efe6", panel: "#fffaf0", panel2: "#efe6d6", txt: "#2d2438", mut: "#6b5f78", line: "45,36,56", ink: "#5b4b8a", inktxt: "#fffaf0", blue: "#3a7bd5", up: "#2f9e6a", dn: "#d6455d" }, sw: ["#fffaf0", "#5b4b8a", "#ffb1c1"], chip: 1 },
+  bit8: { nm: "8-bit", sub: "Old console", base: "dark", v: { bg: "#000000", panel: "#0b0b0b", panel2: "#161616", txt: "#fcfcfc", mut: "#bcbcbc", line: "252,252,252", ink: "#f8b800", inktxt: "#000000", blue: "#0078f8", up: "#00b800", dn: "#e40058" }, sw: ["#000000", "#f8b800", "#0078f8"], chip: 1 },
+  terminal: { nm: "Terminal", sub: "Green screen", base: "dark", v: { bg: "#030703", panel: "#061006", panel2: "#0a170a", txt: "#3dff7a", mut: "#23a34c", line: "61,255,122", ink: "#3dff7a", inktxt: "#030703", blue: "#3dff7a", up: "#3dff7a", dn: "#ff5f56" }, sw: ["#030703", "#3dff7a", "#23a34c"] },
+  luxury: { nm: "Luxury", sub: "Black and gold", base: "dark", v: { bg: "#0b0a08", panel: "#12100c", panel2: "#181510", txt: "#f1e8d4", mut: "#a99c80", line: "201,164,92", ink: "#c9a45c", inktxt: "#0b0a08", blue: "#c9a45c", up: "#b9c98a", dn: "#c9776a" }, sw: ["#0b0a08", "#c9a45c", "#f1e8d4"] },
+  aero: { nm: "Frutiger Aero", sub: "Glossy sky + glass", base: "light", v: { bg: "#d8f0ff", panel: "rgba(255,255,255,.72)", panel2: "rgba(255,255,255,.5)", txt: "#0c2c44", mut: "#3f6580", line: "20,90,140", ink: "#1690e0", inktxt: "#ffffff", blue: "#1690e0", up: "#2fae3a", dn: "#e0453a" }, sw: ["#8fd3ff", "#1690e0", "#7ed957"] },
+  d3: { nm: "3D", sub: "Raised, pressable", base: "light", v: { bg: "#e9ebf0", panel: "#f7f8fb", panel2: "#eceef3", txt: "#1c2230", mut: "#5b6478", line: "28,34,48", ink: "#2a5bd7", inktxt: "#ffffff", blue: "#2a5bd7", up: "#1f9a62", dn: "#d6404e" }, sw: ["#f7f8fb", "#2a5bd7", "#b8bfcd"] },
+  anim: { nm: "Animated", sub: "Moving aurora", base: "dark", v: { bg: "#07070c", panel: "rgba(14,14,24,.72)", panel2: "rgba(22,22,36,.78)", txt: "#eef0ff", mut: "#9ea3c4", line: "140,160,255", ink: "#7cc4ff", inktxt: "#07070c", blue: "#7cc4ff", up: "#5af0b0", dn: "#ff6b8a" }, sw: ["#07070c", "#7cc4ff", "#5af0b0"] } };
+function rainbowPal(h, shade, vib) {
+  const k = Math.max(0, Math.min(100, vib ?? 60)) / 100, S = (s) => Math.round(6 + (s - 6) * k), c = (s, l) => `hsl(${h} ${S(s)}% ${l}%)`;
+  const yl = h > 35 && h < 70;   // yellows need darker ink to read
+  const P = { pastel: ["light", c(60, 95), c(70, 98), c(50, 91), c(30, 13), c(18, 38), c(70, yl ? 32 : 45), "#ffffff"],
+    light: ["light", c(55, 90), c(60, 95), c(50, 85), c(35, 12), c(22, 34), c(80, yl ? 30 : 40), "#ffffff"],
+    mid: ["light", c(62, yl ? 64 : 70), c(60, yl ? 72 : 78), c(58, yl ? 58 : 64), c(45, 9), c(30, 22), c(70, 18), c(60, 92)],
+    deep: ["dark", c(55, 16), c(50, 21), c(48, 25), c(30, 95), c(22, 74), c(90, yl ? 60 : 68), c(50, 10)],
+    dark: ["dark", c(30, 7), c(28, 10), c(26, 13), c(20, 93), c(14, 66), c(92, yl ? 58 : 64), c(40, 6)] }[shade] || null;
+  if (!P) return null; const dk = P[0] === "dark";
+  return { base: P[0], v: { bg: P[1], panel: P[2], panel2: P[3], txt: P[4], mut: P[5], ink: P[6], inktxt: P[7], blue: P[6], lineRaw: dk ? "255,255,255" : "0,0,0" } };
+}
+function appThemeDef() { const a = prefs.appTheme || {}; if (!a.id || a.id === "def") return null;
+  if (RAINBOW[a.id]) { const r = rainbowPal(RAINBOW[a.id][1], a.shade || "light", a.vib); return r && { ...r, cls: "rainbow" }; }
+  const s = STYLE_THEMES[a.id]; return s ? { base: s.base, v: s.v, cls: a.id } : null; }
+function appTheme(on) { const B = document.body, skin = !!(prefs.skin || prefs.waifu), T = on && !skin ? appThemeDef() : null;
+  [...B.classList].filter((c) => c.startsWith("at-")).forEach((c) => B.classList.remove(c)); B.classList.toggle("apptheme", !!T);
+  if (T) { const P = T.v, L = (a) => P.lineRaw ? `rgba(${P.lineRaw},${a})` : `rgba(${P.line},${a})`, set = (k, v) => v && B.style.setProperty(k, v);
+    B.classList.add("at-" + T.cls); const lt = T.base === "light";
+    B.classList.toggle("ui2-light", lt); B.classList.toggle("ui2-dark", !lt); B.classList.toggle("ui2-ivory", lt); B.classList.toggle("ui2-onyx", !lt);
+    set("--bg", P.bg); set("--bg2", P.bg); set("--panel", P.panel); set("--glass", P.panel); set("--panel2", P.panel2); set("--glass2", P.panel2);
+    set("--txt", P.txt); set("--mut", P.mut); set("--mut2", P.mut); set("--line", L(.12)); set("--edge", L(.18)); set("--sel", L(.10)); set("--hov", L(.07)); set("--chip", L(.05));
+    set("--ink", P.ink); set("--inktxt", P.inktxt); set("--acc", P.ink); set("--acc2", P.ink); set("--blue", P.blue); set("--blue2", P.blue); if (P.up) set("--up", P.up); if (P.dn) set("--dn", P.dn);
+    try { document.documentElement.style.background = /^(#|hsl)/.test(P.bg) ? P.bg : ""; } catch (e) {} }
+  appThemeUI(); }
+function appThemeUI() { const el = $("s-themes"); if (!el) return; const a = prefs.appTheme || {}, id = a.id || "def", skin = !!(prefs.skin || prefs.waifu);
+  const card = (k, nm, sub, sw) => `<button class="atc ${id === k ? "on" : ""}" data-at="${k}"><i class="atsw">${sw.map((c) => `<b style="background:${c}"></b>`).join("")}</i><span><b>${esc(nm)}</b><em>${esc(sub)}</em></span></button>`;
+  const rb = RAINBOW[id];
+  el.innerHTML = (skin ? `<div class="tiny muted atnote">A specialty chart theme is on, so it styles the app right now. Pick a regular chart theme to use these.</div>` : "")
+    + `<div class="atgrid">${card("def", "Default", "Ivory / Onyx", ["#f7f5f0", "#1b1a17", "#121110"])}${card("kairos", ...[STYLE_THEMES.kairos.nm, STYLE_THEMES.kairos.sub, STYLE_THEMES.kairos.sw])}</div>`
+    + `<div class="atlbl">Colors</div><div class="atrb">${Object.entries(RAINBOW).map(([k, [nm, h]]) => `<button class="atdot ${id === k ? "on" : ""}" data-at="${k}" title="${nm}" style="--h:${h}"><i></i><span>${nm}</span></button>`).join("")}</div>`
+    + (rb ? `<div class="atsub"><div class="atlbl">${rb[0]} shade</div><div class="atsh">${SHADES.map(([s, nm]) => { const p = rainbowPal(rb[1], s, a.vib); return `<button class="${(a.shade || "light") === s ? "on" : ""}" data-sh="${s}"><i style="background:${p.v.bg};box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)"><b style="background:${p.v.ink}"></b></i>${nm}</button>`; }).join("")}</div>
+       <div class="atlbl">Vibrancy <i class="qm" data-help="Left is calm and gray, right is full color.">?</i></div><label class="atvib"><span>Calm</span><input type="range" id="at-vib" min="0" max="100" step="5" value="${a.vib ?? 60}"><span>Vivid</span></label></div>` : "")
+    + `<div class="atlbl">Styles</div><div class="atgrid">${Object.entries(STYLE_THEMES).filter(([k]) => k !== "kairos").map(([k, s]) => card(k, s.nm, s.sub, s.sw)).join("")}</div>`; }
+function setAppTheme(p) { prefs.appTheme = Object.assign({}, prefs.appTheme || {}, p); savePrefs(); ui2Apply(); sfx("select"); }
+document.addEventListener("click", (e) => { const s = $("s-themes"); if (!s || !s.contains(e.target)) return; const b = e.target.closest("[data-at]"), sh = e.target.closest("[data-sh]");
+  if (b) setAppTheme({ id: b.dataset.at, shade: RAINBOW[b.dataset.at] ? (prefs.appTheme && prefs.appTheme.shade) || "light" : undefined }); else if (sh) setAppTheme({ shade: sh.dataset.sh }); });
+document.addEventListener("input", (e) => { if (e.target.id === "at-vib") { prefs.appTheme = Object.assign({}, prefs.appTheme, { vib: +e.target.value }); try { appTheme(true); } catch (x) {} } });
+document.addEventListener("change", (e) => { if (e.target.id === "at-vib") savePrefs(); });
+(() => { let fx = document.getElementById("atfx"); if (!fx) { fx = document.createElement("div"); fx.id = "atfx"; fx.setAttribute("aria-hidden", "true"); fx.innerHTML = "<i></i><i></i><i></i>"; document.body.prepend(fx); } })();
 // KING_ONYX (Nov 22): Ivory (light) and Onyx (dark) replace Daylight and Graphite. Old saved choices map over: light→ivory, dark→onyx. "Off" keeps the old look.
 function ui2Norm(v) { return v === "dark" || v === "onyx" ? "onyx" : v === "off" ? "" : v === "light" || v === "ivory" ? "ivory" : null; }
 function ui2Mode() { const q = ui2Norm(window.__ui2m || new URLSearchParams(location.search).get("ui2")); if (q != null) return q; const p = ui2Norm(prefs.ui2); return p != null ? p : "ivory"; }
@@ -3903,6 +4097,7 @@ function ui2Apply() { const m = ui2Mode(), skin = !!(prefs.skin || prefs.waifu),
   if ($("s-ui2")) { const p = ui2Norm(prefs.ui2); $("s-ui2").value = p === "" ? "off" : p || "ivory"; }
   if (on && !skin && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== base && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][base]) { try { applyChartTheme(prefs.chTheme.id, base, true); } catch (e) {} }
   try { themeUI(on); } catch (e) {}
+  try { appTheme(on); } catch (e) {}
   if (on) B.classList.remove("glass"); else B.classList.toggle("glass", prefs.glass !== false);   // KING_FLAT (Nov 22): no Apple-glass look in the new look; flat bars, frosted glass only on things that float
   ui2Banner(on ? m : ""); }
 function ui2Banner(m) { let b = document.getElementById("ui2banner"); const want = !!new URLSearchParams(location.search).get("ui2");
