@@ -345,3 +345,7 @@ body.ui2-light #skipasia{color:#9a5a00;border-color:#9a5a00}
 body.ui2-light .fbtools .tool.lp{color:#0b8462}body.ui2-light .fbtools .tool.sp{color:#c42f42}
 body.ui2-light .seg button{color:#1d2026;border-color:rgba(16,18,21,.25)}
 body.ui2-light :is(.tgx){border-color:rgba(16,18,21,.35)}
+/* KING_UI2FIX light, page sweep (night Nov 22): every page checked for text under 4.5:1 on its background */
+body.ui2-light{--up:#0e7d56;--dn:#c8333b;--warn:#8f5c0c;--mut2:#5f6672}
+body.ui2-light .jbkc{color:#0e7d56;border-color:rgba(14,125,86,.45)}
+body.ui2-light .jbkc.warn{color:#8f5c0c;background:rgba(143,92,12,.08);border-color:rgba(143,92,12,.4)}

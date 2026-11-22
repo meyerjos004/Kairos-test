@@ -733,6 +733,7 @@ async def main():
         _ic = await E("['#chartsetbtn','#fullbtn','#padx','#padmore','.tools .tool.hashk','.fbtools .tool.hashk'].map(s=>{const e=document.querySelector(s+' svg');return e?Math.round(Math.min(e.getBoundingClientRect().width,e.getBoundingClientRect().height)):99})")
         check("ui2fix: icon buttons show icons 16px+", all(x >= 16 for x in _ic), _ic)
         check("ui2fix: NY open readable in daylight", await E("getComputedStyle(document.getElementById('skipny')).color") == "rgb(15, 122, 63)")
+        check("ui2fix: Daylight toast is dark with light text", await E("(()=>{toast('x');const c=getComputedStyle(document.getElementById('toast'));return c.backgroundColor!==c.color})()"))
         await E("window.__ui2m=null; ui2Apply()")
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
