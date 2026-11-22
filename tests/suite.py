@@ -707,6 +707,8 @@ async def main():
             await pg.mouse.move(*_sl); await pg.mouse.down(); await pg.mouse.move(_sl[0], _sl[1]+80, steps=6); await pg.mouse.up(); await pg.wait_for_timeout(200)
             check("postag: drag SL out sets a stop below entry", await E("pos.sl!=null && pos.sl<pos.avg"), await E("[pos.sl,pos.avg]"))
             check("postag: TP and SL lines drawn", await E("['tp','sl'].every(k=>panes[0].lines.some(l=>l.kind===k))"))
+            await pg.wait_for_timeout(300)
+            check("fitbr: TP and SL stay on screen after a drag", await E("(()=>{const p=panes[0],h=p.el.clientHeight;return [pos.tp,pos.sl].every(v=>{const y=p.series.priceToCoordinate(v);return y!=null&&y>=0&&y<=h})})()"), await E("[pos.tp,pos.sl,panes[0].series.priceToCoordinate(pos.tp),panes[0].el.clientHeight]"))
         await pg.keyboard.press("f"); await pg.keyboard.press("s"); await pg.wait_for_timeout(250)
         _dn = await E("(panes[0].series.markers()||[]).filter(m=>m.shape==='arrowDown')")
         check("arrows: sell arrow is red", bool(_dn) and all(m["color"] == "#ff4d5e" for m in _dn), _dn)

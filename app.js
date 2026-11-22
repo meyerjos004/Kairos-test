@@ -345,6 +345,10 @@ function makePane(i) {
     timeScale: { borderColor: "rgba(255,255,255,.06)", timeVisible: true, secondsVisible: true, rightOffset: 12 }, crosshair: { mode: 0, vertLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" }, horzLine: { color: "rgba(255,255,255,.25)", labelBackgroundColor: "#1d2430" } }, autoSize: true });
   const series = chart.addCandlestickSeries({ upColor: prefs.up, downColor: prefs.dn, borderVisible: false, wickUpColor: prefs.up, wickDownColor: prefs.dn, priceFormat: { type: "price", precision: 2, minMove: TICK } });
   const p = { i, el, chart, series, sec: paneSec(i), candles: [], lines: [], opens: [], cv: el.querySelector("canvas.overlay") };
+  // KING_FITBR (night Nov 22): with auto scale on, keep your TP and SL on screen (they used to sit above/below the chart after a drag).
+  // Skipped while you're dragging them (the scale would chase your mouse) and when a level is more than 2 screens away (candles would squash flat).
+  series.applyOptions({ autoscaleInfoProvider: (o) => { const r = o(); try { if (r && r.priceRange && prefs.fitBr !== false && pos.qty && paneSym(p) === sym && !(typeof POSTAG !== "undefined" && POSTAG.drag)) {
+    const R = r.priceRange, h = Math.max(R.maxValue - R.minValue, TICK * 8); for (const v of [pos.tp, pos.sl]) { if (v == null || v > R.maxValue + 2 * h || v < R.minValue - 2 * h) continue; R.minValue = Math.min(R.minValue, v - TICK * 4); R.maxValue = Math.max(R.maxValue, v + TICK * 4); } } } catch (e) {} return r; } });
   p.mode = 0; p.auto = true;
   el.addEventListener("pointerdown", () => setActive(i), true);
   chart.timeScale().subscribeVisibleLogicalRangeChange((r) => { syncTime(p); paint(p); moreHistory(p, r); clearTimeout(p.hrT); p.hrT = setTimeout(() => htfRoom(p), 120); }); new ResizeObserver(() => paint(p)).observe(el);
