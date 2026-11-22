@@ -1239,15 +1239,48 @@ function refresh() { try { duelTick(); } catch (e) {}
 /* ---------------- feel: sounds (made here with Web Audio, no files), haptics, number flashes ---------------- */
 let AC = null;
 function sfx(kind) {
-  if (prefs.sound === false) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; } const t0 = AC.currentTime, vol = (prefs.vol ?? 60) / 100 * 0.18;
-  const note = (f, at, dur, type = "sine", v = vol) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f, t0 + at); g.gain.setValueAtTime(0, t0 + at); g.gain.linearRampToValueAtTime(v, t0 + at + 0.012); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur); o.connect(g).connect(AC.destination); o.start(t0 + at); o.stop(t0 + at + dur + 0.02); };
-  if (kind === "fill") { note(880, 0, 0.09, "triangle"); note(1320, 0.05, 0.12, "sine", vol * 0.7); }
+  // KING_SOUND2 (Nov 22): one calm sound set for every interaction, voiced per look. Regular looks = soft wood + glass;
+  // specialty themes get their own voice: Legacy = cold glass synth, Sweden = wooden mallet, Rave = punchy, Waifu = bubbly.
+  if (prefs.sound === false) return; try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+  const now = performance.now(); sfx._t = sfx._t || {}; if (now - (sfx._t[kind] || 0) < 45) return; sfx._t[kind] = now;
+  const t0 = AC.currentTime, base = (prefs.vol ?? 60) / 100 * 0.16, sk = prefs.skin || (prefs.waifu ? "waifu" : "");
+  const V = { legacy: { w: "sine", det: 7, sh: 1.5, lp: 5200 }, sweden: { w: "triangle", det: 0, sh: 0.8, lp: 2600 }, rave: { w: "sawtooth", det: 12, sh: 1, lp: 3800 }, waifu: { w: "sine", det: 0, sh: 1.25, lp: 6000 } }[sk] || { w: "sine", det: 0, sh: 1, lp: 4200 };
+  const out = AC.createBiquadFilter(); out.type = "lowpass"; out.frequency.value = V.lp; out.connect(AC.destination);
+  const note = (f, at, dur, type = V.w, v = base, bend = 0) => { const o = AC.createOscillator(), g = AC.createGain(); o.type = type; o.frequency.setValueAtTime(f * V.sh, t0 + at); if (bend) o.frequency.exponentialRampToValueAtTime(f * V.sh * bend, t0 + at + dur); if (V.det) o.detune.value = (Math.random() - 0.5) * V.det;
+    g.gain.setValueAtTime(0, t0 + at); g.gain.linearRampToValueAtTime(v, t0 + at + 0.008); g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur); o.connect(g).connect(out); o.start(t0 + at); o.stop(t0 + at + dur + 0.03); };
+  const tick = (v, f = 2400, d = 0.018) => { const n = AC.createBufferSource(), b = AC.createBuffer(1, Math.ceil(AC.sampleRate * d), AC.sampleRate), c = b.getChannelData(0); for (let i = 0; i < c.length; i++) c[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / c.length, 3);
+    const bp = AC.createBiquadFilter(), g = AC.createGain(); bp.type = "bandpass"; bp.frequency.value = f * V.sh; bp.Q.value = 1.4; g.gain.value = v; n.buffer = b; n.connect(bp).connect(g).connect(out); n.start(t0); };
+  if (kind === "fill") { note(880, 0, 0.09, "triangle"); note(1320, 0.05, 0.12, "sine", base * 0.7); }
   else if (kind === "win") { [660, 880, 1320].forEach((f, i) => note(f, i * 0.07, 0.22, "sine")); }
-  else if (kind === "loss") { note(330, 0, 0.18, "triangle"); note(247, 0.1, 0.3, "triangle", vol * 0.8); }
-  else if (kind === "click") note(1600, 0, 0.03, "square", vol * 0.25);
-  else if (kind === "lock") { note(220, 0, 0.35, "sawtooth", vol * 0.5); }
+  else if (kind === "loss") { note(330, 0, 0.18, "triangle"); note(247, 0.1, 0.3, "triangle", base * 0.8); }
+  else if (kind === "lock") { note(220, 0, 0.35, "triangle", base * 0.6); }
+  else if (kind === "click" || kind === "tap") tick(base * 0.55);                                   // any button
+  else if (kind === "nav") { note(1046, 0, 0.07, V.w, base * 0.45); note(1568, 0.035, 0.09, V.w, base * 0.3); }   // page change
+  else if (kind === "select") { tick(base * 0.45, 3200); note(1318, 0, 0.05, V.w, base * 0.22); }    // tab / segment / chip
+  else if (kind === "toggleOn") { note(988, 0, 0.06, V.w, base * 0.35, 1.25); }
+  else if (kind === "toggleOff") { note(1235, 0, 0.06, V.w, base * 0.3, 0.8); }
+  else if (kind === "open") { note(660, 0, 0.09, V.w, base * 0.28, 1.5); }                          // menu / dropdown / popover
+  else if (kind === "close") { note(990, 0, 0.08, V.w, base * 0.22, 0.67); }
+  else if (kind === "sheet") { note(523, 0, 0.16, V.w, base * 0.3, 1.5); note(784, 0.05, 0.14, V.w, base * 0.18); }   // dialog
+  else if (kind === "notify") { note(1175, 0, 0.12, V.w, base * 0.3); note(1568, 0.07, 0.16, V.w, base * 0.24); }      // toast
+  else if (kind === "type") tick(base * 0.18, 4200, 0.01);
+  else if (kind === "error") { note(392, 0, 0.12, "triangle", base * 0.4); note(349, 0.08, 0.16, "triangle", base * 0.35); }
 }
 function buzz(ms) { if (prefs.haptics !== false && navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {} }
+
+// KING_SOUND2 + KING_MOTION hooks: every interaction gets a quiet sound (new look only; Settings > Sounds still mutes all)
+(() => { const on = () => document.body.classList.contains("ui2");
+  document.addEventListener("pointerdown", (e) => { if (!on()) return; const b = e.target.closest("button,.tool,.tf,.jcd,.ddb,[role=button]"); if (!b || b.disabled) return;
+    if (b.closest(".seg,#ftabs,.jbooks,.s2side,.btabs,.ranges") || b.matches(".tf,.btab,.jbook")) return sfx("select");
+    if (b.matches(".vtab")) return;   // view() plays "nav"
+    if (b.matches(".ddb")) return sfx("open");
+    if (b.matches("#pbuy,#psell,.buy,.sell")) return;   // fills have their own sound
+    sfx("tap"); }, true);
+  document.addEventListener("change", (e) => { if (!on()) return; const t = e.target; if (t.matches("input[type=checkbox]")) sfx(t.checked ? "toggleOn" : "toggleOff"); else if (t.matches("select")) sfx("select"); }, true);
+  let kt = 0; document.addEventListener("keydown", (e) => { if (!on() || !e.target.matches?.("input,textarea") || e.key.length !== 1) return; if (Date.now() - kt > 60) { kt = Date.now(); sfx("type"); } }, true);
+  const watch = (id, kind, test) => { const el = $(id); if (!el) return; new MutationObserver(() => { if (on() && test(el)) sfx(kind); }).observe(el, { attributes: true, attributeFilter: ["class"] }); };
+  watch("dlg", "sheet", (el) => !el.classList.contains("hidden")); watch("toast", "notify", (el) => !el.classList.contains("hidden"));
+  new MutationObserver((ms) => { if (!on()) return; for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1 && n.matches?.(".menu")) { sfx("open"); return; } }).observe(document.body, { childList: true }); })();
 const lastShown = {};
 function flashNum(id, v) { const el = $(id); if (lastShown[id] != null && v !== lastShown[id]) { el.classList.remove("fl-up", "fl-dn"); void el.offsetWidth; el.classList.add(v > lastShown[id] ? "fl-up" : "fl-dn"); } lastShown[id] = v; }
 
@@ -2036,7 +2069,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx("click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) JN.open(); /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
+function view(v) { try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); } sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) JN.open(); /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") renderStats(); if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
 function layMenu() { const sv = prefs.saved || [];
   return layMenu2(); }
 function saveLayout() { const name = (prompt("Name this layout (e.g. NQ/ES SMT, 1m + 15m)") || "").trim().slice(0, 30); if (!name) return;

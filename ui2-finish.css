@@ -1,0 +1,101 @@
+/* KING_UIFIN (Nov 22): finishing pass for the new look on every page. Quiet controls, light hairline cells, no leftover
+   purple/mint, Settings nav without boxes, and one motion system (KING_MOTION) for everything that appears or responds. */
+/* ---- controls: quiet by default ---- */
+body.ui2-iv :is(button,.btn):not(.primary):not(.buy):not(.sell):not(#pbuy):not(#psell):not(.vtab):not(.ri):not(.tf):not(.tool):not(.jcd):not(.jcw):not(.dc):not([class*="kp-"]){background:transparent;border-color:var(--edge)}
+body.ui2-iv :is(button,.btn):not(.primary):not(.buy):not(.sell):not(#pbuy):not(#psell):not(.vtab):hover{background:var(--hov)}
+body.ui2-iv :is(input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea,.ddb){background:var(--panel)!important;border:1px solid var(--edge)!important;color:var(--txt)}
+body.ui2-iv :is(input,select,textarea,.ddb):hover{border-color:color-mix(in srgb,var(--txt) 28%,transparent)!important}
+body.ui2-iv input[type=checkbox],body.ui2-iv input[type=radio]{accent-color:var(--ink)}
+body.ui2-iv input[type=range]{accent-color:var(--ink)}
+body.ui2-iv .ddm{background:var(--panel)!important;border:1px solid var(--edge)!important;box-shadow:0 14px 36px rgba(0,0,0,.14)!important}
+body.ui2-iv .ddm>*:hover,body.ui2-iv .ddm .on{background:var(--hov)!important;color:var(--txt)!important}
+/* ---- journal + calendar cells: hairlines, no grey slabs ---- */
+body.ui2-iv :is(.jcd,.jcw){background:transparent!important;border:1px solid var(--line)!important;border-radius:8px!important;box-shadow:none!important;color:var(--txt)}
+body.ui2-iv .jcd:hover{border-color:var(--edge)!important;background:var(--hov)!important}
+body.ui2-iv .jcd.up,body.ui2-iv .jcw.up{background:color-mix(in srgb,var(--up) 8%,transparent)!important;border-color:color-mix(in srgb,var(--up) 26%,transparent)!important}
+body.ui2-iv .jcd.dn,body.ui2-iv .jcw.dn{background:color-mix(in srgb,var(--dn) 8%,transparent)!important;border-color:color-mix(in srgb,var(--dn) 26%,transparent)!important}
+body.ui2-iv .jcd.up b,body.ui2-iv .jcw.up b{color:var(--up)!important}body.ui2-iv .jcd.dn b,body.ui2-iv .jcw.dn b{color:var(--dn)!important}
+body.ui2-iv .jcd.out{opacity:.4}
+body.ui2-iv .jcd.on{outline:1.5px solid var(--ink)!important;outline-offset:1px}
+body.ui2-iv .jbar>*:first-child,body.ui2-iv .jbars>*>div:first-child{border-radius:4px}
+body.ui2-iv .jbook{background:transparent!important;border:1px solid var(--edge)!important;color:var(--mut)}
+body.ui2-iv .jbook.on{background:var(--sel)!important;border-color:color-mix(in srgb,var(--txt) 30%,transparent)!important;color:var(--txt)!important}
+body.ui2-iv .jacc{background:var(--panel)!important;border:1px solid var(--edge)!important}
+body.ui2-iv .jacc.on{border-color:var(--ink)!important;background:var(--sel)!important}
+body.ui2-iv :is(.bt,.tbl) td{border-color:var(--line)!important}
+body.ui2-iv :is(.bt,.tbl) tr:hover td{background:var(--hov)}
+/* ---- settings: no boxed nav, no purple ---- */
+body.ui2-iv .s2side{background:transparent!important;border:0!important;padding:6px 0!important}
+body.ui2-iv .s2side button{background:transparent!important;border:0!important;border-radius:8px!important;padding:8px 10px!important;color:var(--mut)!important}
+body.ui2-iv .s2side button:hover{background:var(--hov)!important;color:var(--txt)!important}
+body.ui2-iv .s2side button.on{background:var(--sel)!important;color:var(--txt)!important;font-weight:600}
+body.ui2-iv .s2side .s2i{filter:saturate(.55)}
+/* ---- notes / notices: no orange or yellow slabs ---- */
+body.ui2-iv :is(.note,.warnbox,.hint,.notice,.callout){background:var(--panel)!important;border:1px solid var(--edge)!important;border-left:2px solid var(--ink)!important;color:var(--txt)!important}
+body.ui2-iv .demo{background:var(--panel)!important;color:var(--mut)!important;border:1px solid var(--edge)!important}
+/* ---- toolbar + favorites + skips ---- */
+body.ui2-iv .tbar{background:var(--bg)!important;border-bottom:1px solid var(--line)!important;gap:6px}
+body.ui2-iv .tbar .tf{background:transparent!important;border:0!important;color:var(--mut)!important;border-radius:7px!important}
+body.ui2-iv .tbar .tf:hover{color:var(--txt)!important;background:var(--hov)!important}
+body.ui2-iv .tbar .tf.on{color:var(--txt)!important;background:var(--sel)!important;box-shadow:none!important;font-weight:600}
+body.ui2-iv .tbar :is(.ib,.tool,button){border-color:transparent}
+body.ui2-iv .tbar :is(.ib,.tool,button):hover{border-color:var(--edge)}
+body.ui2-iv .tbar .vsep,body.ui2-iv .tbar .sep{background:var(--line)!important}
+body.ui2-iv #favbar.docked{background:transparent!important;border:0!important;box-shadow:none!important}
+body.ui2-iv #favbar .tool{border:1px solid var(--line)!important;background:transparent!important}
+body.ui2-iv #favbar .tool:hover{background:var(--hov)!important;border-color:var(--edge)!important}
+body.ui2-iv #favbar .tool.on{background:var(--sel)!important;border-color:var(--ink)!important}
+body.ui2-iv .skips{background:transparent!important;gap:4px;padding:0!important;border:0!important}
+body.ui2-iv .skips button{border:1px solid color-mix(in srgb,var(--blue) 40%,transparent)!important;border-radius:999px!important;padding:5px 12px!important;font-weight:600;font-size:12.5px}
+body.ui2-iv .tools:not(.float){background:var(--bg)!important;border-right:1px solid var(--line)!important;box-shadow:none!important}
+body.ui2-iv .tools .tool{background:transparent!important;border:0!important;color:var(--mut)!important}
+body.ui2-iv .tools .tool:hover{background:var(--hov)!important;color:var(--txt)!important}
+body.ui2-iv .tools .tool.on{background:var(--sel)!important;color:var(--txt)!important}
+body.ui2-iv .dock,body.ui2-iv .btabs{background:var(--bg)!important;border-top:1px solid var(--line)!important}
+body.ui2-iv .btab{border:0!important;background:transparent!important;color:var(--mut)!important}
+body.ui2-iv .btab.on{color:var(--txt)!important;box-shadow:inset 0 -1.5px 0 var(--ink)!important;border-radius:0!important}
+
+/* ================= KING_MOTION: one clean motion system ================= */
+body.ui2-iv{--m-fast:.14s;--m-med:.24s;--m-slow:.38s;--m-ease:cubic-bezier(.2,.8,.2,1);--m-out:cubic-bezier(.16,1,.3,1)}
+body.ui2-iv :is(button,.tool,.tf,.vtab,.jcd,.card,a,input,select,.ddb){transition:background-color var(--m-fast) var(--m-ease),border-color var(--m-fast) var(--m-ease),color var(--m-fast) var(--m-ease),box-shadow var(--m-med) var(--m-ease),transform var(--m-fast) var(--m-ease),opacity var(--m-fast) var(--m-ease)}
+body.ui2-iv :is(button,.tool,.tf,.jcd):active{transform:scale(.97)}
+/* page enter: content rises in, cards stagger */
+body.ui2-iv .view.enter{animation:kmIn var(--m-slow) var(--m-out) backwards}
+body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jcal,.jw,.s2sec:not(.hidden)>*){animation:kmUp var(--m-slow) var(--m-out) backwards}
+body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jw):nth-child(2){animation-delay:30ms}
+body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jw):nth-child(3){animation-delay:60ms}
+body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jw):nth-child(4){animation-delay:90ms}
+body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jw):nth-child(5){animation-delay:120ms}
+body.ui2-iv .view.enter :is(.card,.stats>div,#st-kpi>div,.jw):nth-child(n+6){animation-delay:150ms}
+@keyframes kmIn{from{opacity:0}to{opacity:1}}
+@keyframes kmUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* nav underline slides between tabs */
+body.ui2-iv .rail .vtab.on:after{animation:kmLine var(--m-med) var(--m-out) backwards;transform-origin:50% 50%}
+@keyframes kmLine{from{transform:scaleX(.2);opacity:0}to{transform:none;opacity:1}}
+/* menus, dropdowns, popovers: grow from where they open */
+body.ui2-iv :is(.menu,.ddm){animation:kmPop var(--m-med) var(--m-out) backwards;transform-origin:top center}
+@keyframes kmPop{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}
+/* dialogs: backdrop fades, sheet lifts */
+body.ui2-iv .dlgwrap:not(.hidden){animation:kmIn var(--m-med) var(--m-ease) backwards}
+body.ui2-iv .dlgwrap:not(.hidden) .dlg{animation:kmSheet var(--m-slow) var(--m-out) backwards}
+@keyframes kmSheet{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+/* toast slides up */
+body.ui2-iv #toast:not(.hidden){animation:kmToast var(--m-slow) var(--m-out) backwards!important}
+@keyframes kmToast{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+/* order pad + floating panels settle in */
+body.ui2-iv :is(.pad,.media,.favbar:not(.docked)){animation:kmUp var(--m-slow) var(--m-out) backwards}
+/* segmented controls + tabs: selected pill eases */
+body.ui2-iv :is(.seg button,#ftabs button,.jbook,.s2side button){transition:background-color var(--m-med) var(--m-ease),color var(--m-med) var(--m-ease),box-shadow var(--m-med) var(--m-ease)}
+/* a value that just changed flashes softly (header numbers already count) */
+body.ui2-iv .kmflash{animation:kmFlash .6s var(--m-ease)}
+@keyframes kmFlash{0%{background:var(--sel)}100%{background:transparent}}
+@media (prefers-reduced-motion:reduce){body.ui2-iv *{animation-duration:.01ms!important;animation-delay:0ms!important;transition-duration:.01ms!important}}
+body.ui2-iv .jbar{border:0!important;background:transparent!important}
+body.ui2-iv .jbar span.u{background:var(--up)!important}body.ui2-iv .jbar span.d{background:var(--dn)!important}
+body.ui2-iv .back{background:var(--panel)!important;border:1px solid var(--edge)!important;border-left:2px solid var(--ink)!important}
+/* toolbar v2: icons sit flat, a hairline only on hover; groups split by thin dividers */
+body.ui2-iv .tbar :is(button,.ib,.tool),body.ui2-iv #favbar .tool,body.ui2-iv .ranges button,body.ui2-iv .bottombar button{border:1px solid transparent!important;background:transparent!important;box-shadow:none!important}
+body.ui2-iv .tbar :is(button,.ib,.tool):hover,body.ui2-iv #favbar .tool:hover,body.ui2-iv .ranges button:hover{border-color:var(--edge)!important;background:var(--hov)!important}
+body.ui2-iv .tbar :is(button,.ib,.tool).on,body.ui2-iv #favbar .tool.on,body.ui2-iv .ranges button.on{background:var(--sel)!important;color:var(--txt)!important}
+body.ui2-iv .tbar .ddb{border-color:transparent!important;background:transparent!important}
+body.ui2-iv .tbar .ddb:hover{border-color:var(--edge)!important}
