@@ -99,3 +99,5 @@ body.ui2-iv .tbar :is(button,.ib,.tool):hover,body.ui2-iv #favbar .tool:hover,bo
 body.ui2-iv .tbar :is(button,.ib,.tool).on,body.ui2-iv #favbar .tool.on,body.ui2-iv .ranges button.on{background:var(--sel)!important;color:var(--txt)!important}
 body.ui2-iv .tbar .ddb{border-color:transparent!important;background:transparent!important}
 body.ui2-iv .tbar .ddb:hover{border-color:var(--edge)!important}
+/* Settings: the side nav lines up with the first card on every page and never jumps (King, Nov 22) */
+@media (min-width:901px){ body.ui2-iv .s2side{position:sticky!important;top:14px!important;align-self:start!important;margin-top:42px!important} }
