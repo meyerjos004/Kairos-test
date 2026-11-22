@@ -3720,10 +3720,10 @@ addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && (e.key === 
 
 /* KING_UI2 (Nov 20): King's new look, Daylight (light) + Graphite (dark). Off by default until he confirms it.
    Turn on: Settings > Appearance > New look, or add ?ui2=light / ?ui2=dark to the link. A friend skin (Waifu/Sweden/Rave) wins over it. */
-function ui2Mode() { const q = window.__ui2m || new URLSearchParams(location.search).get("ui2"); if (q === "light" || q === "dark") return q; return prefs.ui2 === "light" || prefs.ui2 === "dark" ? prefs.ui2 : ""; }
+function ui2Mode() { const q = window.__ui2m || new URLSearchParams(location.search).get("ui2"); if (q === "light" || q === "dark") return q; if (q === "off") return ""; if (prefs.ui2 === "off") return ""; return prefs.ui2 === "dark" ? "dark" : "light"; }   // KING_UI2DEFAULT (Nov 22): new look on by default, Daylight; "Off" in Settings keeps the old look
 function ui2Apply() { const m = ui2Mode(), skin = !!(prefs.skin || prefs.waifu), on = !!m && !skin, B = document.body;
   B.classList.toggle("ui2", on); B.classList.toggle("ui2-light", on && m === "light"); B.classList.toggle("ui2-dark", on && m === "dark");
-  if ($("s-ui2")) $("s-ui2").value = prefs.ui2 || "";
+  if ($("s-ui2")) $("s-ui2").value = prefs.ui2 === "off" ? "off" : (prefs.ui2 === "dark" ? "dark" : "light");
   if (on && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== m && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][m]) { try { applyChartTheme(prefs.chTheme.id, m, true); } catch (e) {} }
   ui2Banner(on ? m : ""); }
 function ui2Banner(m) { let b = document.getElementById("ui2banner"); const want = !!new URLSearchParams(location.search).get("ui2");
@@ -3735,5 +3735,5 @@ function ui2Banner(m) { let b = document.getElementById("ui2banner"); const want
 (() => { const T = document.querySelector("header.top"); if (!T || $("ui2search")) return; const b = document.createElement("button"); b.id = "ui2search"; b.type = "button";
   b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.2-4.2"/></svg><span>Search or jump to…</span><kbd>${/Mac|iPhone|iPad/.test(navigator.platform) ? "⌘" : "Ctrl "}K</kbd>`;
   b.onclick = () => { try { cmdkOpen(); } catch (e) {} }; const g = T.querySelector(".grp.replay"); T.insertBefore(b, g || null); })();
-if ($("s-ui2")) $("s-ui2").onchange = (e) => { prefs.ui2 = e.target.value || null; savePrefs(); ui2Apply(); };
+if ($("s-ui2")) $("s-ui2").onchange = (e) => { prefs.ui2 = e.target.value || "off"; savePrefs(); ui2Apply(); };
 ui2Apply(); setTimeout(ui2Apply, 1500); setTimeout(ui2Apply, 4000);

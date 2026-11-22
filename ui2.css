@@ -153,3 +153,10 @@ body.ui2-dark{--mut2:#959dab}
 /* KING_STARFILL (night Nov 22, waits on King's yes): selected Favorites star uses the accent fill like other selected buttons, not purple */
 body.ui2 #favbtn.on{background:color-mix(in srgb,var(--acc) 16%,transparent)!important;color:var(--acc)!important}
 body.ui2 #pbuy{background:#2f7cf0!important;color:#fff!important}
+/* KING_UI2FIT (Nov 22): new look on by default; the favorites bar has to fit in the timeframe row at 1440–1680 wide like the old look */
+body.ui2 #tfbar .tf{padding:4px 7px!important;min-width:0}
+body.ui2 #favbar.docked .fbreplay button{padding:4px 8px!important}
+body.ui2 #tfbar{gap:2px}
+body.ui2 #favbar.docked{gap:2px;padding:2px 4px}
+body.ui2 #favbar.docked .tool{width:30px;height:30px}
+body.ui2 #favbar.docked .tool svg{width:18px;height:18px}

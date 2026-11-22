@@ -50,7 +50,7 @@ async def main():
         for t in ["hline","vline","long","short","text"]:
             if t == "text": await E("window.prompt=()=>'note'; 1")
             # KING_FLAKY: each tool clicks its own empty spot (short used to land on the long box and select it) and we poll up to 1s
-            i = ["hline","vline","long","short","text"].index(t); n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.click(cx-150+i*70, cy+60-i*30)
+            i = ["hline","vline","long","short","text"].index(t); n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.click(cx-150+i*70-(320 if t=='vline' else 0), cy+60-i*30)   # KING_UI2DEFAULT: in the new look the old vline spot is under the order pad
             ok = False
             for k in range(20):
                 await pg.wait_for_timeout(100)
@@ -742,6 +742,9 @@ async def main():
         await E("view('trade')")
         check("iconguard: no squashed icon buttons on any page (Daylight)", not _sq, _sq[:8])
         await E("window.__ui2m=null; ui2Apply()")
+        # KING_UI2DEFAULT: the new look opens in Daylight unless someone picked Off or Graphite
+        check("ui2default: opens in Daylight", await E("(()=>{const o=prefs.ui2,w=window.__ui2m;window.__ui2m=null;delete prefs.ui2;const m=ui2Mode();prefs.ui2=o;window.__ui2m=w;return m})()") == "light")
+        check("ui2default: Off keeps the old look", await E("(()=>{const o=prefs.ui2,w=window.__ui2m;window.__ui2m=null;prefs.ui2='off';const m=ui2Mode();prefs.ui2=o;window.__ui2m=w;return m})()") == "")
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
