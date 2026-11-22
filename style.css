@@ -1262,3 +1262,5 @@ body.ptdragging,body.ptdragging *{cursor:ns-resize!important}
   #md-friends #sfr .fchat{height:calc(100dvh - 330px)}.mpop .media{height:100dvh!important}
   .botpop{height:min(560px,calc(100dvh - 40px))}
 }
+/* KING_PHONESAVE (night Nov 22): on phones the Settings Save button floated on top of the search box and category tabs. Give it its own row, right-aligned. */
+@media (max-width:600px){#v-settings .setnav{height:auto;position:sticky;top:0;z-index:3;padding:4px 12px 8px;justify-content:flex-end;box-shadow:none}#v-settings .setnav #s-save{transform:none;position:static;box-shadow:none}}

@@ -723,6 +723,11 @@ async def main():
             if _o != 0: _bad.append((_i + 1, _o))
         await E("document.querySelectorAll('.tourbox,.tourspot').forEach(x=>x.remove())")
         check("tour: card never covers its control", not _bad, _bad)
+        # KING_PHONESAVE: at phone width the Settings Save button no longer sits on top of the search box / tabs
+        await pg.set_viewport_size({"width": 390, "height": 844}); await E("view('settings')"); await pg.wait_for_timeout(400)
+        _ov = await E("(()=>{const a=document.getElementById('s-save').getBoundingClientRect();return [...document.querySelectorAll('#s2-q, button[data-s2]')].filter(e=>e.offsetParent).some(e=>{const b=e.getBoundingClientRect();return a.left<b.right&&a.right>b.left&&a.top<b.bottom&&a.bottom>b.top})})()")
+        check("phonesave: Save button clear of the search box and tabs", not _ov, await E("(()=>{const a=document.getElementById('s-save').getBoundingClientRect();return [[a.left,a.top,a.right,a.bottom].map(Math.round),[...document.querySelectorAll('#s2-q, button[data-s2]')].filter(e=>e.offsetParent).map(e=>{const b=e.getBoundingClientRect();return (e.dataset.s2||e.id)+' '+[b.left,b.top,b.right,b.bottom].map(Math.round)})]})()"))
+        await pg.set_viewport_size({"width": 1680, "height": 945}); await E("view('trade')"); await pg.wait_for_timeout(300)
         check("upgrade: no page errors", not errs, errs[:3])
         await b.close()
 asyncio.run(main())
