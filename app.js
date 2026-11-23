@@ -2507,6 +2507,10 @@ function kScore(A, D) { const ac = A.ac, t = ac.currentTime + 0.05; D = Math.max
     lp.type = "lowpass"; lp.frequency.setValueAtTime(400, T); lp.frequency.linearRampToValueAtTime(2400, T + 1.2); lp.frequency.linearRampToValueAtTime(600, T + 3.2);
     g.gain.setValueAtTime(0, T); g.gain.linearRampToValueAtTime(0.032, T + 0.08); g.gain.exponentialRampToValueAtTime(0.0008, T + 3.4); o.connect(lp); lp.connect(g); g.connect(A.M); g.connect(A.V); o.start(T); o.stop(T + 3.5); });
   [523.25, 659.25, 783.99, 1046.5].forEach((f, k) => wTone(A, f, T + 0.9 + k * 0.08, 1.2, 0.028)); }
+// KING_CARREVEAL: the drift-car logo reveal. Full clip on the sign-in card and the first-time welcome; only its last half second on every open.
+function authReveal() { try { const kb = document.querySelector("#auth .kbrand"); if (!kb || kb.dataset.rv || !window.kReveal || navigator.webdriver) return; kb.dataset.rv = "1"; kb.classList.add("rvcard"); kReveal(kb, { cls: "card" }); } catch (e) {} }
+function revealTest() { const el = document.createElement("div"); el.id = "rvtest"; el.title = "Click to replay with sound. Esc closes."; document.body.appendChild(el); let R = null; kReveal(el).then((r) => { R = r; });
+  el.onclick = () => { if (R) R.play(prefs.sound === false ? null : 1); }; addEventListener("keydown", function rvKey(e) { if (e.key === "Escape") { removeEventListener("keydown", rvKey); if (R) R.destroy(); el.remove(); } }); }
 function splash(force) {   // launch intro (Settings → "Intro animation when the app opens")
   try { if (!force && sessionStorage.getItem("kz-nointro")) { sessionStorage.removeItem("kz-nointro"); return; } } catch (e) {}
   if (document.getElementById("kintro") || (!force && (navigator.webdriver || prefs.splash === false))) return;
@@ -2515,7 +2519,7 @@ function splash(force) {   // launch intro (Settings → "Intro animation when t
   el.innerHTML = `<canvas class="wfield"></canvas><div class="wwel${n > 18 ? " long" : ""}">${chars.map((c, i) => `<span style="--d:${(i * 0.042).toFixed(3)}s">${c === " " ? "&nbsp;" : esc(c)}</span>`).join("")}<em style="--e:${(0.2 + n * 0.042).toFixed(2)}s">…</em></div><img class="wlock" alt="KAIROS OS Beta"><div class="ktip"><b>Tip</b>${esc(KTIPS[Math.floor(Math.random() * KTIPS.length)])}</div>`;
   document.body.appendChild(el); try { wField(el.querySelector(".wfield")); } catch (e) {}
   if (prefs.sound !== false && !DEMO) { const A = wAudio(); if (A) A.ac.resume().then(() => { if (A.ac.state === "running") kScore(A, D - (performance.now() - t0) / 1000); else A.ac.close(); }).catch(() => {}); }
-  const tm = [setTimeout(() => { el.classList.add("drop"); if (document.body.classList.contains("ui2") && !document.body.classList.contains("at-kairos")) { const w = el.querySelector(".wlock"), n = document.createElement("div"); n.className = "wlock wlock2"; n.innerHTML = '<span class="kmark">K</span><span class="kword">KAIROS</span>'; w.replaceWith(n); } else el.querySelector(".wlock").src = "brand/kairos-intro.svg?d=" + Date.now(); /* KING_INTROLOGO: the new mark in the theme's own ink (the old pale lockup vanished on light) */ }, D * 1000), setTimeout(() => end(), (D + 2.5) * 1000)];
+  const tm = [setTimeout(() => { el.classList.add("drop"); if (window.kReveal && document.body.classList.contains("ui2") && !document.body.classList.contains("at-kairos")) { el.querySelector(".wlock").style.display = "none"; kReveal(el, { from: 4.3 }); } else if (document.body.classList.contains("ui2") && !document.body.classList.contains("at-kairos")) { const w = el.querySelector(".wlock"), n = document.createElement("div"); n.className = "wlock wlock2"; n.innerHTML = '<span class="kmark">K</span><span class="kword">KAIROS</span>'; w.replaceWith(n); } else el.querySelector(".wlock").src = "brand/kairos-intro.svg?d=" + Date.now(); /* KING_INTROLOGO: the new mark in the theme's own ink (the old pale lockup vanished on light) */ }, D * 1000), setTimeout(() => end(), (D + 2.5) * 1000)];
   let ended = false; const end = () => { if (ended) return; ended = true; tm.forEach(clearTimeout); el.classList.add("out"); setTimeout(() => el.remove(), 750);
     setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 250); };
   el.addEventListener("pointerdown", end); addEventListener("keydown", function k(e) { if (e.key === "Escape" || e.key === " " || e.key === "Enter") { removeEventListener("keydown", k); end(); } }); }
@@ -2709,7 +2713,8 @@ function welcomeIntro(force) { if (document.getElementById("welcome")) return; c
   document.body.appendChild(el); wField(el.querySelector(".wfield"));
   const done = () => { prefs.welcomed = APP_VERSION; savePrefs(); el.classList.add("out"); setTimeout(() => { el.remove(); setTimeout(() => profileSetup(), 400); }, 900); };   // KING_PROFILE: right after the welcome
   el.querySelector("#w-go").onclick = () => { const A = wAudio(); if (A && prefs.sound !== false) { A.ac.resume(); wScore(A); } el.classList.add("play");
-    setTimeout(() => el.classList.add("drop"), 3600); setTimeout(() => { const img = el.querySelector(".wlock"); img.src = "brand/kairos-intro.svg?d=" + Date.now(); }, 3600); setTimeout(() => el.classList.add("cta"), 6200); };
+    const RV = !!window.kReveal && !navigator.webdriver;
+    setTimeout(() => el.classList.add("drop"), 3600); setTimeout(() => { const img = el.querySelector(".wlock"); if (RV) { img.style.display = "none"; kReveal(el, { sound: A && prefs.sound !== false ? A.ac : null }); } else img.src = "brand/kairos-intro.svg?d=" + Date.now(); }, 3600); setTimeout(() => el.classList.add("cta"), RV ? 8900 : 6200); };
   el.querySelector("#w-skip").onclick = done; el.querySelector("#w-tour").onclick = () => { done(); setTimeout(tour, 500); }; }
 function wFieldCol(a) { if (!document.body.classList.contains("ui2")) return `rgba(185,140,255,${a})`; if (!wFieldCol.c) { const d = document.createElement("i"); d.style.color = getComputedStyle(document.body).getPropertyValue("--ink") || "#888"; document.body.appendChild(d); wFieldCol.c = getComputedStyle(d).color.match(/[\d.]+/g).slice(0, 3).join(","); d.remove(); setTimeout(() => (wFieldCol.c = null), 4000); } return `rgba(${wFieldCol.c},${a})`; }
 function wField(cv) { const g = cv.getContext("2d"), D = Math.min(devicePixelRatio || 1, 2); let W, H, T = 0; const rs = () => { W = cv.width = innerWidth * D; H = cv.height = innerHeight * D; }; rs(); addEventListener("resize", rs);
@@ -2779,7 +2784,7 @@ const KZ_VIEW0 = (() => { try { return sessionStorage.getItem("kz-view"); } catc
 async function boot() {
   if (DEMO) { user = { id: "demo", email: "demo" }; const d = document.createElement("div"); d.className = "demo"; d.textContent = "DEMO · made-up prices · nothing is saved"; document.body.appendChild(d); }
   else {
-    const { data: { session } } = await sb.auth.getSession(); if (!session) { $("auth").classList.remove("hidden"); $("app").classList.add("hidden"); return; }
+    const { data: { session } } = await sb.auth.getSession(); if (!session) { $("auth").classList.remove("hidden"); $("app").classList.add("hidden"); authReveal(); return; }
     user = session.user; const { data: okm } = await sb.rpc("is_member");
     if (!okm) { const { data: wl } = await sb.rpc("waitlisted"); if (wl) { location.href = "invite.html?in=1"; return; } $("auth").classList.remove("hidden"); $("a-msg").textContent = "Signed in as " + user.email + ", but this email isn't on the invite list yet. Ask King to add you."; return; }
     isAdmin = !!(await sb.rpc("is_admin")).data; $("vt-admin").classList.toggle("hidden", !isAdmin);
@@ -2800,7 +2805,7 @@ async function boot() {
   const h = decodeURIComponent(location.hash || ""); if (h.startsWith("#notion=")) { history.replaceState(null, "", location.pathname); view("settings"); nmsg("Notion: " + h.slice(8)); }
   if (DEMO) { $("start").value = "2026-10-14T09:45"; await loadReplay(); for (let i = 0; i < 25; i++) await stepFwd(); }
   refresh(); fxLoadHave().then(fxUI).catch(() => {}); if ($("s-ver")) $("s-ver").textContent = `Beta · version ${APP_VERSION}${window.KAIROS_DESKTOP ? " · desktop app " + window.KAIROS_DESKTOP.version : ""}. 1.0 is the full release.`;
-  const qp = new URLSearchParams(location.search); if (qp.has("welcome") || (!DEMO && !prefs.welcomed)) afterIntro(() => setTimeout(() => welcomeIntro(), DEMO ? 300 : 600)); else if (qp.has("tour")) setTimeout(tour, 600);
+  const qp = new URLSearchParams(location.search); if (qp.has("reveal") && window.kReveal) setTimeout(revealTest, 400); if (qp.has("welcome") || (!DEMO && !prefs.welcomed)) afterIntro(() => setTimeout(() => welcomeIntro(), DEMO ? 300 : 600)); else if (qp.has("tour")) setTimeout(tour, 600);
   else if (!DEMO && me && !me.username && !prefs.psLater) setTimeout(() => profileSetup(), 4000);   // friends who already went through the welcome get it once too
   sameScreen();
 }

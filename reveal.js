@@ -1,0 +1,88 @@
+/* KING_CARREVEAL (Nov 22, King): the KAIROS logo reveal. A drift car (King's own design, built in Blender) comes in on one long slide,
+   the K + KAIROS fades in behind it, and the car runs over the camera. The clip is one mp4 with colour on top and its transparency matte
+   underneath, combined here in WebGL so it plays over any theme's background in every browser. Sound is synthesized (gear whine + hum). */
+(function () {
+// KING_REVEALSND: synthesized reveal sound. Straight-cut gear whine over an electronic hum, tyre squeal in the slide, a pass-by rush and a thump at the cut.
+function revealSound(ac, dur, vol = 1) {
+  const t0 = ac.currentTime + .03, out = ac.createGain(); out.gain.value = .9 * vol;
+  const comp = ac.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 5; out.connect(comp); comp.connect(ac.destination);
+  const env = (g, pts) => { g.gain.setValueAtTime(pts[0][1], t0 + pts[0][0] * dur); for (const [t, v] of pts.slice(1)) g.gain.linearRampToValueAtTime(v, t0 + t * dur); };
+  const osc = (type, f, dest) => { const o = ac.createOscillator(); o.type = type; o.frequency.value = f; o.connect(dest); o.start(t0); o.stop(t0 + dur + .6); return o; };
+  // rpm curve: pull, shift, pull, lift for the slide, back on it toward the camera
+  const rpm = [[0, .46], [.2, .82], [.205, .58], [.4, .9], [.41, .66], [.5, .7], [.62, .5], [.7, .62], [.92, 1], [1, .92]];
+  const sweep = (p, base) => { p.setValueAtTime(base * rpm[0][1], t0); for (const [t, v] of rpm.slice(1)) p.linearRampToValueAtTime(base * v, t0 + t * dur); };
+  // 1. straight-cut gear whine: two detuned saws + an octave, through a narrow band that tracks the pitch
+  const wg = ac.createGain(), wf = ac.createBiquadFilter(); wf.type = "bandpass"; wf.Q.value = 9; wg.connect(out); wf.connect(wg);
+  for (const [m, d] of [[1, 0], [1.007, 0], [2.01, 0]]) { const o = osc("sawtooth", 1, wf); sweep(o.frequency, 1650 * m); }
+  sweep(wf.frequency, 1700); env(wg, [[0, 0], [.06, .16], [.5, .2], [.62, .1], [.9, .26], [.97, .3], [1, 0]]);
+  // 2. engine body: low saw into soft clipping
+  const eg = ac.createGain(), sh = ac.createWaveShaper(), lp = ac.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 950; const cv = new Float32Array(256); for (let i = 0; i < 256; i++) { const x = i / 128 - 1; cv[i] = Math.tanh(3.2 * x); } sh.curve = cv;
+  sh.connect(lp); lp.connect(eg); eg.connect(out); for (const m of [1, 1.5, 2]) { const o = osc("sawtooth", 1, sh); sweep(o.frequency, 172 * m); }
+  env(eg, [[0, 0], [.05, .2], [.6, .18], [.9, .34], [.98, .4], [1, 0]]);
+  // 3. electronic hum: steady low sines with a slow beat, plus a faint high inverter tone that rises with speed
+  const hg = ac.createGain(); hg.connect(out); osc("sine", 55, hg); osc("sine", 110.6, hg); osc("triangle", 165, hg); env(hg, [[0, 0], [.04, .2], [.9, .2], [1, 0]]);
+  const ig = ac.createGain(); ig.connect(out); const io = osc("sine", 1, ig); sweep(io.frequency, 4300); env(ig, [[0, 0], [.1, .028], [.9, .04], [1, 0]]);
+  // 4. noise: tyre squeal while it slides, then the rush past the camera
+  const nb = ac.createBuffer(1, Math.ceil(ac.sampleRate * (dur + .6)), ac.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const ns = () => { const s = ac.createBufferSource(); s.buffer = nb; s.start(t0); s.stop(t0 + dur + .6); return s; };
+  const sq = ac.createBiquadFilter(), sqg = ac.createGain(); sq.type = "bandpass"; sq.Q.value = 14; sq.frequency.setValueAtTime(1500, t0); sq.frequency.linearRampToValueAtTime(2300, t0 + .5 * dur); sq.frequency.linearRampToValueAtTime(1300, t0 + .8 * dur);
+  ns().connect(sq); sq.connect(sqg); sqg.connect(out); env(sqg, [[0, 0], [.12, .05], [.3, .3], [.55, .38], [.72, .16], [.86, .05], [1, 0]]);
+  const rf = ac.createBiquadFilter(), rg = ac.createGain(); rf.type = "lowpass"; rf.frequency.setValueAtTime(300, t0); rf.frequency.exponentialRampToValueAtTime(5200, t0 + .95 * dur); rf.frequency.exponentialRampToValueAtTime(200, t0 + dur + .3);
+  ns().connect(rf); rf.connect(rg); rg.connect(out); env(rg, [[0, 0], [.6, .03], [.9, .3], [.97, .7], [1, .25]]); rg.gain.linearRampToValueAtTime(0, t0 + dur + .5);
+  // 5. the cut: a short sub thump
+  const tg = ac.createGain(); tg.connect(out); const to = ac.createOscillator(); to.frequency.setValueAtTime(120, t0 + dur * .975); to.frequency.exponentialRampToValueAtTime(38, t0 + dur + .25); to.connect(tg); to.start(t0 + dur * .975); to.stop(t0 + dur + .5);
+  tg.gain.setValueAtTime(0, t0); tg.gain.setValueAtTime(.9, t0 + dur * .975); tg.gain.exponentialRampToValueAtTime(.001, t0 + dur + .45);
+  return () => { try { out.gain.cancelScheduledValues(ac.currentTime); out.gain.linearRampToValueAtTime(0, ac.currentTime + .08); } catch (e) {} };
+}
+
+// KING_LOGOREVEAL player: colour+matte stacked video -> WebGL, tyre lines on a canvas, logo wiped in behind the car.
+async function mountReveal(stage, {src, track, onEnd}) {
+  const T = typeof track === "string" ? await (await fetch(track)).json() : track, FR = T.frames, N = FR.length;
+  stage.innerHTML = '<canvas class="rv-lines"></canvas><div class="rv-logo"><span class="kmark">K</span><span class="kword">KAIROS</span></div><canvas class="rv-gl"></canvas>';
+  const lines = stage.querySelector(".rv-lines"), gl_c = stage.querySelector(".rv-gl"), logo = stage.querySelector(".rv-logo");
+  const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.setAttribute("playsinline", ""); v.preload = "auto"; v.src = src;
+  const gl = gl_c.getContext("webgl", {premultipliedAlpha: true, alpha: true}); let ok = !!gl, prog, tex;
+  if (ok) {
+    const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; };
+    prog = gl.createProgram();
+    gl.attachShader(prog, sh(gl.VERTEX_SHADER, "attribute vec2 p;varying vec2 u;void main(){u=p*.5+.5;gl_Position=vec4(p,0.,1.);}"));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, "precision mediump float;varying vec2 u;uniform sampler2D t;void main(){vec3 c=texture2D(t,vec2(u.x,1.-(1.-u.y)*.5)).rgb;float a=texture2D(t,vec2(u.x,.5-(1.-u.y)*.5)).r;gl_FragColor=vec4(c*a,a);}"));
+    gl.linkProgram(prog); gl.useProgram(prog);
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const l = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0);
+    tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    for (const k of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  }
+  let W = 0, H = 0, reveal = 0, done = false, raf = 0, sw0 = null, sw1 = null, cur = [0, 0];
+  const size = () => { const r = stage.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); W = r.width; H = r.height; for (const c of [lines, gl_c]) { c.width = Math.round(W * d); c.height = Math.round(H * d); } if (ok) gl.viewport(0, 0, gl_c.width, gl_c.height); };
+  size(); const ro = new ResizeObserver(size); ro.observe(stage);
+  // the clip is 16:9 and is fitted to the stage width, sitting on the stage's vertical centre
+  const map = (p) => { const h = W * 9 / 16, y0 = (H - h) / 2; return [p[0] * W, y0 + p[1] * h]; };
+  const fit = () => { const h = W * 9 / 16; gl_c.style.cssText = `position:absolute;left:0;width:100%;height:${h}px;top:${(H - h) / 2}px`; };
+  const draw = () => {
+    const f = Math.min(N - 1, Math.max(0, Math.round(v.currentTime * T.fps))); fit();
+    if (ok && v.readyState >= 2) { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v); gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4); }
+    const c = lines.getContext("2d"), d = lines.width / W; c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, W, H);
+    c.strokeStyle = (getComputedStyle(stage).getPropertyValue("--rv-line") || "").trim() || "#000"; c.lineCap = "round"; c.lineJoin = "round"; const KW = T.k || 1.667;
+    if (!T.marks3d) for (const k of ["wRL", "wRR"]) { let prev = null; for (let i = 0; i <= f; i++) { const q = FR[i][k]; if (!(q[2] > 1.6) || Math.abs(q[0]) > 1.3) { prev = null; continue; } const [x, y] = map(q); if (prev) { c.lineWidth = Math.max(1, W * KW * .30 / q[2]); c.beginPath(); c.moveTo(prev[0], prev[1]); c.lineTo(x, y); c.stroke(); } prev = [x, y]; } }
+    // logo: sits behind the clip and fades in as the car reaches the middle; the car and its smoke pass in front of it.
+    const F_IN = T.logoIn || [46, 70]; logo.style.opacity = Math.max(0, Math.min(1, (f - F_IN[0]) / (F_IN[1] - F_IN[0])));
+  };
+  const loop = () => { if (done) return; draw(); raf = requestAnimationFrame(loop); };
+  const end = () => { if (done) return; done = true; cancelAnimationFrame(raf); gl_c.style.opacity = 0; logo.style.opacity = 1; logo.classList.add("rv-land"); onEnd && onEnd(); };
+  v.addEventListener("ended", end); v.addEventListener("error", end);
+  let stopSnd = null; return { play(snd, from) { if (stopSnd) stopSnd(); stopSnd = null; from = from || 0;
+      const go = () => { try { v.currentTime = from; } catch (e) {} if (snd && !from) { try { const ac = snd.resume ? snd : (this._ac || (this._ac = new (window.AudioContext || window.webkitAudioContext)())); ac.resume(); stopSnd = revealSound(ac, isFinite(v.duration) && v.duration ? v.duration : N / T.fps, typeof snd === "number" ? snd : 1); } catch (e) {} }
+        done = false; gl_c.style.opacity = 1; logo.classList.remove("rv-land"); logo.style.opacity = 0; const p = v.play(); if (p) p.catch(end); loop(); };
+      if (v.readyState >= 1) go(); else { v.addEventListener("loadedmetadata", go, { once: true }); v.load(); } }, destroy() { done = true; ro.disconnect(); v.pause(); } };
+}
+
+  let trackP = null;
+  window.kReveal = async function (host, o) { o = o || {};
+    const st = document.createElement("div"); st.className = "rv-stage" + (o.cls ? " " + o.cls : ""); host.appendChild(st);
+    try { trackP = trackP || fetch("brand/reveal-track.json").then((r) => r.json()); const T = await trackP;
+      const R = await mountReveal(st, { src: "brand/reveal-stack.mp4", track: T, onEnd: o.onEnd }); R.el = st; R.play(o.sound, o.from); return R;
+    } catch (e) { st.innerHTML = '<div class="rv-logo rv-land" style="opacity:1"><span class="kmark">K</span><span class="kword">KAIROS</span></div>'; o.onEnd && o.onEnd(); return { el: st, play() {}, destroy() {} }; } };
+  window.kRevealSound = revealSound;
+})();

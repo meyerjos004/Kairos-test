@@ -259,3 +259,18 @@ body.ui2 header.top :is(button,.status,.pill,label){white-space:nowrap}
 /* KING_ASK */
 .askwrap{z-index:400}.askbox{width:min(420px,92vw)}.askbox h3{margin:0 0 10px;font-size:15px}
 .askbox .askin{width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid var(--edge);background:var(--panel2,var(--panel));color:var(--txt);font:inherit}
+
+/* KING_CARREVEAL: the drift-car logo reveal (reveal.js). The clip sits over the page's own background; the logo is the K mark + wordmark in the theme's ink. */
+.rv-stage{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:4}
+.rv-stage .rv-lines{display:none}
+.rv-stage .rv-gl{position:absolute;left:0;width:100%;z-index:2;transition:opacity .25s}
+.rv-stage .rv-logo{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);display:flex;align-items:center;gap:.34em;z-index:1;opacity:0;white-space:nowrap;font-size:clamp(24px,4.6vw,64px)}
+.rv-stage .rv-logo .kmark{display:grid;place-items:center;width:1.615em;height:1.615em;border-radius:.385em;background:var(--ink,#ecebf3);color:var(--inktxt,#131217);font:600 .8125em/1 var(--mark,"Bodoni Moda",serif);padding:0;filter:none;box-sizing:border-box}
+.rv-stage .rv-logo .kword{display:block;font:500 1em var(--mark,"Bodoni Moda",serif);letter-spacing:.34em;margin-right:-.34em;color:var(--ink,#ecebf3)}
+.rv-stage .rv-logo.rv-land{animation:rvpop .55s cubic-bezier(.2,1.4,.4,1)}
+@keyframes rvpop{from{transform:translate(-50%,-50%) scale(1.1)}to{transform:translate(-50%,-50%) scale(1)}}
+.rv-stage.card .rv-logo{font-size:clamp(18px,7cqw,30px);top:50%}
+.kbrand.rvcard{display:block;position:relative;aspect-ratio:16/9;width:100%;container-type:inline-size;margin-bottom:2px}
+.kbrand.rvcard .klock,.kbrand.rvcard>.kmark{display:none}
+#rvtest{position:fixed;inset:0;z-index:99999;background:var(--bg,#0f0f13);cursor:pointer}
+@media(prefers-reduced-motion:reduce){.rv-stage .rv-gl{display:none}.rv-stage .rv-logo{opacity:1!important;animation:none!important}}
