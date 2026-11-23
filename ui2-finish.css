@@ -249,3 +249,13 @@ body.ui2 header.top :is(button,.status,.pill,label){white-space:nowrap}
 #chelp{display:block;width:24px;height:24px}
 #chelp .chm{position:absolute;left:30px;top:0}
 #chelp.flip .chm{left:auto;right:30px}
+/* KING_BRTAG */
+.brtag{position:absolute;z-index:6;display:flex;align-items:stretch;height:28px;border-radius:9px;overflow:hidden;pointer-events:none;font:700 12.5px/1 var(--body,Geist,sans-serif);font-variant-numeric:tabular-nums;box-shadow:0 4px 12px -6px rgba(0,0,0,.45);--c:var(--dn)}
+.brtag.tp{--c:var(--up)}.brtag.hidden{display:none}
+.brtag > *{display:flex;align-items:center;padding:0 10px;font-style:normal}
+.brtag b{background:var(--c);color:#fff;letter-spacing:.06em}
+.brtag i{background:var(--panel,#111);color:var(--txt,#eee);box-shadow:inset 0 2px 0 var(--c),inset 0 -2px 0 var(--c);font-family:var(--serif,inherit);font-size:13.5px;font-weight:600}
+.brtag em{background:var(--c);color:#fff}
+/* KING_ASK */
+.askwrap{z-index:400}.askbox{width:min(420px,92vw)}.askbox h3{margin:0 0 10px;font-size:15px}
+.askbox .askin{width:100%;box-sizing:border-box;padding:9px 11px;border-radius:9px;border:1px solid var(--edge);background:var(--panel2,var(--panel));color:var(--txt);font:inherit}

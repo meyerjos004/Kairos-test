@@ -211,3 +211,16 @@ body.ui2.at-blocky header.top :is(#skipny,#skipasia){color:#fff!important}
 body.ui2.at-bit8 .rail :is(button,.ri){color:#fcfcfc!important}
 body.ui2.at-luxury :is(button.primary,.kmark){color:#0b0a08!important}
 body.ui2.at-aero .status{color:#0c5a2a!important}
+#s-themes .atmode{display:flex;align-items:center;gap:12px;margin-top:12px}
+#s-themes .atmode .seg{display:inline-flex;border:1px solid var(--edge);border-radius:10px;overflow:hidden}
+#s-themes .atmode .seg button{padding:7px 14px;border:0;background:transparent;color:var(--mut);cursor:pointer;font-size:12.5px;border-radius:0}
+#s-themes .atmode .seg button.on{background:var(--ink);color:var(--inktxt)}
+/* KING_CONTRAST2: notifications + pop-ups readable in every theme */
+html body.ui2 #toast#toast#toast.toast{background:var(--ink)!important;background-image:none!important;color:var(--inktxt)!important;border-color:transparent!important;text-shadow:none!important}
+html body.ui2 #toast#toast.toast *{color:inherit!important}
+body.ui2 .mfe{color:var(--mut)!important}body.ui2 .mfe span:first-child{color:var(--up)!important}body.ui2 .mfe span:nth-child(2){color:var(--dn)!important}
+body.ui2.at-blocky header.top .status{color:#b9f08a!important}body.ui2.at-blocky kbd{color:#1c1c1c!important}
+body.ui2.at-d3 :is(button.buy,#pbuy){color:#fff!important;text-shadow:0 1px 1px rgba(0,0,40,.5)}
+body.ui2.at-d3 :is(button.sell,#psell){color:#fff!important;border-color:#8f1f2a!important;background:radial-gradient(120% 90% at 50% 0%,#f0616d,#d6404e 55%,#c22f3e)!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 0 #8f1f2a,0 8px 12px -2px rgba(214,64,78,.45)!important}
+body.ui2 :is(#ctx,.menu,.ddm) :is(.mi,.mh){color:var(--txt)}body.ui2 :is(#ctx,.menu,.ddm) .mh{color:var(--mut)}
+body.ui2 :is(.dlg,.askbox,#qmtip,#rhtip,.tip,.lblpop,.cspop,.csbox){color:var(--txt)}

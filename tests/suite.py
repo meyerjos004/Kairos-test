@@ -48,7 +48,7 @@ async def main():
             n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.move(cx-80, cy-40); await pg.mouse.down(); await pg.mouse.move(cx+60, cy+50, steps=6); await pg.mouse.up(); await pg.wait_for_timeout(100)
             check(f"draw {t}", await E("drawings.length") == n0 + 1)
         for t in ["hline","vline","long","short","text"]:
-            if t == "text": await E("window.prompt=()=>'note'; 1")
+            if t == "text": await E("window.__askAuto='note'; 1")
             # KING_FLAKY: each tool clicks its own empty spot (short used to land on the long box and select it) and we poll up to 1s
             i = ["hline","vline","long","short","text"].index(t); n0 = await E("drawings.length"); await E(f"setTool('{t}')"); await pg.mouse.click(box['x']+140+i*90, box['y']+90+i*45)   # KING_MAST: upper-left spots, clear of the order pad   # KING_UI2DEFAULT: in the new look the old vline spot is under the order pad
             ok = False
@@ -193,7 +193,7 @@ async def main():
             await E("stepFwd()")
         check("alert fires when price crosses", await E("alerts.length===0"))
         # saved layouts + share card
-        await E("setLayout('2'); setPaneTf(0,'1m',true); setPaneTf(1,'15m',true); window.prompt=()=>'SMT test'; saveLayout()"); await pg.wait_for_timeout(500)
+        await E("setLayout('2'); setPaneTf(0,'1m',true); setPaneTf(1,'15m',true); window.__askAuto='SMT test'; saveLayout(); 0"); await pg.wait_for_timeout(500)
         check("layout saves", await E("prefs.saved.at(-1).name==='SMT test' && prefs.saved.at(-1).layout==='2'"))
         await E("setLayout('1'); prefs.tfs[0]='5m'"); await pg.wait_for_timeout(400); await E("loadLayout(prefs.saved.length-1)"); await pg.wait_for_timeout(700)
         check("saved layout restores charts + timeframes", await E("panes.length===2 && prefs.tfs[0]==='1m' && prefs.tfs[1]==='15m'"))
@@ -264,7 +264,7 @@ async def main():
         check("tool group pop-out is visible and on top", await E("(()=>{const f=document.querySelector('#tools .tfly[data-g=shapes]'); if(!f||f.classList.contains('hidden')) return false; const r=f.getBoundingClientRect(); const e=document.elementFromPoint(r.x+r.width/2,r.y+12); return !!(e&&e.closest('.tfly')) && $('tools').scrollWidth<= $('tools').clientWidth })()"))
         await E("tgClose()")
         # KING_TEMPLATES: save every setting under a name, change things, switch back
-        await E("window._pr=window.prompt; window.prompt=()=>'My setup'; prefs.templates=[]; setLayout('1'); prefs.xp=123; $('tplbtn').click(); document.querySelector('[data-tplnew]').click(); window.prompt=window._pr"); await pg.wait_for_timeout(300)
+        await E("window.__askAuto='My setup'; prefs.templates=[]; setLayout('1'); prefs.xp=123; $('tplbtn').click(); document.querySelector('[data-tplnew]').click(); 0"); await pg.wait_for_timeout(300)
         check("template saved with every setting but no progress", await E("prefs.templates.length===1 && prefs.templates[0].name==='My setup' && prefs.templates[0].data.layout==='1' && !('xp' in prefs.templates[0].data) && !('templates' in prefs.templates[0].data)"))
         await E("prefs.layout='4'; prefs.tfs[0]='15m'; tplApply(0)"); await pg.wait_for_timeout(300)
         check("switching templates restores settings, keeps progress + the template list", await E("prefs.layout==='1' && prefs.xp===123 && prefs.templates.length===1 && prefs.tplOn==='My setup'"))
@@ -637,6 +637,9 @@ async def main():
         check("chart follows the app theme until a preset is picked (KING_CHARTFOLLOW)", await E("(()=>{const o=JSON.stringify(prefs);prefs.chartFollow=true;prefs.appTheme={id:'terminal'};const a=csG().bg1==='#030703';applyChartTheme('will','dark',true);const b=prefs.chartFollow===false&&csG().bg1!=='#030703';Object.assign(prefs,JSON.parse(o));ui2Apply();return a&&b})()"))
         check("position risk buttons arm at that risk (KING_RISKBTN)", await E("(()=>{view('trade');const p=panes[0],c=p.candles,n=c.length;if(paneSym(p)!==sym)return true;const d=newDrawing('long',p,{t:c[n-30].time,p:c[n-30].close});riskArm(d,1);const r=(d.state==='armed'||d.state==='filled')&&d.riskp===1&&d.qty>=1;if(d.state==='armed')disarmTool(d);else closeAll();drawings=drawings.filter(x=>x!==d);repaintAll();refresh();return r})()"))
         check("candle helper exists with its five actions (KING_CANDLEHELP)", await E("(()=>{const e=chHelp();return ['play','long','short','open','alert'].every(k=>e.querySelector('[data-ch='+k+']'))&&e.querySelectorAll('[data-sp]').length>3})()"))
+        check("in-site text box replaces browser prompts (KING_ASK)", await E("(()=>{window.__askAuto=null;ask('t','x');const w=document.querySelector('.askwrap');const ok=!!w&&w.querySelector('.askin').value==='x';w.querySelector('.askx').click();return ok&&!document.querySelector('.askwrap')&&!/[^._a-zA-Z]prompt\\(/.test(saveLayout.toString())})()"))
+        check("changing a chart color under a style theme makes it your own chart (KING_CHARTFOLLOW bake)", await E("(()=>{const o=JSON.stringify(prefs);prefs.chartFollow=true;prefs.appTheme={id:'terminal'};chartOwn();const r=prefs.chartFollow===false&&prefs.cs.bg1==='#030703'&&prefs.up==='#3dff7a';Object.assign(prefs,JSON.parse(o));csTmp=null;ui2Apply();return r})()"))
+        check("stop/target tags with the price in the middle (KING_BRTAG)", await E("typeof brTags==='function' && typeof blownNext==='function'"))
         check("fav bar: popped out by default (KING_FAVPOP)", await E("(()=>{const o=prefs.favDock;delete prefs.favDock;favUI();const r=$('favbar').parentElement===document.body;prefs.favDock=o;favUI();return r})()"))
         check("fav bar: docked in the timeframe row on desktop", await E("$('favbar').parentElement.classList.contains('tbar') && $('favbar').classList.contains('docked')"))
         check("fav bar: docked row does not overflow", await E("(()=>{const t=document.querySelector('.tbar');return t.scrollWidth<=t.clientWidth+2})()"))

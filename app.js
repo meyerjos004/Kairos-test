@@ -520,7 +520,8 @@ function watchScales() {
     if (sig !== p.sig) { p.sig = sig; paint(p); } }
   requestAnimationFrame(watchScales);
 }
-function rebuildAll() { if (blind) panes.forEach((p) => p.chart.applyOptions({ timeScale: { tickMarkFormatter: (t) => new Date(t * 1000).toISOString().slice(11, 16) }, localization: { timeFormatter: (t) => new Date(t * 1000).toISOString().slice(11, 16) } })); panes.forEach(rebuildPane); drawOpens(); drawOrders(); refresh(); }
+function rebuildAll() { if (window.__kfill) { window.__kfillRedo = 1; return; }   /* KING_CHARTWIN3: late data waits for the candle fill to finish instead of popping in */
+  if (blind) panes.forEach((p) => p.chart.applyOptions({ timeScale: { tickMarkFormatter: (t) => new Date(t * 1000).toISOString().slice(11, 16) }, localization: { timeFormatter: (t) => new Date(t * 1000).toISOString().slice(11, 16) } })); panes.forEach(rebuildPane); drawOpens(); drawOrders(); refresh(); }
 function setLayout(k) {
   prefs.layout = k; savePrefs(); $("laymenu").classList.add("hidden");
   const had = B["1m"].bars.length; buildPanes(); if (had) (need15 ? ensure15() : Promise.resolve()).then(loadOthers).then(() => { rebuildAll(); panes.forEach((p) => p.chart.timeScale().scrollToRealTime()); });
@@ -554,7 +555,7 @@ function newDrawing(type, p, a, b) {
   if (type === "long" || type === "short") { const s = type === "long" ? 1 : -1;
     { const c = p.candles; if (c && c.length) { const k = Math.max(0, Math.min(c.length - 1, Math.round(idxOf(p, a.t)))); d.a.t = c[k].time; d.a.p = a.p = rnd(c[k].close); a = d.a; } }   // KING_POSSNAP (King, Nov 14): the box starts at the centre of the entry candle and the entry line = that candle's close
     d.b = { t: a.t + p.sec * 30, p: a.p }; d.entry = a.p; d.sl = rnd(a.p - s * prefs.slPts); d.tp = rnd(a.p + s * prefs.tpPts); d.side = s; d.state = "idle"; d.qty = null; }
-  if (type === "text") d.text = prompt("Note text") || "Note";
+  if (type === "text") { d.text = "Note"; ask("Note text", "").then((v) => { if (v) { d.text = v; repaintAll(); } }); }
   if (type === "channel") d.off = chOff(d);
   if (type === "pitchfork") d.c = { t: d.b.t + Math.max(p.sec, (d.b.t - d.a.t) * 0.4), p: d.a.p - (d.b.p - d.a.p) * 0.6 };
   const pd = (prefs.presetDef || {})[type]; if (pd != null && prefs.presets && prefs.presets[type] && prefs.presets[type][pd]) applyPreset(d, prefs.presets[type][pd]);
@@ -1121,8 +1122,10 @@ function linesFor(p) {
     const pf = (pts, qty, k) => { if (!C.pnl) return ""; const mode = k === "pos" ? C.pnlp : C.pnlb; if (mode === "pts") return (pts >= 0 ? "+" : "") + pts.toFixed(2) + " pts"; if (mode === "ticks") return (pts >= 0 ? "+" : "") + Math.round(pts / TICK) + " ticks";
       if (mode === "r") return pos.risk ? (pts / pos.risk).toFixed(2) + "R" : "—R"; return money(pts * qty * inst.pt); };
     if (pos.qty) { const q = Math.abs(pos.qty), sd = Math.sign(pos.qty), rk = pos.sl != null ? Math.abs(pos.avg - pos.sl) * q * inst.pt : null; L(pos.avg, "#c9d2df", rk != null ? "risk " + money(rk) : "", "pos", null, 0);   /* KING_POSTAG: side, qty and P&L moved into the tag on the line */   // KING_RISKLINE
-      if (pos.sl != null) L(pos.sl, prefs.dn, (pos.trail ? "TRAIL " : "SL ") + pf((pos.sl - pos.avg) * sd, q, "br"), "sl");
-      if (pos.tp != null) L(pos.tp, prefs.up, "TP " + pf((pos.tp - pos.avg) * sd, q, "br"), "tp"); }
+      const big = document.body.classList.contains("ui2");   // KING_BRTAG: the new look draws its own bigger stop/target tags (brTags)
+      if (pos.sl != null) L(pos.sl, prefs.dn, big ? "" : (pos.trail ? "TRAIL " : "SL ") + pf((pos.sl - pos.avg) * sd, q, "br"), "sl");
+      if (pos.tp != null) L(pos.tp, prefs.up, big ? "" : "TP " + pf((pos.tp - pos.avg) * sd, q, "br"), "tp");
+      p._br = { sl: pos.sl != null ? [(pos.trail ? "TRAIL" : "SL"), pf((pos.sl - pos.avg) * sd, q, "br")] : null, tp: pos.tp != null ? ["TP", pf((pos.tp - pos.avg) * sd, q, "br")] : null }; } else p._br = null;
     for (const o of orders) L(o.price, "#7aa7ff", `${o.side > 0 ? "BUY" : "SELL"} ${o.type.toUpperCase()} ${o.qty}${o.tool ? " · auto" : ""}`, "ord", o);
     if (draft) L(draft.price, "#ffc65c", `DRAFT ${draft.side > 0 ? "BUY" : "SELL"} ${draft.type.toUpperCase()} · drag, then Submit`, "draft", draft);
   }
@@ -1157,10 +1160,10 @@ document.addEventListener("pointerdown", (e) => { ctxJust = null; if (!$("ctx").
 function chartMenu(p, x, y, cx, cy) {
   const l = hitLine(p, y), h = !l && hitDrawing(p, x, y), pr = pOf(p, y, x), lp = last();
   if (l && l.kind === "ord") { const o = l.obj; return menu([{ h: `${o.side > 0 ? "Buy" : "Sell"} ${o.type} ${o.qty} @ ${px2(o.price)}` },
-      { t: "Change quantity…", f: () => { const q = +prompt("Quantity", o.qty); if (q > 0) { o.qty = q; drawOrders(); refresh(); } } }, o.tool ? null : { t: "Change bracket…", f: () => bracketDlg(o) },
+      { t: "Change quantity…", f: async () => { const q = +await ask("Quantity", o.qty); if (q > 0) { o.qty = q; drawOrders(); refresh(); } } }, o.tool ? null : { t: "Change bracket…", f: () => bracketDlg(o) },
       { t: "Cancel order", c: "s", f: () => { orders = orders.filter((z) => z !== o); const d = drawings.find((z) => z.id === o.tool); if (d) d.state = "idle"; drawOrders(); refresh(); repaintAll(); } }], cx, cy); }
   if (l && (l.kind === "sl" || l.kind === "tp")) return menu([{ h: l.kind === "sl" ? "Stop loss" : "Take profit" }, { t: "Move stop to breakeven", f: toBE },
-      { t: pos.trail ? "Turn trailing off" : "Trail the stop…", f: () => { if (pos.trail) pos.trail = 0; else { const v = +prompt("Trail by points", prefs.slPts); if (v > 0) { pos.trail = v; pos.hi = last(); } } drawOrders(); } },
+      { t: pos.trail ? "Turn trailing off" : "Trail the stop…", f: async () => { if (pos.trail) pos.trail = 0; else { const v = +await ask("Trail by points", prefs.slPts); if (v > 0) { pos.trail = v; pos.hi = last(); } } drawOrders(); } },
       { t: "Remove " + (l.kind === "sl" ? "stop" : "target"), c: "s", f: () => { if (l.kind === "sl") pos.sl = null; else pos.tp = null; drawOrders(); refresh(); } }, "-", { t: "Close position", k: prefs.keys.close.toUpperCase(), f: () => closeAll() }], cx, cy);
   if (h) { const d = h.d; sel = d; repaintAll();
     if (d.type === "long" || d.type === "short") return menu([{ h: `${d.side > 0 ? "Long" : "Short"} position · ${d.state}` },
@@ -1170,7 +1173,7 @@ function chartMenu(p, x, y, cx, cy) {
         ...RISK_PRESETS.map((pr) => ({ t: "\u2003 Risk preset " + pr[0], f: () => { if (d.state === "filled") return toast("Already filled"); applyRisk(d, pr); } })),
         { t: "Settings…", f: () => toolDlg(d) }, { t: "Flip to " + (d.side > 0 ? "short" : "long"), f: () => { if (d.state !== "idle") return toast("Disarm it first"); d.side = -d.side; d.type = d.side > 0 ? "long" : "short"; [d.sl, d.tp] = [rnd(2 * d.entry - d.sl), rnd(2 * d.entry - d.tp)]; repaintAll(); } },
         "-", { t: "Delete", c: "s", k: "Del", f: () => { disarmTool(d); drawings = drawings.filter((z) => z !== d); sel = null; repaintAll(); } }], cx, cy);
-    return menu([{ h: d.type }, d.type === "text" ? { t: "Edit text…", f: () => { d.text = prompt("Note", d.text) || d.text; repaintAll(); } } : null,
+    return menu([{ h: d.type }, d.type === "text" ? { t: "Edit text…", f: async () => { d.text = await ask("Note", d.text) || d.text; repaintAll(); } } : null,
       { t: "Clone", f: () => { const c = JSON.parse(JSON.stringify(d)); c.id = did++; drawings.push(c); repaintAll(); } }, { t: "Delete", c: "s", k: "Del", f: () => { drawings = drawings.filter((z) => z !== d); sel = null; repaintAll(); } }], cx, cy); }
   if (pr == null || lp == null) return menu([{ h: "Chart" }, { t: "Load a replay first", f: () => {} }], cx, cy);
   const above = pr > lp, q = lotsNow(), br = autoBr(), t = tOf(p, x);
@@ -1557,7 +1560,13 @@ addEventListener("resize", () => { clearTimeout(window.__lyT); window.__lyT = se
   panes.forEach((p, i) => { const [x, y, w, h] = p._ga || [1, 1, 1, 1]; p.el.style.gridArea = nw ? `${i + 1} / 1 / span 1 / span 1` : `${y} / ${x} / span ${h} / span ${w}`; }); } catch (e) {} }, 150); });
 // KING_CHARTFOLLOW (Nov 22, King): the chart matches the app theme by default (light theme = light chart, dark = dark, styles = their own chart),
 // but any change in Chart settings (a preset or a single color) switches it to your own chart until you pick "Match my app theme" again.
-document.addEventListener("change", (e) => { const cs = $("chartset"); if (cs && cs.contains(e.target) && e.target.id !== "cs-theme" && prefs.chartFollow !== false) { prefs.chartFollow = false; if ($("cs-theme")) $("cs-theme").value = (prefs.chTheme && prefs.chTheme.id) || ""; savePrefs(); } }, true);
+function chartOwn(t) { if (prefs.chartFollow === false) return; const o = csStyleOv(); prefs.chartFollow = false; const keep = t && t.id && "value" in t ? [t.value, t.checked] : null;   // bake: your own chart starts from what the theme was showing, then your change lands on top
+  if (o && o.bg1) { const c = Object.assign({}, o); if (c.styUp) { prefs.up = c.styUp; prefs.dn = c.styDn; } delete c.styUp; delete c.styDn; delete c.font; prefs.cs = Object.assign({}, prefs.cs || {}, c); }
+  try { csTmp = null; csFill(); } catch (e) {} if (keep) { t.value = keep[0]; if (t.type === "checkbox") t.checked = keep[1]; }
+  if ($("cs-theme")) $("cs-theme").value = ""; try { savePrefs(); } catch (e) {} }
+["input", "change", "click"].forEach((ev) => document.addEventListener(ev, (e) => { const cs = $("chartset"); if (!cs || !cs.contains(e.target) || prefs.chartFollow === false) return; const t = e.target;
+  if (t.id === "cs-theme" || t.closest("#cs-mode,.csnav,.ah,#cs-x,#cs-tpl") || (ev === "click" && !t.closest(".csv button, .csv .seg, #cs-wbg"))) return; chartOwn(t); }, true));
+["s-up", "s-dn"].forEach((id) => { const el = $(id); if (el) el.addEventListener("input", () => chartOwn(el), true); });
 // KING_ICONS2 (Nov 22, King): drawing-tool icons redrawn for the new look: rounded 1.5 strokes with a soft tinted fill, still obvious at a glance.
 const TICONS = (() => { const f = 'fill="currentColor" fill-opacity=".16"', d = 'fill="currentColor" stroke="none"';
   return {
@@ -1595,15 +1604,15 @@ function chHelp() { let el = $("chelp"); if (!el) { el = document.createElement(
       <div class="chm"><button data-ch="play" title="Play out the day (9:30 to 3 PM)"><svg viewBox="0 0 24 24"><path d="M8 5.5l11 6.5-11 6.5z" fill="currentColor"/></svg><span>Play out day</span></button>
       <div class="chsp">${[...$("speed").options].map((o) => `<button data-sp="${o.value}">${o.textContent}</button>`).join("")}</div>
       <div class="chpos"><button data-ch="long" title="Enter a long here"><i class="cpl"><b></b><b></b></i><span>Long</span></button><button data-ch="short" title="Enter a short here"><i class="cps"><b></b><b></b></i><span>Short</span></button></div>
-      <button data-ch="open" title="Line at the 9:30 open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3.5 12h17"/><circle cx="7" cy="12" r="2" fill="currentColor"/></svg><span>Line at open</span></button>
+      <button data-ch="open" title="Line at the open of the latest candle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3.5 12h17"/><circle cx="7" cy="12" r="2" fill="currentColor"/></svg><span>Line at open</span></button>
       <button data-ch="alert" title="Set an alert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 16.5h11l-1.4-2V10a4.1 4.1 0 0 0-8.2 0v4.5z"/><path d="M10.5 19a1.6 1.6 0 0 0 3 0"/></svg><span>Set alert</span></button></div>`;
     document.body.appendChild(el);
     el.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; const p = panes[active]; if (!p) return; const c = p.candles[p.candles.length - 1];
       if (b.dataset.sp) { $("speed").value = b.dataset.sp; $("speed").dispatchEvent(new Event("change")); chHelpSync(); return; }
       const k = b.dataset.ch; if (k === "play") $("playday").click();
       if ((k === "long" || k === "short") && c) { setActive(p.i); const d = newDrawing(k, p, { t: c.time, p: c.close }); sel = d || sel; repaintAll(); toast(`${k === "long" ? "Long" : "Short"} placed at the latest price. Pick a risk on its right to arm it.`); }
-      if (k === "open" && c) { const day = sessDay(c.time); let o = null; for (const bar of B["1m"].bars) if (sessDay(bar.t) === day && lhm(loc(bar.t)) === "09:30") { o = bar.o; break; } const d = newDrawing("hline", p, { t: c.time, p: o ?? c.open }); if (d) d.label = "Open"; repaintAll(); toast(o != null ? "Line at the 9:30 open" : "No 9:30 open yet, line at this candle's open"); }
-      if (k === "alert") { const v = prompt("Alert at price", px2(last())); if (v != null && +v) addAlert(+v); } }); }
+      if (k === "open" && c) { const d = newDrawing("hline", p, { t: c.time, p: c.open }); if (d) d.label = "Open"; repaintAll(); toast("Line at this candle's open · " + px2(c.open)); }
+      if (k === "alert") { ask("Alert at price", px2(last())).then((v) => { if (v != null && +v) addAlert(+v); }); } }); }
   return el; }
 function chHelpSync() { const el = $("chelp"); if (!el) return; el.querySelectorAll("[data-sp]").forEach((b) => b.classList.toggle("on", b.dataset.sp === $("speed").value)); }
 function chHelpPos() { const el = chHelp(), p = panes[active], onTrade = document.body.classList.contains("v-trade") && document.body.classList.contains("ui2") && !$("kbuild");
@@ -1612,6 +1621,12 @@ function chHelpPos() { const el = chHelp(), p = panes[active], onTrade = documen
     if (x == null || y == null || x > r.width - pw - 10 || x < 0) { el.style.display = "none"; return; }
     el.style.display = ""; const L = Math.min(r.left + x + 10, r.right - pw - 34), T = Math.max(r.top + 6, r.top + y - 30); el.style.transform = `translate(${Math.round(L)}px,${Math.round(T)}px)`; el.classList.toggle("flip", L > r.right - pw - 230); } catch (e) {} }
 setInterval(chHelpPos, 120); chHelpSync();
+// KING_ASK (Nov 22, King): no more browser pop-up text boxes. Anything that needs typing opens a small box inside the site, in your theme.
+function ask(title, def) { if (window.__askAuto != null) return Promise.resolve(window.__askAuto);   /* test hook */
+  return new Promise((res) => { const w = document.createElement("div"); w.className = "dlgwrap askwrap"; w.innerHTML = `<div class="glass dlg pop askbox"><h3></h3><input class="askin" maxlength="400"><div class="row" style="margin-top:12px"><button class="askx">Cancel</button><button class="primary askok">OK</button></div></div>`;
+  w.querySelector("h3").textContent = title || ""; const inp = w.querySelector(".askin"); inp.value = def == null ? "" : String(def); document.body.appendChild(w); setTimeout(() => { inp.focus(); inp.select(); }, 30);
+  const done = (v) => { w.remove(); res(v); }; w.querySelector(".askok").onclick = () => done(inp.value); w.querySelector(".askx").onclick = () => done(null);
+  w.addEventListener("pointerdown", (e) => { if (e.target === w) done(null); }); inp.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") done(inp.value); if (e.key === "Escape") done(null); }); }); }
 // KING_NAVLINE (Nov 22): one underline that slides between the top-nav pages (the per-tab line can't move)
 function navLine(instant) { const R = $("rail"); if (!R) return; let L = $("navline"); if (!L) { L = document.createElement("i"); L.id = "navline"; R.appendChild(L); }
   const on = R.querySelector(".vtab.on"); if (!on || !document.body.classList.contains("ui2-iv") || isPhone()) { L.style.opacity = "0"; return; }
@@ -1697,7 +1712,7 @@ function gradeOdo(el) { const o = el.querySelector(".rvodo"), st = o.querySelect
   const set = (k, snd) => { k = Math.max(-1, Math.min(N - 1, k)); if (k === i) return; i = k; el.dataset.gr = i < 0 ? "" : GRADES[i]; st.style.transform = `translateY(${-(i + 1) * 44}px)`;
     st.querySelectorAll("span").forEach((x, j) => x.classList.toggle("on", j === i + 1)); o.style.setProperty("--gc", i < 0 ? "var(--mut)" : `color-mix(in srgb, var(--up) ${Math.round(100 - (i / (N - 1)) * 100)}%, var(--dn))`); if (snd) dialTick(i === 0 || i === N - 1); };
   o.addEventListener("pointerdown", (e) => { e.preventDefault(); o.setPointerCapture(e.pointerId); drag = { y: e.clientY, i }; o.classList.add("drag"); });
-  o.addEventListener("pointermove", (e) => { if (drag) set(drag.i + Math.round((e.clientY - drag.y) / 22), true); });
+  o.addEventListener("pointermove", (e) => { if (drag) set(drag.i + Math.round((drag.y - e.clientY) / 22), true); });   // drag up = the strip moves up = next grade down the list
   const end = () => { drag = null; o.classList.remove("drag"); }; o.addEventListener("pointerup", end); o.addEventListener("pointercancel", end);
   o.addEventListener("wheel", (e) => { e.preventDefault(); set(i + (e.deltaY > 0 ? 1 : -1), true); }, { passive: false });
   o.addEventListener("keydown", (e) => { if (e.key === "ArrowDown") { e.preventDefault(); set(i + 1, true); } if (e.key === "ArrowUp") { e.preventDefault(); set(i - 1, true); } });
@@ -2283,7 +2298,7 @@ async function renderCh() { let list = [];
   $("ch-list").innerHTML = cards.join("") || '<div class="empty">No challenges yet. Load a week, then hit the button above.</div>'; $("ch-list").dataset.ids = JSON.stringify(list); }
 async function newChallenge() { if (!nowT()) return toast("Load a replay first, then challenge from the week you're on");
   const lt = loc(nowT()), wd = new Date(lt * 1000).getUTCDay(), monLt = Math.floor(lt / 86400) * 86400 - ((wd + 6) % 7) * 86400, start = monLt - 6 * 3600 - (loc(nowT()) - nowT()), end = start + 5 * 86400;
-  const title = prompt("Name the challenge", sym + " week of " + fmt(monLt).slice(0, 10)); if (!title) return; const row = { title, symbol: sym, start_ts: start, end_ts: end };
+  const title = await ask("Name the challenge", sym + " week of " + fmt(monLt).slice(0, 10)); if (!title) return; const row = { title, symbol: sym, start_ts: start, end_ts: end };
   if (DEMO) (mem.ch = mem.ch || []).unshift({ id: "c" + Date.now(), user_id: "demo", created_at: new Date().toISOString(), ...row }); else { const { error } = await sb.from("challenges").insert(row); if (error) return toast(error.message); }
   view("friends"); ftab("ch"); toast("Challenge posted"); }
 async function takeChallenge(c) { if (pos.qty || orders.length) return toast("Close positions and cancel orders first"); $("sym").value = c.symbol; $("start").value = fmt(loc(c.start_ts) + 60).replace(" ", "T"); view("trade"); await loadReplay(); }
@@ -2311,7 +2326,7 @@ async function shareCard(t, withChart) {   // KING_CARD2 (Nov 22, King): the sha
   const url = URL.createObjectURL(blob); let copied = false; try { await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]); copied = true; } catch (e) {}
   dlg(`<h3>Share card</h3><img src="${url}" style="width:100%;border-radius:14px;border:1px solid var(--line)"><div class="tiny muted" style="margin-top:6px">${copied ? "Copied to your clipboard: paste it into Discord or a text." : "Save it, then drop it into Discord or a text."}</div>`, () => { const a = document.createElement("a"); a.href = url; a.download = `kairos-${t.symbol}-${(t.pnl >= 0 ? "win" : "loss")}.png`; a.click(); });
   setTimeout(() => { const ok = $("dl-ok"); if (ok) ok.textContent = "Download"; }, 0); window.__lastCard = c; }
-async function shareTrade(t) { const note = prompt("Add a note for your friends (optional)", t.notes || ""); if (note === null) return;
+async function shareTrade(t) { const note = await ask("Add a note for your friends (optional)", t.notes || ""); if (note === null) return;
   const snap = { symbol: t.symbol, dir: t.dir, qty: t.qty, entry: t.entry, stop: t.stop, target: t.target, exit: t.exit, r: t.r, pnl: t.pnl, outcome: t.outcome, t_entry: t.t_entry, t_exit: t.t_exit, tags: t.tags || [], shot: t.shots && t.shots[0] };
   if (DEMO) (mem.sh = mem.sh || []).unshift({ id: "s" + Date.now(), user_id: "demo", trade_id: t.id, snap, note, created_at: new Date().toISOString() }); else { const { error } = await sb.from("shared_trades").insert({ trade_id: t.id, snap, note }); if (error) return toast(error.message); }
   toast("Shared with the group"); }
@@ -2324,7 +2339,7 @@ async function renderSh() { let list = [], rt = [];
       <div class="row" style="justify-content:flex-start;align-items:center"><span class="stars" data-share="${x.id}">${[1, 2, 3, 4, 5].map((n) => `<button class="star ${mine && n <= mine.stars ? "on" : ""}" data-n="${n}">★</button>`).join("")}</span><span class="muted small">${rs.length ? avg.toFixed(1) + " from " + rs.length : "not rated yet"}</span><button class="small ghost" data-replay="${x.id}">Replay this setup</button></div>
       ${rs.filter((r) => r.note).map((r) => `<div class="small rnote"><b>${who(r.user_id, "")}</b>: ${esc(r.note)}</div>`).join("")}</div>`; }).join("") || '<div class="empty">Nothing shared yet</div>';
   $("sh-list").dataset.list = JSON.stringify(list.map((x) => ({ id: x.id, snap: x.snap }))); }
-async function rateShare(id, n) { const note = prompt("Leave a note with your " + n + "★ (optional)", "") ?? ""; const row = { share_id: id, stars: n, note };
+async function rateShare(id, n) { const note = await ask("Leave a note with your " + n + "★ (optional)", "") ?? ""; const row = { share_id: id, stars: n, note };
   if (DEMO) { mem.rt = (mem.rt || []).filter((r) => !(r.share_id === id && r.user_id === "demo")); mem.rt.push({ ...row, user_id: "demo" }); } else { const { error } = await sb.from("ratings").upsert(row, { onConflict: "share_id,user_id" }); if (error) return toast(error.message); }
   renderSh(); }
 async function renderSg() { let list = []; if (DEMO) list = mem.sg || []; else { const { data } = await sb.from("suggestions").select("*").limit(200); list = data || []; }
@@ -2414,7 +2429,7 @@ const nmsg = (m) => ($("n-msg").textContent = m);
 
 /* ---------------- prefs / settings / admin ---------------- */
 // KING_DEF1122 (Nov 22, King): everyone starts on MNQ + MES side by side, 60x replay, and no stop/target pre-ticked. Applied once per person.
-function defaults1122(force) { if (prefs.def1122b || (navigator.webdriver && !force)) return; prefs.def1122b = 1; prefs.layout = "2"; prefs.syms = ["MNQ", "MES"]; prefs.lastSym = "MNQ"; prefs.ordSl = false; prefs.ordTp = false; prefs.sym = "MNQ"; try { $("sym").value = "MNQ"; } catch (e) {} prefs.autoBr = false; prefs.spd = "60"; if (prefs.sync) prefs.sync.sym = false; try { savePrefs(); } catch (e) {} }
+function defaults1122(force) { if (prefs.def1122c || (navigator.webdriver && !force)) return; const first = !prefs.def1122b; prefs.def1122b = prefs.def1122c = 1; if (first) prefs.layout = "2"; prefs.syms = ["MNQ", "MES"]; prefs.lastSym = "MNQ"; prefs.ordSl = false; prefs.ordTp = false; prefs.sym = "MNQ"; try { $("sym").value = "MNQ"; } catch (e) {} prefs.autoBr = false; prefs.spd = "60"; if (prefs.sync) prefs.sync.sym = false; try { savePrefs(); } catch (e) {} }
 async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout] && !LAYS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) };
     if (!prefs.syncDef1) { prefs.sync = { sym: false, int: true, cross: true, time: false, range: false }; prefs.syncDef1 = true; }   // KING_SYNCDEF (Nov 14)
   } }   // KING_INDOFF (King, Nov 14): no reset for existing users (Ben, Will, Ryan keep theirs); new users start with everything off via IND_DEF
@@ -2450,7 +2465,7 @@ let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList
 function view(v) { try { document.documentElement.removeAttribute("data-kv"); } catch (e) {} try { $("v-stats").classList.remove("sdopen"); } catch (e) {} try { window.k3dView && k3dView(v); } catch (e) {} try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el && !morphView.on) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); clearTimeout(el._ent); el._ent = setTimeout(() => el.classList.remove("enter"), 900); }   /* KING_STAGEQUIET: re-drawn cards must not replay the entrance */ sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); try { navLine(); } catch (e) {} document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) { stagePre("v-tj"); Promise.resolve(JN.open()).then(() => stageLoad("v-tj"), () => stageLoad("v-tj")); } /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") { stagePre("v-stats"); renderStats().then(() => stageLoad("v-stats"), () => stageLoad("v-stats")); } if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
 function layMenu() { const sv = prefs.saved || [];
   return layMenu2(); }
-function saveLayout() { const name = (prompt("Name this layout (e.g. NQ/ES SMT, 1m + 15m)") || "").trim().slice(0, 30); if (!name) return;
+async function saveLayout() { const name = (await ask("Name this layout (e.g. NQ/ES SMT, 1m + 15m)") || "").trim().slice(0, 30); if (!name) return;
   const I = JSON.parse(JSON.stringify(prefs.ind || {})); (prefs.saved = prefs.saved || []).push({ name, layout: prefs.layout, tfs: prefs.tfs.slice(), syms: (prefs.syms || []).slice(), sync: { ...(prefs.sync || {}) }, ind: I }); savePrefs(); layMenu(); toast(`Saved layout "${name}"`); }
 function loadLayout(i) { const x = (prefs.saved || [])[i]; if (!x) return; prefs.tfs = x.tfs.slice(); prefs.syms = (x.syms || []).slice(); prefs.sync = { ...(x.sync || {}) }; if (x.ind) prefs.ind = JSON.parse(JSON.stringify(x.ind)); setLayout(x.layout); tfUI(); layMenu(); toast(`Layout "${x.name}"`); }
 function kChime(ac) {   // KAIROS intro: rising notes + soft low swell (matches the invite page)
@@ -2577,8 +2592,8 @@ function assembleBuild(full, T) {
     { k: [{ opacity: 0, transform: "scale(.35)" }, { opacity: 1, transform: "scale(1.04)", offset: .75 }, { opacity: 1, transform: "none" }], e: E } ];
   let skip = false, ended = false, k = 0; const anims = [], base = full ? 1 : .6;
   const finish = () => { if (ended) return; ended = true; anims.forEach((a) => { try { a.finish(); } catch (e) {} });
-    T.forEach((t) => { t.el.style.opacity = t.prev || ""; }); panes.forEach((p) => { try { if (p._fin) p._fin(); p.series.applyOptions({ visible: true }); p.el.style.clipPath = ""; } catch (e) {} }); document.querySelectorAll(".kwin").forEach((x) => x.remove());
-    removeEventListener("pointerdown", onSkip, true); mark.remove(); dispatchEvent(new Event("kz-built")); };
+    window.__kfill = 0; T.forEach((t) => { t.el.style.opacity = t.prev || ""; }); panes.forEach((p) => { try { if (p._fin) p._fin(); p.series.applyOptions({ visible: true }); p.el.style.clipPath = ""; } catch (e) {} }); document.querySelectorAll(".kwin").forEach((x) => x.remove());
+    removeEventListener("pointerdown", onSkip, true); mark.remove(); if (window.__kfillRedo) { window.__kfillRedo = 0; try { rebuildAll(); } catch (e) {} } dispatchEvent(new Event("kz-built")); };
   const onSkip = () => { skip = true; finish(); }; addEventListener("pointerdown", onSkip, true);
   if (reduce) return finish();
   let t = 0; items.forEach((it, i) => {
@@ -2588,22 +2603,22 @@ function assembleBuild(full, T) {
   });
   // KING_CHARTWIN (Nov 22, King): each chart starts as a small rounded frosted-glass window with its data already behind it, then opens up
   // to full size with anime.js "inExpo" easing while the candles fill in one by one.
-  const pz = items.filter((x) => x.z === 1), tc = t + 80, IE = "cubic-bezier(.95,.05,.795,.035)", DW = full ? 1500 : 900, inExpo = (x) => x * x;   /* KING_CHARTWIN2: candles accelerate in gently so each one is seen arriving */
+  const pz = items.filter((x) => x.z === 1), tc = t + 80, IE = "cubic-bezier(.95,.05,.795,.035)", DW = full ? 950 : 700, CW = full ? 2100 : 1200, inExpo = (x) => (Math.pow(2, 6 * x) - 1) / 63;   /* KING_CHARTWIN3: the window opens in under a second; candles keep arriving left to right for a second more, speeding up (expo), so you watch them land */   /* KING_CHARTWIN2: candles accelerate in gently so each one is seen arriving */
   setTimeout(() => { if (skip) return; pz.forEach((it, j) => { const el = it.el, p = panes.find((q) => q.el === el); el.style.opacity = it.prev || ""; const r = el.getBoundingClientRect();
       const ix = r.width / 2, iy = r.height / 2, from = `inset(${iy}px ${ix}px ${iy}px ${ix}px round 22px)`, to = "inset(0px 0px 0px 0px round 14px)";
       const cv = document.createElement("div"); cv.className = "kwin"; Object.assign(cv.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" }); document.body.appendChild(cv);
       const kf = [{ clipPath: from }, { clipPath: to }], o = { duration: DW, easing: IE, delay: j * 110, fill: "backwards" };
-      try { anims.push(el.animate(kf, o)); anims.push(cv.animate(kf, { ...o, fill: "both" })); anims.push(cv.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, delay: j * 110 + DW * 0.85, easing: "ease-out", fill: "forwards" })); } catch (e) {}
-      setTimeout(() => cv.remove(), j * 110 + DW + 420);
+      try { anims.push(el.animate(kf, o)); anims.push(cv.animate(kf, { ...o, fill: "both" })); anims.push(cv.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, delay: j * 110 + DW * 0.8, easing: "ease-out", fill: "forwards" })); } catch (e) {}
+      setTimeout(() => cv.remove(), j * 110 + DW + 500);
       if (!p) return; let D; try { D = p.series.data().slice(); } catch (e) { return; } const ts = p.chart.timeScale(), lr = ts.getVisibleLogicalRange(); if (!lr || D.length < 3) { try { p.series.applyOptions({ visible: true }); } catch (e) {} return; }
       const s0 = Math.max(0, Math.min(D.length - 1, Math.floor(lr.from))), s1 = D.length, ps = p.chart.priceScale("right"), auto = ps.options().autoScale, shift = ts.options().shiftVisibleRangeOnNewBar;
       try { ps.applyOptions({ autoScale: false }); ts.applyOptions({ shiftVisibleRangeOnNewBar: false }); p.series.setData(D.slice(0, s0 + 1)); ts.setVisibleLogicalRange(lr); p.series.applyOptions({ visible: true }); } catch (e) {}
       let k = s0 + 1; p._lim = k; const t0 = performance.now() + j * 110;
-      const step = (now) => { if (ended) return; const u = Math.max(0, Math.min(1, (now - t0) / DW)), want = s0 + 1 + Math.round(inExpo(u) * (s1 - s0 - 1));
+      const step = (now) => { if (ended) return; const u = Math.max(0, Math.min(1, (now - t0) / CW)), want = s0 + 1 + Math.round(inExpo(u) * (s1 - s0 - 1));
         while (k < want) { try { p.series.update(D[k]); } catch (e) {} k++; } p._lim = k; if (u < 1) requestAnimationFrame(step); else done(); };
       const done = () => { if (p._done) return; p._done = 1; try { if (k < s1) p.series.setData(D); ts.setVisibleLogicalRange(lr); ps.applyOptions({ autoScale: auto }); ts.applyOptions({ shiftVisibleRangeOnNewBar: shift }); } catch (e) {} p._lim = undefined; try { repaintAll(); } catch (e) {} };
-      p._done = 0; p._fin = done; requestAnimationFrame(step); });
-    try { sfx("sheet"); } catch (e) {} setTimeout(finish, DW + pz.length * 110 + 450); }, tc);
+      p._done = 0; p._fin = done; window.__kfill = 1; requestAnimationFrame(step); });
+    try { sfx("sheet"); } catch (e) {} setTimeout(finish, CW + pz.length * 110 + 200); }, tc);
   setTimeout(() => { if (!ended) finish(); }, 9000);
 }
 function runBuild(full, T) { const W = innerWidth, H = innerHeight, D = Math.min(devicePixelRatio || 1, 2), cv = document.createElement("canvas"); cv.id = "kbuild";
@@ -2883,9 +2898,9 @@ const presetsOf = (type) => { prefs.presets = prefs.presets || {}; if (!prefs.pr
 function applyPreset(d, pr) { for (const k of PRESET_KEYS) if (pr[k] !== undefined) d[k] = pr[k]; }
 function presetMenu(d, cx, cy) { const L = presetsOf(d.type), def = (prefs.presetDef || {})[d.type];
   menu([{ h: `${TOOLNAMES[d.type] || d.type} presets` }, ...L.map((pr, i) => ({ t: `${def === i ? "★ " : "\u2003 "}${pr.name}`, f: () => { applyPreset(d, pr); repaintAll(); } })),
-    "-", { t: "Save this style as a preset…", f: () => { const name = (prompt("Preset name (e.g. PDH, FVG, OB)", d.label || "") || "").trim().slice(0, 24); if (!name) return; const pr = { name }; for (const k of PRESET_KEYS) if (d[k] !== undefined) pr[k] = d[k]; L.push(pr); savePrefs(); toast(`Preset "${name}" saved`); } },
-    L.length ? { t: def != null ? "Stop using a default for new ones" : "Use a preset for every new one…", f: () => { prefs.presetDef = prefs.presetDef || {}; if (def != null) { delete prefs.presetDef[d.type]; savePrefs(); return toast("No default preset"); } const n = prompt(`Which preset? ${L.map((p, i) => `${i + 1}=${p.name}`).join(", ")}`); const i = (+n || 0) - 1; if (L[i]) { prefs.presetDef[d.type] = i; savePrefs(); toast(`New ${TOOLNAMES[d.type] || d.type}s use "${L[i].name}"`); } } } : null,
-    L.length ? { t: "Delete a preset…", f: () => { const n = prompt(`Delete which? ${L.map((p, i) => `${i + 1}=${p.name}`).join(", ")}`); const i = (+n || 0) - 1; if (L[i]) { L.splice(i, 1); if (prefs.presetDef && prefs.presetDef[d.type] != null) delete prefs.presetDef[d.type]; savePrefs(); } } } : null], cx, cy); }
+    "-", { t: "Save this style as a preset…", f: async () => { const name = (await ask("Preset name (e.g. PDH, FVG, OB)", d.label || "") || "").trim().slice(0, 24); if (!name) return; const pr = { name }; for (const k of PRESET_KEYS) if (d[k] !== undefined) pr[k] = d[k]; L.push(pr); savePrefs(); toast(`Preset "${name}" saved`); } },
+    L.length ? { t: def != null ? "Stop using a default for new ones" : "Use a preset for every new one…", f: async () => { prefs.presetDef = prefs.presetDef || {}; if (def != null) { delete prefs.presetDef[d.type]; savePrefs(); return toast("No default preset"); } const n = await ask(`Which preset? ${L.map((p, i) => `${i + 1}=${p.name}`).join(", ")}`); const i = (+n || 0) - 1; if (L[i]) { prefs.presetDef[d.type] = i; savePrefs(); toast(`New ${TOOLNAMES[d.type] || d.type}s use "${L[i].name}"`); } } } : null,
+    L.length ? { t: "Delete a preset…", f: async () => { const n = await ask(`Delete which? ${L.map((p, i) => `${i + 1}=${p.name}`).join(", ")}`); const i = (+n || 0) - 1; if (L[i]) { L.splice(i, 1); if (prefs.presetDef && prefs.presetDef[d.type] != null) delete prefs.presetDef[d.type]; savePrefs(); } } } : null], cx, cy); }
 function toolSettings(d) { if (d.type === "long" || d.type === "short") return toolDlg(d);
   dlg(`<h3>${({ trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Zone", fib: "Fib retracement", text: "Note", measure: "Measure" })[d.type] || d.type} settings</h3>
     <label>${d.type === "text" ? "Text" : "Label (shows on the chart)"}<input id="ts-l" value="${esc(d.type === "text" ? d.text : d.label || "")}" maxlength="60"></label>
@@ -3001,13 +3016,13 @@ async function tplApply(i) { const t = tplList()[i]; if (!t) return; const keepT
 $("tplbtn").onclick = () => { tplMenu(); $("tplmenu").classList.toggle("hidden"); };
 document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".tplwrap")) $("tplmenu").classList.add("hidden"); });
 $("tplmenu").onclick = async (e) => { const b = e.target.closest("button"); if (!b) return; const L = tplList();
-  if (b.dataset.tplnew) { const name = (prompt("Name this template (e.g. NQ scalping, 4-chart SMT, Clean replay)") || "").trim().slice(0, 40); if (!name) return;
+  if (b.dataset.tplnew) { const name = (await ask("Name this template (e.g. NQ scalping, 4-chart SMT, Clean replay)") || "").trim().slice(0, 40); if (!name) return;
     const ex = L.findIndex((t) => t.name.toLowerCase() === name.toLowerCase()); const rec = { name, at: Date.now(), data: tplSnap() };
     if (ex >= 0) { if (!confirm(`"${L[ex].name}" already exists. Replace it with your current setup?`)) return; L[ex] = rec; } else L.push(rec);
     prefs.tplOn = name; savePrefs(); tplMenu(); return toast(`Saved template "${name}"`); }
   if (b.dataset.tpl != null) return tplApply(+b.dataset.tpl);
   if (b.dataset.tplup != null) { const t = L[+b.dataset.tplup]; if (!t || !confirm(`Overwrite "${t.name}" with your current settings?`)) return; t.data = tplSnap(); t.at = Date.now(); prefs.tplOn = t.name; savePrefs(); tplMenu(); return toast(`Updated "${t.name}"`); }
-  if (b.dataset.tplren != null) { const t = L[+b.dataset.tplren]; const nm = (prompt("New name", t.name) || "").trim().slice(0, 40); if (!nm) return; if (prefs.tplOn === t.name) prefs.tplOn = nm; t.name = nm; savePrefs(); tplMenu(); return; }
+  if (b.dataset.tplren != null) { const t = L[+b.dataset.tplren]; const nm = (await ask("New name", t.name) || "").trim().slice(0, 40); if (!nm) return; if (prefs.tplOn === t.name) prefs.tplOn = nm; t.name = nm; savePrefs(); tplMenu(); return; }
   if (b.dataset.tpldel != null) { const t = L[+b.dataset.tpldel]; if (!t || !confirm(`Delete template "${t.name}"? Your current settings stay as they are.`)) return; L.splice(+b.dataset.tpldel, 1); if (prefs.tplOn === t.name) prefs.tplOn = null; savePrefs(); tplMenu(); } };
 $("laybtn").onclick = () => $("laymenu").classList.toggle("hidden"); $("laymenu").onclick = (e) => { const b = e.target.closest(".lay,.lay2"); if (b) { setLayout(b.dataset.lay); layMenu(); return; } const l = e.target.closest("[data-sl]"); if (l) return loadLayout(+l.dataset.sl);
   const d = e.target.closest("[data-sldel]"); if (d) { prefs.saved.splice(+d.dataset.sldel, 1); savePrefs(); layMenu(); return; } if (e.target.closest("#sl-save")) saveLayout(); };
@@ -3094,7 +3109,7 @@ $("s-fx").addEventListener("click", async (e) => { const p = e.target.closest("[
   if (x) { const k = x.dataset.fxx; await fxPut(k, null); fxHave[k] = false; if (fxCfg().slots[k]) delete fxCfg().slots[k].name; savePrefs(); fxUI(); } });
 $("s-intro").onclick = () => welcomeIntro(true); $("s-tour").onclick = () => { view("trade"); setTimeout(tour, 300); };
 $("s-sndfile").onchange = (e) => { const f = e.target.files[0]; if (!f) return; if (f.size > 300000) return toast("Max 300 KB"); const r = new FileReader(); r.onload = () => { try { localStorage.setItem("rw-snd", r.result); toast("Sound saved. Pick 'My sound' for any event."); tone("custom"); } catch (er) { toast("Couldn't save the sound on this device"); } }; r.readAsDataURL(f); };
-$("s-lockgo").onclick = () => { let v = $("s-lock").value; if (v === "0") return; if (v === "custom") { v = prompt("Lock out for how many hours?", "3"); if (!v || !(+v > 0)) return; }
+$("s-lockgo").onclick = async () => { let v = $("s-lock").value; if (v === "0") return; if (v === "custom") { v = await ask("Lock out for how many hours?", "3"); if (!v || !(+v > 0)) return; }
   const until = v === "day" ? new Date(new Date().setHours(23, 59, 0, 0)).getTime() : Date.now() + +v * 3600e3; if (!confirm("Lock yourself out of trading until " + new Date(until).toLocaleString() + "? You can't undo this.")) return;
   prefs.lockUntil = until; savePrefs(); lockUI(); toast("🔒 Locked out"); };
 $("s-speed").onclick = (e) => { const b = e.target.closest("[data-sp]"); if (!b) return; prefs.speed = b.dataset.sp; savePrefs(); speedUI(); };
@@ -3498,8 +3513,8 @@ $("chartsetbtn").addEventListener("click", () => { csSnap = { cs: JSON.parse(JSO
 const csCommit = () => { prefs.cs = Object.assign({}, prefs.cs || {}, csRead()); csTmp = null; savePrefs(); csApplyAll(); };
 $("cs-save").addEventListener("click", csCommit, true); $("cs-all").onclick = () => { csCommit(); toast("Applied to all charts"); };
 $("cs-cancel").onclick = () => { if (csSnap) { prefs.cs = csSnap.cs; prefs.up = csSnap.up; prefs.dn = csSnap.dn; } csTmp = null; csApplyAll(); $("chartset").classList.add("hidden"); };
-$("cs-tpl").onchange = () => { const v = $("cs-tpl").value; $("cs-tpl").value = "";
-  if (v === "__save") { const n = (prompt("Template name") || "").trim().slice(0, 30); if (!n) return; prefs.csT = Object.assign({}, prefs.csT || {}, { [n]: Object.assign(csRead(), { up: $("s-up").value, dn: $("s-dn").value }) }); savePrefs(); csFill(); toast("Template saved"); return; }
+$("cs-tpl").onchange = async () => { const v = $("cs-tpl").value; $("cs-tpl").value = "";
+  if (v === "__save") { const n = (await ask("Template name") || "").trim().slice(0, 30); if (!n) return; prefs.csT = Object.assign({}, prefs.csT || {}, { [n]: Object.assign(csRead(), { up: $("s-up").value, dn: $("s-dn").value }) }); savePrefs(); csFill(); toast("Template saved"); return; }
   const src = v === "__def" ? Object.assign({}, CS_DEF, { up: "#2bd4a0", dn: "#ff6b7a" }) : v.startsWith("t:") ? (prefs.csT || {})[v.slice(2)] : null; if (!src) return;
   csTmp = Object.assign({}, src); if (src.up) { prefs.up = src.up; prefs.dn = src.dn; $("s-up").value = src.up; $("s-dn").value = src.dn; } const keep = prefs.cs; prefs.cs = csTmp; csFill(); prefs.cs = keep; csApplyAll(); };
 // KING_SETPAGE: the group nav highlights the group you're looking at
@@ -4257,7 +4272,13 @@ function posTag(p) { let el = p.el.querySelector(".postag");
   el.querySelector(".ptq").textContent = (pos.qty > 0 ? "+" : "−") + q;
   el.querySelector(".ptp").textContent = (pl >= 0 ? "+ " : "− ") + Math.abs(pl).toFixed(2) + " USD";
   el.querySelector('[data-k="tp"]').classList.toggle("set", pos.tp != null); el.querySelector('[data-k="sl"]').classList.toggle("set", pos.sl != null); }
-{ const _paint = paint; paint = function (p) { const r = _paint.apply(this, arguments); try { posTag(p); } catch (e) {} return r; }; }
+// KING_BRTAG (Nov 22, King): stop and target get a bigger, readable tag on their line: colored name, a hollow middle with the price, colored amount.
+function brTags(p) { const on = document.body.classList.contains("ui2") && pos.qty && paneSym(p) === sym && !p.dead && p._br; let ps = 70; try { ps = p.chart.priceScale("right").width(); } catch (e) {}
+  ["sl", "tp"].forEach((k) => { let el = p.el.querySelector(".brtag." + k); const v = on && p._br[k], y = v ? yOf(p, pos[k]) : null;
+    if (!v || y == null || y < 14 || y > p.el.clientHeight - 40) { if (el) el.classList.add("hidden"); return; }
+    if (!el) { el = document.createElement("div"); el.className = "brtag " + k; el.innerHTML = "<b></b><i></i><em></em>"; p.el.appendChild(el); }
+    el.classList.remove("hidden"); el.style.top = Math.round(y - 14) + "px"; el.style.right = ps + 10 + "px"; el.children[0].textContent = v[0]; el.children[1].textContent = px2(pos[k]); el.children[2].textContent = v[1] || ""; el.children[2].style.display = v[1] ? "" : "none"; }); }
+{ const _paint = paint; paint = function (p) { const r = _paint.apply(this, arguments); try { posTag(p); brTags(p); } catch (e) {} return r; }; }
 
 // KING_CMDK (Nov 20, from King's Instagram "Websites" saves: the ⌘K quick-actions idea): press Ctrl/⌘+K (or "/" on the chart)
 // for one search box that does everything: go to a page, change timeframe, symbol, layout, theme, skin, play/pause, flatten…
@@ -4380,12 +4401,14 @@ function appThemeUI() { const el = $("s-themes"); if (!el) return; const a = pre
   const rb = RAINBOW[id];
   const ct = prefs.chTheme && CHART_THEMES[prefs.chTheme.id], cm = ct && ct[1][prefs.chTheme.mode], csw = cm ? [cm.bg || "#222", cm.up || "#2bd4a0", cm.dn || "#ff4d5e"] : ["#444", "#2bd4a0", "#ff4d5e"];
   el.innerHTML = `<div class="atgrid">${card("def", "Default", "Ivory / Onyx · chart keeps your colors", ["#f7f5f0", "#1b1a17", "#121110"])}${card("kairos", ...[STYLE_THEMES.kairos.nm, STYLE_THEMES.kairos.sub, STYLE_THEMES.kairos.sw])}${card("person", "My chart theme", (ct ? ct[0] : "Your chart theme") + " on the whole site", csw)}</div>`
+    + (id === "def" ? `<div class="atmode"><span class="atlbl" style="margin:0">Default look</span><div class="seg"><button data-um="ivory" class="${ui2Mode() !== "onyx" ? "on" : ""}">Light (Ivory)</button><button data-um="onyx" class="${ui2Mode() === "onyx" ? "on" : ""}">Dark (Onyx)</button></div></div>` : "")
     + `<div class="atlbl">Colors</div><div class="atrb">${Object.entries(RAINBOW).map(([k, [nm, h]]) => `<button class="atdot ${id === k ? "on" : ""}" data-at="${k}" title="${nm}" style="--h:${h}"><i></i><span>${nm}</span></button>`).join("")}</div>`
     + (rb ? `<div class="atsub"><div class="atlbl">${rb[0]} shade</div><div class="atsh">${SHADES.map(([s, nm]) => { const p = rainbowPal(rb[1], s, a.vib); return `<button class="${(a.shade || "light") === s ? "on" : ""}" data-sh="${s}"><i style="background:${p.v.bg};box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)"><b style="background:${p.v.ink}"></b></i>${nm}</button>`; }).join("")}</div>
        <div class="atlbl">Vibrancy <i class="qm" data-help="Left is calm and gray, right is full color.">?</i></div><label class="atvib"><span>Calm</span><input type="range" id="at-vib" min="0" max="100" step="5" value="${a.vib ?? 60}"><span>Vivid</span></label></div>` : "")
     + `<div class="atlbl">Styles</div><div class="atgrid">${Object.entries(STYLE_THEMES).filter(([k]) => k !== "kairos").map(([k, s]) => card(k, s.nm, s.sub, s.sw)).join("")}</div>`; }
 function setAppTheme(p) { prefs.chartFollow = true; prefs.appTheme = Object.assign({}, prefs.appTheme || {}, p); savePrefs(); ui2Apply(); try { waifuUI(); csApplyAll(); repaintAll(); } catch (e) {} sfx("select"); }
 document.addEventListener("click", (e) => { const s = $("s-themes"); if (!s || !s.contains(e.target)) return; const b = e.target.closest("[data-at]"), sh = e.target.closest("[data-sh]");
+  const um = e.target.closest("[data-um]"); if (um) { prefs.ui2 = um.dataset.um; window.__ui2m = null; savePrefs(); ui2Apply(); try { csApplyAll(); repaintAll(); } catch (x) {} sfx("select"); return; }
   if (b) setAppTheme({ id: b.dataset.at, shade: RAINBOW[b.dataset.at] ? (prefs.appTheme && prefs.appTheme.shade) || "light" : undefined }); else if (sh) setAppTheme({ shade: sh.dataset.sh }); });
 document.addEventListener("input", (e) => { if (e.target.id === "at-vib") { prefs.appTheme = Object.assign({}, prefs.appTheme, { vib: +e.target.value }); try { appTheme(true, true); } catch (x) {} } });
 document.addEventListener("change", (e) => { if (e.target.id === "at-vib") savePrefs(); });
