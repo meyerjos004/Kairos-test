@@ -10,8 +10,8 @@ async function k3dInit() {
   const S = new THREE.Scene(), C = new THREE.PerspectiveCamera(30, 1, 0.1, 100); C.position.set(0, 1.4, 11);
   S.add(new THREE.HemisphereLight(0xffffff, 0x8e97a8, 1.4)); const D = new THREE.DirectionalLight(0xffffff, 2.4); D.position.set(5, 8, 6); S.add(D);
   const D2 = new THREE.DirectionalLight(0xdfe6ff, 1.1); D2.position.set(-6, 3, -4); S.add(D2); const D3 = new THREE.DirectionalLight(0xffffff, 0.8); D3.position.set(0, -4, 6); S.add(D3);
-  const glass = (shade = 0x9aa1ad, op = 0.5) => new THREE.MeshPhysicalMaterial({ color: shade, roughness: 0.22, metalness: 0.05, clearcoat: 1, clearcoatRoughness: 0.15, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide });
-  const M1 = glass(0x9aa1ad, 0.5), M2 = glass(0x7d8592, 0.6), M3 = glass(0xc3c8d1, 0.42), EM = new THREE.LineBasicMaterial({ color: 0x5c6472, transparent: true, opacity: 0.35 });
+  const glass = (shade = 0x9aa1ad, op = 0.3) => new THREE.MeshStandardMaterial({ color: shade, roughness: 0.95, metalness: 0, transparent: true, opacity: op, depthWrite: false, side: THREE.DoubleSide });   // matte, see-through
+  const M1 = glass(0x9aa1ad, 0.3), M2 = glass(0x7d8592, 0.38), M3 = glass(0xc3c8d1, 0.24), EM = new THREE.LineBasicMaterial({ color: 0x5c6472, transparent: true, opacity: 0.22 });
   const edge = (mesh) => { const e = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 28), EM); mesh.add(e); return mesh; };
   // rounded, beveled box (an extruded rounded rectangle) so every part looks manufactured, not like a raw cube
   const rbox = (w, h, d, r, m) => { r = Math.min(r, w / 2, h / 2); const s = new THREE.Shape(), x = -w / 2, y = -h / 2;
@@ -90,8 +90,20 @@ async function kCritters(on) {
       const legs = [-2.5, 2.5].map((z) => { const p = new THREE.Group(); p.position.set(1, 6, z); const l = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 5.5, 8), mat(0xffb23d)); l.position.y = -2.6; p.add(l); const f = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.7, 2.4), mat(0xffb23d)); f.position.set(1, -5.4, 0); p.add(f); g.add(p); return p; });
       const tail = new THREE.Mesh(new THREE.ConeGeometry(3, 6, 12), mat(col, 0.6)); tail.rotation.z = Math.PI / 2 + 0.5; tail.position.set(-9, 16, 0); g.add(tail);
       return { g, legs, wings, body, kind: "bird" }; };
-    const mk = [robot(0x7cc4ff), bird(0xff8ab0), robot(0x5af0b0), bird(0xffd36b)];
-    const list = mk.map((m, i) => { S.add(m.g); return { ...m, lane: i === 2 ? "top" : "bottom", x: 80 + Math.random() * (innerWidth - 160), vx: (Math.random() < 0.5 ? -1 : 1) * (26 + Math.random() * 16), y: 0, vy: 0, pause: 0, ph: Math.random() * 6, s: m.kind === "bird" ? 1.7 : 1.75, face: 1, flap: 0 }; });
+    const bean = (col) => { const g = new THREE.Group(), body = new THREE.Mesh(new THREE.CapsuleGeometry(6.5, 7, 10, 28), mat(col, 0.55)); body.position.y = 14; g.add(body);
+      [-2.6, 2.6].forEach((z) => { const w = new THREE.Mesh(new THREE.SphereGeometry(2, 16, 12), mat(0xffffff, 0.3)); w.position.set(5.6, 18, z); g.add(w); const p = new THREE.Mesh(new THREE.SphereGeometry(1.05, 12, 8), mat(0x0c0f18, 0.2)); p.position.set(7.2, 18, z); g.add(p); });
+      const blush = mat(0xff7a9c, 0.6); [-4, 4].forEach((z) => { const b = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 8), blush); b.scale.set(0.4, 0.6, 1); b.position.set(6.2, 14.5, z); g.add(b); });
+      const leaf = new THREE.Mesh(new THREE.SphereGeometry(3, 14, 10), mat(0x5ac46e, 0.5)); leaf.scale.set(1.3, 0.35, 0.7); leaf.position.set(-1, 25.5, 0); leaf.rotation.z = 0.5; g.add(leaf);
+      const legs = [-2.6, 2.6].map((z) => { const p = new THREE.Group(); p.position.set(0, 6, z); const l = new THREE.Mesh(new THREE.CapsuleGeometry(1.5, 2.6, 4, 10), mat(col, 0.55)); l.position.y = -2.6; p.add(l); g.add(p); return p; });
+      const arms = [-6.6, 6.6].map((z) => { const p = new THREE.Group(); p.position.set(0, 14, z); const a = new THREE.Mesh(new THREE.CapsuleGeometry(1.2, 3.2, 4, 10), mat(col, 0.55)); a.position.y = -2.4; p.add(a); g.add(p); return p; });
+      return { g, legs, arms, body, kind: "bean" }; };
+    const hopper = (col) => { const g = new THREE.Group(), body = new THREE.Mesh(new THREE.SphereGeometry(8, 28, 20), mat(col, 0.5)); body.scale.set(1.25, 0.8, 1); body.position.y = 9; g.add(body);
+      [-3.4, 3.4].forEach((z) => { const e = new THREE.Mesh(new THREE.SphereGeometry(2.6, 16, 12), mat(col, 0.5)); e.position.set(4.5, 15.5, z); g.add(e); const w = new THREE.Mesh(new THREE.SphereGeometry(1.7, 12, 10), mat(0xffffff, 0.3)); w.position.set(5.8, 16, z); g.add(w); const p = new THREE.Mesh(new THREE.SphereGeometry(0.9, 10, 8), mat(0x0c0f18, 0.2)); p.position.set(7.1, 16.2, z); g.add(p); });
+      const smile = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.35, 8, 24, Math.PI * 0.8), mat(0x1b2a1b)); smile.rotation.set(0, Math.PI / 2, Math.PI + 0.5); smile.position.set(9.6, 10, 0); g.add(smile);
+      const legs = [-5, 5].map((z) => { const p = new THREE.Group(); p.position.set(-3, 4, z); const l = new THREE.Mesh(new THREE.SphereGeometry(3, 12, 10), mat(col, 0.5)); l.scale.set(1.5, 0.7, 0.8); l.position.set(0, -1.5, 0); p.add(l); g.add(p); return p; });
+      return { g, legs, body, kind: "hopper" }; };
+    const mk = [robot(0x7cc4ff), bird(0xff8ab0), bean(0xffc56b), hopper(0x6fd38a), robot(0x5af0b0), bird(0xffd36b)];
+    const list = mk.map((m, i) => { S.add(m.g); return { ...m, lane: i === 4 ? "top" : "bottom", x: 80 + Math.random() * (innerWidth - 160), vx: (Math.random() < 0.5 ? -1 : 1) * (26 + Math.random() * 16), y: 0, vy: 0, pause: 0, ph: Math.random() * 6, s: ({ bird: 1.7, robot: 1.75, bean: 1.6, hopper: 1.45 })[m.kind], face: 1, flap: 0 }; });
     KC = { THREE, R, S, C, cv, list, raf: 0, mx: -999, my: -999 }; addEventListener("pointermove", (e) => { KC.mx = e.clientX; KC.my = e.clientY; }, { passive: true });
     const size = () => { const w = innerWidth, h = innerHeight; R.setSize(w, h, false); C.left = 0; C.right = w; C.top = 0; C.bottom = -h; C.updateProjectionMatrix(); }; size(); addEventListener("resize", size); }
   KC.cv.style.display = ""; if (KC.raf) return; let last = performance.now();
@@ -104,7 +116,8 @@ async function kCritters(on) {
       c.face += ((c.vx < 0 ? -1 : 1) - c.face) * Math.min(1, dt * 8); const sw = walking ? Math.sin(t * 11 + c.ph) : 0;
       c.legs.forEach((l, i) => (l.rotation.z = (i ? 1 : -1) * sw * 0.6)); if (c.arms) c.arms.forEach((a, i) => (a.rotation.z = (i ? -1 : 1) * sw * 0.5));
       if (c.wings) { c.flap = Math.max(0, c.flap - dt); const f = c.y > 0 || c.flap > 0 ? Math.sin(t * 40) * 0.9 : Math.sin(t * 2 + c.ph) * 0.05; c.wings.forEach((w, i) => (w.rotation.x = (i ? 1 : -1) * f)); }
-      c.body.position.y = (c.kind === "bird" ? 13 : 15) + (walking ? Math.abs(sw) * 1.2 : Math.sin(t * 2 + c.ph) * 0.4);
+      if (c.kind === "hopper" && walking && c.y === 0 && Math.random() < dt * 1.6) { c.vy = 170; }
+      c.body.position.y = ({ bird: 13, robot: 15, bean: 14, hopper: 9 })[c.kind] + (walking ? Math.abs(sw) * 1.2 : Math.sin(t * 2 + c.ph) * 0.4);
       c.g.position.set(c.x, -gy + c.y, 0); c.g.scale.setScalar(c.s); c.g.rotation.set(0.12, (c.face > 0 ? 0 : Math.PI) + (c.face > 0 ? -0.55 : 0.55) * Math.abs(c.face), 0); }
     KC.R.render(KC.S, KC.C); KC.raf = requestAnimationFrame(loop); };
   KC.raf = requestAnimationFrame(loop); }

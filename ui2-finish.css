@@ -100,11 +100,11 @@ body.ui2-iv .tbar :is(button,.ib,.tool).on,body.ui2-iv #favbar .tool.on,body.ui2
 body.ui2-iv .tbar .ddb{border-color:transparent!important;background:transparent!important}
 body.ui2-iv .tbar .ddb:hover{border-color:var(--edge)!important}
 /* Settings: the side nav lines up with the first card on every page and never jumps (King, Nov 22) */
-@media (min-width:901px){ body.ui2-iv .s2side{position:sticky!important;top:14px!important;align-self:start!important;margin-top:42px!important} }
+@media (min-width:901px), (pointer:fine) { body.ui2-iv .s2side{position:sticky!important;top:14px!important;align-self:start!important;margin-top:42px!important} }
 /* KING_NAVLINE: one sliding underline for the top nav */
 body.ui2-iv .rail .vtab.on:after{display:none!important}
 #navline{display:none}
-@media (min-width:901px){ body.ui2-iv #navline{display:block;position:absolute;left:0;bottom:-1px;height:2px;border-radius:2px;background:var(--ink);pointer-events:none;transition:transform .5s cubic-bezier(.95,.05,.795,.035),width .5s cubic-bezier(.95,.05,.795,.035),opacity .2s;opacity:0}
+@media (min-width:901px), (pointer:fine) { body.ui2-iv #navline{display:block;position:absolute;left:0;bottom:-1px;height:2px;border-radius:2px;background:var(--ink);pointer-events:none;transition:transform .5s cubic-bezier(.95,.05,.795,.035),width .5s cubic-bezier(.95,.05,.795,.035),opacity .2s;opacity:0}
   body.ui2-iv .rail{position:relative} }
 body.ui2.skin-sweden #navline{background:#fecc02!important;height:3px}
 body.ui2.skin-rave #navline{background:linear-gradient(90deg,#20f0ff,#ff3ea5)!important;box-shadow:0 0 10px rgba(32,240,255,.6)}
@@ -149,13 +149,13 @@ body.ui2 #kintro.drop .wlock2{animation:wlk 1.4s cubic-bezier(.16,1,.3,1) forwar
 body.ui2 #kintro .wlock2 .kmark{width:84px;height:84px;font-size:52px;border-radius:20px;display:grid;place-items:center;background:var(--ink);color:var(--inktxt);font-family:var(--mark,"Bodoni Moda",serif);font-weight:600}
 body.ui2 #kintro .wlock2 .kword{font-family:var(--mark,"Bodoni Moda",serif);font-size:64px;letter-spacing:.34em;color:var(--ink);font-weight:500}
 /* KING_CHARTWIN: frosted glass window over each chart while it opens */
-.kwin{position:fixed;z-index:30;pointer-events:none;background:color-mix(in srgb,var(--panel,#fff) 42%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt,#000) 10%,transparent),inset 0 1px 0 rgba(255,255,255,.25)}
+.kwin{position:fixed;z-index:30;pointer-events:none;background:color-mix(in srgb,var(--panel,#fff) 16%,transparent);-webkit-backdrop-filter:blur(3px) saturate(1.15);backdrop-filter:blur(3px) saturate(1.15);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt,#000) 10%,transparent),inset 0 1px 0 rgba(255,255,255,.25)}
 /* KING_PRIMARY: important buttons stand out in every theme (filled, high contrast, a touch heavier) */
 body.ui2 :is(button.primary,.btn.primary){font-weight:650!important;box-shadow:0 1px 0 rgba(0,0,0,.08),0 6px 16px -8px color-mix(in srgb,var(--ink,#000) 70%,transparent)}
 /* KING_RESIZE (Nov 22): smaller windows stay tidy. Bars never wrap (they scroll sideways), charts stack when there's no room side by side. */
 @media (max-width:1100px){ body.ui2 header.top,body.ui2 .tbar{flex-wrap:nowrap!important;overflow-x:auto;overflow-y:hidden;scrollbar-width:none} body.ui2 header.top::-webkit-scrollbar,body.ui2 .tbar::-webkit-scrollbar{display:none}
   body.ui2 header.top > *,body.ui2 .tbar > *{flex:none} }
-@media (max-width:900px){ body.ui2 header.top{gap:8px!important;padding:6px 10px!important;min-height:0!important} body.ui2 header.top .kv label{font-size:9px} body.ui2 #fxtop,body.ui2 .tsearch,body.ui2 #ui2search{display:none!important} }
+@media (max-width:900px) and (pointer:coarse) { body.ui2 header.top{gap:8px!important;padding:6px 10px!important;min-height:0!important} body.ui2 header.top .kv label{font-size:9px} body.ui2 #fxtop,body.ui2 .tsearch,body.ui2 #ui2search{display:none!important} }
 body.ui2 #acctpill img.logo{display:none}
 body.ui2 #acctpill:before{content:"K";display:grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--ink);color:var(--inktxt);font:600 12px/1 var(--mark,"Bodoni Moda",serif);margin-right:6px;flex:none}
 /* KING_MORPH: page changes grow out of the tab you clicked */
@@ -211,6 +211,41 @@ html.kprebuild :is(.rail,header.top,.tbar,.tools,#favbar,.bottom,#pad,#charts){o
 #review .rvcf button.on{background:var(--blue,#2f6fdb)!important;border-color:var(--blue,#2f6fdb)!important;color:#fff!important}
 #review #rv-note{width:100%;margin-top:10px;border-radius:9px;resize:vertical;font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--edge);background:var(--panel2,var(--panel));color:var(--txt);box-sizing:border-box}
 #review .rvend{margin-top:10px}#review .rvend button{flex:none}#review .rvend #rv-save{margin-left:auto;padding:7px 20px}
-@media (min-width:901px){ body.ui2 .review{right:84px!important;bottom:56px!important;width:340px!important} }   /* KING_RATE2: sits left of the price scale so it never covers prices */
+@media (min-width:901px), (pointer:fine) { body.ui2 .review{right:84px!important;bottom:56px!important;width:340px!important} }   /* KING_RATE2: sits left of the price scale so it never covers prices */
 
 body.ui2 header.top :is(button,.status,.pill,label){white-space:nowrap}
+/* KING_MINSIZE (Nov 22, King): on a computer the app never squeezes into the phone layout. Below 1100 x 640 the window just scrolls. */
+@media (pointer:fine){ html,body{min-width:1100px;min-height:640px} }
+/* KING_GRADEODO */
+#review .rvgrade{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px}
+#review .rvgrade .rvl{margin:0}#review .rvgrade .rvl .muted{text-transform:none;letter-spacing:0;margin-left:4px}
+#review .rvodo{position:relative;width:76px;height:44px;border-radius:12px;overflow:hidden;cursor:ns-resize;touch-action:none;user-select:none;background:var(--panel2,var(--panel));box-shadow:inset 0 0 0 1px var(--edge),inset 0 10px 12px -10px rgba(0,0,0,.25),inset 0 -10px 12px -10px rgba(0,0,0,.25);outline:none}
+#review .rvodo:focus-visible{box-shadow:inset 0 0 0 1px var(--ink),0 0 0 3px color-mix(in srgb,var(--ink) 18%,transparent)}
+#review .rvstrip{transition:transform .28s cubic-bezier(.95,.05,.795,.035)}#review .rvodo.drag .rvstrip{transition:transform .08s linear}
+#review .rvstrip span{display:flex;height:44px;align-items:center;justify-content:center;font:600 22px/1 var(--serif,serif);color:var(--mut);opacity:.35}
+#review .rvstrip span.on{opacity:1;color:var(--gc,var(--txt))}
+#review .rvodo::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(var(--panel2,var(--panel)),transparent 30%,transparent 70%,var(--panel2,var(--panel)))}
+/* text fit: buttons wrap words inside, never overflow */
+#review .rvrow button{white-space:normal;line-height:1.15;word-break:normal;overflow-wrap:anywhere;min-height:34px}
+#review .rvmk{display:grid;grid-template-columns:repeat(3,minmax(0,1fr))}
+/* KING_CANDLEHELP */
+#chelp{position:fixed;left:0;top:0;z-index:33;display:flex;align-items:flex-start;gap:6px;transition:transform .18s ease-out}
+#chelp .chb{width:24px;height:24px;border-radius:8px;display:grid;place-items:center;padding:0;background:var(--panel);color:var(--txt);border:1px solid var(--edge);box-shadow:0 4px 12px -4px rgba(0,0,0,.3);cursor:pointer}
+#chelp .chb svg{width:14px;height:14px;transition:transform .3s cubic-bezier(.95,.05,.795,.035)}
+#chelp .chm{display:flex;flex-direction:column;gap:4px;padding:8px;min-width:190px;border-radius:12px;background:var(--panel);border:1px solid var(--edge);box-shadow:0 14px 34px -12px rgba(0,0,0,.4);
+  opacity:0;transform:scale(.4);transform-origin:0 0;pointer-events:none;transition:opacity .2s,transform .26s cubic-bezier(.95,.05,.795,.035)}
+#chelp.flip{flex-direction:row-reverse}#chelp.flip .chm{transform-origin:100% 0}
+#chelp:hover .chm,#chelp:focus-within .chm{opacity:1;transform:none;pointer-events:auto}#chelp:hover .chb svg{transform:rotate(45deg)}
+#chelp .chm > button,#chelp .chpos button{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;border:0;background:transparent;color:var(--txt);font-size:12.5px;cursor:pointer;text-align:left;white-space:nowrap}
+#chelp .chm > button:hover,#chelp .chpos button:hover{background:var(--hov)}
+#chelp .chm svg{width:15px;height:15px;flex:none}
+#chelp .chsp{display:flex;gap:3px;padding:2px 0}#chelp .chsp button{flex:1;padding:4px 0;border-radius:6px;border:1px solid var(--edge);background:transparent;color:var(--mut);font-size:11px;cursor:pointer}
+#chelp .chsp button.on{background:var(--ink);color:var(--inktxt);border-color:var(--ink)}
+#chelp .chpos{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+#chelp .chpos i{display:flex;flex-direction:column;width:16px;height:18px;border-radius:3px;overflow:hidden;flex:none}#chelp .chpos i b{flex:1}
+#chelp .cpl b:first-child,#chelp .cps b:last-child{background:var(--up);opacity:.75}#chelp .cpl b:last-child,#chelp .cps b:first-child{background:var(--dn);opacity:.65}
+#chelp{pointer-events:none}#chelp .chb{pointer-events:auto}
+#chelp .chm{position:relative}#chelp .chm::before{content:"";position:absolute;left:-10px;right:-10px;top:0;height:30px;z-index:-1}
+#chelp{display:block;width:24px;height:24px}
+#chelp .chm{position:absolute;left:30px;top:0}
+#chelp.flip .chm{left:auto;right:30px}

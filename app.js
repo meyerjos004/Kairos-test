@@ -140,7 +140,7 @@ function waifuSkins(p, g, W) {   // after the trade-box fills, so pictures sit o
 function wAvg(n) { const c = WAIFU.avg || (WAIFU.avg = {}); if (c[n]) return c[n]; const im = wImg(n, "webp"); if (!im) return null;
   try { const cv = document.createElement("canvas"); cv.width = 8; cv.height = 14; const x = cv.getContext("2d"); x.drawImage(im, 0, 0, 8, 14); const d = x.getImageData(0, 0, 8, 14).data; let r = 0, g = 0, b = 0;
     for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; } const k = d.length / 4; return (c[n] = `rgb(${(r / k) | 0},${(g / k) | 0},${(b / k) | 0})`); } catch (e) { return (c[n] = null); } }
-function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) return; mode = T[1][mode] ? mode : Object.keys(T[1])[0]; const c = T[1][mode];
+function applyChartTheme(id, mode, quiet, src) { const T = CHART_THEMES[id]; if (!T) return; if (!src) prefs.chartFollow = false;   /* KING_CHARTFOLLOW: a picked preset wins over the theme */ mode = T[1][mode] ? mode : Object.keys(T[1])[0]; const c = T[1][mode];
   prefs.up = c.up; prefs.dn = c.dn; prefs.zUp = c.zUp; prefs.zDn = c.zDn; prefs.zA = c.zA || 0; prefs.toolCols = Object.assign({}, c.tools); prefs.toolCol = c.tools.trend;
   prefs.cs = Object.assign({}, prefs.cs || {}, { bgk: (c.waifu || c.skin) ? "waifu" : "solid", bg1: c.bg, bg2: c.bg, gridc: c.grid, txc: c.txt, lnc: c.grid, bord: !!c.bord && !c.paint, bu: c.bu || c.up, bd: c.bd || c.dn, wu: c.wu || "", wd: c.wd || "", body: !c.waifu && !c.paint, wick: !c.paint, paint: c.paint || "" });   // KING_CANDLESKIN: painted themes draw their own bodies + wicks
   prefs.waifu = !!c.waifu;   // KING_WAIFU
@@ -151,9 +151,12 @@ function applyChartTheme(id, mode, quiet) { const T = CHART_THEMES[id]; if (!T) 
 // KING_WAIFU: Ben gets a one-time heads-up the first time he opens a build that has Waifu mode
 function waifuHint() { const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase(); if (prefs.waifuHint || !/\bben\b|jinx/.test(n)) return;
   prefs.waifuHint = 1; savePrefs(); setTimeout(() => { try { toast("New for you: Waifu mode. Chart settings → Theme → Ben's tan → Waifu"); } catch (e) {} }, 4000); }
-function themeAutoPick() { waifuHint(); if (prefs.chTheme && prefs.chTheme.id === "king") { applyChartTheme("sandslate", prefs.chTheme.mode === "light" ? "light" : "dark", true); return; } if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
-  const id = isAdmin ? "sandslate" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true); }
+function themeAutoPick() { waifuHint(); if (prefs.chTheme && prefs.chTheme.id === "king") { applyChartTheme("sandslate", prefs.chTheme.mode === "light" ? "light" : "dark", true, "auto"); return; } if (prefs.chTheme) return; const n = ((me && (me.name + " " + (me.username || ""))) || "").toLowerCase();
+  const id = isAdmin ? "sandslate" : /\bben\b|jinx/.test(n) ? "ben" : /juicy|\bwill\b/.test(n) ? "will" : /ryan/.test(n) ? "ryan" : null; if (id) applyChartTheme(id, id === "ryan" || id === "ben" ? "light" : "dark", true, "auto"); }
 let csTmp = null, csSnap = null; const execs = [], profs = {};
+// KING_PREFCACHE (Nov 22): start from the last saved settings on this device, so the first frame already has your look (no white flash while the account loads)
+try { if (!navigator.webdriver && !/[?&]demo/.test(location.search)) { const c = localStorage.getItem("kz-prefs:" + (localStorage.getItem("kz-uid") || "")); if (c) Object.assign(prefs, JSON.parse(c)); } } catch (e) {}
+const isPhone = () => matchMedia("(max-width:900px) and (pointer:coarse)").matches;   // KING_MINSIZE: phone layout only on touch screens
 const csG = () => Object.assign({}, CS_DEF, (prefs && prefs.cs) || {}, csTmp || {}, csStyleOv());
 // KING_CHARTSTYLE (Nov 22, King): style themes dress the chart too (background, grid, type, candle colors), so Blocky/Aero/etc. don't sit on a mismatched chart.
 const CHART_STY = { kairos: ["#0a0a0d", "rgba(167,139,250,.07)", "#8b8a99", "#2bd4a0", "#ff4d5e", ""], blocky: ["#2e2e2e", "rgba(0,0,0,.45)", "#e6e6e6", "#6cbf3a", "#c8372d", "Silkscreen", "#151515"],
@@ -161,7 +164,7 @@ const CHART_STY = { kairos: ["#0a0a0d", "rgba(167,139,250,.07)", "#8b8a99", "#2b
   terminal: ["#030703", "rgba(61,255,122,.09)", "#23a34c", "#3dff7a", "#ff5f56", "VT323"], luxury: ["#0b0a08", "rgba(201,164,92,.08)", "#a99c80", "#d8b56a", "#8a3a3f", "Cormorant Garamond"],
   aero: ["#f2faff", "rgba(20,90,140,.08)", "#3f6580", "#2fae3a", "#e0453a", "Nunito"], d3: ["#f7f8fb", "rgba(28,34,48,.06)", "#5b6478", "#1f9a62", "#d6404e", ""], anim: ["#08080f", "rgba(140,160,255,.07)", "#9ea3c4", "#5af0b0", "#ff6b8a", ""] };
 function cssCol(c) { try { const d = document.createElement("i"); d.style.color = c; document.body.appendChild(d); const v = getComputedStyle(d).color; d.remove(); return v; } catch (e) { return c; } }
-function csStyleOv() { try { if (typeof appThemeDef !== "function" || !document.body.classList.contains("ui2")) return {}; const T = appThemeDef(); if (!T) return {};
+function csStyleOv() { try { if (typeof appThemeDef !== "function" || !document.body.classList.contains("ui2") || prefs.chartFollow === false) return {}; const T = appThemeDef(); if (!T) return {};
   let a = CHART_STY[T.cls]; if (T.cls === "rainbow") { const v = T.v, lt = T.base === "light"; a = csStyleOv.k === JSON.stringify(v) ? csStyleOv.a : [cssCol(v.panel), cssCol(v.mut).replace("rgb(", "rgba(").replace(")", ",.14)"), cssCol(v.mut), lt ? "#1f8a5a" : "#4fd39a", lt ? "#c2414b" : "#ff6b78", ""]; csStyleOv.k = JSON.stringify(v); csStyleOv.a = a; }
   if (!a) return {}; return { bgk: "solid", bg1: a[0], bg2: a[0], gridc: a[1], txc: a[2], lnc: a[1], styUp: a[3], styDn: a[4], font: a[5], bord: !!a[6], bu: a[6] || a[3], bd: a[6] || a[4], wu: a[6] || "", wd: a[6] || "", body: true, wick: true, paint: "" }; } catch (e) { return {}; } }
 /* ---------------- time (shown in New York time) ---------------- */
@@ -457,16 +460,16 @@ function indMenu(re) { if (re !== true && ctxJust === "ind") { ctxJust = null; r
   { h: "Higher-timeframe candles on the right (PO3)" }, ...["15m", "1h", "4h", "1D", "1W"].map((tf) => ({ t: ck((I.htfc || []).includes(tf)) + "Current " + tf + " candle", f: () => { const s = new Set(I.htfc || []); s.has(tf) ? s.delete(tf) : s.add(tf); I.htfc = ["15m", "1h", "4h", "1D", "1W"].filter((x) => s.has(x)); savePrefs(); repaintAll(); } })), { t: ck(I.h4) + "Past 4H candle outlines on the chart", f: flip("h4") }], r.left, r.bottom + 6, indMenu); $("ctx").dataset.from = "ind"; }
 const TOOLNAMES = { pitchfork: "Pitchfork", arrow: "Arrow", channel: "Parallel channel", fibext: "Fib extension", prange: "Price range", drange: "Date range", ellipse: "Ellipse", cursor: "Cursor", cross: "Crosshair", trend: "Trend line", ray: "Ray", hline: "Horizontal line", hray: "Horizontal ray", vline: "Vertical line", rect: "Rectangle", fib: "Fib", long: "Long position", short: "Short position", measure: "Measure", text: "Text" };
 function favUI() {
-  const fb = $("favbar"), wide = innerWidth > 900; replayHome(); fb.classList.toggle("hidden", !(prefs.favShow || wide)); fb.classList.toggle("nofav", !prefs.favShow); $("favbtn").classList.toggle("on", !!prefs.favShow);
+  const fb = $("favbar"), wide = !isPhone(); replayHome(); fb.classList.toggle("hidden", !(prefs.favShow || wide)); fb.classList.toggle("nofav", !prefs.favShow); $("favbtn").classList.toggle("on", !!prefs.favShow);
   fb.querySelector(".fbtools").innerHTML = prefs.favs.map((t) => { const src = document.querySelector('#tools .tfly [data-tool="' + t + '"]') || document.querySelector('#tools [data-tool="' + t + '"]'); return src ? `<button data-tool="${t}" class="tool ${src.className.replace(/\btool\b|\bon\b|\bfi\b|\btgm\b/g, "").trim()} ${t === tool ? "on" : ""}" title="${src.title}">${(src.querySelector(".ti") || src).innerHTML}</button>` : ""; }).join("") || '<span class="tiny muted" style="padding:0 8px">Right-click a tool to add it here</span>';
   favDock();
   if (!fb.classList.contains("docked") && prefs.favPos) { fb.style.left = Math.min(prefs.favPos.x, innerWidth - 80) + "px"; fb.style.top = Math.min(prefs.favPos.y, innerHeight - 40) + "px"; fb.style.transform = "none"; }
-  else if (!fb.classList.contains("docked") && innerWidth > 900) requestAnimationFrame(() => { fb.style.transform = "none"; fb.style.left = Math.max(8, (innerWidth - fb.offsetWidth) / 2) + "px"; });
+  else if (!fb.classList.contains("docked") && !isPhone()) requestAnimationFrame(() => { fb.style.transform = "none"; fb.style.left = Math.max(8, (innerWidth - fb.offsetWidth) / 2) + "px"; });
 }
 // KING_FAVDOCK (fix 9): on desktop the favorites bar lives in the timeframe row, centered in the free space so it grows outward.
 // Falls back to floating if the row is too narrow; right-click → "Float it" / "Dock to top bar".
 function favDock() { const fb = $("favbar"), tb = document.querySelector("#v-trade .tbar") || document.querySelector(".tbar"); if (!fb || !tb) return; const tsp = tb.querySelector(".tsp:not(.tsp2)");
-  const want = innerWidth > 900 && prefs.favDock === true && tsp;   // KING_FAVPOP (Nov 22): popped out by default; docked only when someone docks it
+  const want = !isPhone() && prefs.favDock === true && tsp;   // KING_FAVPOP (Nov 22): popped out by default; docked only when someone docks it
   if (want) { if (fb.parentElement !== tb) { const sp = tb.querySelector(".tsp2") || Object.assign(document.createElement("div"), { className: "tsp tsp2" }); tb.insertBefore(sp, tsp); tb.insertBefore(fb, tsp); }
     fb.classList.add("docked"); fb.style.left = fb.style.top = fb.style.transform = "";
     if (tb.scrollWidth > tb.clientWidth + 2) want2float(); else fb.classList.remove("tight"); return; }
@@ -475,11 +478,11 @@ function favDock() { const fb = $("favbar"), tb = document.querySelector("#v-tra
 }
 // KING_FAVREPLAY (Nov 12 walkthrough): play/pause, bar/candle and speed live on the tool favorites bar on desktop
 // (the bar stays up even with tool favorites off). On a phone they stay in the top bar, where the favorites bar is hidden.
-function replayHome() { const wide = innerWidth > 900, fr = document.querySelector("#favbar .fbreplay"), top = document.querySelector(".grp.replay"), seg = $("play").parentElement, skips = top.querySelector(".skips");
+function replayHome() { const wide = !isPhone(), fr = document.querySelector("#favbar .fbreplay"), top = document.querySelector(".grp.replay"), seg = $("play").parentElement, skips = top.querySelector(".skips");
   if (!fr || !top) return; const want = wide ? fr : top; if (seg.parentElement === want) return;
   const box = (id) => $(id).closest(".dd") || $(id);   // selects are wrapped in the custom dropdown; move the wrapper
   if (wide) { fr.append(seg, box("stepsz"), box("speed"), $("playday")); } else { top.insertBefore(seg, skips); top.appendChild(box("stepsz")); top.appendChild(box("speed")); top.appendChild($("playday")); } }
-addEventListener("resize", () => { try { const w = innerWidth > 900; if (w !== replayHome.w) { replayHome.w = w; favUI(); } else favDock(); } catch (e) {} });
+addEventListener("resize", () => { try { const w = !isPhone(); if (w !== replayHome.w) { replayHome.w = w; favUI(); } else favDock(); } catch (e) {} });
 function toolsUI() { const t = $("tools"), f = prefs.toolsPos; t.classList.toggle("float", !!f); if (f) { t.style.left = Math.min(f.x, innerWidth - 50) + "px"; t.style.top = Math.min(f.y, innerHeight - 120) + "px"; } else { t.style.left = t.style.top = ""; } panes.forEach(paint); }
 function dockH() { const b = document.querySelector("#dock .bbody"); b.style.height = prefs.dockClosed ? "0px" : (prefs.dockH || 150) + "px"; if (prefs.pad.x == null) setTimeout(padUI, 240); }
 function grip(el, onMove, onEnd) {   // pointer drag helper
@@ -491,9 +494,9 @@ function sideUI() { $("side").classList.toggle("hidden", !prefs.side); $("sidebt
 function dockUI() { $("dock").classList.toggle("closed", !!prefs.dockClosed); dockH(); }
 function buildPanes() {
   panes.forEach((p) => { p.dead = true; try { if (p.prim) p.series.detachPrimitive(p.prim); } catch (e) {} p.chart.remove(); }); $("charts").innerHTML = ""; panes = [];
-  const LY = layOf(prefs.layout), n = LY.rects.length; $("charts").style.gridTemplateColumns = `repeat(${innerWidth < 760 ? 1 : LY.cols},minmax(0,1fr))`; $("charts").style.gridTemplateRows = `repeat(${innerWidth < 760 ? n : LY.rows},minmax(0,1fr))`;   /* KING_RESIZE: narrow windows stack the charts */   // KING_LAYOUT2
+  const LY = layOf(prefs.layout), n = LY.rects.length; $("charts").style.gridTemplateColumns = `repeat(${isPhone() ? 1 : LY.cols},minmax(0,1fr))`; $("charts").style.gridTemplateRows = `repeat(${isPhone() ? n : LY.rows},minmax(0,1fr))`;   /* KING_RESIZE: narrow windows stack the charts */   // KING_LAYOUT2
   while (prefs.tfs.length < 8) prefs.tfs.push(DEF_TFS[prefs.tfs.length]);
-  for (let i = 0; i < n; i++) { const p = makePane(i); const [x, y, w, h] = LY.rects[i]; p.el.style.gridArea = innerWidth < 760 ? `${i + 1} / 1 / span 1 / span 1` : `${y} / ${x} / span ${h} / span ${w}`; p._ga = [x, y, w, h]; panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
+  for (let i = 0; i < n; i++) { const p = makePane(i); const [x, y, w, h] = LY.rects[i]; p.el.style.gridArea = isPhone() ? `${i + 1} / 1 / span 1 / span 1` : `${y} / ${x} / span ${h} / span ${w}`; p._ga = [x, y, w, h]; panes.push(p); label(p); } setActive(Math.min(active, n - 1)); need15 = lock15 || panes.some((p) => paneSec(p.i) < 60);
 }
 function rebuildPane(p) {
   p.sec = paneSec(p.i); p.candles = []; const S = storeOf(paneSym(p)), src = p.sec < 60 ? S["15s"] : S["1m"];
@@ -829,11 +832,21 @@ function drawOne(p, g, d, W, H) {
     if (d.preview) posFill(p, g, d, W);   // fills are drawn under the candles in drawShade (KING_BOXUNDER); preview while placing stays on top
     g.strokeStyle = live ? "#fff" : "rgba(255,255,255,.6)"; g.setLineDash(d.state === "armed" ? [6, 4] : []); g.beginPath(); g.moveTo(xa, ye); g.lineTo(xb, ye); g.stroke(); g.setLineDash([]);
     const risk = Math.abs(d.entry - d.sl), q = posQty(d), rr = Math.abs(d.tp - d.entry) / (risk || 1);
-    const tag = d.state === "armed" ? "ARMED · auto-entry" : d.state === "filled" ? "IN TRADE" : d.state === "done" ? "DONE" : "right-click → Arm";
+    const tag = d.state === "armed" ? `ARMED · ${d.riskp ? d.riskp + "% risk" : "auto-entry"}` : d.state === "filled" ? "IN TRADE" : d.state === "done" ? "DONE" : "pick a risk →";
     const label = `${d.side > 0 ? "LONG" : "SHORT"} ${q} @ ${px2(d.entry)} · ${rr.toFixed(2)}R · risk ${money(risk * q * inst.pt)} · ${tag}`;
     // KING_POSSTYLE (Nov 11): position labels styled like the trade panel (Geist, rounded pills, solid green / red like the Buy / Sell buttons)
     const pill = (txt, x, y, bg, fg, bold) => { g.font = (bold ? "700" : "600") + " 11.5px Geist, sans-serif"; const w = g.measureText(txt).width + 16, h = 20; g.fillStyle = bg; g.beginPath(); (g.roundRect ? g.roundRect(x, y, w, h, 6) : g.rect(x, y, w, h)); g.fill(); g.fillStyle = fg; g.fillText(txt, x + 8, y + 14); return w; };
     const head = `${d.side > 0 ? "Long" : "Short"} ${q} @ ${px2(d.entry)}`, sub = `${rr.toFixed(2)}R · risk ${money(risk * q * inst.pt)} · ${tag}`;
+    // KING_RISKBTN (Nov 22, King): three risk buttons to the right of the position arm it at 0.5%, 1% or 2% of the account
+    if (!done && d.state !== "filled" && !d.preview) { d._rb = []; let aw = 62; try { aw = p.chart.priceScale("right").width() || 62; } catch (e) {} const bx = Math.min(xb + 10, W - aw - 44); let by = Math.max(4, Math.min(yt, ys, ye) + 4 < ye - 70 ? ye - 70 : ye - 70);
+      [[0.5, ".5%"], [1, "1%"], [2, "2%"]].forEach(([r, t]) => { g.font = "700 11px Geist, sans-serif"; const w = 36, h = 18, onr = d.state === "armed" && d.riskp === r;
+        g.fillStyle = onr ? (d.side > 0 ? prefs.up : prefs.dn) : "rgba(16,20,28,.86)"; g.beginPath(); (g.roundRect ? g.roundRect(bx, by, w, h, 6) : g.rect(bx, by, w, h)); g.fill();
+        g.strokeStyle = d.side > 0 ? prefs.up : prefs.dn; g.lineWidth = 1; g.stroke(); g.fillStyle = onr ? "#06110c" : "#e8edf5"; g.textAlign = "center"; g.fillText(t, bx + w / 2, by + 13); g.textAlign = "left";
+        d._rb.push({ x: bx, y: by, w, h, r }); by += 21; }); } else d._rb = null;
+    // KING_LIVEPNL: in a trade, the position shows exactly what it's worth at the current price
+    if (d.state === "filled") { const lp = last(), yl = lp != null ? yOf(p, lp) : null; if (yl != null) { const v = (lp - d.entry) * d.side * q * inst.pt, txt = (v >= 0 ? "+" : "−") + money(Math.abs(v)).replace("-", "");
+      g.font = "700 12px Geist, sans-serif"; const w = g.measureText(txt).width + 16; g.fillStyle = v >= 0 ? prefs.up : prefs.dn; g.beginPath(); (g.roundRect ? g.roundRect(xb + 8, yl - 11, w, 22, 7) : g.rect(xb + 8, yl - 11, w, 22)); g.fill(); g.fillStyle = "#06110c"; g.fillText(txt, xb + 16, yl + 4);
+      g.strokeStyle = v >= 0 ? prefs.up : prefs.dn; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(xa, yl); g.lineTo(xb + 8, yl); g.stroke(); g.setLineDash([]); } }
     if (!on) return;   // KING_POSHOVER (Nov 12 walkthrough): the text pills only show while you hover or select the position
     const hw = pill(head, xa + 6, ye - 24, d.side > 0 ? prefs.up : prefs.dn, "#06110c", true); pill(sub, xa + 10 + hw, ye - 24, "rgba(16,20,28,.92)", "#dfe5ee");
     const tpTxt = `Target ${px2(d.tp)} · +${money(Math.abs(d.tp - d.entry) * q * inst.pt)}`, slTxt = `Stop ${px2(d.sl)} · -${money(risk * q * inst.pt)}`;
@@ -879,6 +892,8 @@ function initPointer(p) {
       if (["hline", "vline", "hray", "text", "long", "short"].includes(tool)) { newDrawing(tool, p, a); if (!e.shiftKey) setTool("cursor"); repaintAll(); e.stopPropagation(); e.preventDefault(); return; }
       pend = { pane: p.i, d: { id: 0, type: tool, pane: p.i, a }, b: a }; hold(true); p.el.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault(); return;
     }
+    for (const d of drawings) if (d._rb && d.pane === p.i) { const b = d._rb.find((r) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h); if (b) { riskArm(d, b.r); e.stopPropagation(); e.preventDefault(); return; } }
+    { const h0 = hitDrawing(p, x, y); if (h0 && (h0.d.type === "long" || h0.d.type === "short") && h0.d.state === "armed" && !h0.d.locked) { sel = h0.d; dtbShow(p); drag = { kind: "draw", h: { ...h0, h: "move" }, a0: { t: tOf(p, x), p: pOf(p, y) }, snap: JSON.parse(JSON.stringify(h0.d)) }; hold(true); p.el.setPointerCapture(e.pointerId); repaintAll(); e.stopPropagation(); e.preventDefault(); return; } }   // KING_ARMDRAG: an armed position drags as one piece (stop + target follow)
     if (pos.qty && (pos.sl == null || pos.tp == null) && paneSym(p) === sym) { const py = yOf(p, pos.avg); if (py != null && Math.abs(py - y) < 7 && !hitLine(p, y)) { drag = { kind: "newbr" }; hold(true); p.el.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault(); return; } }   // KING_DRAGBR: drag a stop or target out of the position line
     const l = hitLine(p, y); if (l) { drag = { kind: "line", l }; hold(true); p.el.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault(); return; }
     const h = hitDrawing(p, x, y); if (h && h.d.locked) { sel = h.d; repaintAll(); dtbShow(p); e.stopPropagation(); e.preventDefault(); return; }
@@ -1079,6 +1094,7 @@ async function shot(id) {
     const up = await sb.storage.from("shots").upload(path, blob, { contentType: "image/png", upsert: true }); if (!up.error) await sb.from("trades").update({ shots: [path] }).eq("id", id); } catch (e) {}
 }
 /* position tool → working order (FX Replay-style auto-entry) */
+function riskArm(d, r) { const risk = Math.abs(d.entry - d.sl) || TICK; d.riskp = r; if (d.state === "armed") disarmTool(d); d.qty = Math.max(1, Math.floor((balance() * r / 100) / (risk * inst.pt))); armTool(d); try { sfx("select"); } catch (e) {} }
 function armTool(d) { if (paneSym(d.pane) !== sym) { setActive(d.pane); if (paneSym(d.pane) !== sym) return toast("Load that chart's data first"); }
   if (!canTrade()) return; const lp = last(), s = d.side, q = posQty(d);
   if ((d.sl - d.entry) * s >= 0 || (d.tp - d.entry) * s <= 0) return toast("For a long the stop goes below entry and the target above it. A short is the reverse.");
@@ -1536,12 +1552,69 @@ function statClose() { const v = $("v-stats"), d = $("stdet"); if (!v || !v.clas
 document.addEventListener("click", (e) => { const v = $("v-stats"); if (!v || !v.contains(e.target) || v.classList.contains("sdopen")) return; if (e.target.closest("select,button,input,a,.qm,label,#stdet")) return;
   const c = e.target.closest("#st-kpi > div, #v-stats > .card, #v-stats .grid3 > .card"); if (c) statDetail(c); });
 addEventListener("keydown", (e) => { if (e.key === "Escape") statClose(); });
-addEventListener("resize", () => { clearTimeout(window.__lyT); window.__lyT = setTimeout(() => { try { const L = layOf(prefs.layout), c = $("charts"), nw = innerWidth < 760;   // KING_RESIZE
+addEventListener("resize", () => { clearTimeout(window.__lyT); window.__lyT = setTimeout(() => { try { const L = layOf(prefs.layout), c = $("charts"), nw = isPhone();   // KING_RESIZE
   c.style.gridTemplateColumns = `repeat(${nw ? 1 : L.cols},minmax(0,1fr))`; c.style.gridTemplateRows = `repeat(${nw ? panes.length : L.rows},minmax(0,1fr))`;
   panes.forEach((p, i) => { const [x, y, w, h] = p._ga || [1, 1, 1, 1]; p.el.style.gridArea = nw ? `${i + 1} / 1 / span 1 / span 1` : `${y} / ${x} / span ${h} / span ${w}`; }); } catch (e) {} }, 150); });
+// KING_CHARTFOLLOW (Nov 22, King): the chart matches the app theme by default (light theme = light chart, dark = dark, styles = their own chart),
+// but any change in Chart settings (a preset or a single color) switches it to your own chart until you pick "Match my app theme" again.
+document.addEventListener("change", (e) => { const cs = $("chartset"); if (cs && cs.contains(e.target) && e.target.id !== "cs-theme" && prefs.chartFollow !== false) { prefs.chartFollow = false; if ($("cs-theme")) $("cs-theme").value = (prefs.chTheme && prefs.chTheme.id) || ""; savePrefs(); } }, true);
+// KING_ICONS2 (Nov 22, King): drawing-tool icons redrawn for the new look: rounded 1.5 strokes with a soft tinted fill, still obvious at a glance.
+const TICONS = (() => { const f = 'fill="currentColor" fill-opacity=".16"', d = 'fill="currentColor" stroke="none"';
+  return {
+  cursor: `<path d="M6.5 4.5l11 8.3-4.8 1 2.8 5.3-2.3 1.2-2.8-5.4-3.9 3.3z" ${f}/>`,
+  cross: `<circle cx="12" cy="12" r="2.2" ${f}/><path d="M12 3.5v5M12 15.5v5M3.5 12h5M15.5 12h5"/>`,
+  trend: `<path d="M5.5 18.5L18.5 5.5"/><circle cx="5.5" cy="18.5" r="2.1" ${f}/><circle cx="18.5" cy="5.5" r="2.1" ${f}/>`,
+  ray: `<path d="M5.5 17.5L20.5 6"/><circle cx="5.5" cy="17.5" r="2.1" ${f}/><path d="M17.6 5.6l2.9.4-.7 2.8"/>`,
+  hline: `<path d="M3.5 12h17"/><circle cx="12" cy="12" r="2.1" ${f}/>`,
+  hray: `<path d="M7 12h13.5"/><circle cx="6" cy="12" r="2.1" ${f}/><path d="M18 9.5l2.5 2.5-2.5 2.5"/>`,
+  vline: `<path d="M12 3.5v17"/><circle cx="12" cy="12" r="2.1" ${f}/>`,
+  fib: `<rect x="4" y="4.5" width="16" height="15" rx="2.5" ${f} stroke-opacity=".0"/><path d="M4 5h16M4 9.6h16M4 13.6h16M4 19h16"/><path d="M6.5 18.5l11-13" stroke-dasharray="1.6 2.2"/>`,
+  fibext: `<path d="M4 6h16M4 12h16M4 18h16" /><path d="M5 18l5-10 4 6 5-9" ${'fill="none"'}/><circle cx="19" cy="5" r="1.7" ${d}/>`,
+  channel: `<path d="M4 16.5L17 7.5M7 20.5L20 11.5" /><path d="M4 16.5L17 7.5L20 11.5L7 20.5Z" ${f} stroke="none"/>`,
+  pitchfork: `<path d="M5 19l7-7M12 12l7-8M12 12l8 3M12 12l3 8"/><circle cx="12" cy="12" r="1.9" ${f}/>`,
+  arrow: `<path d="M5.5 18.5L17 7"/><path d="M10.5 6.5H17.5V13.5" ${f}/>`,
+  rect: `<rect x="4.5" y="6.5" width="15" height="11" rx="2.5" ${f}/>`,
+  ellipse: `<ellipse cx="12" cy="12" rx="8" ry="5.6" ${f}/>`,
+  text: `<path d="M6 6.5h12M12 6.5v12"/><path d="M9.5 18.5h5"/>`,
+  measure: `<rect x="3.5" y="8" width="17" height="8" rx="2" ${f}/><path d="M7 8v3M10.5 8v4.5M14 8v3M17.5 8v4.5"/>`,
+  prange: `<path d="M6 5h12M6 19h12"/><path d="M12 7.5v9M9.5 10l2.5-2.5 2.5 2.5M9.5 14l2.5 2.5 2.5-2.5"/>`,
+  drange: `<path d="M5 6v12M19 6v12"/><path d="M7.5 12h9M10 9.5L7.5 12l2.5 2.5M14 9.5l2.5 2.5-2.5 2.5"/>`,
+  long: `<rect x="5" y="4.5" width="14" height="8" rx="2" fill="#2bb67a" fill-opacity=".28" stroke="none"/><rect x="5" y="12.5" width="14" height="7" rx="2" fill="#e05561" fill-opacity=".22" stroke="none"/><path d="M5 12.5h14"/><path d="M12 15.5v-7M9.5 11l2.5-2.5 2.5 2.5"/>`,
+  short: `<rect x="5" y="4.5" width="14" height="7" rx="2" fill="#e05561" fill-opacity=".22" stroke="none"/><rect x="5" y="11.5" width="14" height="8" rx="2" fill="#2bb67a" fill-opacity=".28" stroke="none"/><path d="M5 11.5h14"/><path d="M12 8.5v7M9.5 13l2.5 2.5 2.5-2.5"/>`,
+  magnet: `<path d="M6 4.5v7a6 6 0 0 0 12 0v-7" ${f}/><path d="M6 8h3.2M14.8 8H18"/><path d="M9.2 4.5v7a2.8 2.8 0 0 0 5.6 0v-7" fill="none"/>`,
+  lockall: `<rect x="5" y="10.5" width="14" height="9.5" rx="2.5" ${f}/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><circle cx="12" cy="15" r="1.3" ${d}/>`,
+  hideall: `<path d="M2.8 12s3.4-6 9.2-6 9.2 6 9.2 6-3.4 6-9.2 6-9.2-6-9.2-6z" ${f}/><circle cx="12" cy="12" r="2.6"/>`,
+  clr: `<path d="M5 7h14M9.5 7V5h5v2"/><path d="M6.5 7l1 12.5h9l1-12.5" ${f}/><path d="M10.5 10.5v6M13.5 10.5v6"/>` }; })();
+function iconSwap(root) { (root || document).querySelectorAll(".tool[data-tool], #magnet, #lockall, #hideall, #clr").forEach((b) => { const k = b.dataset.tool || b.id, svg = b.querySelector("svg"); if (!svg || !TICONS[k] || svg.dataset.k2) return;
+  svg.setAttribute("viewBox", "0 0 24 24"); svg.setAttribute("fill", "none"); svg.setAttribute("stroke", "currentColor"); svg.setAttribute("stroke-width", "1.5"); svg.setAttribute("stroke-linecap", "round"); svg.setAttribute("stroke-linejoin", "round"); svg.innerHTML = TICONS[k]; svg.dataset.k2 = 1; }); }
+iconSwap(); new MutationObserver(() => { clearTimeout(iconSwap.t); iconSwap.t = setTimeout(() => iconSwap(), 30); }).observe(document.getElementById("favbar") || document.body, { childList: true, subtree: true });
+// KING_CANDLEHELP (Nov 22, King): a small helper button sits just up and right of the latest candle. Hover it and it opens:
+// play out the day, replay speed, enter a long/short right there, a line at the 9:30 open, and an alert.
+function chHelp() { let el = $("chelp"); if (!el) { el = document.createElement("div"); el.id = "chelp";
+    el.innerHTML = `<button class="chb" aria-label="Quick actions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg></button>
+      <div class="chm"><button data-ch="play" title="Play out the day (9:30 to 3 PM)"><svg viewBox="0 0 24 24"><path d="M8 5.5l11 6.5-11 6.5z" fill="currentColor"/></svg><span>Play out day</span></button>
+      <div class="chsp">${[...$("speed").options].map((o) => `<button data-sp="${o.value}">${o.textContent}</button>`).join("")}</div>
+      <div class="chpos"><button data-ch="long" title="Enter a long here"><i class="cpl"><b></b><b></b></i><span>Long</span></button><button data-ch="short" title="Enter a short here"><i class="cps"><b></b><b></b></i><span>Short</span></button></div>
+      <button data-ch="open" title="Line at the 9:30 open"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M3.5 12h17"/><circle cx="7" cy="12" r="2" fill="currentColor"/></svg><span>Line at open</span></button>
+      <button data-ch="alert" title="Set an alert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 16.5h11l-1.4-2V10a4.1 4.1 0 0 0-8.2 0v4.5z"/><path d="M10.5 19a1.6 1.6 0 0 0 3 0"/></svg><span>Set alert</span></button></div>`;
+    document.body.appendChild(el);
+    el.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; const p = panes[active]; if (!p) return; const c = p.candles[p.candles.length - 1];
+      if (b.dataset.sp) { $("speed").value = b.dataset.sp; $("speed").dispatchEvent(new Event("change")); chHelpSync(); return; }
+      const k = b.dataset.ch; if (k === "play") $("playday").click();
+      if ((k === "long" || k === "short") && c) { setActive(p.i); const d = newDrawing(k, p, { t: c.time, p: c.close }); sel = d || sel; repaintAll(); toast(`${k === "long" ? "Long" : "Short"} placed at the latest price. Pick a risk on its right to arm it.`); }
+      if (k === "open" && c) { const day = sessDay(c.time); let o = null; for (const bar of B["1m"].bars) if (sessDay(bar.t) === day && lhm(loc(bar.t)) === "09:30") { o = bar.o; break; } const d = newDrawing("hline", p, { t: c.time, p: o ?? c.open }); if (d) d.label = "Open"; repaintAll(); toast(o != null ? "Line at the 9:30 open" : "No 9:30 open yet, line at this candle's open"); }
+      if (k === "alert") { const v = prompt("Alert at price", px2(last())); if (v != null && +v) addAlert(+v); } }); }
+  return el; }
+function chHelpSync() { const el = $("chelp"); if (!el) return; el.querySelectorAll("[data-sp]").forEach((b) => b.classList.toggle("on", b.dataset.sp === $("speed").value)); }
+function chHelpPos() { const el = chHelp(), p = panes[active], onTrade = document.body.classList.contains("v-trade") && document.body.classList.contains("ui2") && !$("kbuild");
+  if (!p || !onTrade || !p.candles.length) { el.style.display = "none"; return; }
+  try { const ts = p.chart.timeScale(), n = p.candles.length - 1, c = p.candles[n], x = ts.logicalToCoordinate(n), y = p.series.priceToCoordinate(c.high), r = p.el.getBoundingClientRect(), pw = p.chart.priceScale("right").width();
+    if (x == null || y == null || x > r.width - pw - 10 || x < 0) { el.style.display = "none"; return; }
+    el.style.display = ""; const L = Math.min(r.left + x + 10, r.right - pw - 34), T = Math.max(r.top + 6, r.top + y - 30); el.style.transform = `translate(${Math.round(L)}px,${Math.round(T)}px)`; el.classList.toggle("flip", L > r.right - pw - 230); } catch (e) {} }
+setInterval(chHelpPos, 120); chHelpSync();
 // KING_NAVLINE (Nov 22): one underline that slides between the top-nav pages (the per-tab line can't move)
 function navLine(instant) { const R = $("rail"); if (!R) return; let L = $("navline"); if (!L) { L = document.createElement("i"); L.id = "navline"; R.appendChild(L); }
-  const on = R.querySelector(".vtab.on"); if (!on || !document.body.classList.contains("ui2-iv") || innerWidth <= 900) { L.style.opacity = "0"; return; }
+  const on = R.querySelector(".vtab.on"); if (!on || !document.body.classList.contains("ui2-iv") || isPhone()) { L.style.opacity = "0"; return; }
   const r = on.getBoundingClientRect(), p = R.getBoundingClientRect(); if (instant) L.style.transition = "none";
   L.style.opacity = "1"; L.style.width = (r.width - 22) + "px"; L.style.transform = `translateX(${r.left - p.left + 11}px)`; if (instant) { void L.offsetWidth; L.style.transition = ""; } }
 addEventListener("resize", () => navLine(true)); setTimeout(() => navLine(true), 600); setTimeout(() => navLine(true), 2500);
@@ -1617,19 +1690,29 @@ function applyTheme(k) { for (const [id, v] of Object.entries(prefs.myThemes || 
 
 /* ---------------- quick trade review (rules followed? mistakes) ---------------- */
 const MISTAKES = ["FOMO", "Revenge", "Gamble", "Chased", "Moved stop"];   // KING_RATE2 (Nov 22, King): the few that matter
-const GRADES = ["A+", "A", "B", "C", "D", "F"];
+const GRADES = ["A+", "A", "B+", "B", "C+", "C", "D+", "D", "F", "F-"];
 let revQ = [];
+// KING_GRADEODO (Nov 22, King): the grade is one rolling odometer. Drag it up for better, down for worse (or scroll / arrow keys); it ticks each step.
+function gradeOdo(el) { const o = el.querySelector(".rvodo"), st = o.querySelector(".rvstrip"), N = GRADES.length; let i = -1, drag = null;
+  const set = (k, snd) => { k = Math.max(-1, Math.min(N - 1, k)); if (k === i) return; i = k; el.dataset.gr = i < 0 ? "" : GRADES[i]; st.style.transform = `translateY(${-(i + 1) * 44}px)`;
+    st.querySelectorAll("span").forEach((x, j) => x.classList.toggle("on", j === i + 1)); o.style.setProperty("--gc", i < 0 ? "var(--mut)" : `color-mix(in srgb, var(--up) ${Math.round(100 - (i / (N - 1)) * 100)}%, var(--dn))`); if (snd) dialTick(i === 0 || i === N - 1); };
+  o.addEventListener("pointerdown", (e) => { e.preventDefault(); o.setPointerCapture(e.pointerId); drag = { y: e.clientY, i }; o.classList.add("drag"); });
+  o.addEventListener("pointermove", (e) => { if (drag) set(drag.i + Math.round((e.clientY - drag.y) / 22), true); });
+  const end = () => { drag = null; o.classList.remove("drag"); }; o.addEventListener("pointerup", end); o.addEventListener("pointercancel", end);
+  o.addEventListener("wheel", (e) => { e.preventDefault(); set(i + (e.deltaY > 0 ? 1 : -1), true); }, { passive: false });
+  o.addEventListener("keydown", (e) => { if (e.key === "ArrowDown") { e.preventDefault(); set(i + 1, true); } if (e.key === "ArrowUp") { e.preventDefault(); set(i - 1, true); } });
+  const pre = ((revQ[0] && revQ[0].tags) || []).find((x) => /^grade:/.test(x)); set(pre ? GRADES.indexOf(pre.slice(6)) : -1, false); }
 function reviewCard(t) { if (prefs.review === false || !t || !t.id) return; revQ.push(t); if (revQ.length === 1) showReview(); }
 // KING_RATE2: rate a trade with colored buttons (no emoji): rules yes/no, a letter grade, the mistakes that apply, how sure you were, and a note.
 function showReview() { const t = revQ[0], el = $("review"); if (!t) return el.classList.add("hidden");
   el.innerHTML = `<div class="ah"><b>Rate that ${t.dir > 0 || t.dir === "long" ? "long" : "short"} <span class="${t.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(+t.pnl)}</span></b><button class="pb" id="rv-x" title="Skip" aria-label="Skip">×</button></div>
     ${mfeLine(t)}<div class="rvl">Followed your rules?</div><div class="rvrow rvyn"><button data-ok="1" class="rvy">Yes</button><button data-ok="0" class="rvn">No</button></div>
-    <div class="rvl">Grade</div><div class="rvrow rvgr">${GRADES.map((g, i) => `<button data-gr="${g}" style="--gi:${i}">${g}</button>`).join("")}</div>
+    <div class="rvgrade"><div class="rvl">Grade <span class="muted">drag up or down</span></div><div class="rvodo" tabindex="0" role="slider" aria-label="Grade"><div class="rvstrip">${["–"].concat(GRADES).map((g, i) => `<span style="--gi:${i - 1}">${g}</span>`).join("")}</div></div></div>
     <div class="rvl">What happened</div><div class="rvrow rvmk">${MISTAKES.map((m) => `<button data-mk="${m}">${m}</button>`).join("")}</div>
     <div class="rvl">How sure were you going in? <i class="qm" data-help="1 = guess, 5 = A+ setup. Stats shows if your confident trades actually pay more.">?</i></div><div class="rvrow rvcf">${[1, 2, 3, 4, 5].map((n) => `<button data-cf="${n}" style="--ci:${n}">${n}</button>`).join("")}</div>
     <textarea id="rv-note" rows="2" maxlength="400" placeholder="Note (optional)">${esc(t.notes || "")}</textarea>
     <div class="rvrow rvend"><button id="rv-card" class="small" title="Make a share card image of this trade">Share card</button><button id="rv-save" class="primary">Save</button></div>`;
-  el.classList.remove("hidden"); el.dataset.ok = ""; el.dataset.cf = ""; el.dataset.gr = ""; el.onclick = (e) => { const b = e.target.closest("button"); if (!b) return;
+  el.classList.remove("hidden"); el.dataset.ok = ""; el.dataset.cf = ""; el.dataset.gr = ""; gradeOdo(el); el.onclick = (e) => { const b = e.target.closest("button"); if (!b) return;
     if (b.id === "rv-x") { revQ.shift(); return showReview(); } if (b.id === "rv-card") return shareCard(t, true);
     const one = (k) => { el.dataset[k] = b.dataset[k]; el.querySelectorAll(`[data-${k}]`).forEach((x) => x.classList.toggle("on", x === b)); };
     if (b.dataset.ok != null) one("ok"); if (b.dataset.gr) one("gr"); if (b.dataset.cf) one("cf"); if (b.dataset.mk) b.classList.toggle("on");
@@ -2331,11 +2414,11 @@ const nmsg = (m) => ($("n-msg").textContent = m);
 
 /* ---------------- prefs / settings / admin ---------------- */
 // KING_DEF1122 (Nov 22, King): everyone starts on MNQ + MES side by side, 60x replay, and no stop/target pre-ticked. Applied once per person.
-function defaults1122(force) { if (prefs.def1122 || (navigator.webdriver && !force)) return; prefs.def1122 = 1; prefs.layout = "2"; prefs.syms = ["MNQ", "MES"]; prefs.autoBr = false; prefs.spd = "60"; if (prefs.sync) prefs.sync.sym = false; try { savePrefs(); } catch (e) {} }
+function defaults1122(force) { if (prefs.def1122b || (navigator.webdriver && !force)) return; prefs.def1122b = 1; prefs.layout = "2"; prefs.syms = ["MNQ", "MES"]; prefs.lastSym = "MNQ"; prefs.ordSl = false; prefs.ordTp = false; prefs.sym = "MNQ"; try { $("sym").value = "MNQ"; } catch (e) {} prefs.autoBr = false; prefs.spd = "60"; if (prefs.sync) prefs.sync.sym = false; try { savePrefs(); } catch (e) {} }
 async function loadPrefs() { if (DEMO) return; const { data } = await sb.from("prefs").select("data").maybeSingle(); if (data && data.data) { const d = data.data; Object.assign(prefs, d); prefs.keys = { ...DEF_KEYS, ...(d.keys || {}) }; prefs.pad = { show: true, x: null, y: null, ...(d.pad || {}) }; if (!Array.isArray(prefs.tfs)) prefs.tfs = DEF_TFS.slice(); if (!LAYOUTS[prefs.layout] && !LAYS[prefs.layout]) prefs.layout = "1"; if (!Array.isArray(prefs.lotset)) prefs.lotset = [1, 2, 3, 5, 10]; if (!Array.isArray(prefs.favs)) prefs.favs = ["trend", "hline", "rect", "long", "short"]; if (prefs.favShow == null) prefs.favShow = true; prefs.ind = { ...IND_DEF, ...(d.ind || {}) };
     if (!prefs.syncDef1) { prefs.sync = { sym: false, int: true, cross: true, time: false, range: false }; prefs.syncDef1 = true; }   // KING_SYNCDEF (Nov 14)
   } }   // KING_INDOFF (King, Nov 14): no reset for existing users (Ben, Will, Ryan keep theirs); new users start with everything off via IND_DEF
-function savePrefs() { if (!DEMO && user) sb.from("prefs").upsert({ user_id: user.id, data: prefs, updated_at: new Date().toISOString() }).then(() => {}); }
+function savePrefs() { try { if (!DEMO && !navigator.webdriver) localStorage.setItem("kz-prefs:" + (localStorage.getItem("kz-uid") || ""), JSON.stringify(prefs)); } catch (e) {} if (!DEMO && user) sb.from("prefs").upsert({ user_id: user.id, data: prefs, updated_at: new Date().toISOString() }).then(() => {}); }
 const KEYNAMES = { buy: "Buy market", sell: "Sell market", joinbid: "Join bid", joinask: "Join ask", reverse: "Reverse", flatten: "Flatten all", cancel: "Cancel all", close: "Close all", be: "Stop to breakeven", trend: "Trend line", hline: "Horizontal line", vline: "Vertical line", rect: "Zone", long: "Long position", short: "Short position", measure: "Measure" };
 function fillSettings() {
   if ($("s-name")) $("s-name").value = (me && me.name) || "";
@@ -2505,12 +2588,12 @@ function assembleBuild(full, T) {
   });
   // KING_CHARTWIN (Nov 22, King): each chart starts as a small rounded frosted-glass window with its data already behind it, then opens up
   // to full size with anime.js "inExpo" easing while the candles fill in one by one.
-  const pz = items.filter((x) => x.z === 1), tc = t + 80, IE = "cubic-bezier(.95,.05,.795,.035)", DW = full ? 1150 : 750, inExpo = (x) => (x === 0 ? 0 : Math.pow(2, 10 * x - 10));
+  const pz = items.filter((x) => x.z === 1), tc = t + 80, IE = "cubic-bezier(.95,.05,.795,.035)", DW = full ? 1500 : 900, inExpo = (x) => x * x;   /* KING_CHARTWIN2: candles accelerate in gently so each one is seen arriving */
   setTimeout(() => { if (skip) return; pz.forEach((it, j) => { const el = it.el, p = panes.find((q) => q.el === el); el.style.opacity = it.prev || ""; const r = el.getBoundingClientRect();
-      const sq = Math.min(r.width, r.height) * 0.3, ix = Math.max(0, (r.width - sq) / 2), iy = Math.max(0, (r.height - sq) / 2), from = `inset(${iy}px ${ix}px ${iy}px ${ix}px round 22px)`, to = "inset(0px 0px 0px 0px round 14px)";
+      const ix = r.width / 2, iy = r.height / 2, from = `inset(${iy}px ${ix}px ${iy}px ${ix}px round 22px)`, to = "inset(0px 0px 0px 0px round 14px)";
       const cv = document.createElement("div"); cv.className = "kwin"; Object.assign(cv.style, { left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px" }); document.body.appendChild(cv);
       const kf = [{ clipPath: from }, { clipPath: to }], o = { duration: DW, easing: IE, delay: j * 110, fill: "backwards" };
-      try { anims.push(el.animate(kf, o)); anims.push(cv.animate(kf, { ...o, fill: "both" })); anims.push(cv.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 520, delay: j * 110 + DW * 0.6, easing: "ease-out", fill: "forwards" })); } catch (e) {}
+      try { anims.push(el.animate(kf, o)); anims.push(cv.animate(kf, { ...o, fill: "both" })); anims.push(cv.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 420, delay: j * 110 + DW * 0.85, easing: "ease-out", fill: "forwards" })); } catch (e) {}
       setTimeout(() => cv.remove(), j * 110 + DW + 420);
       if (!p) return; let D; try { D = p.series.data().slice(); } catch (e) { return; } const ts = p.chart.timeScale(), lr = ts.getVisibleLogicalRange(); if (!lr || D.length < 3) { try { p.series.applyOptions({ visible: true }); } catch (e) {} return; }
       const s0 = Math.max(0, Math.min(D.length - 1, Math.floor(lr.from))), s1 = D.length, ps = p.chart.priceScale("right"), auto = ps.options().autoScale, shift = ts.options().shiftVisibleRangeOnNewBar;
@@ -2687,7 +2770,7 @@ async function boot() {
     isAdmin = !!(await sb.rpc("is_admin")).data; $("vt-admin").classList.toggle("hidden", !isAdmin);
     const { data: fs } = await sb.from("features").select("key,enabled"); (fs || []).forEach((f) => (features[f.key] = f.enabled)); await loadPrefs();
   }
-  try { defaults1122(); if ($("speed")) $("speed").value = prefs.spd || "60"; if ((prefs.syms || [])[0]) $("sym").value = prefs.syms[0]; } catch (e) {}
+  try { defaults1122(); if ($("speed")) $("speed").value = prefs.spd || "60"; if ((prefs.syms || [])[0]) $("sym").value = prefs.syms[0]; [["o-slon", prefs.ordSl], ["o-tpon", prefs.ordTp]].forEach(([i, v]) => { const c = $(i); if (c) { c.checked = !!v; c.onchange && c.onchange(); } }); } catch (e) {}
   $("auth").classList.add("hidden"); $("app").classList.remove("hidden");
   try { sameScreen(); } catch (e) {}
   setTimeout(() => document.documentElement.classList.remove("kprebuild"), prefs.chartfx === false ? 0 : 7000);
@@ -2933,7 +3016,7 @@ $("tools").addEventListener("contextmenu", (e) => { const b = e.target.closest("
   if (b) { const t = b.dataset.tool, on = prefs.favs.includes(t); items.push({ t: (on ? "Remove " : "Add ") + (TOOLNAMES[t] || t) + (on ? " from" : " to") + " favorites", f: () => { prefs.favs = on ? prefs.favs.filter((x) => x !== t) : [...prefs.favs, t]; prefs.favShow = true; savePrefs(); favUI(); } }); }
   items.push({ t: prefs.toolsPos ? "Dock toolbar on the left" : "Float toolbar (drag the grip)", f: () => { prefs.toolsPos = prefs.toolsPos ? null : { x: 70, y: 140 }; savePrefs(); toolsUI(); } }); menu(items, e.clientX, e.clientY); });
 $("favbtn").onclick = () => { prefs.favShow = !prefs.favShow; savePrefs(); favUI(); };
-$("favbar").addEventListener("contextmenu", (e) => { const b = e.target.closest("[data-tool]"); e.preventDefault(); menu([{ h: "Favorites" }, b ? { t: "Remove " + (TOOLNAMES[b.dataset.tool] || b.dataset.tool), f: () => { prefs.favs = prefs.favs.filter((x) => x !== b.dataset.tool); savePrefs(); favUI(); } } : null, innerWidth > 900 ? { t: $("favbar").classList.contains("docked") ? "Float it" : "Dock to top bar", f: () => { prefs.favDock = !$("favbar").classList.contains("docked"); if (prefs.favDock) delete prefs.favPos; savePrefs(); favUI(); } } : null, { t: "Hide favorites bar", f: () => { prefs.favShow = false; savePrefs(); favUI(); } }], e.clientX, e.clientY); });
+$("favbar").addEventListener("contextmenu", (e) => { const b = e.target.closest("[data-tool]"); e.preventDefault(); menu([{ h: "Favorites" }, b ? { t: "Remove " + (TOOLNAMES[b.dataset.tool] || b.dataset.tool), f: () => { prefs.favs = prefs.favs.filter((x) => x !== b.dataset.tool); savePrefs(); favUI(); } } : null, !isPhone() ? { t: $("favbar").classList.contains("docked") ? "Float it" : "Dock to top bar", f: () => { prefs.favDock = !$("favbar").classList.contains("docked"); if (prefs.favDock) delete prefs.favPos; savePrefs(); favUI(); } } : null, { t: "Hide favorites bar", f: () => { prefs.favShow = false; savePrefs(); favUI(); } }], e.clientX, e.clientY); });
 grip($("favgrip"), (e, st) => { const fb = $("favbar"), r = fb.getBoundingClientRect(); if (!st.r) st.r = r; fb.style.transform = "none"; fb.style.left = Math.max(0, Math.min(innerWidth - r.width, st.r.left + e.clientX - st.x)) + "px"; fb.style.top = Math.max(0, Math.min(innerHeight - r.height, st.r.top + e.clientY - st.y)) + "px"; },
   () => { const r = $("favbar").getBoundingClientRect(); prefs.favPos = { x: r.left, y: r.top }; savePrefs(); });
 grip($("toolgrip"), (e, st) => { const t = $("tools"); if (!prefs.toolsPos) { prefs.toolsPos = { x: e.clientX - 20, y: e.clientY - 10 }; toolsUI(); } if (!st.r) st.r = t.getBoundingClientRect(); t.style.left = Math.max(0, Math.min(innerWidth - 50, st.r.left + e.clientX - st.x)) + "px"; t.style.top = Math.max(0, Math.min(innerHeight - 100, st.r.top + e.clientY - st.y)) + "px"; },
@@ -3192,7 +3275,7 @@ $("s-tips") && ($("s-tips").onchange = () => { prefs.tips = $("s-tips").checked;
 /* KING_RAIL (Nov 11, Brief 3): the left sidebar expands to show names (button at the bottom) and its edge drags to any width; the width is remembered per user */
 (() => { const R = $("rail"); try { const lg = R.querySelector(".rlogo"); if (lg && !lg.querySelector(".kmark")) lg.insertAdjacentHTML("beforeend", '<span class="kmark">K</span><span class="kword">KAIROS</span>'); } catch (e) {}   // KING_MAST: new logo (K square + wordmark) for the masthead
   R.querySelectorAll(".ri").forEach((b) => { if (b.querySelector(".rl")) return; const t = (b.title || "").split(/[:(]/)[0].trim(); if (!t) return; const s = document.createElement("span"); s.className = "rl"; s.textContent = b.id === "railx" ? "Collapse" : ({ "KAIROS helper": "Helper", "Calendar": "Calendar" })[t] || t; b.appendChild(s); });
-  const W = (w) => { w = Math.round(w); if (innerWidth <= 900) { R.style.width = ""; R.classList.remove("wide"); return; } R.style.width = w + "px"; R.classList.toggle("wide", w >= 120); $("railx").title = w >= 120 ? "Collapse the sidebar" : "Expand the sidebar (drag its edge to resize)"; };
+  const W = (w) => { w = Math.round(w); if (isPhone()) { R.style.width = ""; R.classList.remove("wide"); return; } R.style.width = w + "px"; R.classList.toggle("wide", w >= 120); $("railx").title = w >= 120 ? "Collapse the sidebar" : "Expand the sidebar (drag its edge to resize)"; };
   window.railUI = () => W(prefs.railW || 52);
   $("railx").onclick = () => { const cur = prefs.railW || 52; prefs.railW = cur >= 120 ? 52 : prefs.railWide || 200; savePrefs(); W(prefs.railW); };
   grip($("railgrip"), (e, st) => { if (st.w == null) { st.w = R.offsetWidth; R.style.transition = "none"; } let w = Math.max(52, Math.min(300, st.w + e.clientX - st.x)); if (w < 96) w = 52; prefs.railW = w; W(w); },
@@ -3601,7 +3684,9 @@ async function reeseOnChart(r) { reeseClear(); let p = panes[active] || panes[0]
   document.addEventListener("click", (e) => { const q = e.target.closest && e.target.closest("i.qm[data-help]"); if (q) { e.stopPropagation(); show(q); } }, true); })();
 
 /* KING_HKLABEL (King, Nov 14): show each tool's hotkey right under its icon (not just on hover) */
-function hkLabels() { const K = prefs.keys || {}, alias = { cursor: "Esc" }; document.querySelectorAll("#tools .tool[data-tool], #favbar .tool[data-tool]").forEach((b) => { if (b.classList.contains("fi") || b.closest(".tfly")) { const o = b.querySelector(".hk"); if (o) o.remove(); b.classList.remove("hashk"); return; }   /* KING_HKFLY: flyout rows already show their key */ const t = b.dataset.tool, k = alias[t] || K[t]; let s = b.querySelector(".hk");
+function hkLabels() { document.querySelectorAll("#tools .tool .hk, #favbar .tool .hk").forEach((x) => x.remove()); return;   // KING_NOHK (Nov 22, King): no key letters on the toolbar or favorites (the keys still work; tooltips still say them)
+}
+function hkLabelsOld() { const K = prefs.keys || {}, alias = { cursor: "Esc" }; document.querySelectorAll("#tools .tool[data-tool], #favbar .tool[data-tool]").forEach((b) => { if (b.classList.contains("fi") || b.closest(".tfly")) { const o = b.querySelector(".hk"); if (o) o.remove(); b.classList.remove("hashk"); return; }   /* KING_HKFLY: flyout rows already show their key */ const t = b.dataset.tool, k = alias[t] || K[t]; let s = b.querySelector(".hk");
   if (!k) { if (s) s.remove(); return; } if (!s) { s = document.createElement("span"); s.className = "hk"; b.appendChild(s); } const v = k.length === 1 ? k.toUpperCase() : k; if (s.textContent !== v) s.textContent = v; if (!b.classList.contains("hashk")) b.classList.add("hashk"); }); }
 setTimeout(hkLabels, 400); for (const id of ["tools", "favbar"]) { const el = document.getElementById(id); if (el) new MutationObserver(() => { clearTimeout(hkLabels.t); hkLabels.t = setTimeout(hkLabels, 60); }).observe(el, { childList: true, subtree: true }); }
 
@@ -3636,7 +3721,7 @@ setTimeout(function rh() { if (!panes.length) return setTimeout(rh, 800); let ti
     const m = reeseMk.find((x) => bucket(x.t, p.sec) === pr.time && /@/.test(x.text)); if (!m) { tip.style.display = "none"; return; } const r = p.el.getBoundingClientRect();
     tip.textContent = m.text; tip.style.display = "block"; tip.style.left = r.left + pr.point.x + 14 + "px"; tip.style.top = r.top + pr.point.y - 30 + "px"; }); }); setTimeout(rh, 3000); }, 1500);
 
-["o-slon", "o-tpon"].forEach((id) => { const c = $(id); if (c) c.onchange = () => { const inp = $(id === "o-slon" ? "o-sl" : "o-tp"); inp.disabled = !c.checked; inp.style.opacity = c.checked ? "" : ".35"; }; });
+["o-slon", "o-tpon"].forEach((id) => { const c = $(id); if (c) { c.checked = id === "o-slon" ? !!prefs.ordSl : !!prefs.ordTp; c.dispatchEvent(new Event("change")); } if (c) c.addEventListener("change", () => { if (id === "o-slon") prefs.ordSl = c.checked; else prefs.ordTp = c.checked; savePrefs(); }); if (c) c.onchange = () => { const inp = $(id === "o-slon" ? "o-sl" : "o-tp"); inp.disabled = !c.checked; inp.style.opacity = c.checked ? "" : ".35"; }; });
 
 /* KING_BANNER: big on-screen result banners */
 function bigBanner(text, kind) { if ((prefs.notif || {}).acct === false) return; let el = document.getElementById("bigban"); if (!el) { el = document.createElement("div"); el.id = "bigban"; document.body.appendChild(el); }
@@ -4111,13 +4196,13 @@ function spCurve(n) { n = Math.max(0, Math.min(100, +n || 0)) / 100; return n <=
 
 
 /* KING_MYTHEME: Chart settings theme picker */
-function chThemeUI() { const t = prefs.chTheme || {}, id = t.id || ($("cs-theme") && $("cs-theme").value); if ($("cs-theme")) $("cs-theme").value = t.id || "";
+function chThemeUI() { const t = prefs.chTheme || {}, id = t.id || ($("cs-theme") && $("cs-theme").value); if ($("cs-theme")) $("cs-theme").value = prefs.chartFollow !== false ? "follow" : t.id || "";
   document.querySelectorAll("#cs-mode [data-m]").forEach((b) => { b.classList.toggle("on", b.dataset.m === (t.mode || "dark")); if (b.classList.contains("skinm")) { const k = Object.keys(SKINS).find((x) => SKINS[x].owner === id); b.style.display = k ? "" : "none"; if (k) { b.dataset.m = k; b.textContent = SKINS[k].label; b.classList.toggle("on", t.mode === k); } } });
   const w = $("cs-wbg"); if (w) { const on = !!prefs.skin; w.classList.toggle("hidden", !on); const wr = w.closest(".csr"); if (wr) wr.style.display = on ? "" : "none";
     if (on) { const K = SKINS[prefs.skin]; w.querySelectorAll("[data-b]").forEach((b, i) => { b.dataset.b = K.bgs[i]; b.textContent = K.names[i]; }); } }
   { document.querySelectorAll("#chartset input.csc").forEach((i) => i._sync && i._sync()); w.querySelectorAll("[data-b]").forEach((b) => b.classList.toggle("on", b.dataset.b === skinBg())); } }
-if ($("cs-theme")) { $("cs-theme").onchange = (e) => { if (e.target.value) applyChartTheme(e.target.value, (prefs.chTheme && prefs.chTheme.mode) || "dark"); else { prefs.chTheme = null; savePrefs(); } try { csFill(); } catch (er) {} chThemeUI(); };
-  document.querySelectorAll("#cs-mode [data-m]").forEach((b) => (b.onclick = () => { const id = (prefs.chTheme && prefs.chTheme.id) || $("cs-theme").value; if (id) applyChartTheme(id, b.dataset.m); try { csFill(); } catch (er) {} chThemeUI(); }));
+if ($("cs-theme")) { $("cs-theme").onchange = (e) => { prefs.chartFollow = e.target.value === "follow"; if (prefs.chartFollow) { savePrefs(); ui2Apply(); csApplyAll(); repaintAll(); } else if (e.target.value) applyChartTheme(e.target.value, (prefs.chTheme && prefs.chTheme.mode) || "dark"); else { prefs.chTheme = null; savePrefs(); } try { csFill(); } catch (er) {} chThemeUI(); };
+  document.querySelectorAll("#cs-mode [data-m]").forEach((b) => (b.onclick = () => { const id = (prefs.chTheme && prefs.chTheme.id) || $("cs-theme").value; if (id) { prefs.chartFollow = false; applyChartTheme(id, b.dataset.m); } try { csFill(); } catch (er) {} chThemeUI(); }));
   $("chartsetbtn").addEventListener("click", () => setTimeout(chThemeUI, 0)); }
 // KING_WAIFU: backdrop picker (shows only in Waifu mode)
 document.querySelectorAll("#cs-wbg [data-b]").forEach((b) => (b.onclick = () => { if (!prefs.skin || prefs.skin === "waifu") prefs.waifuBg = b.dataset.b; else { prefs.skinBg = prefs.skinBg || {}; prefs.skinBg[prefs.skin] = b.dataset.b; } savePrefs(); repaintAll(); chThemeUI(); }));
@@ -4256,12 +4341,12 @@ const SHADES = [["pastel", "Pastel"], ["light", "Light"], ["mid", "Mid"], ["deep
 const STYLE_THEMES = {
   kairos: { nm: "Original KAIROS", sub: "First colors + logo", base: "dark", v: { bg: "#0a0a0d", panel: "#111116", panel2: "#16161d", txt: "#ecebf3", mut: "#8b8a99", line: "167,139,250", ink: "#a78bfa", inktxt: "#0a0a0d", blue: "#7c3aed", up: "#2bd4a0", dn: "#ff4d5e" }, sw: ["#0a0a0d", "#a78bfa", "#ff4d5e"] },
   blocky: { nm: "Blocky", sub: "Minecraft style", base: "dark", v: { bg: "#3b3b3b", panel: "#6f6f6f", panel2: "#5a5a5a", txt: "#ffffff", mut: "#d8d8d8", line: "0,0,0", ink: "#5d9b2f", inktxt: "#ffffff", blue: "#3f76e4", up: "#7fd650", dn: "#ff5555" }, sw: ["#866043", "#5d9b2f", "#7d7d7d"], chip: 1 },
-  pixel: { nm: "Pixel", sub: "Soft pixel art", base: "light", v: { bg: "#f4efe6", panel: "#fffaf0", panel2: "#efe6d6", txt: "#2d2438", mut: "#6b5f78", line: "45,36,56", ink: "#5b4b8a", inktxt: "#fffaf0", blue: "#3a7bd5", up: "#2f9e6a", dn: "#d6455d" }, sw: ["#fffaf0", "#5b4b8a", "#ffb1c1"], chip: 1 },
+  pixel: { nm: "Pixel", sub: "Soft pixel art", base: "light", v: { bg: "#f4efe6", panel: "#fffaf0", panel2: "#efe6d6", txt: "#2d2438", mut: "#6b5f78", line: "45,36,56", ink: "#5b4b8a", inktxt: "#fffaf0", blue: "#3a7bd5", up: "#1c7a4e", dn: "#c0304a" }, sw: ["#fffaf0", "#5b4b8a", "#ffb1c1"], chip: 1 },
   bit8: { nm: "8-bit", sub: "Old console", base: "dark", v: { bg: "#000000", panel: "#0b0b0b", panel2: "#161616", txt: "#fcfcfc", mut: "#bcbcbc", line: "252,252,252", ink: "#f8b800", inktxt: "#000000", blue: "#0078f8", up: "#00b800", dn: "#e40058" }, sw: ["#000000", "#f8b800", "#0078f8"], chip: 1 },
   terminal: { nm: "Terminal", sub: "Green screen", base: "dark", v: { bg: "#030703", panel: "#061006", panel2: "#0a170a", txt: "#3dff7a", mut: "#23a34c", line: "61,255,122", ink: "#3dff7a", inktxt: "#030703", blue: "#3dff7a", up: "#3dff7a", dn: "#ff5f56" }, sw: ["#030703", "#3dff7a", "#23a34c"] },
   luxury: { nm: "Luxury", sub: "Black and gold", base: "dark", v: { bg: "#0b0a08", panel: "#12100c", panel2: "#181510", txt: "#f1e8d4", mut: "#a99c80", line: "201,164,92", ink: "#c9a45c", inktxt: "#0b0a08", blue: "#c9a45c", up: "#b9c98a", dn: "#c9776a" }, sw: ["#0b0a08", "#c9a45c", "#f1e8d4"] },
-  aero: { nm: "Frutiger Aero", sub: "Glossy sky + glass", base: "light", v: { bg: "#d8f0ff", panel: "rgba(255,255,255,.72)", panel2: "rgba(255,255,255,.5)", txt: "#0c2c44", mut: "#3f6580", line: "20,90,140", ink: "#1690e0", inktxt: "#ffffff", blue: "#1690e0", up: "#2fae3a", dn: "#e0453a" }, sw: ["#8fd3ff", "#1690e0", "#7ed957"] },
-  d3: { nm: "3D", sub: "Raised, pressable", base: "light", v: { bg: "#e9ebf0", panel: "#f7f8fb", panel2: "#eceef3", txt: "#1c2230", mut: "#5b6478", line: "28,34,48", ink: "#2a5bd7", inktxt: "#ffffff", blue: "#2a5bd7", up: "#1f9a62", dn: "#d6404e" }, sw: ["#f7f8fb", "#2a5bd7", "#b8bfcd"] },
+  aero: { nm: "Frutiger Aero", sub: "Glossy sky + glass", base: "light", v: { bg: "#d8f0ff", panel: "rgba(255,255,255,.72)", panel2: "rgba(255,255,255,.5)", txt: "#0c2c44", mut: "#3f6580", line: "20,90,140", ink: "#0f6fb8", inktxt: "#ffffff", blue: "#0f6fb8", up: "#1b7f27", dn: "#c22f25" }, sw: ["#8fd3ff", "#1690e0", "#7ed957"] },
+  d3: { nm: "3D", sub: "Raised, pressable", base: "light", v: { bg: "#e9ebf0", panel: "#f7f8fb", panel2: "#eceef3", txt: "#1c2230", mut: "#5b6478", line: "28,34,48", ink: "#2a5bd7", inktxt: "#ffffff", blue: "#2a5bd7", up: "#15734a", dn: "#c22f3e" }, sw: ["#f7f8fb", "#2a5bd7", "#b8bfcd"] },
   anim: { nm: "Animated", sub: "Moving aurora", base: "dark", v: { bg: "#07070c", panel: "rgba(14,14,24,.72)", panel2: "rgba(22,22,36,.78)", txt: "#eef0ff", mut: "#9ea3c4", line: "140,160,255", ink: "#7cc4ff", inktxt: "#07070c", blue: "#7cc4ff", up: "#5af0b0", dn: "#ff6b8a" }, sw: ["#07070c", "#7cc4ff", "#5af0b0"] } };
 function rainbowPal(h, shade, vib) {
   const k = Math.max(0, Math.min(100, vib ?? 60)) / 100, S = (s) => Math.round(6 + (s - 6) * k), c = (s, l) => `hsl(${h} ${S(s)}% ${l}%)`;
@@ -4272,7 +4357,8 @@ function rainbowPal(h, shade, vib) {
     deep: ["dark", c(55, 16), c(50, 21), c(48, 25), c(30, 95), c(22, 74), c(90, yl ? 60 : 68), c(50, 10)],
     dark: ["dark", c(30, 7), c(28, 10), c(26, 13), c(20, 93), c(14, 66), c(92, yl ? 58 : 64), c(40, 6)] }[shade] || null;
   if (!P) return null; const dk = P[0] === "dark";
-  return { base: P[0], v: { bg: P[1], panel: P[2], panel2: P[3], txt: P[4], mut: P[5], ink: P[6], inktxt: P[7], blue: P[6], lineRaw: dk ? "255,255,255" : "0,0,0" } };
+  const ud = shade === "mid" ? ["#0b4a31", "#7a1820"] : dk ? ["#63d6a4", "#ff8f98"] : ["#176a48", "#a82c35"];   // KING_CONTRAST: win/loss colors that read on each shade
+  return { base: P[0], v: { bg: P[1], panel: P[2], panel2: P[3], txt: P[4], mut: P[5], ink: P[6], inktxt: P[7], blue: P[6], up: ud[0], dn: ud[1], lineRaw: dk ? "255,255,255" : "0,0,0" } };
 }
 function appThemeDef() { const a = prefs.appTheme || {}; if (!a.id || a.id === "def" || a.id === "person") return null;
   if (RAINBOW[a.id]) { const r = rainbowPal(RAINBOW[a.id][1], a.shade || "light", a.vib); return r && { ...r, cls: "rainbow" }; }
@@ -4298,7 +4384,7 @@ function appThemeUI() { const el = $("s-themes"); if (!el) return; const a = pre
     + (rb ? `<div class="atsub"><div class="atlbl">${rb[0]} shade</div><div class="atsh">${SHADES.map(([s, nm]) => { const p = rainbowPal(rb[1], s, a.vib); return `<button class="${(a.shade || "light") === s ? "on" : ""}" data-sh="${s}"><i style="background:${p.v.bg};box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)"><b style="background:${p.v.ink}"></b></i>${nm}</button>`; }).join("")}</div>
        <div class="atlbl">Vibrancy <i class="qm" data-help="Left is calm and gray, right is full color.">?</i></div><label class="atvib"><span>Calm</span><input type="range" id="at-vib" min="0" max="100" step="5" value="${a.vib ?? 60}"><span>Vivid</span></label></div>` : "")
     + `<div class="atlbl">Styles</div><div class="atgrid">${Object.entries(STYLE_THEMES).filter(([k]) => k !== "kairos").map(([k, s]) => card(k, s.nm, s.sub, s.sw)).join("")}</div>`; }
-function setAppTheme(p) { prefs.appTheme = Object.assign({}, prefs.appTheme || {}, p); savePrefs(); ui2Apply(); try { waifuUI(); csApplyAll(); repaintAll(); } catch (e) {} sfx("select"); }
+function setAppTheme(p) { prefs.chartFollow = true; prefs.appTheme = Object.assign({}, prefs.appTheme || {}, p); savePrefs(); ui2Apply(); try { waifuUI(); csApplyAll(); repaintAll(); } catch (e) {} sfx("select"); }
 document.addEventListener("click", (e) => { const s = $("s-themes"); if (!s || !s.contains(e.target)) return; const b = e.target.closest("[data-at]"), sh = e.target.closest("[data-sh]");
   if (b) setAppTheme({ id: b.dataset.at, shade: RAINBOW[b.dataset.at] ? (prefs.appTheme && prefs.appTheme.shade) || "light" : undefined }); else if (sh) setAppTheme({ shade: sh.dataset.sh }); });
 document.addEventListener("input", (e) => { if (e.target.id === "at-vib") { prefs.appTheme = Object.assign({}, prefs.appTheme, { vib: +e.target.value }); try { appTheme(true, true); } catch (x) {} } });
@@ -4312,7 +4398,7 @@ function ui2Apply() { const m = ui2Mode(), skin = !!siteSkin(), on = !!m, B = do
   B.classList.toggle("ui2-iv", on); B.classList.toggle("ui2-ivory", on && base === "light"); B.classList.toggle("ui2-onyx", on && base === "dark");
   try { document.querySelector('meta[name="theme-color"]') && document.querySelector('meta[name="theme-color"]').setAttribute("content", !on ? "#0a0a0d" : m === "onyx" ? "#121110" : "#f7f5f0"); } catch (e) {}
   if ($("s-ui2")) { const p = ui2Norm(prefs.ui2); $("s-ui2").value = p === "" ? "off" : p || "ivory"; }
-  if (on && skin === false && prefs.appTheme && prefs.appTheme.id === "person" && !prefs.skin && !prefs.waifu && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== base && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][base]) { try { applyChartTheme(prefs.chTheme.id, base, true); } catch (e) {} }
+  if (on && skin === false && prefs.chartFollow !== false && !prefs.skin && !prefs.waifu && prefs.chTheme && prefs.chTheme.id && prefs.chTheme.mode !== base && CHART_THEMES[prefs.chTheme.id] && CHART_THEMES[prefs.chTheme.id][1][base]) { try { applyChartTheme(prefs.chTheme.id, base, true, "sync"); } catch (e) {} }
   try { themeUI(on); } catch (e) {}
   try { appTheme(on); } catch (e) {}
   if (on) B.classList.remove("glass"); else B.classList.toggle("glass", prefs.glass !== false);   // KING_FLAT (Nov 22): no Apple-glass look in the new look; flat bars, frosted glass only on things that float

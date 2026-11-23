@@ -41,7 +41,7 @@ body.ui2 .gstep>b{background:color-mix(in srgb,var(--acc) 20%,transparent);color
 body.ui2 a.gdl{background:linear-gradient(180deg,var(--acc),var(--acc));color:var(--acc)!important}
 body.ui2 #kintro.drop::after{background:radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--acc) 55%,transparent),transparent 55%)}
 body.ui2 #kintro .ktip b{color:var(--acc)}
-@media (min-width:901px){body.ui2.glass{background:radial-gradient(1100px 520px at 15% -12%,color-mix(in srgb,var(--acc) 9%,transparent),transparent 60%),radial-gradient(900px 500px at 100% 110%,rgba(72,214,255,.05),transparent 60%),#06070a}
+@media (min-width:901px), (pointer:fine) {body.ui2.glass{background:radial-gradient(1100px 520px at 15% -12%,color-mix(in srgb,var(--acc) 9%,transparent),transparent 60%),radial-gradient(900px 500px at 100% 110%,rgba(72,214,255,.05),transparent 60%),#06070a}
 body.ui2.glass .tools .tool.on{background:linear-gradient(180deg,color-mix(in srgb,var(--acc) 28%,transparent),color-mix(in srgb,var(--acc) 12%,transparent));box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 2px 8px color-mix(in srgb,var(--acc) 25%,transparent)}
 }
 body.ui2 .tplrow.on{background:color-mix(in srgb,var(--acc) 14%,transparent)}

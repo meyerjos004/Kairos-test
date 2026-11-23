@@ -203,3 +203,11 @@ body.ui2.at-anim button.primary{animation:atSheen 6s linear infinite,atBreath 3.
 @media (prefers-reduced-motion: reduce){ body.ui2.at-anim *{animation:none!important} #critters{display:none} }
 
 body.ui2.at-anim #app{position:relative;z-index:1;background:transparent!important}body.ui2.at-anim .view:not(#v-trade){background:transparent!important}
+/* KING_CONTRAST (Nov 22, King): dark text on light surfaces and light on dark, in every theme */
+body.ui2.at-blocky :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,.toast,#qmtip,#rhtip,.tip,.ddm,.lblpop,.cspop,.csbox,#review,.botpop,.fbpop,.tplpop,.tbar){--txt:#1c1c1c;--mut:#3a3a3a;--mut2:#3a3a3a;--up:#1f6b0c;--dn:#9c1c14;--blue:#1d3f9c;--ink:#1c1c1c;--line:rgba(0,0,0,.25);--edge:rgba(0,0,0,.35);color:#1c1c1c!important}
+body.ui2.at-blocky :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,#review,.csbox,.tbar) :is(th,td,small,b,i,p,div,span,label,h3,h4,h5,em):not(.pos-up):not(.pos-dn):not(.kdv){color:inherit}
+body.ui2.at-blocky :is(.card,.glass,.setc,.jw,.dlg,.menu,#st-kpi>div,#ctx,#review,.csbox,.tbar) button:not(.primary){color:#fff!important}
+body.ui2.at-blocky header.top :is(#skipny,#skipasia){color:#fff!important}
+body.ui2.at-bit8 .rail :is(button,.ri){color:#fcfcfc!important}
+body.ui2.at-luxury :is(button.primary,.kmark){color:#0b0a08!important}
+body.ui2.at-aero .status{color:#0c5a2a!important}

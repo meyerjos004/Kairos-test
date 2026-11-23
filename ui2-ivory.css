@@ -55,7 +55,7 @@ body.ui2-iv ::selection{background:var(--sel)}
    on the left, the account numbers in a row under it, the chart gets the full width. Desktop only; phones keep the bottom bar. */
 body.ui2-iv{--blue:#2f6fdb;--blue2:#2a63c6}body.ui2-onyx{--blue:#6b9cf0;--blue2:#5b8de6}
 .kmark,.kword{display:none}
-@media (min-width:901px){
+@media (min-width:901px), (pointer:fine) {
   body.ui2-iv #app{flex-direction:column}
   body.ui2-iv .rail{width:100%!important;height:58px;flex:none;flex-direction:row;align-items:center;gap:2px;padding:0 18px!important;border-right:0!important;border-bottom:1px solid var(--line);background:var(--bg)!important;overflow:visible}
   body.ui2-iv .rail .rgrip,body.ui2-iv #railx{display:none!important}
@@ -84,8 +84,8 @@ body.ui2-iv{--blue:#2f6fdb;--blue2:#2a63c6}body.ui2-onyx{--blue:#6b9cf0;--blue2:
   body.ui2-iv header.top .acct{font-weight:500;background:transparent!important;border-color:var(--line)!important}
   body.ui2-iv header.top .acct img.logo{display:none}
 }
-@media (min-width:901px) and (max-width:1380px){ body.ui2-iv .rail .vtab .rl{display:none!important} body.ui2-iv .rail .vtab{padding:0 10px!important} }   /* KING_RESIZE: below 1380 every tab goes icon-only (with its name on hover) instead of some losing labels */
-@media (min-width:901px) and (max-width:1000px){ body.ui2-iv .kword{display:none} }
+@media (min-width:901px) and (max-width:1380px), (pointer:fine) and (max-width:1380px) { body.ui2-iv .rail .vtab .rl{display:none!important} body.ui2-iv .rail .vtab{padding:0 10px!important} }   /* KING_RESIZE: below 1380 every tab goes icon-only (with its name on hover) instead of some losing labels */
+@media (min-width:901px) and (max-width:1000px), (pointer:fine) and (max-width:1000px) { body.ui2-iv .kword{display:none} }
 /* King: every skip button and every buy button is blue */
 body.ui2-iv #pbuy,body.ui2-iv button.buy{background:var(--blue)!important;color:#fff!important}
 body.ui2-onyx #pbuy,body.ui2-onyx button.buy{color:#0f1420!important}
@@ -109,8 +109,8 @@ body.ui2[data-theme="king-dark"] .rail{box-shadow:inset 0 -1px 0 rgba(111,211,23
 body.ui2[data-theme="king-dark"] .rail .vtab.on:after{background:#6fd3e6}
 /* Rave without the lasers (King, Nov 22): the light beams are gone; the beat flash stays but darker */
 body.skin-rave #wpetals b{display:none!important}
-@media (min-width:901px){ body.ui2-iv .favbar:not(.docked){top:150px;z-index:45} }   /* KING_MAST: the floating favorites bar sits under the masthead + account row */
-@media (min-width:901px){ body.ui2-iv .media{top:136px;z-index:61} }   /* KING_MAST: media window opens under the masthead + account row */
+@media (min-width:901px), (pointer:fine) { body.ui2-iv .favbar:not(.docked){top:150px;z-index:45} }   /* KING_MAST: the floating favorites bar sits under the masthead + account row */
+@media (min-width:901px), (pointer:fine) { body.ui2-iv .media{top:136px;z-index:61} }   /* KING_MAST: media window opens under the masthead + account row */
 
 /* KING_FLAT (Nov 22): flat bars; frosted glass only on things that float over the chart */
 body.ui2-iv .symsearch select{border:0!important;background:transparent!important;box-shadow:none!important;padding:0 16px 0 2px!important;height:auto!important;border-radius:0!important}

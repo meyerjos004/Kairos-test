@@ -59,13 +59,13 @@ body.ui2 .tbl td{border-top:1px solid var(--line)}
 
 /* left sidebar: icons only, the name shows on hover */
 body.ui2 .rail{background:var(--panel);border-right:1px solid var(--line)}
-@media (min-width:901px){body.ui2 .rail:not(.wide){width:64px;padding:14px 0;gap:6px;overflow:visible;z-index:60}}
+@media (min-width:901px), (pointer:fine) {body.ui2 .rail:not(.wide){width:64px;padding:14px 0;gap:6px;overflow:visible;z-index:60}}
 body.ui2 .ri{width:44px;height:44px;border-radius:12px;color:var(--mut)}
 body.ui2 .ri svg{width:21px;height:21px}
 body.ui2 .ri:hover{background:var(--hov);color:var(--txt)}
 body.ui2 .ri.on{background:var(--sel);color:var(--txt);box-shadow:none}
 body.ui2 .ri.on svg{color:var(--txt)}
-@media (max-width:900px){body.ui2 .rail .ri .rl{display:none!important}}
+@media (max-width:900px) and (pointer:coarse) {body.ui2 .rail .ri .rl{display:none!important}}
 body.ui2 .rail:not(.wide) .ri .rl{display:block;position:absolute;left:54px;top:50%;transform:translate(-4px,-50%);opacity:0;pointer-events:none;
   padding:6px 10px;border-radius:8px;background:var(--ink);color:var(--inktxt);font:500 13px var(--body);white-space:nowrap;z-index:80;
   transition:opacity .14s var(--ease),transform .14s var(--ease)}
@@ -75,9 +75,9 @@ body.ui2 .avatar{background:var(--chip);border:1px solid var(--edge);color:var(-
 
 /* top bar: account, money, then the replay controls; roomier */
 body.ui2 header.top{background:var(--panel);border-bottom:1px solid var(--line)}
-@media (min-width:901px){body.ui2 header.top{height:60px;gap:22px;padding:0 20px}}
+@media (min-width:901px), (pointer:fine) {body.ui2 header.top{height:60px;gap:22px;padding:0 20px}}
 body.ui2 .acct{background:var(--chip);border:1px solid var(--edge);border-radius:10px;padding:7px 12px;font-weight:600}
-@media (min-width:901px){body.ui2 .kv{flex-direction:column;gap:1px;align-items:flex-start}}
+@media (min-width:901px), (pointer:fine) {body.ui2 .kv{flex-direction:column;gap:1px;align-items:flex-start}}
 body.ui2 .kv label{font-size:11.5px;color:var(--mut)}
 body.ui2 .kv b{font:500 14.5px var(--mono)}
 body.ui2 .status{border-radius:999px;padding:4px 10px;font-size:12.5px}
@@ -122,11 +122,11 @@ body.ui2 .dp-big:hover:not(:disabled){border-color:var(--acc);background:color-m
 body.ui2 .dpwrap{background:rgba(10,12,16,.45)}
 body.ui2-light .dpwrap{background:rgba(16,18,21,.28)}
 
-@media (max-width:900px){#ui2banner{bottom:76px;font-size:12px;padding:5px 6px 5px 10px}#ui2banner button{padding:4px 9px}}
+@media (max-width:900px) and (pointer:coarse) {#ui2banner{bottom:76px;font-size:12px;padding:5px 6px 5px 10px}#ui2banner button{padding:4px 9px}}
 
 /* top-bar search (only in the new look, desktop) */
 #ui2search{display:none}
-@media (min-width:1100px){body.ui2 #ui2search{display:flex;align-items:center;gap:10px;min-width:220px;color:var(--mut);background:var(--chip);border:1px solid var(--edge);border-radius:10px;padding:7px 8px 7px 11px;margin-left:auto}
+@media (min-width:1100px), (pointer:fine) {body.ui2 #ui2search{display:flex;align-items:center;gap:10px;min-width:220px;color:var(--mut);background:var(--chip);border:1px solid var(--edge);border-radius:10px;padding:7px 8px 7px 11px;margin-left:auto}
 body.ui2 #ui2search svg{width:17px;height:17px}body.ui2 #ui2search span{flex:1;text-align:left;font-size:13.5px}body.ui2 #ui2search kbd{font-size:11.5px;padding:1px 6px}}
 
 /* KING_UI2FIX (King, Nov 21: "almost all button icons are too small"). Root cause: the generic button padding above (8px 12px)
