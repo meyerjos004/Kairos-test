@@ -4455,3 +4455,50 @@ ui2Apply(); setTimeout(ui2Apply, 1500); setTimeout(ui2Apply, 4000);
   const go = () => setTimeout(() => { if (ph() && document.body.classList.contains("v-trade")) view("tj"); }, 400);   // after journal.js is ready
   if (document.readyState === "complete") go(); else window.addEventListener("load", go);
 })();
+/* KING_BTCAL (King, Nov 24): the backtest (replay trades) calendar lives on the Stats page now; the Journal has its own calendar of entries.
+   The old Calendar tab is gone; anything that opens "journal" lands on Stats at the calendar. */
+(function () {
+  const cal = $("v-journal"), st = $("v-stats"); if (!cal || !st) return;
+  cal.classList.remove("view", "hidden", "scroll"); cal.classList.add("stcal");
+  const h = cal.querySelector(".toolbar .vh"); if (h) h.textContent = "Backtest calendar";
+  st.appendChild(cal);
+  const t = document.querySelector('.vtab[data-view="journal"]'); if (t) t.classList.add("hidden");
+  const ov = view;
+  view = function (v) {
+    if (v === "journal") { ov("stats"); setTimeout(() => cal.scrollIntoView({ behavior: "smooth", block: "start" }), 350); return; }
+    const r = ov(v); if (v === "stats") { try { loadJournal(); } catch (e) {} } return r;
+  };
+})();
+/* KING_NAVGROUPS (King, Nov 24): the nav in sections instead of one long row. Desktop: Trade, Accounts | Journal, Stats, Tax | Learn, Helper | Friends | Settings.
+   Phones: Journal, Stats, Learn, Friends + More (Accounts, Tax, Helper, Settings), nothing to scroll. */
+(function () {
+  const rail = $("rail"); if (!rail) return;
+  const btn = (v) => rail.querySelector(`.vtab[data-view="${v}"]`), logo = rail.querySelector(".rlogo"); if (!logo) return;
+  const tj = btn("tj"); if (tj) tj.title = "Journal";
+  const G = [["trade", "accounts"], ["tj", "stats", "tax"], ["learn", "help"], ["friends"], ["settings", "admin"]];
+  let at = logo;
+  G.forEach((g, gi) => {
+    if (gi) { const sp = document.createElement("i"); sp.className = "vsep"; sp.setAttribute("aria-hidden", "true"); at.after(sp); at = sp; }
+    g.forEach((v) => { const b = btn(v); if (b) { at.after(b); at = b; b.classList.add("vg" + gi); } });
+  });
+  const more = document.createElement("button"); more.className = "ri vtab vmore"; more.type = "button"; more.title = "More";
+  more.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg><span class="rl">More</span>';
+  at.after(more);
+  const sheet = document.createElement("div"); sheet.id = "vmore"; sheet.className = "vmoresheet hidden"; sheet.setAttribute("role", "menu");
+  sheet.innerHTML = [["accounts", "Accounts"], ["tax", "Tax"], ["help", "Helper"], ["settings", "Settings"]].map(([v, n]) => `<button type="button" data-go="${v}">${n}</button>`).join("");
+  document.body.appendChild(sheet);
+  more.onclick = (e) => { e.stopPropagation(); sheet.classList.toggle("hidden"); };
+  sheet.onclick = (e) => { const b = e.target.closest("[data-go]"); if (!b) return; sheet.classList.add("hidden"); morphView(() => view(b.dataset.go)); };
+  document.addEventListener("click", (e) => { if (!sheet.contains(e.target) && e.target !== more) sheet.classList.add("hidden"); });
+})();
+/* KING_JTOOLS (King, Nov 24): Journal bar keeps only what you use daily; Backup, Notion, Customize and Edit layout sit behind "⋯" */
+(function () {
+  const ids = ["tj-bk", "tj-notion", "tj-custom", "tj-editbtn"], first = $(ids[0]); if (!first) return;
+  const wrap = document.createElement("span"); wrap.className = "jmorewrap";
+  const b = document.createElement("button"); b.type = "button"; b.className = "ghost jmoreb"; b.title = "More journal tools"; b.textContent = "⋯";
+  const menu = document.createElement("span"); menu.className = "jmoremenu";
+  first.before(wrap); wrap.append(b, menu); ids.forEach((id) => { const x = $(id); if (x) menu.appendChild(x); });
+  b.onclick = (e) => { e.stopPropagation(); wrap.classList.toggle("open"); };
+  menu.addEventListener("click", () => wrap.classList.remove("open"));
+  document.addEventListener("click", (e) => { if (!wrap.contains(e.target)) wrap.classList.remove("open"); });
+})();

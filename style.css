@@ -1289,3 +1289,22 @@ body.ui2-ivory .dlscore{font-family:var(--serif)}
  .s2side{flex-wrap:wrap;overflow:visible;height:auto;row-gap:6px}.s2side input,.s2side .s2search{flex:1 1 100%;min-width:0}
  #lb-list{overflow-x:auto}#lb-list table{font-size:13px;width:100%}#lb-list th:nth-child(4),#lb-list td:nth-child(4),#lb-list th:nth-child(5),#lb-list td:nth-child(5){display:none}
 }
+/* KING_NAVGROUPS: section dividers + phone More */
+.vsep{display:block;flex:none;width:60%;height:1px;margin:6px auto;background:var(--line,rgba(127,127,127,.25))}
+body.ui2 .vsep{width:1px;height:18px;margin:0 6px;align-self:center}
+.vmore{display:none!important}
+.vmoresheet{position:fixed;z-index:80;right:10px;bottom:calc(76px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;min-width:190px;padding:6px;border-radius:16px;background:var(--panel,#fff);border:1px solid var(--line,rgba(127,127,127,.25));box-shadow:0 12px 40px rgba(0,0,0,.18)}
+.vmoresheet.hidden{display:none}.vmoresheet button{text-align:left;padding:12px 14px;border-radius:10px;font-size:16px;background:none;border:0;color:inherit}.vmoresheet button:active{background:var(--hov,rgba(127,127,127,.12))}
+@media (max-width:900px) and (pointer:coarse){.vsep{display:none!important}.vmore{display:flex!important}
+ .vtab[data-view="accounts"],.vtab[data-view="tax"],.vtab[data-view="help"],.vtab[data-view="settings"]{display:none!important}}
+/* KING_BTCAL: backtest calendar on the Stats page */
+#v-stats .stcal{margin-top:24px}#v-stats .stcal>.toolbar{position:static}
+/* KING_JTOOLS: "⋯" journal tools */
+.jmorewrap{position:relative;display:inline-flex}.jmoremenu{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:30;flex-direction:column;gap:2px;padding:6px;min-width:170px;border-radius:14px;background:var(--panel,#fff);border:1px solid var(--line,rgba(127,127,127,.25));box-shadow:0 12px 40px rgba(0,0,0,.16)}
+.jmorewrap.open .jmoremenu{display:flex}.jmoremenu>button{text-align:left;width:100%}
+/* KING_JCARDS: phone entry cards */
+.jrows{display:flex;flex-direction:column;gap:8px}.jrowc{display:flex;flex-direction:column;gap:6px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;border:1px solid var(--line,rgba(127,127,127,.2));background:var(--panel,transparent);color:inherit}
+.jrowc .jrt{display:flex;justify-content:space-between;gap:10px;font-size:16px}.jrowc .jrm{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#tj-sort{margin-left:auto}
+#v-stats.st-empty>.stcal{display:block!important}#v-stats.st-empty #st-none{padding:48px 16px 24px}
+@media (max-width:900px) and (pointer:coarse){.jmoremenu{left:0;right:auto}}
