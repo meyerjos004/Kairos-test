@@ -1308,3 +1308,35 @@ body.ui2 .vsep{width:1px;height:18px;margin:0 6px;align-self:center}
 #tj-sort{margin-left:auto}
 #v-stats.st-empty>.stcal{display:block!important}#v-stats.st-empty #st-none{padding:48px 16px 24px}
 @media (max-width:900px) and (pointer:coarse){.jmoremenu{left:0;right:auto}}
+/* KING_OPENMARK: the one-second K-mark reveal on every open */
+.wlock3{overflow:hidden;padding:6px 10px}.wlock3 .kmark{animation:kmIn .62s .2s cubic-bezier(.2,.8,.2,1) both}
+.wlock3 .kword i{display:inline-block;font-style:normal;animation:kwIn .55s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.44s + var(--i) * .05s)}
+.wlock3 .ksweep{position:absolute;top:-20%;bottom:-20%;left:0;width:28%;background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--bg,#fff) 70%,transparent),transparent);transform:translateX(-140%) skewX(-18deg);animation:kSweep .95s .72s cubic-bezier(.45,0,.2,1) both;pointer-events:none}
+@keyframes kmIn{0%{opacity:0;transform:scale(.8) rotate(-6deg);filter:blur(10px)}55%{opacity:1;filter:blur(0)}100%{opacity:1;transform:none;filter:none}}
+@keyframes kwIn{from{opacity:0;transform:translateY(.4em);filter:blur(5px)}to{opacity:1;transform:none;filter:none}}
+@keyframes kSweep{to{transform:translateX(480%) skewX(-18deg)}}
+@media (prefers-reduced-motion:reduce){.wlock3 .kmark,.wlock3 .kword i{animation:none}.wlock3 .ksweep{display:none}}
+/* KING_TOUR10: the 1.0 feature tour */
+.rtour{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;padding:20px;background:color-mix(in srgb,var(--bg,#f4f1ea) 82%,transparent);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:rtFade .35s ease both}
+.rtour.out{animation:rtFade .35s ease reverse both}
+.rtcard{position:relative;width:min(640px,100%);max-height:calc(100dvh - 40px);overflow:auto;padding:34px 36px 26px;border-radius:24px;background:var(--panel,#fff);color:var(--txt,#111);border:1px solid color-mix(in srgb,var(--txt,#111) 10%,transparent);box-shadow:0 30px 80px -30px rgba(0,0,0,.35);animation:rtIn .42s cubic-bezier(.2,.8,.2,1) both}
+.rtcard.fwd{animation-name:rtFwd}.rtcard.back{animation-name:rtBack}
+.rtx{position:absolute;top:12px;right:12px;width:40px;height:40px;border-radius:12px;border:0;background:transparent;color:var(--mut,#777);font-size:24px;line-height:1;cursor:pointer}.rtx:hover{background:var(--hov,rgba(0,0,0,.06));color:var(--txt)}
+.rtstep{font-size:14px;color:var(--mut,#777);margin-bottom:14px}
+.rthead{display:flex;gap:18px;align-items:center;margin-bottom:22px}
+.rtart{flex:none;width:64px;height:64px;border-radius:18px;display:grid;place-items:center;background:var(--ink,#111);color:var(--inktxt,#fff)}.rtart svg{width:34px;height:34px}
+.rtcard h2{margin:0 0 4px;font:600 30px/1.15 var(--serif,Georgia,serif);letter-spacing:-.01em;text-wrap:balance}
+.rtlead{margin:0;font-size:17px;color:var(--mut,#666);line-height:1.45}
+.rtlist{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.rtlist li{display:grid;gap:3px;padding:14px 16px;border-radius:16px;background:var(--panel2,rgba(0,0,0,.03));border:1px solid color-mix(in srgb,var(--txt,#111) 7%,transparent)}
+.rtlist b{font-size:16px;font-weight:600}.rtlist span{font-size:15px;color:var(--mut,#666);line-height:1.45}
+.rtwhere{margin:16px 2px 0;font-size:14px;color:var(--mut,#777)}.rtwhere b{color:var(--txt);font-weight:600}
+.rtnav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:24px}.rtnav button{min-height:46px;padding:0 22px;border-radius:14px;font-size:16px}
+.rtdots{display:flex;gap:6px;align-items:center}.rtdots i{width:7px;height:7px;border-radius:50%;background:color-mix(in srgb,var(--txt,#111) 18%,transparent);transition:width .3s,background .3s}.rtdots i.past{background:color-mix(in srgb,var(--txt,#111) 45%,transparent)}.rtdots i.on{width:22px;border-radius:4px;background:var(--txt,#111)}
+.rtnote{margin:18px auto 6px;max-width:400px;padding:34px 30px 26px;background:#fde68a;color:#3b2f12;border-radius:6px;transform:rotate(-2.2deg);box-shadow:0 18px 30px -18px rgba(0,0,0,.45),0 2px 0 rgba(0,0,0,.05);font-family:"Caveat","Segoe Print","Bradley Hand",cursive}
+.rtnote p{margin:0 0 14px;font-size:34px;line-height:1.15}.rtnote span{display:block;text-align:right;font-size:28px}
+.rtfin{text-align:center;padding:16px 4px 4px}.rtfin .kmark{display:inline-grid!important;place-items:center;width:72px;height:72px;border-radius:20px;font-size:44px;margin-bottom:14px;background:var(--ink,#111);color:var(--inktxt,#fff);font-family:var(--mark,serif)}.rtfin h2{font-size:40px}.rtfin p{max-width:42ch;margin:8px auto 0;color:var(--mut,#666);font-size:16px;line-height:1.5}
+@keyframes rtFade{from{opacity:0}to{opacity:1}}@keyframes rtIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes rtFwd{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}@keyframes rtBack{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+@media (max-width:600px){.rtour{padding:0;place-items:end stretch}.rtcard{width:100%;max-height:100dvh;border-radius:24px 24px 0 0;padding:28px 20px calc(20px + env(safe-area-inset-bottom,0px))}.rtcard h2{font-size:25px}.rthead{gap:14px}.rtart{width:54px;height:54px;border-radius:16px}.rtart svg{width:28px;height:28px}.rtnote p{font-size:30px}.rtdots{display:none}}
+@media (prefers-reduced-motion:reduce){.rtour,.rtcard{animation:none!important}}

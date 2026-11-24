@@ -2519,7 +2519,7 @@ function splash(force) {   // launch intro (Settings → "Intro animation when t
   el.innerHTML = `<canvas class="wfield"></canvas><div class="wwel${n > 18 ? " long" : ""}">${chars.map((c, i) => `<span style="--d:${(i * 0.042).toFixed(3)}s">${c === " " ? "&nbsp;" : esc(c)}</span>`).join("")}<em style="--e:${(0.2 + n * 0.042).toFixed(2)}s">…</em></div><img class="wlock" alt="KAIROS OS Beta"><div class="ktip"><b>Tip</b>${esc(KTIPS[Math.floor(Math.random() * KTIPS.length)])}</div>`;
   document.body.appendChild(el); try { wField(el.querySelector(".wfield")); } catch (e) {}
   if (prefs.sound !== false && !DEMO) { const A = wAudio(); if (A) A.ac.resume().then(() => { if (A.ac.state === "running") kScore(A, D - (performance.now() - t0) / 1000); else A.ac.close(); }).catch(() => {}); }
-  const tm = [setTimeout(() => { el.classList.add("drop"); if (window.kReveal && document.body.classList.contains("ui2") && !document.body.classList.contains("at-kairos")) { el.querySelector(".wlock").style.display = "none"; kReveal(el, { from: 4.3 }); } else if (document.body.classList.contains("ui2") && !document.body.classList.contains("at-kairos")) { const w = el.querySelector(".wlock"), n = document.createElement("div"); n.className = "wlock wlock2"; n.innerHTML = '<span class="kmark">K</span><span class="kword">KAIROS</span>'; w.replaceWith(n); } else el.querySelector(".wlock").src = "brand/kairos-intro.svg?d=" + Date.now(); /* KING_INTROLOGO: the new mark in the theme's own ink (the old pale lockup vanished on light) */ }, D * 1000), setTimeout(() => end(), (D + 2.5) * 1000)];
+  const tm = [setTimeout(() => { el.classList.add("drop"); if (document.body.classList.contains("ui2") && !document.body.classList.contains("at-kairos")) { const w = el.querySelector(".wlock"), n = document.createElement("div"); n.className = "wlock wlock2 wlock3"; n.innerHTML = '<span class="kmark">K</span><span class="kword">' + [..."KAIROS"].map((c, i) => `<i style="--i:${i}">${c}</i>`).join("") + '</span><span class="ksweep" aria-hidden="true"></span>'; w.replaceWith(n); } /* KING_OPENMARK (King, Nov 24): every open = a one-second K-mark reveal (the car clip\'s last half second was too short); the full car stays on sign-in + the first-time welcome */ else el.querySelector(".wlock").src = "brand/kairos-intro.svg?d=" + Date.now(); /* KING_INTROLOGO: the new mark in the theme's own ink (the old pale lockup vanished on light) */ }, D * 1000), setTimeout(() => end(), (D + 2.5) * 1000)];
   let ended = false; const end = () => { if (ended) return; ended = true; tm.forEach(clearTimeout); el.classList.add("out"); setTimeout(() => el.remove(), 750);
     setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 250); };
   el.addEventListener("pointerdown", end); addEventListener("keydown", function k(e) { if (e.key === "Escape" || e.key === " " || e.key === "Enter") { removeEventListener("keydown", k); end(); } }); }
@@ -4502,3 +4502,55 @@ ui2Apply(); setTimeout(ui2Apply, 1500); setTimeout(ui2Apply, 4000);
   menu.addEventListener("click", () => wrap.classList.remove("open"));
   document.addEventListener("click", (e) => { if (!wrap.contains(e.target)) wrap.classList.remove("open"); });
 })();
+/* KING_TOUR10 (King, Nov 14 layout; Nov 23: plain click-through pages): the KAIROS 1.0 feature tour. A note from Josh, ten stops, then the app.
+   Forced the first time (the release intro calls it with its host: no close, no Esc); from Settings → "Take the tour" it can be closed any time. */
+window.releaseTour = function (host, done) {
+  const forced = !!host, I = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+  const STOPS = [
+    ["Reese in the app", "Learn from the trader whose model KAIROS is built around.", I('<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.6 4-5.5 7-5.5s5.8 1.9 7 5.5"/>'),
+      [["Reese log", "Every session he traded. Replay it first, then see what he took and how yours compares."], ["His videos", "His breakdowns open right next to the chart."], ["His 1-minute view", "The same timeframe he uses for entries."]], "Learn → Reese log"],
+    ["Ghost trades + day recap", "See the trades you didn't take, and how the day really went.", I('<path d="M7 20V10a5 5 0 0 1 10 0v10l-2.5-1.8L12 20l-2.5-1.8z"/><circle cx="10" cy="10" r=".8"/><circle cx="14" cy="10" r=".8"/>'),
+      [["Ghost trades", "Reese's entries and exits show on your chart after the session, arrows and notes included."], ["Day recap", "When a replay day ends: your backtest trades next to your real ones, side by side."]], "Trade → finish a replay day"],
+    ["Screenshot → replay", "Saw a chart on Discord or X? Jump straight to that moment.", I('<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 15l5-5 4 4 3-3 6 6"/><path d="M15 3v4M13 5h4"/>'),
+      [["Paste it", "Ctrl/Cmd+V on the Trade page, or Date picker → From screenshot."], ["KAIROS reads it", "Symbol, date and time, read in your browser. Nothing is uploaded."], ["Replay from there", "The chart loads at that exact candle."]], "Trade → paste a screenshot"],
+    ["Your real journal", "Live, backtest and Reese trades in one calendar.", I('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 9h16M9 4v16"/>'),
+      [["Calendar of entries", "Tap a day to see its trades; sort by newest, biggest win, best R."], ["Notion, both ways", "Import your Notion journal and send new live trades back."], ["Backups on your computer", "Your journal also lives in a folder you own, plus a file that opens with no site at all."]], "Journal"],
+    ["Your vibe", "Make the workspace feel like yours.", I('<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16c1.5 0 2-1 2-2s-1-1.5-1-2.5 1-1.5 2-1.5h2a3 3 0 0 0 3-3"/><circle cx="8" cy="11" r="1"/><circle cx="11" cy="7.5" r="1"/><circle cx="15.5" cy="8" r="1"/>'),
+      [["Spotify + YouTube", "Music and videos in a pop-out window beside the chart."], ["Themes", "Ivory and Onyx, pixel themes and candle skins."], ["Templates", "Save your chart setup and switch in one click."]], "Settings → Appearance & themes"],
+    ["Prop firm mode", "Practice the way your funded account actually scores you.", I('<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>'),
+      [["Eval and funded accounts", "Daily loss limit and trailing drawdown, tracked live."], ["LucidFlex sim", "The rules of the firm you trade, built in."], ["Tax", "What to set aside from every payout, worked out for you."]], "Accounts · Tax"],
+    ["The crew", "Backtest with your friends instead of alone.", I('<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3 20c.8-3.2 3.2-5 6-5s5.2 1.8 6 5"/><path d="M15 15.3c2.6.2 4.4 1.8 5 4.7"/>'),
+      [["Side by side", "Replay the same start time, each at your own pace."], ["1v1 + challenges", "Same hidden day, highest P&L wins. Or everyone takes the same week."], ["Leaderboard, shared trades, chat", "Share a trade, rate each other's, talk it through."]], "Friends"],
+    ["Discipline", "Only take the trades you'd be proud of.", I('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".9"/>'),
+      [["A+ only", "A checklist before the click. No setup name, no trade."], ["Risk sizing", "Contracts worked out from your stop and risk."], ["MAE / MFE", "How far each trade went against you and for you, so you set better stops and targets."]], "Trade → order pad"],
+    ["Level up", "Every rep counts.", I('<path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/>'),
+      [["XP and levels", "Earned from lessons, drills and clean trades."], ["Your profile", "Avatar frames, banners, titles and badges that unlock as you level."], ["Name effects", "Your name shows up in style in chat, Live and the leaderboard."]], "Learn · Settings → Profile"],
+    ["Training", "A real path from new to consistent.", I('<path d="M3 8l9-4 9 4-9 4z"/><path d="M7 10v5c1.5 1.5 3.2 2 5 2s3.5-.5 5-2v-5"/><path d="M21 8v6"/>'),
+      [["Course + guided weeks", "Short lessons, then trade the same week Reese did."], ["Take it or fade it", "Real setups, paused before the entry. Speed run: 10 in 5 minutes."], ["Fix my mistakes", "Daily practice built from the mistakes you tag."]], "Learn"],
+  ];
+  const N = STOPS.length; let i = 0;
+  if (!document.getElementById("rt-font")) { const l = document.createElement("link"); l.id = "rt-font"; l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap"; document.head.appendChild(l); }
+  const el = document.createElement("div"); el.id = "rtour"; el.className = "rtour"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "KAIROS 1.0 tour");
+  document.body.appendChild(el);
+  const close = () => { removeEventListener("keydown", key); el.classList.add("out"); setTimeout(() => el.remove(), 380); try { prefs.tourDone = "1.0"; savePrefs(); } catch (e) {} try { done && done(); } catch (e) {} };
+  const dots = () => `<div class="rtdots" aria-hidden="true">${Array.from({ length: N }, (_, k) => `<i class="${k === i - 1 ? "on" : k < i - 1 ? "past" : ""}"></i>`).join("")}</div>`;
+  const draw = (dir) => {
+    let body;
+    if (i === 0) body = `<div class="rtnote"><p>Pay attention, there's some good stuff here.</p><span>-Josh</span></div><div class="rtnav"><span></span><button class="primary rtnext" data-t="n">Show me</button></div>`;
+    else if (i > N) body = `<div class="rtfin"><span class="kmark">K</span><h2>KAIROS 1.0</h2><p>That's the tour. Every stop lives in the app now; this tour is in Settings → Intros &amp; releases whenever you want it again.</p></div><div class="rtnav"><button class="ghost" data-t="b">Back</button><button class="primary rtnext" data-t="x">Open KAIROS</button></div>`;
+    else { const [t, lead, ic, items, where] = STOPS[i - 1];
+      body = `<div class="rtstep">Stop ${i} of ${N}</div><div class="rthead"><div class="rtart">${ic}</div><div><h2>${t}</h2><p class="rtlead">${lead}</p></div></div>
+        <ul class="rtlist">${items.map(([a, b]) => `<li><b>${a}</b><span>${b}</span></li>`).join("")}</ul><div class="rtwhere">Find it: <b>${where}</b></div>
+        <div class="rtnav"><button class="ghost" data-t="b">Back</button>${dots()}<button class="primary rtnext" data-t="n">${i === N ? "Finish" : "Next"}</button></div>`; }
+    el.innerHTML = `<div class="rtcard ${dir || ""}">${forced ? "" : '<button class="rtx" data-t="x" aria-label="Close the tour">×</button>'}${body}</div>`;
+    try { el.querySelector(".rtnext").focus({ preventScroll: true }); } catch (e) {}
+    try { tone("click"); } catch (e) {}
+  };
+  const go = (d) => { const j = Math.max(0, Math.min(N + 1, i + d)); if (j === i) return; i = j; draw(d > 0 ? "fwd" : "back"); };
+  el.onclick = (e) => { const b = e.target.closest("[data-t]"); if (!b) return; const t = b.dataset.t; if (t === "n") go(1); else if (t === "b") go(-1); else if (t === "x") { if (i > N || !forced) close(); } };
+  const key = (e) => { if (e.key === "ArrowRight" || e.key === "Enter") { e.preventDefault(); if (i > N) close(); else go(1); } else if (e.key === "ArrowLeft") go(-1); else if (e.key === "Escape" && !forced) close(); };
+  addEventListener("keydown", key);
+  let sx = null; el.addEventListener("touchstart", (e) => { sx = e.touches[0].clientX; }, { passive: true }); el.addEventListener("touchend", (e) => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx; sx = null; if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1); });
+  draw();
+};
+if (new URLSearchParams(location.search).has("tour10")) setTimeout(() => releaseTour(null, () => {}), 1500);   // KING_TOUR10 test link: ?tour10
