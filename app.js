@@ -1831,7 +1831,7 @@ async function renderStats() {
   let tr = (await db.allTrades()).slice().sort((a, b) => a.t_exit - b.t_exit); const A = $("st-acct").value, S = $("st-sym").value, D = +$("st-range").value;
   if (A === "none") tr = tr.filter((t) => !t.account_id); else if (A) tr = tr.filter((t) => t.account_id === A); if (S) tr = tr.filter((t) => t.symbol === S);
   if (D && tr.length) { const end = tr[tr.length - 1].t_exit; tr = tr.filter((t) => t.t_exit >= end - D * 86400); }
-  { const v = $("v-stats"); v.classList.toggle("st-empty", !tr.length); let e = $("st-none"); if (!e) { e = document.createElement("div"); e.id = "st-none"; e.className = "empty"; e.textContent = "Trade a few replay days and your stats fill in here."; v.querySelector(".toolbar").after(e); } }   // KING_STEMPTY (night Nov 22, waits on King's yes): one line instead of six "No trades yet" cards
+  { const v = $("v-stats"); v.classList.toggle("st-empty", !tr.length); let e = $("st-none"); if (!e) { e = document.createElement("div"); e.id = "st-none"; e.className = "empty"; e.innerHTML = "<b>Nothing here yet</b><span>Trade a few replay days and your stats fill in here.</span>"; /* KING_STEMPTY2 (King, Nov 22, #365): bigger, centered, title above */ v.querySelector(".toolbar").after(e); } }   // KING_STEMPTY (night Nov 22, waits on King's yes): one line instead of six "No trades yet" cards
   window.stTr = tr;   // KING_STATDETAIL: the detail view drills into the same trades
   const n = tr.length, W = tr.filter(isW), L = tr.filter(isL), BEs = tr.filter(isBE), sum = (a) => a.reduce((s, t) => s + (+t.pnl || 0), 0), gw = sum(W), gl = -sum(L);
   let run = 0, pk = 0, dd = 0, cw = 0, cl = 0, bw = 0, bl = 0; const eq = [];
@@ -4447,3 +4447,11 @@ function ui2Banner(m) { let b = document.getElementById("ui2banner"); const want
   b.onclick = () => { try { cmdkOpen(); } catch (e) {} }; const g = T.querySelector(".grp.replay"); T.insertBefore(b, g || null); })();
 if ($("s-ui2")) $("s-ui2").onchange = (e) => { prefs.ui2 = e.target.value || "ivory"; savePrefs(); ui2Apply(); };
 ui2Apply(); setTimeout(ui2Apply, 1500); setTimeout(ui2Apply, 4000);
+/* KING_PHONENOTRADE (King, Nov 22, #363): no Trade/chart side on phones. Phones open on the Journal and any jump to Trade lands there too.
+   Journal, Calendar, Stats, Accounts, Learn, Friends, Tax, Helper and Settings stay. */
+(function () {
+  const ph = () => matchMedia("(max-width:900px) and (pointer:coarse)").matches, orig = view;
+  view = function (v) { return orig(v === "trade" && ph() ? "tj" : v); };
+  const go = () => setTimeout(() => { if (ph() && document.body.classList.contains("v-trade")) view("tj"); }, 400);   // after journal.js is ready
+  if (document.readyState === "complete") go(); else window.addEventListener("load", go);
+})();

@@ -1277,3 +1277,15 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px soli
 .dlrec{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}.dlrec .card{margin:0}
 .dlscore{font:700 30px/1.1 var(--display);margin:6px 0 2px;font-variant-numeric:tabular-nums}.dlscore i{font-style:normal;color:var(--mut);margin:0 4px;font-weight:400}
 body.ui2-ivory .dlscore{font-family:var(--serif)}
+
+/* KING_STEMPTY2 (King, Nov 22, #365): empty Stats = a bigger centered line with "Nothing here yet" above */
+#st-none{text-align:center;padding:72px 16px;font-size:17px;line-height:1.5;color:var(--mut)}
+#st-none b{display:block;font-size:24px;font-weight:600;color:var(--fg,inherit);margin-bottom:6px}#st-none span{display:block;max-width:34ch;margin:0 auto}
+/* KING_PHONENOTRADE (#363): no Trade tab on phones */
+@media (max-width:900px) and (pointer:coarse){.vtab[data-view="trade"]{display:none!important}}
+/* KING_PHONEFIT (King, Nov 22, #364): tab rows wrap instead of running off the screen; Settings search gets its own row; leaderboard fits */
+@media (max-width:900px) and (pointer:coarse){
+ #ftabs,#ltabs{flex-wrap:wrap;overflow:visible;height:auto;row-gap:4px}#ftabs>button,#ltabs>button{flex:1 1 auto}
+ .s2side{flex-wrap:wrap;overflow:visible;height:auto;row-gap:6px}.s2side input,.s2side .s2search{flex:1 1 100%;min-width:0}
+ #lb-list{overflow-x:auto}#lb-list table{font-size:13px;width:100%}#lb-list th:nth-child(4),#lb-list td:nth-child(4),#lb-list th:nth-child(5),#lb-list td:nth-child(5){display:none}
+}
