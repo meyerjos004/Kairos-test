@@ -420,7 +420,7 @@ async def main():
         await pg.click("#fxb-x")
         # KING_PROFILE2
         await E("profileEditor()"); await pg.wait_for_timeout(700)
-        check("profile editor: preview + 12 effects", await E('!!document.querySelector("#pe-prev .pcard") && document.querySelectorAll("[data-nf]").length') == 13)
+        check("profile editor: preview + 20 effects", await E('!!document.querySelector("#pe-prev .pcard") && document.querySelectorAll("[data-nf]").length') == 21)   # KING_SIGFX: 20 effects + none
         check("effects unlock by level (most locked at Lv1)", await E('document.querySelectorAll("[data-nf].lock").length') >= 10)
         await pg.click('[data-bn="galaxy"]'); await pg.wait_for_timeout(150)
         check("banner preview updates", await E('!!document.querySelector("#pe-prev .ban-galaxy")'))
@@ -560,7 +560,7 @@ async def main():
         check("Esc closes chart settings", await E("document.getElementById('chartset').classList.contains('hidden')"))
         check("icon buttons named", await E("['qdn','qup','cs-x','jc-prev','jc-next','plbtn','blindbtn'].every(i=>{const b=document.getElementById(i);return b&&(b.getAttribute('aria-label')||b.title)})"))
         # Nov 12 walkthrough fixes
-        check("name effects: keyword gets an effect", await E("nmFx('Juicy Ben','x').includes('nfx-juicy') && !nmFx('Ben','y').includes('nfx')"))
+        check("name effects: keyword gets an effect, any other name a signature one", await E("nmFx('Juicy Ben','x').includes('nfx-juicy') && nmFx('Ben','y').includes('nfx-sig') && nmFx('Ben','y') === nmFx('Ben','z')"))
         check("fib levels come from settings", await E("(prefs.fibLv=[0,0.5,1], fibList().length===3) && (prefs.fibLv=null, fibList().length===8)"))
         check("chart settings: session breaks + prev close apply", await E("(prefs.cs=Object.assign({},prefs.cs||{},{brk:true,pdc:'l'}), csApplyAll(), true) && !!panes[0].csl && 'pdc' in panes[0].csl"))
         await E("prefs.cs=Object.assign({},prefs.cs,{brk:false,pdc:'h'}); csApplyAll()")
@@ -818,6 +818,12 @@ check("tour: coach stop + little things card", '"Your coach"' in _src and '"The 
 check("chart text picks a readable color", "function kReadable(" in _src and _src.count("kReadable(") >= 8)
 check("journal: Reese chip off by default", 'books: ["live", "backtest"]' in _jn and "reeseOff1" in _jn)
 check("reveal sound: hybrid engine", "KING_HYBRIDSND" in _rv)
+# KING_FRIENDS2 / KING_SIGFX (Nov 24)
+_ix = open(ROOT + "/index.html").read()
+check("friends: invite button + who's on + leaderboard on top", 'id="fr-invite"' in _ix and 'id="fr-status"' in _ix and _ix.index('id="lb-list"') < _ix.index('id="fr-status"'))
+check("friends: chat has shared trades tab, + files and mic", 'id="fch-tabs"' in _ix and 'id="chat-plus"' in _ix and 'id="chat-mic"' in _ix and 'id="f-sh"' in _ix)
+check("friends: person menu (click + right-click)", "async function personMenu(" in _src and '"contextmenu"' in _src)
+check("names: signature effect for any name + 20 picks", "function sigFor(" in _src and _src.count('", "') > 0 and '["outline", "Outline glow", 19]' in _src)
 # KING_BTCAL check lives in the browser part; static checks below
 # KING_NOCONFIRM (Nov 24): no gray browser confirm() pop-ups left; the in-site yes/no box exists. KING_SETUPAFTERAUTH, KING_WELNAME, rvc stage class, invite icon
 check("no browser confirm() left", not re.findall(r'(?<![\w.])confirm\(', _jsall), re.findall(r'.{30}(?<![\w.])confirm\(.{20}', _jsall))

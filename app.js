@@ -2189,14 +2189,17 @@ async function loadMe() {
   if (!me) { const nm = (user.email || "me").split("@")[0].replace(/[0-9_.]+$/, "") || "me"; const r = await sb.from("profiles").insert({ name: nm }).select().single(); me = r.data || { user_id: user.id, name: nm, share_stats: true }; names[user.id] = me.name; }
   else sb.from("profiles").update({ seen_at: new Date().toISOString() }).eq("user_id", user.id).then(() => {});
 }
-function ftab(k) { document.querySelectorAll("#ftabs button").forEach((b) => b.classList.toggle("on", b.dataset.f === k)); ["lv", "dl", "lb", "ch", "sh", "sg"].forEach((x) => $("f-" + x).classList.toggle("hidden", x !== k)); ({ lv: renderLive, dl: renderDuel, lb: renderLB, ch: renderCh, sh: renderSh, sg: renderSg })[k](); }
+function ftab(k) {   // KING_FRIENDS2 (King, Nov 24): games = 1v1s / same-week / side by side; Shared trades lives in the chat; Suggestions opens from the top bar
+  if (k === "sh") return chatTab("sh"); if (k === "sg") return frSug(true); if (k === "lb") { try { $("lb-list").scrollIntoView({ behavior: "smooth", block: "start" }); } catch (e) {} return renderLB(); }
+  if (!["lv", "dl", "ch"].includes(k)) k = "dl";
+  document.querySelectorAll("#ftabs button").forEach((b) => b.classList.toggle("on", b.dataset.f === k)); ["lv", "dl", "ch"].forEach((x) => $("f-" + x).classList.toggle("hidden", x !== k)); ({ lv: renderLive, dl: renderDuel, ch: renderCh })[k](); }
 // ---- live sessions (Realtime presence + invites), like a game lobby
 let liveCh = null, live = {}, room = null, roomSub = null;
 function myLive() { const dayP = dayRpl(); return { name: (me && me.name) || "me", room: room && room.id, sym, start: sess ? sess.start_ts : null, t: nowT() || null, pnl: Math.round(hist.reduce((a, t) => a + (+t.pnl || 0), 0)), day: Math.round(dayP), n: hist.length, playing: !!timer, done: !!(room && room.done), duel: duel && duel.id, dpnl: duel ? Math.round(duelStats().pnl) : null, at: Date.now() }; }
 function initLive() {
   if (DEMO) { live = { b: [{ name: "Ben", sym: "NQ", t: Date.parse("2026-10-14T14:20:00Z") / 1000, pnl: 340, n: 2, playing: true }], w: [{ name: "Will", sym: "ES", t: Date.parse("2026-09-02T13:55:00Z") / 1000, pnl: -120, n: 1, playing: false }] }; return; }
   liveCh = sb.channel("live", { config: { presence: { key: user.id }, broadcast: { self: false } } });
-  liveCh.on("presence", { event: "sync" }, () => { live = liveCh.presenceState(); delete live[user.id]; livePill(); if (!$("f-lv").classList.contains("hidden") && !$("v-friends").classList.contains("hidden")) renderLive(); })
+  liveCh.on("presence", { event: "sync" }, () => { live = liveCh.presenceState(); delete live[user.id]; livePill(); if (!$("v-friends").classList.contains("hidden")) { renderStatus(); if (!$("f-lv").classList.contains("hidden")) renderLive(); } })
     .on("broadcast", { event: "invite" }, ({ payload: p }) => { if (p.to !== user.id) return; sfx("fill"); buzz(40);
       dlg(`<h3>${esc(p.fromName)} invited you</h3><p class="small">Replay <b>${esc(p.sym)}</b> from <b>${fmt(loc(p.start))} New York</b> together. You each trade at your own pace and compare at the end.</p>`, () => joinRoom({ id: p.room, host: p.from, sym: p.sym, start: p.start })); const ok = $("dl-ok"); if (ok) ok.textContent = "Join"; })
     .on("broadcast", { event: "duel" }, ({ payload: p }) => { if (p.to !== user.id) return; sfx("fill"); buzz(40); toast("⚔ " + p.fromName + " challenged you to a 1v1 (Friends → 1v1)"); if (!$("f-dl").classList.contains("hidden")) renderDuel(); })   // KING_DUEL
@@ -2231,7 +2234,7 @@ function lbTable(rows) { if (!rows.length) return '<div class="empty">No trades 
   return `<table class="bt lb"><tr><th></th><th>Trader</th><th>Trades</th><th>Win</th><th>Avg R</th><th>Best trade</th><th>Net</th></tr>${rows.map((r, i) => `<tr class="${me && r.user_id === me.user_id ? "mine" : ""}"><td>${medal[i] || i + 1}</td><td>${nmFx(r.name, r.user_id)}</td><td>${r.trades}</td><td>${r.trades ? Math.round((100 * r.wins) / r.trades) : 0}%</td><td>${r.avg_r ?? "—"}</td><td>${money(+r.best || 0)}</td><td class="${+r.net >= 0 ? "pos-up" : "pos-dn"}">${money(+r.net)}</td></tr>`).join("")}</table>`; }
 async function renderLB() { const D = +$("lb-range").value, now = Math.floor(Date.now() / 1000); let t0 = 0, t1 = 9999999999;
   if (D) { const all = await db.allTrades(); const end = all.length ? Math.max(...all.map((t) => t.t_entry)) : now; t0 = end - D * 86400; }
-  $("lb-share").checked = !me || me.share_stats !== false; $("lb-list").innerHTML = lbTable(await lbRows(t0, t1, $("lb-sym").value)); }
+  $("lb-share").checked = !me || me.share_stats !== false; const rows = await lbRows(t0, t1, $("lb-sym").value); frLB = rows; $("lb-list").innerHTML = lbTable(rows); }
 /* ---------------- KING_DUEL (Nov 22): competitive 1v1 ----------------
    Live (above) = trade the same day together, no winner. 1v1 = a real match: you challenge a friend, you both get the same
    hidden day and session with the same rules, each trades at their own pace, and when the session's replay clock runs out
@@ -2364,26 +2367,100 @@ async function renderSg() { let list = []; if (DEMO) list = mem.sg || []; else {
   $("sg-list").innerHTML = list.map((x) => `<div class="card sgc"><button class="vote ${(x.votes || []).includes(uid) ? "on" : ""}" data-vote="${x.id}">▲ ${(x.votes || []).length}</button><div class="sgb"><div>${x.kind === "fix" ? "🔧 " : "💡 "}${esc(x.body)}</div>${x.plan ? `<details class="tiny"><summary>Claude's plan</summary><div class="muted">${esc(x.plan)}</div></details>` : ""}${x.result ? `<div class="tiny up">${esc(x.result)}</div>` : ""}<div class="tiny muted">${who(x.user_id, "")} · ${ago(x.created_at)} · <span class="pill ${x.status === "done" ? "up" : ""}">${ST[x.status] || x.status}</span></div></div>
     ${isAdmin ? `<select data-st="${x.id}">${Object.keys(ST).map((s) => `<option value="${s}" ${s === x.status ? "selected" : ""}>${ST[s]}</option>`).join("")}</select>` : ""}</div>`).join("") || '<div class="empty">Nothing yet. Spot a bug or want something? Send it.</div>'; }
 async function addSg() { const b = $("sg-text").value.trim(); if (b.length < 3) return; const kind = $("sg-kind").value; if (DEMO) (mem.sg = mem.sg || []).push({ id: "g" + Date.now(), user_id: "demo", body: b, kind, status: "new", votes: [], created_at: new Date().toISOString() }); else { const { error } = await sb.from("suggestions").insert({ body: b, kind }); if (error) return toast(error.message); } $("sg-text").value = ""; renderSg(); }
-function chatRow(m) { const mine = me && m.user_id === me.user_id; return `<div class="cm ${mine ? "mine" : ""}"><span class="cn">${who(m.user_id, "trader")}</span><span class="cb">${esc(m.body)}</span><span class="ct">${new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span></div>`; }
+function chatRow(m) { const mine = me && m.user_id === me.user_id, uid = m.user_id;   // KING_FRIENDS2: avatar merged with the bubble; avatar + name open the person menu (click or right-click)
+  return `<div class="cm ${mine ? "mine" : ""}" data-uid="${esc(uid || "")}">${avatarHtml(uid, 30, "cav")}<div class="cbx"><div class="cmh"><span class="cn" data-pm="${esc(uid || "")}">${who(uid, "trader")}</span><span class="ct">${new Date(m.created_at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span></div>${m.body ? `<span class="cb">${esc(m.body)}</span>` : ""}${attHtml(m.att)}</div></div>`; }
 async function initChat() { let list = [];
   if (DEMO) list = mem.msgs || (mem.msgs = [{ id: 1, user_id: "b", body: "who's backtesting tonight", created_at: new Date(Date.now() - 6e5).toISOString() }]);
-  else { const { data } = await sb.from("messages").select("id,cid,user_id,body,created_at").eq("room", "lobby").order("created_at", { ascending: false }).limit(150); list = (data || []).reverse();
+  else { const { data } = await sb.from("messages").select("id,cid,user_id,body,att,created_at").eq("room", "lobby").order("created_at", { ascending: false }).limit(150); list = (data || []).reverse();
     /* live chat rides Realtime broadcast: instant, no database round trip, nothing to clog */
     if (!chatSub) { chatSub = sb.channel("lobby-bc", { config: { broadcast: { self: false } } }).on("broadcast", { event: "msg" }, ({ payload }) => addChat(payload)).subscribe(); } }
   const box = $("chat"), f = document.createDocumentFragment(); box.innerHTML = "";
   list.forEach((m) => { const d = document.createElement("div"); d.innerHTML = chatRow(m); d.firstChild.dataset.mid = m.cid || m.id; f.appendChild(d.firstChild); });
-  box.appendChild(f); box.scrollTop = 1e9; const lastT = list.length ? Date.parse(list[list.length - 1].created_at) : 0; $("chatdot").classList.toggle("hidden", !(lastT > chatSeen && list[list.length - 1].user_id !== (me && me.user_id))); }
+  box.appendChild(f); fillAtt(box); box.scrollTop = 1e9; const lastT = list.length ? Date.parse(list[list.length - 1].created_at) : 0; $("chatdot").classList.toggle("hidden", !(lastT > chatSeen && list[list.length - 1].user_id !== (me && me.user_id))); }
 let chatQ = [], chatT = 0;
 function flushChat() { chatT = 0; const box = $("chat"), f = document.createDocumentFragment(); let other = false;
   chatQ.splice(0).forEach((m) => { const k = m.cid || m.id; if (box.querySelector(`[data-mid="${k}"]`)) return; const d = document.createElement("div"); d.innerHTML = chatRow(m); d.firstChild.dataset.mid = k; f.appendChild(d.firstChild); if (!me || m.user_id !== me.user_id) other = true; });
-  const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 80; box.appendChild(f); while (box.children.length > 400) box.firstChild.remove(); if (stick) box.scrollTop = 1e9;
+  const stick = box.scrollHeight - box.scrollTop - box.clientHeight < 80; box.appendChild(f); fillAtt(box); while (box.children.length > 400) box.firstChild.remove(); if (stick) box.scrollTop = 1e9;
   if (other) { const vis = !$("v-friends").classList.contains("hidden") || (prefs.side && !$("md-friends").classList.contains("hidden") && !$("v-trade").classList.contains("hidden")); if (!vis) { $("chatdot").classList.remove("hidden"); $("frdot").classList.remove("hidden"); } sfx("click"); } }
 function addChat(m) { chatQ.push(m); if (!chatT) chatT = requestAnimationFrame(flushChat); }
-async function sendChat() { const b = $("chat-in").value.trim().slice(0, 2000); if (!b) return; $("chat-in").value = "";
-  const m = { cid: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()), user_id: DEMO ? "demo" : me && me.user_id, body: b, created_at: new Date().toISOString() };
+/* ---------------- KING_FRIENDS2 (King, Nov 24): the Friends page as a status page ----------------
+   Leaderboard on top, "Who's on" (online / replaying / last seen), an Invite button top-right, and a person menu (click a friend, click
+   an avatar or name in chat, or right-click a name) with 1v1, invite to my session, their recent weeks and their leaderboard spot.
+   Chat: avatars merged with the bubbles, + for pictures/files, a mic for voice clips (Supabase Storage bucket "chat", private, signed URLs). */
+let frLB = [], chatPending = [], micRec = null;
+const hue = (s) => { let h = 0; for (const c of String(s || "?")) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+function avatarHtml(uid, size, cls) { const P = profs[uid] || (me && uid === me.user_id ? me : {}) || {}, nm = names[uid] || P.name || (uid === "demo" ? "You" : "?"), h = hue(nm + (P.username || ""));
+  return `<span role="button" tabindex="0" class="av ${cls || ""} avf-${esc(P.frame || "none")}" data-pm="${esc(uid || "")}" style="--s:${size}px;--h:${h}" title="${esc(nm)}" aria-label="${esc(nm)}"><span>${esc((nm[0] || "?").toUpperCase())}</span></span>`; }
+function friendIds() { const ids = new Set(Object.keys(names)); Object.keys(live).forEach((k) => ids.add(k)); ids.delete(DEMO ? "demo" : me && me.user_id); return [...ids]; }
+function liveOf(uid) { const x = live[uid]; return x && x[0] && (x[0].at == null || Date.now() - x[0].at < 120000 || DEMO) ? x[0] : null; }
+function statusOf(uid) { const x = liveOf(uid), P = profs[uid] || {};
+  if (x && duel && x.duel) return ["duel", "In a 1v1"];
+  if (x && x.t) return [x.playing ? "play" : "on", `${x.playing ? "Replaying" : "Paused on"} ${esc(x.sym || "")} · ${fmt(loc(x.t)).slice(0, 10)}`];
+  if (x) return ["on", "Online"];
+  return ["off", P.seen_at ? "Last seen " + ago(P.seen_at) : "Offline"]; }
+function renderStatus() { const box = $("fr-status"); if (!box) return; const ids = friendIds(), order = { play: 0, duel: 0, on: 1, off: 2 };
+  const rows = ids.map((id) => ({ id, st: statusOf(id) })).sort((a, b) => order[a.st[0]] - order[b.st[0]] || String(names[a.id] || "").localeCompare(names[b.id] || ""));
+  const on = rows.filter((r) => r.st[0] !== "off").length; $("fr-oncount").textContent = rows.length ? `${on} of ${rows.length} online` : "";
+  box.innerHTML = rows.map(({ id, st }) => { const x = liveOf(id); return `<button class="frp st-${st[0]}" data-pm="${esc(id)}">${avatarHtml(id, 40, "frav")}<i class="frdot"></i><span class="frpt"><b>${who(id, "friend")}</b><span class="tiny muted">${st[1]}</span></span>${x && x.t ? `<span class="frpnl ${x.pnl >= 0 ? "pos-up" : "pos-dn"}">${money(x.pnl)}</span>` : ""}</button>`; }).join("") ||
+    '<div class="empty">No friends here yet. Use Invite to bring the crew in.</div>'; }
+function popAt(html, x, y, cls) { document.querySelectorAll(".frpop").forEach((e) => e.remove()); const el = document.createElement("div"); el.className = "frpop pop " + (cls || ""); el.innerHTML = html; document.body.appendChild(el);
+  const r = el.getBoundingClientRect(); el.style.left = Math.max(8, Math.min(innerWidth - r.width - 8, x)) + "px"; el.style.top = Math.max(8, Math.min(innerHeight - r.height - 8, y)) + "px";
+  const off = (e) => { if (!el.contains(e.target)) { el.remove(); removeEventListener("pointerdown", off, true); removeEventListener("keydown", esck, true); } }, esck = (e) => { if (e.key === "Escape") { el.remove(); removeEventListener("pointerdown", off, true); removeEventListener("keydown", esck, true); } };
+  setTimeout(() => { addEventListener("pointerdown", off, true); addEventListener("keydown", esck, true); }, 0); return el; }
+async function personMenu(uid, x, y) { if (!uid || uid === (DEMO ? "demo" : me && me.user_id)) return; const st = statusOf(uid), P = profs[uid] || {};
+  const rank = frLB.findIndex((r) => r.user_id === uid), lr = rank >= 0 ? frLB[rank] : null;
+  let wk = []; try { let list = []; if (DEMO) list = mem.ch || []; else { const { data } = await sb.from("challenges").select("*").order("created_at", { ascending: false }).limit(30); list = data || []; }
+    for (const c of list.slice(0, 12)) { const rows = await lbRows(c.start_ts, c.end_ts, c.symbol), r = rows.find((z) => z.user_id === uid); if (r || c.user_id === uid) wk.push([c, r]); if (wk.length >= 4) break; } } catch (e) {}
+  let rec = null; try { rec = duelRecord(await duelRows(), uid); } catch (e) {}
+  const el = popAt(`<div class="pmh">${avatarHtml(uid, 52, "pmav")}<div><b class="pmn">${who(uid, "friend")}</b>${P.username ? `<span class="tiny muted">@${esc(P.username)}</span>` : ""}<span class="pmst st-${st[0]}"><i></i>${st[1]}</span></div></div>
+    <div class="pmstats"><div><span class="tiny muted">Leaderboard</span><b>${lr ? "#" + (rank + 1) : "—"}</b></div><div><span class="tiny muted">Net</span><b class="${lr && +lr.net >= 0 ? "pos-up" : "pos-dn"}">${lr ? money(+lr.net) : "—"}</b></div><div><span class="tiny muted">1v1 vs you</span><b>${rec ? `${rec.w}-${rec.l}${rec.t ? "-" + rec.t : ""}` : "—"}</b></div></div>
+    <div class="pmacts"><button class="primary" data-pa="duel">⚔ 1v1</button><button data-pa="inv">Invite to my session</button></div>
+    <div class="pmwk"><div class="tiny muted">Recent weeks backtested</div>${wk.length ? wk.map(([c, r]) => `<button class="pmw" data-pa="wk" data-ch="${esc(c.id)}"><span>${esc(c.title)}</span>${r ? `<b class="${+r.net >= 0 ? "pos-up" : "pos-dn"}">${money(+r.net)}</b>` : '<span class="tiny muted">set it</span>'}</button>`).join("") : '<div class="tiny muted pmnone">No same-week challenges yet.</div>'}</div>`, x, y, "pmenu");
+  el.onclick = (e) => { const b = e.target.closest("[data-pa]"); if (!b) return; el.remove(); const a = b.dataset.pa;
+    if (a === "duel") duelNew(uid); else if (a === "inv") invite(uid); else if (a === "wk") { view("friends"); ftab("ch"); } }; }
+function inviteMenu(btn) { const r = btn.getBoundingClientRect(), ids = friendIds();
+  const el = popAt(`<div class="imh"><b>Invite</b><span class="tiny muted">Pick what you want to do together</span></div>
+    <div class="imsec"><div class="tiny muted">To my session · replay the same start time, each at your own pace</div><div class="imppl">${ids.map((id) => `<button data-ia="inv" data-u="${esc(id)}">${avatarHtml(id, 26)}<span>${who(id, "friend")}</span><i class="frdot st-${statusOf(id)[0]}"></i></button>`).join("") || '<span class="tiny muted">No friends yet</span>'}</div></div>
+    <button class="imrow" data-ia="duel"><b>⚔ New 1v1</b><span class="tiny muted">Same hidden day, highest P&amp;L wins</span></button>
+    <button class="imrow" data-ia="week"><b>📅 Challenge with my week</b><span class="tiny muted">Everyone replays the week you're on</span></button>`, r.right - 330, r.bottom + 8, "imenu");
+  el.onclick = (e) => { const b = e.target.closest("[data-ia]"); if (!b) return; el.remove(); const a = b.dataset.ia; if (a === "inv") invite(b.dataset.u); else if (a === "duel") duelNew(); else if (a === "week") newChallenge(); }; }
+function frSug(on) { $("f-sg").classList.toggle("hidden", !on); if (on) { renderSg(); setTimeout(() => $("f-sg").scrollIntoView({ behavior: "smooth", block: "start" }), 30); } }
+function chatTab(k) { document.querySelectorAll("#fch-tabs button").forEach((b) => b.classList.toggle("on", b.dataset.c === k)); $("chat").classList.toggle("hidden", k !== "chat"); $("f-sh").classList.toggle("hidden", k !== "sh");
+  document.querySelector(".fchat").classList.toggle("onsh", k === "sh"); if (k === "sh") renderSh(); else setTimeout(() => ($("chat").scrollTop = 1e9), 20); }
+// attachments
+const fsize = (n) => (n > 1e6 ? (n / 1e6).toFixed(1) + " MB" : Math.max(1, Math.round(n / 1e3)) + " KB");
+const signed = {};
+async function attUrl(a) { if (a.demo) return a.demo; if (signed[a.path] && signed[a.path][1] > Date.now()) return signed[a.path][0];
+  const { data } = await sb.storage.from("chat").createSignedUrl(a.path, 3600); const u = data && data.signedUrl; if (u) signed[a.path] = [u, Date.now() + 3.3e6]; return u; }
+function attHtml(att) { if (!att || !att.length) return ""; return `<div class="catt">${att.map((a, k) => { const key = esc(a.path || a.demo || k), t = a.type || "";
+  if (t.startsWith("image/")) return `<a class="cimg" data-att="${key}" target="_blank" rel="noopener"><img alt="${esc(a.name || "picture")}" data-att="${key}"></a>`;
+  if (t.startsWith("audio/")) return `<div class="cvoice"><audio controls preload="none" data-att="${key}"></audio>${a.dur ? `<span class="tiny muted">${Math.round(a.dur)}s</span>` : ""}</div>`;
+  if (t.startsWith("video/")) return `<video class="cvid" controls preload="metadata" data-att="${key}"></video>`;
+  return `<a class="cfile" data-att="${key}" target="_blank" rel="noopener" download="${esc(a.name || "file")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg><span>${esc(a.name || "file")}</span><span class="tiny muted">${a.size ? fsize(a.size) : ""}</span></a>`; }).join("")}</div>`; }
+async function fillAtt(root) { const els = root.querySelectorAll("[data-att]:not([data-ok])"); for (const e of els) { e.dataset.ok = 1; const key = e.dataset.att; const a = key.startsWith("blob:") || key.startsWith("data:") ? { demo: key } : { path: key }; try { const u = await attUrl(a); if (!u) continue; if (e.tagName === "A") e.href = u; else e.src = u; } catch (er) {} } }
+function drawPending() { const box = $("chat-att"); box.classList.toggle("hidden", !chatPending.length);
+  box.innerHTML = chatPending.map((a, k) => `<span class="fpend ${a.busy ? "busy" : ""}">${(a.type || "").startsWith("image/") && a.preview ? `<img src="${a.preview}" alt="">` : (a.type || "").startsWith("audio/") ? "🎙" : "📎"}<span>${esc(a.name)}</span>${a.busy ? '<i class="spin"></i>' : `<button data-rm="${k}" aria-label="Remove">×</button>`}</span>`).join(""); }
+async function addFiles(files) { for (const f of files) { if (f.size > 25e6) { toast(f.name + " is over 25 MB"); continue; }
+    const a = { name: f.name || "file", type: f.type || "application/octet-stream", size: f.size, busy: true, preview: f.type.startsWith("image/") ? URL.createObjectURL(f) : null, dur: f._dur }; chatPending.push(a); drawPending();
+    if (DEMO) { a.demo = URL.createObjectURL(f); a.busy = false; drawPending(); continue; }
+    const path = `${me.user_id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}-${(f.name || "file").replace(/[^\w.-]+/g, "_").slice(-60)}`;
+    const { error } = await sb.storage.from("chat").upload(path, f, { contentType: a.type, upsert: false }); a.busy = false;
+    if (error) { chatPending.splice(chatPending.indexOf(a), 1); toast("Upload failed: " + error.message); } else a.path = path; drawPending(); } }
+async function micToggle() { const btn = $("chat-mic");
+  if (micRec) { micRec.stop(); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) return toast("Voice clips need a newer browser");
+  let stream; try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); } catch (e) { return toast("Microphone blocked. Allow it in the browser's site settings."); }
+  const mt = ["audio/webm;codecs=opus", "audio/mp4", "audio/webm"].find((t) => MediaRecorder.isTypeSupported(t)) || ""; const rec = new MediaRecorder(stream, mt ? { mimeType: mt } : {}), parts = [], t0 = Date.now();
+  rec.ondataavailable = (e) => e.data.size && parts.push(e.data);
+  rec.onstop = () => { stream.getTracks().forEach((t) => t.stop()); micRec = null; btn.classList.remove("rec"); btn.style.removeProperty("--rt"); clearInterval(btn._t); const dur = (Date.now() - t0) / 1000; if (dur < 0.6) return;
+    const type = (rec.mimeType || "audio/webm").split(";")[0], f = new File(parts, `voice-${new Date().toISOString().slice(11, 19).replace(/:/g, "")}.${type.includes("mp4") ? "m4a" : "webm"}`, { type }); f._dur = dur; addFiles([f]).then(() => { if (!chatPending.some((a) => a.busy)) sendChat(); }); };
+  rec.start(); micRec = rec; btn.classList.add("rec"); btn._t = setInterval(() => btn.style.setProperty("--rt", `"${Math.round((Date.now() - t0) / 1000)}s"`), 250); setTimeout(() => { if (micRec === rec) rec.stop(); }, 120000); }
+async function sendChat() { const b = $("chat-in").value.trim().slice(0, 2000), att = chatPending.filter((a) => a.path || a.demo); if (!b && !att.length) return; if (chatPending.some((a) => a.busy)) return toast("Still uploading…");
+  $("chat-in").value = ""; chatPending = []; drawPending();
+  const m = { cid: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()), user_id: DEMO ? "demo" : me && me.user_id, body: b, att: att.length ? att.map(({ path, name, type, size, dur, demo }) => ({ path, name, type, size, dur, demo })) : null, created_at: new Date().toISOString() };
   addChat(m); if (DEMO) { mem.msgs.push(m); return; }
   chatSub && chatSub.send({ type: "broadcast", event: "msg", payload: m });
-  sb.from("messages").insert({ body: b, cid: m.cid }).then(({ error }) => { if (error) console.warn("chat history save", error.message); }); }
+  sb.from("messages").insert({ body: b, cid: m.cid, att: m.att }).then(({ error }) => { if (error) console.warn("chat history save", error.message); }); }
 
 /* ---------------- journal ---------------- */
 let eqC, eqS, jT = [];
@@ -2478,7 +2555,7 @@ async function loadAdmin() {
 
 /* ---------------- boot + wiring ---------------- */
 let toastT; function toast(m) { const t = $("toast"); if (!m) return t.classList.add("hidden"); t.textContent = m; t.classList.remove("hidden"); t.style.animation = "none"; void t.offsetWidth; t.style.animation = ""; clearTimeout(toastT); toastT = setTimeout(() => t.classList.add("hidden"), 3600); }
-function view(v) { try { document.documentElement.removeAttribute("data-kv"); } catch (e) {} try { $("v-stats").classList.remove("sdopen"); } catch (e) {} try { window.k3dView && k3dView(v); } catch (e) {} try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el && !morphView.on) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); clearTimeout(el._ent); el._ent = setTimeout(() => el.classList.remove("enter"), 900); }   /* KING_STAGEQUIET: re-drawn cards must not replay the entrance */ sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); try { navLine(); } catch (e) {} document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) { stagePre("v-tj"); Promise.resolve(JN.open()).then(() => stageLoad("v-tj"), () => stageLoad("v-tj")); } /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") { stagePre("v-stats"); renderStats().then(() => stageLoad("v-stats"), () => stageLoad("v-stats")); } if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
+function view(v) { try { document.documentElement.removeAttribute("data-kv"); } catch (e) {} try { $("v-stats").classList.remove("sdopen"); } catch (e) {} try { window.k3dView && k3dView(v); } catch (e) {} try { document.body.classList.forEach((c) => c.startsWith("v-") && document.body.classList.remove(c)); document.body.classList.add("v-" + v); } catch (e) {} const el = $("v-" + v); if (el && !morphView.on) { el.classList.remove("enter"); void el.offsetWidth; el.classList.add("enter"); clearTimeout(el._ent); el._ent = setTimeout(() => el.classList.remove("enter"), 900); }   /* KING_STAGEQUIET: re-drawn cards must not replay the entrance */ sfx(document.body.classList.contains("ui2") ? "nav" : "click"); document.querySelectorAll(".vtab[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v)); try { navLine(); } catch (e) {} document.querySelectorAll(".view").forEach((x) => x.classList.toggle("hidden", x.id !== "v-" + v)); $("pad").style.visibility = $("favbar").style.visibility = v === "trade" ? "" : "hidden"; $("qzbar").style.visibility = v === "trade" ? "" : "hidden"; $("tools").style.visibility = v === "trade" ? "" : "hidden"; $("app").dataset.v = v; if (v === "journal") loadJournal(); if (v === "tj" && window.JN) { stagePre("v-tj"); Promise.resolve(JN.open()).then(() => stageLoad("v-tj"), () => stageLoad("v-tj")); } /* KING_JOURNAL */ if (v === "help" && window.BOT) BOT.pageOpen(); /* KING_BOTS */ if (v === "stats") { stagePre("v-stats"); renderStats().then(() => stageLoad("v-stats"), () => stageLoad("v-stats")); } if (v === "learn") ltab(document.querySelector("#ltabs .on").dataset.l); if (v === "friends") { frHome(); ftab(document.querySelector("#ftabs .on").dataset.f); renderLB(); renderStatus(); chatSeen = Date.now(); localStorage.setItem("rw-chat-seen", chatSeen); $("chatdot").classList.add("hidden"); setTimeout(() => ($("chat").scrollTop = 1e9), 50); } if (v === "accounts") { renderAccts(); taxCalc(); } if (v === "admin") loadAdmin(); if (v === "settings") { notionUI(); tsSettingsUI(); if ($("s-live1s")) $("s-live1s").checked = prefs.live1s !== false; try { connUI(); } catch (e) {} } }
 function layMenu() { const sv = prefs.saved || [];
   return layMenu2(); }
 async function saveLayout() { const name = (await ask("Name this layout (e.g. NQ/ES SMT, 1m + 15m)") || "").trim().slice(0, 30); if (!name) return;
@@ -3161,6 +3238,17 @@ $("sfr-open").onclick = () => view("friends");
 /* KING_APPTHEMES: old theme grid click handler removed */
 $("helpbtn").onclick = helpDlg; addEventListener("keydown", (e) => { if (e.key === "Escape" && document.querySelector(".tourbox")) { document.querySelectorAll(".tourbox,.tourspot").forEach((x) => x.remove()); prefs.toured = APP_VERSION; savePrefs(); } });
 $("chat-send").onclick = sendChat; $("chat-in").onkeydown = (e) => { if (e.key === "Enter") sendChat(); };
+// KING_FRIENDS2 wiring
+$("chat-plus").onclick = () => $("chat-file").click(); $("chat-file").onchange = (e) => { addFiles([...e.target.files]); e.target.value = ""; };
+$("chat-in").addEventListener("paste", (e) => { const fs = [...(e.clipboardData && e.clipboardData.files || [])]; if (fs.length) { e.preventDefault(); addFiles(fs); } });
+$("chat-att").onclick = (e) => { const b = e.target.closest("[data-rm]"); if (b) { chatPending.splice(+b.dataset.rm, 1); drawPending(); } };
+(() => { const mic = $("chat-mic"); let downAt = 0, stopUp = false;   // hold to talk, or click to start and click again to send
+  mic.addEventListener("pointerdown", () => { downAt = Date.now(); stopUp = !!micRec; if (!micRec) micToggle(); });
+  mic.addEventListener("pointerup", () => { if (micRec && (stopUp || Date.now() - downAt > 450)) micRec.stop(); }); })();
+$("fch-tabs").onclick = (e) => { const b = e.target.closest("[data-c]"); if (b) chatTab(b.dataset.c); };
+$("fr-invite").onclick = (e) => inviteMenu(e.currentTarget); $("fr-sug").onclick = () => frSug($("f-sg").classList.contains("hidden")); $("sg-close").onclick = () => frSug(false);
+document.addEventListener("click", (e) => { const t = e.target.closest("[data-pm]"); if (!t || !t.dataset.pm || t.closest(".frpop")) return; if (!t.closest("#v-friends,.fchat,#md-friends")) return; e.preventDefault(); const r = t.getBoundingClientRect(); personMenu(t.dataset.pm, r.left, r.bottom + 6); });
+document.addEventListener("contextmenu", (e) => { const t = e.target.closest(".fchat .cn,.fchat .av,#fr-status .frp,#lb-list td"); if (!t) return; const row = t.closest("[data-uid],[data-pm]"), uid = (t.dataset && t.dataset.pm) || (row && (row.dataset.uid || row.dataset.pm)); if (!uid) return; e.preventDefault(); personMenu(uid, e.clientX, e.clientY); });
 $("ltabs").onclick = (e) => { const b = e.target.closest("[data-l]"); if (b) ltab(b.dataset.l); }; $("rl-spoil").onchange = renderRL;
 $("rl-list").onclick = (e) => { const b = e.target.closest("[data-rday]"); if (b) replayReese(reese.find((r) => r.id === b.dataset.rday)); };
 $("qz-go").onclick = quizNext; $("qz-take").onclick = () => quizAnswer(true); $("qz-fade").onclick = () => quizAnswer(false); $("qz-more").onclick = quizNext; $("qz-stop").onclick = quizStop;
@@ -3551,7 +3639,14 @@ $("cs-tpl").onchange = async () => { const v = $("cs-tpl").value; $("cs-tpl").va
 const NAME_FX = [["fart", "fart", "💨"], ["poop", "poop", "💩"], ["poo", "poop", "💩"], ["juicy", "juicy", "🍑"], ["goat", "goat", "🐐"], ["king", "king", "👑"], ["sigma", "sigma", ""], ["moon", "moon", "🌙"], ["degen", "degen", "🎰"], ["money", "money", "💸"], ["cash", "money", "💸"], ["sauce", "juicy", "🔥"], ["drip", "juicy", "💧"], ["toot", "fart", "💨"]];
 function fxFor(name, uid) { const P = profs[uid] || (me && uid === me.user_id ? me : null), set = P && P.name_fx; if (set === "none") return null; if (set) { const f = NAME_FX.find((x) => x[1] === set); return [set, f ? f[2] : ""]; }
   const hay = ((name || "") + " " + ((P && P.username) || "")).toLowerCase(), f = NAME_FX.find(([k]) => hay.includes(k)); return f ? [f[1], f[2]] : null; }
-function nmFx(name, uid) { const n = esc(name || "trader"), f = fxFor(name, uid); return f ? `<span class="nfx nfx-${f[0]}" data-e="${f[1]}">${n}</span>` : n; }
+// KING_SIGFX (King, Nov 24): every name gets a look. Keyword and picked effects still win; anyone else gets a signature effect worked out
+// from their name (style + two hues from a hash), so it works for any name and stays the same everywhere.
+const SIG = ["grad", "glow", "shine", "duo", "wave", "ink"];
+function sigFor(name) { let h = 2166136261; for (const c of String(name || "trader").toLowerCase()) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return [SIG[h % SIG.length], h % 360, (h >>> 9) % 360]; }
+function nmFx(name, uid) { const n = esc(name || "trader"), f = fxFor(name, uid); if (f) return `<span class="nfx nfx-${f[0]}" data-e="${f[1]}">${n}</span>`;
+  const P = profs[uid] || (me && uid === me.user_id ? me : null); if (P && P.name_fx === "none") return n;
+  const [k, h1, h2] = sigFor((name || "") + ((P && P.username) || "")), body = k === "wave" ? [...(name || "trader")].map((c, i) => `<i style="--i:${i}">${esc(c)}</i>`).join("") : n;
+  return `<span class="nfx nfx-sig sig-${k}" style="--h:${h1};--h2:${(h1 + 60 + (h2 % 120)) % 360}">${body}</span>`; }
 function who(uid, fb) { return nmFx(names[uid] || fb, uid); }
 function profileSetup(force) { if (document.getElementById("psetup")) return; if (!force && (DEMO || !me || me.username)) return; const el = document.createElement("div"); el.id = "psetup"; el.className = "dlgwrap";
   const nm0 = (me && me.name) || ""; el.innerHTML = `<div class="glass dlg pop psbox"><h3>Set up your profile</h3><p class="small muted">This is what friends see in chat, Live and the leaderboard.</p>
@@ -4029,7 +4124,7 @@ setTimeout(trySetup, 4000);
 
 /* KING_PROFILE2 (King, Nov 14): profile = avatar frame (unlocks by level), animated banner, title, badges, name effect (12, unlocks by level),
    stats showcase card, Spotify now playing. Friends see it (profiles table). Admin can give anyone any effect. */
-const FX12 = [["neon", "Neon pulse", 1], ["ice", "Ice", 2], ["fire", "Fire", 3], ["gold", "Gold shimmer", 4], ["chrome", "Chrome", 5], ["rainbow", "Rainbow wave", 6], ["glitch", "Glitch", 8], ["tron", "Tron light trail", 10], ["lightning", "Lightning", 12], ["matrix", "Matrix rain", 14], ["holo", "Holographic", 17], ["galaxy", "Galaxy", 20]];
+const FX12 = [["neon", "Neon pulse", 1], ["ice", "Ice", 2], ["fire", "Fire", 3], ["gold", "Gold shimmer", 4], ["chrome", "Chrome", 5], ["rainbow", "Rainbow wave", 6], ["sunset", "Sunset", 7], ["glitch", "Glitch", 8], ["aurora", "Aurora", 9], ["tron", "Tron light trail", 10], ["candy", "Candy stripe", 11], ["lightning", "Lightning", 12], ["ember", "Ember", 13], ["matrix", "Matrix rain", 14], ["pixel", "Pixel", 15], ["ocean", "Ocean", 16], ["holo", "Holographic", 17], ["sparkle", "Sparkle", 18], ["outline", "Outline glow", 19], ["galaxy", "Galaxy", 20]];   // KING_SIGFX: 8 new effects
 for (const [k] of FX12) NAME_FX.push(["~" + k, k, ""]);   // "~" keys never match a real name, so these are pick-only
 const FRAMES = [["none", "None", 1], ["bronze", "Bronze", 2], ["silver", "Silver", 5], ["gold", "Gold", 10], ["neon", "Neon", 15], ["holo", "Holo", 20]];
 const BANNERS = [["aurora", "Aurora"], ["grid", "Synth grid"], ["ember", "Ember"], ["galaxy", "Galaxy"], ["waves", "Waves"], ["mono", "Mono"]];

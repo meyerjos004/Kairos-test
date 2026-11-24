@@ -8,8 +8,8 @@
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0a0a0d"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="KAIROS TEST"><link rel="apple-touch-icon" href="icon.svg?v=red">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@200;300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=11241559">
-<link rel="stylesheet" href="ui2-recolor.css?v=11241559"><link rel="stylesheet" href="ui2.css?v=11241559"><link rel="stylesheet" href="ui2-light.css?v=11241559"><link rel="stylesheet" href="ui2-accent.css?v=11241559"><link rel="stylesheet" href="ui2-ivory.css?v=11241559"><link rel="stylesheet" href="ui2-skins.css?v=11241559"><link rel="stylesheet" href="ui2-finish.css?v=11241559"><link rel="stylesheet" href="ui2-themes.css?v=11241559">
+<link rel="stylesheet" href="style.css?v=11241617">
+<link rel="stylesheet" href="ui2-recolor.css?v=11241617"><link rel="stylesheet" href="ui2.css?v=11241617"><link rel="stylesheet" href="ui2-light.css?v=11241617"><link rel="stylesheet" href="ui2-accent.css?v=11241617"><link rel="stylesheet" href="ui2-ivory.css?v=11241617"><link rel="stylesheet" href="ui2-skins.css?v=11241617"><link rel="stylesheet" href="ui2-finish.css?v=11241617"><link rel="stylesheet" href="ui2-themes.css?v=11241617">
 <script src="https://unpkg.com/lightweight-charts@5.3.0/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/motion@14.12.0/dist/motion.js"></script>
@@ -324,15 +324,21 @@ if(L&&/\bui2\b/.test(L.c)&&!navigator.webdriver)document.documentElement.classLi
   <section id="v-friends" class="view hidden">
     <div class="fwrap">
       <div class="fmain scroll">
-        <div class="toolbar"><h2 class="vh">Friends</h2><div class="seg" id="ftabs"><button data-f="lv" class="on">Side by side</button><button data-f="dl">1v1</button><button data-f="lb">Leaderboard</button><button data-f="ch">Same-week challenges</button><button data-f="sh">Shared trades</button><button data-f="sg">Suggestions</button></div></div>
-        <div id="f-dl" class="fpanel hidden"><div class="toolbar"><span class="muted small">Competitive 1v1: same hidden day, same session, same rules. Highest P&amp;L when the session ends wins.</span><span class="tsp"></span><button id="dl-new" class="primary small">New 1v1</button></div><div id="dl-list" class="dlwrap"></div></div>
-        <div id="f-lv" class="fpanel"><div class="toolbar"><span class="muted small">Who's replaying right now. Invite someone and you both replay the same start time, each at your own pace. When you're done you can still see who's trading, then compare and write shared notes.</span></div><div id="lv-room" class="card hidden"></div><div id="lv-list" class="rgrid"></div></div>
-        <div id="f-lb" class="fpanel hidden"><div class="toolbar"><select id="lb-range"><option value="0">All time</option><option value="7">Last 7 days (replay dates)</option><option value="30">Last 30 days</option></select><select id="lb-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select><label class="ck small"><input id="lb-share" type="checkbox" checked> Show my stats to friends</label></div><div class="card" id="lb-list"></div><p class="tiny muted" style="margin:0 16px">Only totals are shared (trades, win rate, net, average R). Your individual trades stay private unless you share one.</p></div>
-        <div id="f-ch" class="fpanel hidden"><div class="toolbar"><button id="ch-new" class="primary small">Challenge friends with the week I'm on</button><span class="muted small">Everyone replays the same week, at their own pace. Results show after.</span></div><div id="ch-list"></div></div>
-        <div id="f-sh" class="fpanel hidden"><div class="toolbar"><span class="muted small">Share a trade from the Journal (the ⤴ button). Friends can rate it 1–5 and leave notes.</span></div><div id="sh-list"></div></div>
-        <div id="f-sg" class="fpanel hidden"><div class="toolbar sgadd"><select id="sg-kind"><option value="fix">🔧 Fix / bug</option><option value="idea">💡 Idea</option></select><input id="sg-text" placeholder="What should change? Be specific (where + what)…"><button id="sg-add" class="primary small">Send to Claude</button></div><div class="tiny muted sghow">Fixes and ideas go straight to Claude Code. It writes a plan, King approves it, then Claude builds it. You'll see the status move here.</div><div id="sg-list"></div></div>
+        <div class="toolbar frtop"><h2 class="vh">Friends</h2><span class="tsp"></span><button id="fr-sug" class="ghost small" title="Send a fix or an idea to Claude">Suggestions</button><button id="fr-invite" class="primary frinv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Invite</button></div>
+        <section class="frsec frlb"><div class="frh"><h3>Leaderboard</h3><span class="tsp"></span><select id="lb-range"><option value="0">All time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select><select id="lb-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select></div><div class="card" id="lb-list"></div><div class="frlbfoot"><label class="ck small"><input id="lb-share" type="checkbox" checked> Show my stats to friends</label><span class="tiny muted">Only totals are shared. Your trades stay private unless you share one.</span></div></section>
+        <section class="frsec"><div class="frh"><h3>Who's on</h3><span class="muted small" id="fr-oncount"></span></div><div id="fr-status" class="frgrid"></div><div id="lv-room" class="card hidden"></div></section>
+        <section class="frsec"><div class="frh"><h3>Your games</h3><span class="tsp"></span><div class="seg" id="ftabs"><button data-f="dl" class="on">1v1s</button><button data-f="ch">Same-week challenges</button><button data-f="lv">Side by side</button></div></div>
+          <div id="f-dl" class="fpanel"><div class="toolbar"><span class="muted small">Same hidden day, same session, same rules. Highest P&amp;L when the session ends wins.</span><span class="tsp"></span><button id="dl-new" class="primary small">New 1v1</button></div><div id="dl-list" class="dlwrap"></div></div>
+          <div id="f-ch" class="fpanel hidden"><div class="toolbar"><button id="ch-new" class="primary small">Challenge friends with the week I'm on</button><span class="muted small">Everyone replays the same week at their own pace. Results show after.</span></div><div id="ch-list"></div></div>
+          <div id="f-lv" class="fpanel hidden"><div class="toolbar"><span class="muted small">Invite someone and you both replay the same start time, each at your own pace. You don't have to be on at the same time.</span></div><div id="lv-list" class="rgrid"></div></div>
+        </section>
+        <div id="f-sg" class="fpanel hidden frsec"><div class="frh"><h3>Suggestions</h3><span class="tsp"></span><button class="ghost small" id="sg-close">Close</button></div><div class="toolbar sgadd"><select id="sg-kind"><option value="fix">🔧 Fix / bug</option><option value="idea">💡 Idea</option></select><input id="sg-text" placeholder="What should change? Be specific (where + what)…"><button id="sg-add" class="primary small">Send to Claude</button></div><div class="tiny muted sghow">Fixes and ideas go straight to Claude Code. It writes a plan, King approves it, then Claude builds it. You'll see the status move here.</div><div id="sg-list"></div></div>
       </div>
-      <aside class="fchat"><div class="fch-h">Chat <span class="muted tiny" id="ch-online"></span></div><div class="fch-list" id="chat"></div><div class="fch-in"><input id="chat-in" placeholder="Message the group…" maxlength="1000"><button id="chat-send" class="primary small">Send</button></div></aside>
+      <aside class="fchat"><div class="fch-h"><div class="seg mini" id="fch-tabs"><button data-c="chat" class="on">Chat</button><button data-c="sh">Shared trades</button></div><span class="muted tiny" id="ch-online"></span></div>
+        <div class="fch-list" id="chat"></div>
+        <div class="fch-list hidden" id="f-sh"><div class="tiny muted fshhow">Share a trade from the Journal (the ⤴ button). Friends can rate it 1–5 and leave notes.</div><div id="sh-list"></div></div>
+        <div class="fch-att hidden" id="chat-att"></div>
+        <div class="fch-in"><button id="chat-plus" class="ghost fchb" title="Add a picture or file" aria-label="Add a file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button><input id="chat-file" type="file" hidden multiple accept="image/*,video/*,audio/*,.pdf,.txt,.csv,.json,.zip"><input id="chat-in" placeholder="Message the group…" maxlength="1000"><button id="chat-mic" class="ghost fchb" title="Hold to record a voice clip (or click to start/stop)" aria-label="Record a voice clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button id="chat-send" class="primary small">Send</button></div></aside>
     </div>
   </section>
 
@@ -421,11 +427,11 @@ if(L&&/\bui2\b/.test(L.c)&&!navigator.webdriver)document.documentElement.classLi
 <div id="dlg" class="dlgwrap hidden"><div class="glass dlg pop" id="dlgbox"></div></div>
 <div id="toast" class="toast glass hidden"></div>
 <footer class="tiny muted hidden-trade" id="foot">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> · practice tool, not financial advice</footer>
-<script src="config.js?v=11241559"></script>
-<script src="reveal.js?v=11241559"></script><script src="k3d.js?v=11241559"></script><script src="app.js?v=11241559"></script>
-<script src="journal.js?v=11241559"></script>
-<script src="bots.js?v=11241559"></script>
-<script src="prank.js?v=11241559"></script>
-<script src="tourdemo.js?v=11241559"></script>
+<script src="config.js?v=11241617"></script>
+<script src="reveal.js?v=11241617"></script><script src="k3d.js?v=11241617"></script><script src="app.js?v=11241617"></script>
+<script src="journal.js?v=11241617"></script>
+<script src="bots.js?v=11241617"></script>
+<script src="prank.js?v=11241617"></script>
+<script src="tourdemo.js?v=11241617"></script>
 </body>
 </html>
