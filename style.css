@@ -1347,3 +1347,18 @@ body.ui2 .vsep{width:1px;height:18px;margin:0 6px;align-self:center}
 .kaskwrap{z-index:9000}.kask{width:min(420px,92vw)}.kask .kaskq{margin:2px 0 16px;font-size:15px;line-height:1.5;color:var(--txt)}.kask .kaskbtns{justify-content:flex-end;gap:8px;margin:0}.kask .kaskbtns>*{flex:0 0 auto;min-width:96px}
 .kask .askok.danger,body .kask .askok.danger{background:#d23f4c;color:#fff;border-color:transparent;box-shadow:none}.kask .askok.danger:hover{background:#bb2f3c}
 body .kaskwrap .kask button.askok.danger{background:#d23f4c!important;color:#fff!important;border-color:transparent!important;box-shadow:none!important}body .kaskwrap .kask button.askok.danger:hover{background:#bb2f3c!important}
+
+/* KING_NONOTE: plain dark click-to-start instead of the sticky note */
+#krel .rnote.rstart{width:auto;aspect-ratio:auto;padding:0;background:none!important;box-shadow:none!important;transform:none!important;border:0}#krel .rnote.rstart .rgo{position:static;font-size:15px;letter-spacing:.08em;color:#f4efe4;opacity:.8;animation:rstartPulse 2.4s ease-in-out infinite}@keyframes rstartPulse{50%{opacity:.35}}
+#krel .rnote.rstart::before,#krel .rnote.rstart::after{display:none!important}
+
+/* KING_TOURDEMO: looping feature scene on each tour stop (tourdemo.js) */
+.tdemo{margin:-4px 0 18px;border-radius:18px;overflow:hidden;background:var(--panel2,rgba(0,0,0,.03));border:1px solid color-mix(in srgb,var(--txt,#111) 7%,transparent);color:var(--txt,#111)}
+.tdemo svg{display:block;width:100%;height:auto;font-family:Geist,Inter,system-ui,sans-serif}
+/* KING_VIBEWAVE (King, Nov 24): stop 5's cards drop in, then ride a wave while their colour cycles */
+.rtlist.rtvibe li{animation:vibeDrop .75s cubic-bezier(.2,1.5,.4,1) both,vibeWave 2.6s ease-in-out .9s infinite,vibeCol 7.5s linear infinite}
+.rtlist.rtvibe li:nth-child(2){animation-delay:.12s,1.15s,-2.5s}.rtlist.rtvibe li:nth-child(3){animation-delay:.24s,1.4s,-5s}
+@keyframes vibeDrop{from{opacity:0;transform:translateY(-46px) rotate(-2deg)}to{opacity:1;transform:none}}
+@keyframes vibeWave{0%,100%{transform:none}30%{transform:translateY(-7px) rotate(-.6deg)}60%{transform:translateY(2px)}}
+@keyframes vibeCol{0%,100%{background:color-mix(in srgb,#4696ff 16%,var(--panel,#fff))}25%{background:color-mix(in srgb,#2bd4a0 16%,var(--panel,#fff))}50%{background:color-mix(in srgb,#ff3ea5 14%,var(--panel,#fff))}75%{background:color-mix(in srgb,#fecc02 18%,var(--panel,#fff))}}
+@media (prefers-reduced-motion:reduce){.tdemo *,.rtlist.rtvibe li{animation:none!important}}

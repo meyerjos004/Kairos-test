@@ -716,7 +716,7 @@ function paintStudies(p, g, W, H) { const ps = paneSym(p); if (ps !== sym) retur
   for (const z of S.gaps) { const y1 = yOf(p, z.top), y2 = yOf(p, z.bot); if (y1 == null || y2 == null) continue; const x1 = X(z.t0), x2 = z.t1 ? Math.min(W, X(z.t1)) : W; if (x2 <= x1) continue;
     const up = z.dir > 0, a1 = z.t1 ? 0.045 : z.ob ? 0.07 : 0.09; g.fillStyle = up ? UPC(a1) : DNC(a1); g.fillRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1));
     if (z.inv || z.ob) { g.strokeStyle = up ? UPC(.5) : DNC(.5); g.setLineDash(z.ob ? [] : [4, 3]); g.strokeRect(x1, Math.min(y1, y2), x2 - x1, Math.abs(y2 - y1)); g.setLineDash([]); }
-    g.fillStyle = z.t1 ? "rgba(200,210,225,.3)" : "rgba(200,210,225,.6)"; g.fillText(z.label, x1 + 4, Math.min(y1, y2) + 11); }
+    g.fillStyle = kReadable(z.t1 ? "rgba(200,210,225,.3)" : "rgba(200,210,225,.6)"); g.fillText(z.label, x1 + 4, Math.min(y1, y2) + 11); }
   for (const l of S.levels) { const y = yOf(p, l.price); if (y == null || y < 0 || y > H) continue; const x1 = X(l.t0);
     g.strokeStyle = l.col; g.lineWidth = 1; g.setLineDash([5, 4]); g.beginPath(); g.moveTo(x1, y); g.lineTo(W, y); g.stroke(); g.setLineDash([]); g.fillStyle = l.col; g.fillText(l.label, W - g.measureText(l.label).width - 6, y - 4); }
   // contract roll marker: data switches contracts on the session after quarterly expiry (3rd Friday of Mar/Jun/Sep/Dec), so a price gap there is the roll, not a move
@@ -728,11 +728,11 @@ function paintStudies(p, g, W, H) { const ps = paneSym(p); if (ps !== sym) retur
     g.strokeStyle = up ? prefs.up : prefs.dn; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x, yh); g.lineTo(x, yl); g.stroke();
     g.fillStyle = up ? prefs.up + "55" : prefs.dn + "55"; const top = Math.min(yo, yc), hh = Math.max(1, Math.abs(yo - yc)); g.fillRect(x - 8, top, 16, hh); g.strokeRect(x - 8, top, 16, hh);
     g.strokeStyle = "rgba(200,210,225,.35)"; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(x - 14, yo); g.lineTo(x + 14, yo); g.stroke(); g.setLineDash([]);
-    g.fillStyle = "rgba(220,228,240,.85)"; g.fillText(P.tf, x - g.measureText(P.tf).width / 2, Math.min(yh, yl) - 6); });
+    g.fillStyle = kReadable("rgba(220,228,240,.85)"); g.fillText(P.tf, x - g.measureText(P.tf).width / 2, Math.min(yh, yl) - 6); });
   if (S.po3) { const P = S.po3, x = W - 26, yh = yOf(p, P.h), yl = yOf(p, P.l), yo = yOf(p, P.o), yc = yOf(p, P.c); if ([yh, yl, yo, yc].every((v) => v != null)) {
       const up = P.c >= P.o; g.strokeStyle = up ? UPC(.8) : DNC(.8); g.fillStyle = up ? UPC(.22) : DNC(.22);
       g.beginPath(); g.moveTo(x, yh); g.lineTo(x, yl); g.stroke(); g.fillRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc))); g.strokeRect(x - 7, Math.min(yo, yc), 14, Math.max(1, Math.abs(yo - yc)));
-      g.fillStyle = "rgba(200,210,225,.6)"; g.fillText("D", x - 3, yh - 5); } }
+      g.fillStyle = kReadable("rgba(200,210,225,.6)"); g.fillText("D", x - 3, yh - 5); } }
   g.restore();
 }
 /* fix 6: everything we draw lives INSIDE the chart's own render pass (series primitives), so shading, studies and drawings move with the candles on every drag/zoom frame instead of trailing behind. */
@@ -778,15 +778,15 @@ function drawOne(p, g, d, W, H) {
   const on = (sel && sel.id === d.id) || (hov && hov.id === d.id); g.lineWidth = (d.w || 1.4) + (on ? 0.6 : 0); g.font = "11px Geist, sans-serif"; g.setLineDash([]);
   const gold = d.color || "#2962ff", blue = "rgba(122,167,255,.95)"; g.strokeStyle = gold; g.fillStyle = gold;
   const DASH = { dash: [7, 5], dot: [2, 4] }; if (DASH[d.dash] && !["long", "short", "measure"].includes(d.type)) g.setLineDash(DASH[d.dash]);
-  if (d.label && !["long", "short", "measure", "text"].includes(d.type)) { const lx = d.type === "hline" ? 8 : Math.min(xOf(p, d.a.t) ?? 0, xOf(p, d.b.t) ?? W), ly = Math.min(yOf(p, d.a.p) ?? 0, yOf(p, d.b.p) ?? yOf(p, d.a.p) ?? 0); g.save(); g.setLineDash([]); g.font = "600 11px Geist, sans-serif"; const lw = g.measureText(d.label).width + 12, bx = lx + 4, by = ly - 22; g.fillStyle = gold; g.globalAlpha = 0.92; g.beginPath(); (g.roundRect ? g.roundRect(bx, by, lw, 17, 4) : g.rect(bx, by, lw, 17)); g.fill(); g.globalAlpha = 1; g.fillStyle = "#fff"; g.fillText(d.label, bx + 6, by + 12.5); g.restore(); }   // KING_TOOLRAIL: label as a pill
+  if (d.label && !["long", "short", "measure", "text"].includes(d.type)) { const lx = d.type === "hline" ? 8 : Math.min(xOf(p, d.a.t) ?? 0, xOf(p, d.b.t) ?? W), ly = Math.min(yOf(p, d.a.p) ?? 0, yOf(p, d.b.p) ?? yOf(p, d.a.p) ?? 0); g.save(); g.setLineDash([]); g.font = "600 11px Geist, sans-serif"; const lw = g.measureText(d.label).width + 12, bx = lx + 4, by = ly - 22; g.fillStyle = gold; g.globalAlpha = 0.92; g.beginPath(); (g.roundRect ? g.roundRect(bx, by, lw, 17, 4) : g.rect(bx, by, lw, 17)); g.fill(); g.globalAlpha = 1; g.fillStyle = kReadable("#fff", gold); g.fillText(d.label, bx + 6, by + 12.5); g.restore(); }   // KING_TOOLRAIL: label as a pill
   const x1 = xOf(p, d.a.t), y1 = yOf(p, d.a.p), x2 = xOf(p, d.b.t), y2 = yOf(p, d.b.p); if (y1 == null) return;
   if (on && !d.preview && !["long", "short", "measure", "text", "vline"].includes(d.type)) p._ax = d.type === "hline" || d.type === "hray" ? [d.a.p] : [d.a.p, d.b.p];   // KING_AXISLBL
   if (sel && sel.id === d.id && !d.label && ["trend", "ray", "arrow"].includes(d.type) && x2 != null && y2 != null && Math.hypot(x2 - x1, y2 - y1) > 60) { const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; let an = Math.atan2(y2 - y1, x2 - x1); if (an > Math.PI / 2) an -= Math.PI; if (an < -Math.PI / 2) an += Math.PI;
-    g.save(); g.translate(mx, my); g.rotate(an); g.font = "500 11.5px Geist, sans-serif"; g.fillStyle = /^#|^rgb/.test(d.color || "") ? d.color : "#2962ff"; g.globalAlpha = 0.85; g.textAlign = "center"; g.fillText("+ Add text", 0, -7); g.restore(); d._addAt = [mx, my]; } else d._addAt = null;   // KING_ADDTEXT
+    g.save(); g.translate(mx, my); g.rotate(an); g.font = "500 11.5px Geist, sans-serif"; g.fillStyle = kReadable(/^#|^rgb/.test(d.color || "") ? d.color : "#2962ff"); g.globalAlpha = 0.85; g.textAlign = "center"; g.fillText("+ Add text", 0, -7); g.restore(); d._addAt = [mx, my]; } else d._addAt = null;   // KING_ADDTEXT
   const dot = (x, y) => { if (on && x != null && y != null) { g.save(); g.setLineDash([]); g.beginPath(); g.arc(x, y, 5, 0, 7); g.fillStyle = "#ffffff"; g.fill(); g.strokeStyle = /^#|^rgb/.test(gold) ? gold : "#2962ff"; g.lineWidth = 1.6; g.stroke(); g.restore(); g.strokeStyle = gold; g.fillStyle = gold; } };
   if (d.type === "measure") { if (x1 == null || x2 == null || y2 == null) return; const up = d.b.p >= d.a.p; g.fillStyle = up ? UPC(.13) : DNC(.13);
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); const pts = d.b.p - d.a.p, bars = Math.round((d.b.t - d.a.t) / p.sec);
-    g.fillStyle = "#e6eaf0"; g.fillText(`${pts >= 0 ? "+" : ""}${pts.toFixed(2)} pts · ${money(Math.abs(pts) * inst.pt)}/lot · ${(Math.abs(pts) / (prefs.slPts || 1)).toFixed(2)}R · ${bars} bars`, Math.min(x1, x2) + 4, Math.min(y1, y2) - 6); return; }
+    g.fillStyle = kReadable("#e6eaf0"); g.fillText(`${pts >= 0 ? "+" : ""}${pts.toFixed(2)} pts · ${money(Math.abs(pts) * inst.pt)}/lot · ${(Math.abs(pts) / (prefs.slPts || 1)).toFixed(2)}R · ${bars} bars`, Math.min(x1, x2) + 4, Math.min(y1, y2) - 6); return; }
   if (d.type === "trend" || d.type === "ray") { if (x1 == null || x2 == null || y2 == null) return; let ex = x2, ey = y2;
     if (d.type === "ray" && x2 !== x1) { const k = ((x2 > x1 ? W : 0) - x1) / (x2 - x1); if (k > 1) { ex = x1 + (x2 - x1) * k; ey = y1 + (y2 - y1) * k; } }
     g.beginPath(); g.moveTo(x1, y1); g.lineTo(ex, ey); g.stroke(); dot(x1, y1); dot(x2, y2); return; }
@@ -816,10 +816,10 @@ function drawOne(p, g, d, W, H) {
     g.fillStyle = "rgba(12,16,22,.88)"; g.fillRect(tx, ty, tw + 12, 17); g.fillStyle = "#e6eaf0"; g.fillText(txt, tx + 6, ty + 12); dot(x1, y1); dot(x2, y2); return; }
   if (d.type === "ellipse") { if (x1 == null || x2 == null || y2 == null) return; const rc = /^#[0-9a-f]{6}$/i.test(d.color || "") ? d.color : "#7aa7ff";
     g.beginPath(); g.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2, 0, 0, 7); g.fillStyle = rc + Math.round(((d.fill ?? 10) / 100) * 255).toString(16).padStart(2, "0"); g.fill(); g.strokeStyle = d.color || rc; g.stroke(); dot(x1, y1); dot(x2, y2); return; }
-  if (d.type === "hline") { g.beginPath(); g.moveTo(0, y1); g.lineTo(W, y1); g.stroke(); g.fillText(px2(d.a.p), W - 60, y1 - 4); return; }
+  if (d.type === "hline") { g.beginPath(); g.moveTo(0, y1); g.lineTo(W, y1); g.stroke(); g.fillStyle = kReadable(g.strokeStyle); g.fillText(px2(d.a.p), W - 60, y1 - 4); return; }
   if (d.type === "hray") { if (x1 == null) return; g.beginPath(); g.moveTo(x1, y1); g.lineTo(W, y1); g.stroke(); dot(x1, y1); return; }
   if (d.type === "vline") { if (x1 == null) return; g.beginPath(); g.moveTo(x1, 0); g.lineTo(x1, H); g.stroke(); return; }
-  if (d.type === "text") { if (x1 == null) return; g.font = "600 12px Geist, sans-serif"; g.fillStyle = d.color || "#e6eaf0"; g.fillText(d.text, x1, y1); return; }
+  if (d.type === "text") { if (x1 == null) return; g.font = "600 12px Geist, sans-serif"; g.fillStyle = kReadable(d.color || "#e6eaf0"); g.fillText(d.text, x1, y1); return; }   // KING_CONTRAST
   if (d.type === "rect") { if (x1 == null || x2 == null || y2 == null) return; const rc = /^#[0-9a-f]{6}$/i.test(d.color || "") ? d.color : "#7aa7ff"; g.fillStyle = rc + Math.round(((d.fill ?? 10) / 100) * 255).toString(16).padStart(2, "0"); g.strokeStyle = d.color ? rc : blue;
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); g.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); dot(x1, y1); dot(x2, y2); return; }
   if (d.type === "fib") { if (y2 == null) return; const xa = Math.min(x1 ?? 0, x2 ?? W);
@@ -1627,6 +1627,15 @@ function ask(title, def) { if (window.__askAuto != null) return Promise.resolve(
   w.querySelector("h3").textContent = title || ""; const inp = w.querySelector(".askin"); inp.value = def == null ? "" : String(def); document.body.appendChild(w); setTimeout(() => { inp.focus(); inp.select(); }, 30);
   const done = (v) => { w.remove(); res(v); }; w.querySelector(".askok").onclick = () => done(inp.value); w.querySelector(".askx").onclick = () => done(null);
   w.addEventListener("pointerdown", (e) => { if (e.target === w) done(null); }); inp.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") done(inp.value); if (e.key === "Escape") done(null); }); }); }
+// KING_CONTRAST (King, Nov 24): text is always readable by default. kReadable(color, bg) keeps the color when it stands out against bg,
+// otherwise swaps to near-black on light backgrounds / near-white on dark. bg defaults to the chart background.
+function kRgb(c) { c = String(c || "").trim(); let m = c.match(/^#([0-9a-f]{3,8})$/i); if (m) { let h = m[1]; if (h.length <= 4) h = h.split("").map((x) => x + x).join(""); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
+  m = c.match(/rgba?\(([^)]+)\)/i); if (m) return m[1].split(",").slice(0, 3).map((x) => parseFloat(x)); return null; }
+function kLum(c) { const r = kRgb(c); if (!r) return null; const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r[0]) + 0.7152 * f(r[1]) + 0.0722 * f(r[2]); }
+function kChartBg() { const c = prefs && prefs.cs; return (c && (c.bg1 || c.bg2)) || getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#111"; }
+function kReadable(col, bg) { const lb = kLum(bg || kChartBg()), lc = kLum(col); if (lb == null) return col || "#e6eaf0"; const dark = "#141414", light = "#f2f2f2";
+  if (lc == null) return lb > 0.4 ? dark : light; const ratio = (Math.max(lb, lc) + 0.05) / (Math.min(lb, lc) + 0.05); return ratio >= 2.4 ? col : lb > 0.4 ? dark : light; }
+window.kReadable = kReadable;
 // KING_NOCONFIRM (Nov 24): in-site yes/no box instead of the browser's gray pop-up box. kAsk(text,{ok,danger}) → Promise<boolean>
 function kAsk(msg, o) { o = o || {}; if (window.__askAuto != null) return Promise.resolve(!!window.__askAuto);   /* test hook */
   return new Promise((res) => { const w = document.createElement("div"); w.className = "dlgwrap askwrap kaskwrap"; w.innerHTML = `<div class="glass dlg pop askbox kask" role="alertdialog" aria-modal="true"><p class="kaskq"></p><div class="row kaskbtns"><button class="askx">${o.no || "Cancel"}</button><button class="${o.danger ? "danger" : "primary"} askok">${o.ok || "OK"}</button></div></div>`;
@@ -2542,15 +2551,15 @@ function releaseDue() { try { if (/[?&]release=1\b/.test(location.search)) retur
 function releaseIntro(replay) {
   if (document.getElementById("krel")) return true; if (!replay && !releaseDue()) return false;
   introOn = true; const el = document.createElement("div"); el.id = "krel"; if (REL_TALL) el.classList.add("tall");
-  el.innerHTML = `<div class="rnote" role="button" tabindex="0"><p>Pay attention, there's some good stuff here.</p><b>-Josh</b><span class="rgo">Click to start</span></div>
+  el.innerHTML = `<div class="rnote rstart" role="button" tabindex="0"><span class="rgo">Click to start</span></div>
     <video class="rvid" playsinline preload="auto" poster="" src="${REL_VIDEO}"></video><img class="rhold" alt="KAIROS OS 1.0" src="${REL_HOLD}" hidden>
     <div class="rhint" hidden>Click anywhere to enter</div>`;
   document.body.appendChild(el);
   const note = el.querySelector(".rnote"), vid = el.querySelector(".rvid"), hold = el.querySelector(".rhold"), hint = el.querySelector(".rhint");
   let stage = "note", ended = false;
   const finish = () => { if (ended) return; ended = true;
-    if (window.kairosPrank && !el._pranked && (!replay || /prank=1/.test(location.search))) { el._pranked = true; stage = "prank"; hint.hidden = true; return kairosPrank(() => { ended = false; stage = "hold"; finish(); }); }   // KING_PRANK
-    if (typeof releaseTour === "function" && !replay) { stage = "tour"; hint.hidden = true; return releaseTour(el, () => { ended = false; stage = "hold"; finish2(); }); }   // the 10 stops plug in here (not built yet)
+    if (window.kairosPrank && !el._pranked) {   /* KING_FULLREPLAY (King, Nov 24): the Settings replay plays the whole intro too */ el._pranked = true; stage = "prank"; hint.hidden = true; return kairosPrank(() => { ended = false; stage = "hold"; finish(); }); }   // KING_PRANK
+    if (typeof releaseTour === "function") { stage = "tour"; hint.hidden = true; return releaseTour(el, () => { ended = false; stage = "hold"; finish2(); }); }   // the 10 stops plug in here (not built yet)
     finish2(); };
   const finish2 = () => { if (!replay) { prefs.releaseSeen = "1.0"; savePrefs(); }
     el.classList.add("out"); try { vid.pause(); } catch (e) {} setTimeout(() => el.remove(), 800);
@@ -2564,7 +2573,8 @@ function releaseIntro(replay) {
   addEventListener("keydown", function relKey(e) { if (!document.body.contains(el)) return removeEventListener("keydown", relKey);
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (stage === "note") start(); else if (stage === "hold") finish(); }
     else if (e.key === "Escape" && replay && stage === "hold") finish(); });
-  setTimeout(() => note.focus(), 50); return true; }
+  setTimeout(() => note.focus(), 50); if (replay) setTimeout(start, 60);   // from Settings the click already counts, so the video starts right away
+  return true; }
 if (!releaseIntro()) splash();
 /* chart build (KING_BUILD v2): colored cursors swim in and build every piece of the screen except the candles; each piece pops in as its
    outline finishes. When the scaffolding is done the candles play themselves into existence left to right and the cursors swim away. */
@@ -4516,8 +4526,8 @@ window.releaseTour = function (host, done) {
   const STOPS = [
     ["Reese in the app", "Learn from the trader whose model KAIROS is built around.", I('<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.6 4-5.5 7-5.5s5.8 1.9 7 5.5"/>'),
       [["Reese log", "Every session he traded. Replay it first, then see what he took and how yours compares."], ["His videos", "His breakdowns open right next to the chart."], ["His 1-minute view", "The same timeframe he uses for entries."]], "Learn → Reese log"],
-    ["Ghost trades + day recap", "See the trades you didn't take, and how the day really went.", I('<path d="M7 20V10a5 5 0 0 1 10 0v10l-2.5-1.8L12 20l-2.5-1.8z"/><circle cx="10" cy="10" r=".8"/><circle cx="14" cy="10" r=".8"/>'),
-      [["Ghost trades", "Reese's entries and exits show on your chart after the session, arrows and notes included."], ["Day recap", "When a replay day ends: your backtest trades next to your real ones, side by side."]], "Trade → finish a replay day"],
+    ["Ghost trades + day recap", "After a replay day, see the trades Reese really took that day, and how yours compare.", I('<path d="M7 20V10a5 5 0 0 1 10 0v10l-2.5-1.8L12 20l-2.5-1.8z"/><circle cx="10" cy="10" r=".8"/><circle cx="14" cy="10" r=".8"/>'),
+      [["Reese's real trades", "When the session ends, the trades Reese actually took that day appear on your chart: his entries, exits and notes. If he took one you missed, you'll see it."], ["Day recap", "When a replay day ends: your backtest trades next to your real ones, side by side."]], "Trade → finish a replay day"],
     ["Screenshot → replay", "Saw a chart on Discord or X? Jump straight to that moment.", I('<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M3 15l5-5 4 4 3-3 6 6"/><path d="M15 3v4M13 5h4"/>'),
       [["Paste it", "Ctrl/Cmd+V on the Trade page, or Date picker → From screenshot."], ["KAIROS reads it", "Symbol, date and time, read in your browser. Nothing is uploaded."], ["Replay from there", "The chart loads at that exact candle."]], "Trade → paste a screenshot"],
     ["Your real journal", "Live, backtest and Reese trades in one calendar.", I('<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M4 9h16M9 4v16"/>'),
@@ -4530,12 +4540,14 @@ window.releaseTour = function (host, done) {
       [["Side by side", "Replay the same start time, each at your own pace."], ["1v1 + challenges", "Same hidden day, highest P&L wins. Or everyone takes the same week."], ["Leaderboard, shared trades, chat", "Share a trade, rate each other's, talk it through."]], "Friends"],
     ["Discipline", "Only take the trades you'd be proud of.", I('<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".9"/>'),
       [["A+ only", "A checklist before the click. No setup name, no trade."], ["Risk sizing", "Contracts worked out from your stop and risk."], ["MAE / MFE", "How far each trade went against you and for you, so you set better stops and targets."]], "Trade → order pad"],
-    ["Level up", "Every rep counts.", I('<path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/>'),
-      [["XP and levels", "Earned from lessons, drills and clean trades."], ["Your profile", "Avatar frames, banners, titles and badges that unlock as you level."], ["Name effects", "Your name shows up in style in chat, Live and the leaderboard."]], "Learn · Settings → Profile"],
+    ["Your coach", "An AI coach that knows KAIROS and your journal.", I('<path d="M4 5h16v11H9l-5 4z"/><path d="M8.5 10h.01M12 10h.01M15.5 10h.01"/>'),
+      [["Ask anything", "How a feature works, why a trade failed, what to work on next."], ["Coaching from your numbers", "It reads your journal: win rate, R, best and worst setups and times, the leaks you keep repeating."], ["Learns with the group", "Useful patterns it notices get shared, so it gets sharper for everyone."]], "The chat bubble in the sidebar · Help"],   // KING_TOURCOACH (King, Nov 24): coach replaces Level up, which moved to the last card
     ["Training", "A real path from new to consistent.", I('<path d="M3 8l9-4 9 4-9 4z"/><path d="M7 10v5c1.5 1.5 3.2 2 5 2s3.5-.5 5-2v-5"/><path d="M21 8v6"/>'),
       [["Course + guided weeks", "Short lessons, then trade the same week Reese did."], ["Take it or fade it", "Real setups, paused before the entry. Speed run: 10 in 5 minutes."], ["Fix my mistakes", "Daily practice built from the mistakes you tag."]], "Learn"],
+    ["The little things", "Small stuff that makes it fun.", I('<path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/>'),
+      [["XP, levels and your profile", "Earned from lessons, drills and clean trades. Avatar frames, banners, titles and badges unlock as you level."], ["Name effects", "Your name shows up in style in chat, Live and the leaderboard."], ["Hotkeys, templates, screenshots", "Press ? for every shortcut, save chart setups, and share a trade card with one click."]], "All over KAIROS"],   // KING_TOURLITTLE
   ];
-  const N = STOPS.length; let i = forced ? 1 : 0;   // KING_TOURORDER: from the release intro the note already showed, start at stop 1
+  const N = STOPS.length; let i = 1;   // KING_NONOTE (King, Nov 24): sticky note scrapped everywhere; the tour always starts at stop 1
   if (!document.getElementById("rt-font")) { const l = document.createElement("link"); l.id = "rt-font"; l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap"; document.head.appendChild(l); }
   const el = document.createElement("div"); el.id = "rtour"; el.className = "rtour"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "KAIROS 1.0 tour");
   document.body.appendChild(el);
@@ -4551,17 +4563,16 @@ window.releaseTour = function (host, done) {
   const dots = () => `<div class="rtdots" aria-hidden="true">${Array.from({ length: N }, (_, k) => `<i class="${k === i - 1 ? "on" : k < i - 1 ? "past" : ""}"></i>`).join("")}</div>`;
   const draw = (dir) => {
     let body;
-    if (i === 0) body = `<div class="rtnote"><p>Pay attention, there's some good stuff here.</p><span>-Josh</span></div><div class="rtnav"><span></span><button class="primary rtnext" data-t="n">Show me</button></div>`;
-    else if (i > N) body = `<div class="rtfin"><span class="kmark">K</span><h2>KAIROS 1.0</h2><p>That's the tour. Every stop lives in the app now; this tour is in Settings → Intros &amp; releases whenever you want it again.</p></div><div class="rtnav"><button class="ghost" data-t="b">Back</button><button class="primary rtnext" data-t="x">Open KAIROS</button></div>`;
+    if (i > N) body = `<div class="rtfin"><span class="kmark">K</span><h2>KAIROS 1.0</h2><p>That's the tour. Every stop lives in the app now; this tour is in Settings → Intros &amp; releases whenever you want it again.</p></div><div class="rtnav"><button class="ghost" data-t="b">Back</button><button class="primary rtnext" data-t="x">Open KAIROS</button></div>`;
     else { const [t, lead, ic, items, where] = STOPS[i - 1];
-      body = `<div class="rtstep">Stop ${i} of ${N}</div><div class="rthead"><div class="rtart">${ic}</div><div><h2>${t}</h2><p class="rtlead">${lead}</p></div></div>
-        <ul class="rtlist">${items.map(([a, b]) => `<li><b>${a}</b><span>${b}</span></li>`).join("")}</ul><div class="rtwhere">Find it: <b>${where}</b></div>
+      body = `<div class="rtstep">Stop ${i} of ${N}</div><div class="rthead"><div class="rtart">${ic}</div><div><h2>${t}</h2><p class="rtlead">${lead}</p></div></div>${window.tourDemo ? tourDemo(i) : ""}
+        <ul class="rtlist${t === "Your vibe" ? " rtvibe" : ""}">${items.map(([a, b]) => `<li><b>${a}</b><span>${b}</span></li>`).join("")}</ul><div class="rtwhere">Find it: <b>${where}</b></div>
         <div class="rtnav"><button class="ghost" data-t="b">Back</button>${dots()}<button class="primary rtnext" data-t="n">${i === N ? "Finish" : "Next"}</button></div>`; }
     el.innerHTML = `<div class="rtcard ${dir || ""}">${forced ? "" : '<button class="rtx" data-t="x" aria-label="Close the tour">×</button>'}${body}</div>`;
     try { el.querySelector(".rtnext").focus({ preventScroll: true }); } catch (e) {}
     try { tone("click"); } catch (e) {}
   };
-  const go = (d) => { const j = Math.max(0, Math.min(N + 1, i + d)); if (j === i) return; i = j; draw(d > 0 ? "fwd" : "back"); };
+  const go = (d) => { const j = Math.max(1, Math.min(N + 1, i + d)); if (j === i) return; i = j; draw(d > 0 ? "fwd" : "back"); };
   el.onclick = (e) => { const b = e.target.closest("[data-t]"); if (!b) return; const t = b.dataset.t; if (t === "n") go(1); else if (t === "b") go(-1); else if (t === "x") { if (i > N || !forced) close(); } };
   const key = (e) => { if (e.key === "ArrowRight" || e.key === "Enter") { e.preventDefault(); if (i > N) close(); else go(1); } else if (e.key === "ArrowLeft") go(-1); else if (e.key === "Escape" && !forced) close(); };
   addEventListener("keydown", key);

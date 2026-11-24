@@ -65,7 +65,7 @@ const L = {
 const scope = () => (typeof user !== "undefined" && user ? user.id : "local");
 
 /* ---------- settings ---------- */
-function defCfg() { return { v: 1, fields: KING_FIELDS(), accounts: [], layout: DEF_LAYOUT(), books: ["live", "backtest", "reese"], template: "king", notionMap: {}, updated: nowIso() }; }
+function defCfg() { return { v: 1, fields: KING_FIELDS(), accounts: [], layout: DEF_LAYOUT(), books: ["live", "backtest"], template: "king", notionMap: {}, updated: nowIso() }; }
 async function loadCfg() {
   let c = await L.get("cfg:" + scope()).catch(() => null);
   if (!DEMO && user) try { const { data } = await sb.from("journal_config").select("data,updated_at").maybeSingle(); if (data && data.data && data.data.fields && (!c || data.data.updated > c.updated)) c = data.data; } catch (e) {}
@@ -74,7 +74,8 @@ async function loadCfg() {
      monthly and the other stats widgets moved out (Stats has the numbers). Runs once; "⋯ → Edit layout" can still bring widgets back. */
   if (!J.cfg.jcal1) { J.cfg.layout.forEach((w) => { if (w.id === "calendar") { w.hide = false; w.w = 4; } else w.hide = true; }); J.cfg.layout.sort((x, y) => (y.id === "calendar") - (x.id === "calendar")); J.cfg.jcal1 = 1; }
   if (J.cfg.notionSrc && !J.cfg.notion) { J.cfg.notion = { [J.cfg.notionBook || "live"]: { db: J.cfg.notionSrc, sync: !!J.cfg.notionDb, pulled: J.cfg.notionPulled } }; }
-  J.books = new Set(J.cfg.books || ["live", "backtest", "reese"]);
+  if (!J.cfg.reeseOff1) { J.cfg.reeseOff1 = 1; J.cfg.books = (J.cfg.books || ["live", "backtest"]).filter((b) => b !== "reese"); }   // KING_REESEOFF (King, Nov 24): the Reese chip starts off (once for everyone; they can turn it back on)
+  J.books = new Set(J.cfg.books || ["live", "backtest"]);
 }
 let _cfgT; function saveCfg() { J.cfg.updated = nowIso(); J.cfg.books = [...J.books]; L.set("cfg:" + scope(), J.cfg).catch(() => {}); clearTimeout(_cfgT);
   _cfgT = setTimeout(() => { if (!DEMO && user) sb.from("journal_config").upsert({ user_id: user.id, data: J.cfg, updated_at: nowIso() }).then(() => {}); backupSoon(); }, 1500); }

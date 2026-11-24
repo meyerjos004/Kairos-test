@@ -809,6 +809,15 @@ _have = set(re.findall(r'\sid="([^"]+)"', _html)) | set(re.findall(r'id="([\w-]+
 _used = set(re.findall(r'\$\("([\w-]+)"\)', _jsall)) | set(re.findall(r'getElementById\("([\w-]+)"\)', _jsall)) | set(re.findall(r'sel: "#([\w-]+)"', _jsall))
 _miss = sorted(_used - _have - {"skipnext", "st-lf"})
 check("idguard: every id the code looks up exists", not _miss, _miss)
+# KING_NONOTE / KING_FULLREPLAY / KING_TOURDEMO / KING_CONTRAST / KING_REESEOFF / KING_HYBRIDSND (Nov 24)
+_tdj = open(ROOT + "/tourdemo.js").read(); _jn = open(ROOT + "/journal.js").read(); _rv = open(ROOT + "/reveal.js").read()
+check("intro: no sticky note text left", "Pay attention, there's some good stuff here" not in _src)
+check("intro: Settings replay plays prank + tour too", 'if (typeof releaseTour === "function") { stage = "tour";' in _src and "KING_FULLREPLAY" in _src)
+check("tour: a looping demo for each stop (11)", "window.tourDemo" in _tdj and _tdj.count("n === ") >= 10 and "tourdemo.js?v=" in open(ROOT + "/index.html").read())
+check("tour: coach stop + little things card", '"Your coach"' in _src and '"The little things"' in _src)
+check("chart text picks a readable color", "function kReadable(" in _src and _src.count("kReadable(") >= 8)
+check("journal: Reese chip off by default", 'books: ["live", "backtest"]' in _jn and "reeseOff1" in _jn)
+check("reveal sound: hybrid engine", "KING_HYBRIDSND" in _rv)
 # KING_BTCAL check lives in the browser part; static checks below
 # KING_NOCONFIRM (Nov 24): no gray browser confirm() pop-ups left; the in-site yes/no box exists. KING_SETUPAFTERAUTH, KING_WELNAME, rvc stage class, invite icon
 check("no browser confirm() left", not re.findall(r'(?<![\w.])confirm\(', _jsall), re.findall(r'.{30}(?<![\w.])confirm\(.{20}', _jsall))
