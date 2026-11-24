@@ -4528,11 +4528,19 @@ window.releaseTour = function (host, done) {
     ["Training", "A real path from new to consistent.", I('<path d="M3 8l9-4 9 4-9 4z"/><path d="M7 10v5c1.5 1.5 3.2 2 5 2s3.5-.5 5-2v-5"/><path d="M21 8v6"/>'),
       [["Course + guided weeks", "Short lessons, then trade the same week Reese did."], ["Take it or fade it", "Real setups, paused before the entry. Speed run: 10 in 5 minutes."], ["Fix my mistakes", "Daily practice built from the mistakes you tag."]], "Learn"],
   ];
-  const N = STOPS.length; let i = 0;
+  const N = STOPS.length; let i = forced ? 1 : 0;   // KING_TOURORDER: from the release intro the note already showed, start at stop 1
   if (!document.getElementById("rt-font")) { const l = document.createElement("link"); l.id = "rt-font"; l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap"; document.head.appendChild(l); }
   const el = document.createElement("div"); el.id = "rtour"; el.className = "rtour"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "KAIROS 1.0 tour");
   document.body.appendChild(el);
-  const close = () => { removeEventListener("keydown", key); el.classList.add("out"); setTimeout(() => el.remove(), 380); try { prefs.tourDone = "1.0"; savePrefs(); } catch (e) {} try { done && done(); } catch (e) {} };
+  const finishTour = () => { removeEventListener("keydown", key); el.classList.add("out"); setTimeout(() => el.remove(), 380); try { prefs.tourDone = "1.0"; savePrefs(); } catch (e) {} try { done && done(); } catch (e) {} };
+  /* KING_TOURORDER (King, Nov 24): the 1.0 intro = note → Frutiger Aero video into orbit → 1.0 title → paywall prank → 10 stops → the drift car, then the app.
+     From the intro ("Open KAIROS" on the last page) the full drift-car reveal plays as the finale; from Settings the tour just closes. */
+  const close = () => {
+    if (!forced || !window.kReveal || el.dataset.car) return finishTour();
+    el.dataset.car = "1"; removeEventListener("keydown", key); el.innerHTML = ""; el.classList.add("rtcar");
+    let ended = false; const end = () => { if (ended) return; ended = true; setTimeout(finishTour, 1100); };
+    kReveal(el, { sound: prefs.sound === false ? null : 1, onEnd: end }); setTimeout(end, 9000);   // safety: never stuck on the car
+  };
   const dots = () => `<div class="rtdots" aria-hidden="true">${Array.from({ length: N }, (_, k) => `<i class="${k === i - 1 ? "on" : k < i - 1 ? "past" : ""}"></i>`).join("")}</div>`;
   const draw = (dir) => {
     let body;
@@ -4553,4 +4561,5 @@ window.releaseTour = function (host, done) {
   let sx = null; el.addEventListener("touchstart", (e) => { sx = e.touches[0].clientX; }, { passive: true }); el.addEventListener("touchend", (e) => { if (sx == null) return; const dx = e.changedTouches[0].clientX - sx; sx = null; if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1); });
   draw();
 };
-if (new URLSearchParams(location.search).has("tour10")) setTimeout(() => releaseTour(null, () => {}), 1500);   // KING_TOUR10 test link: ?tour10
+if (new URLSearchParams(location.search).has("tour10")) setTimeout(() => releaseTour(null, () => {}), 1500);   // KING_TOUR10 test link: ?tour10 (Settings version)
+if (new URLSearchParams(location.search).has("tour10f")) setTimeout(() => { const h = document.createElement("div"); document.body.appendChild(h); releaseTour(h, () => h.remove()); }, 1500);   // KING_TOURORDER test: ?tour10f = the intro version (stops → car)

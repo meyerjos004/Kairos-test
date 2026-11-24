@@ -1340,3 +1340,5 @@ body.ui2 .vsep{width:1px;height:18px;margin:0 6px;align-self:center}
 @keyframes rtFwd{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}@keyframes rtBack{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
 @media (max-width:600px){.rtour{padding:0;place-items:end stretch}.rtcard{width:100%;max-height:100dvh;border-radius:24px 24px 0 0;padding:28px 20px calc(20px + env(safe-area-inset-bottom,0px))}.rtcard h2{font-size:25px}.rthead{gap:14px}.rtart{width:54px;height:54px;border-radius:16px}.rtart svg{width:28px;height:28px}.rtnote p{font-size:30px}.rtdots{display:none}}
 @media (prefers-reduced-motion:reduce){.rtour,.rtcard{animation:none!important}}
+/* KING_TOURORDER: the drift-car finale after the tour */
+.rtour.rtcar{background:var(--bg,#f4f1ea);backdrop-filter:none}.rtour.rtcar>.rv-stage{position:absolute;inset:0}
