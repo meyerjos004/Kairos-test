@@ -1026,7 +1026,7 @@ function guard() {
 function canTrade() {   /* KING_NOLOCK (King, Nov 14): personal lockout removed, this is backtesting */ if (lockedNow()) { toast("🔒 " + lock.why); return false; } if (last() == null) { toast("Load a chart first"); return false; } if (prefs.aplus && !pos.qty && !aplusOk()) return false; return true; }
 const lotsNow = () => Math.max(1, +prefs.lots || 1);
 const autoBr = () => (prefs.autoBr ? { slPts: prefs.slPts, tpPts: prefs.tpPts } : null);
-function market(side, qty) { if (!canTrade()) return; if (prefs.cs && prefs.cs.oneClick === false && !confirm(`${side > 0 ? "Buy" : "Sell"} ${qty || lotsNow()} at market?`)) return; qty = qty || (prefs.byRisk ? Math.max(1, Math.floor((balance() * prefs.riskp / 100) / (prefs.slPts * inst.pt))) : lotsNow()); fill(side, qty, last(), nowT(), autoBr()); }
+function market(side, qty) { if (!canTrade()) return; if (prefs.cs && prefs.cs.oneClick === false && !market._ok) return kAsk(`${side > 0 ? "Buy" : "Sell"} ${qty || lotsNow()} at market?`, { ok: side > 0 ? "Buy" : "Sell" }).then((ok) => { if (!ok) return; market._ok = 1; try { market(side, qty); } finally { market._ok = 0; } }); qty = qty || (prefs.byRisk ? Math.max(1, Math.floor((balance() * prefs.riskp / 100) / (prefs.slPts * inst.pt))) : lotsNow()); fill(side, qty, last(), nowT(), autoBr()); }
 function joinBid() { if (canTrade()) place(1, "limit", last() - TICK, lotsNow(), autoBr()); }
 function joinAsk() { if (canTrade()) place(-1, "limit", last() + TICK, lotsNow(), autoBr()); }
 function place(side, type, price, qty, br, extra = {}) { if (!canTrade()) return; const o = { id: oid++, side, type, price: rnd(price), qty, br, ...extra }; orders.push(o); snd("place"); drawOrders(); refresh(); return o; }
@@ -1627,6 +1627,13 @@ function ask(title, def) { if (window.__askAuto != null) return Promise.resolve(
   w.querySelector("h3").textContent = title || ""; const inp = w.querySelector(".askin"); inp.value = def == null ? "" : String(def); document.body.appendChild(w); setTimeout(() => { inp.focus(); inp.select(); }, 30);
   const done = (v) => { w.remove(); res(v); }; w.querySelector(".askok").onclick = () => done(inp.value); w.querySelector(".askx").onclick = () => done(null);
   w.addEventListener("pointerdown", (e) => { if (e.target === w) done(null); }); inp.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") done(inp.value); if (e.key === "Escape") done(null); }); }); }
+// KING_NOCONFIRM (Nov 24): in-site yes/no box instead of the browser's gray pop-up box. kAsk(text,{ok,danger}) → Promise<boolean>
+function kAsk(msg, o) { o = o || {}; if (window.__askAuto != null) return Promise.resolve(!!window.__askAuto);   /* test hook */
+  return new Promise((res) => { const w = document.createElement("div"); w.className = "dlgwrap askwrap kaskwrap"; w.innerHTML = `<div class="glass dlg pop askbox kask" role="alertdialog" aria-modal="true"><p class="kaskq"></p><div class="row kaskbtns"><button class="askx">${o.no || "Cancel"}</button><button class="${o.danger ? "danger" : "primary"} askok">${o.ok || "OK"}</button></div></div>`;
+  w.querySelector(".kaskq").textContent = msg || ""; document.body.appendChild(w); const okb = w.querySelector(".askok"); setTimeout(() => okb.focus(), 30);
+  const done = (v) => { document.removeEventListener("keydown", key, true); w.remove(); res(v); }; const key = (e) => { if (e.key === "Escape") { e.stopPropagation(); e.preventDefault(); done(false); } else if (e.key === "Enter") { e.stopPropagation(); e.preventDefault(); done(true); } };
+  document.addEventListener("keydown", key, true); okb.onclick = () => done(true); w.querySelector(".askx").onclick = () => done(false); w.addEventListener("pointerdown", (e) => { if (e.target === w) done(false); }); }); }
+window.kAsk = kAsk;
 // KING_NAVLINE (Nov 22): one underline that slides between the top-nav pages (the per-tab line can't move)
 function navLine(instant) { const R = $("rail"); if (!R) return; let L = $("navline"); if (!L) { L = document.createElement("i"); L.id = "navline"; R.appendChild(L); }
   const on = R.querySelector(".vtab.on"); if (!on || !document.body.classList.contains("ui2-iv") || isPhone()) { L.style.opacity = "0"; return; }
@@ -2508,7 +2515,7 @@ function kScore(A, D) { const ac = A.ac, t = ac.currentTime + 0.05; D = Math.max
     g.gain.setValueAtTime(0, T); g.gain.linearRampToValueAtTime(0.032, T + 0.08); g.gain.exponentialRampToValueAtTime(0.0008, T + 3.4); o.connect(lp); lp.connect(g); g.connect(A.M); g.connect(A.V); o.start(T); o.stop(T + 3.5); });
   [523.25, 659.25, 783.99, 1046.5].forEach((f, k) => wTone(A, f, T + 0.9 + k * 0.08, 1.2, 0.028)); }
 // KING_CARREVEAL: the drift-car logo reveal. Full clip on the sign-in card and the first-time welcome; only its last half second on every open.
-function authReveal() { try { const kb = document.querySelector("#auth .kbrand"); if (!kb || kb.dataset.rv || !window.kReveal || navigator.webdriver) return; kb.dataset.rv = "1"; kb.classList.add("rvcard"); kReveal(kb, { cls: "card" }); } catch (e) {} }
+function authReveal() { try { const kb = document.querySelector("#auth .kbrand"); if (!kb || kb.dataset.rv || !window.kReveal || navigator.webdriver) return; kb.dataset.rv = "1"; kb.classList.add("rvcard"); kReveal(kb, { cls: "rvc" }); } catch (e) {} }
 function revealTest() { const el = document.createElement("div"); el.id = "rvtest"; el.title = "Click to replay with sound. Esc closes."; document.body.appendChild(el); let R = null; kReveal(el).then((r) => { R = r; });
   el.onclick = () => { if (R) R.play(prefs.sound === false ? null : 1); }; addEventListener("keydown", function rvKey(e) { if (e.key === "Escape") { removeEventListener("keydown", rvKey); if (R) R.destroy(); el.remove(); } }); }
 function splash(force) {   // launch intro (Settings → "Intro animation when the app opens")
@@ -2707,7 +2714,7 @@ function wScore(A) { const ac = A.ac, t = ac.currentTime + 0.05;
   [523.25, 659.25, 783.99, 1046.5].forEach((f, k) => wTone(A, f, T + 1.1 + k * 0.09, 1.4, 0.03));   // sparkle as BETA lands
 }
 function welcomeIntro(force) { if (document.getElementById("welcome")) return; const el = document.createElement("div"); el.id = "welcome";
-  const nm = esc(((me && me.name) || (user && user.email) || "").split(/[@ ]/)[0]);
+  let nm = esc(((me && me.name) || (user && user.email) || "").split(/[@ ]/)[0]); if (/^(you|demo|guest|user)$/i.test(nm)) nm = "";   // KING_WELNAME (Nov 24): no "You, you're in."
   el.innerHTML = `<canvas class="wfield"></canvas><div class="wgate"><div class="wring"><i></i><i></i><i></i><img src="icon.svg" alt=""></div><b>${nm ? nm.charAt(0).toUpperCase() + nm.slice(1) + ", you're in." : "You're in."}</b><button class="primary" id="w-go">Enter KAIROS</button><span>Sound on 🔊</span></div>
     <div class="wstage"><div class="wwel">${"Welcome to".split("").map((c, i) => `<span style="--d:${i * 0.06}s">${c === " " ? "&nbsp;" : c}</span>`).join("")}<em>…</em></div><img class="wlock" src="brand/kairos-intro.svg?w=${Date.now()}" alt="KAIROS OS Beta"><div class="wtag">Every session, back on the screen.</div><div class="wcta"><button class="primary" id="w-tour">Show me around</button><button class="ghost" id="w-skip">Skip the tour</button></div></div>`;
   document.body.appendChild(el); wField(el.querySelector(".wfield"));
@@ -2734,7 +2741,7 @@ const TOUR = [
   { sel: "#chkbtn", t: "Checklist", d: "Pick a strategy and tick the rules you actually see before you enter. Stats shows whether your A+ setups really pay." },
   { sel: "#mediabtn", t: "Media dock", d: "Reese's whole video library, plus your own Spotify and YouTube, floating next to the chart." },
   { sel: "#chartsetbtn", t: "Your chart, your colors", d: "Pick a chart theme (yours is already on) or set every color, line and label yourself. Save it as a template to switch in one tap." },
-  { sel: '[data-view="journal"]', t: "Journal", d: "Every trade lands on a Monday to Friday calendar, with notes from the coach and a picture of your month you can share with the group." },
+  { sel: '[data-view="tj"]', t: "Journal", d: "Every trade you journal lands on a calendar. Click a day to see its entries, sort them, and add notes. Your backtest calendar lives in Stats." },   // KING_TOURJ (Nov 24): the old journal tab moved into Stats
   { sel: '[data-view="learn"]', t: "Learn", d: "Reese's real trades (every one, from day one), plus take-or-fade drills and daily practice built from your mistakes." },
   { sel: '[data-view="friends"]', t: "The group", d: "Leaderboard, challenges, shared trades and chat with the crew." },
   { sel: '[data-view="settings"]', t: "Make it yours", d: "Themes, hotkeys, and your own sounds for take profits and stop-outs. Found a bug? The fix box goes straight to the build queue." }];
@@ -3023,12 +3030,12 @@ document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".tplwra
 $("tplmenu").onclick = async (e) => { const b = e.target.closest("button"); if (!b) return; const L = tplList();
   if (b.dataset.tplnew) { const name = (await ask("Name this template (e.g. NQ scalping, 4-chart SMT, Clean replay)") || "").trim().slice(0, 40); if (!name) return;
     const ex = L.findIndex((t) => t.name.toLowerCase() === name.toLowerCase()); const rec = { name, at: Date.now(), data: tplSnap() };
-    if (ex >= 0) { if (!confirm(`"${L[ex].name}" already exists. Replace it with your current setup?`)) return; L[ex] = rec; } else L.push(rec);
+    if (ex >= 0) { if (!(await kAsk(`"${L[ex].name}" already exists. Replace it with your current setup?`, { ok: "Replace" }))) return; L[ex] = rec; } else L.push(rec);
     prefs.tplOn = name; savePrefs(); tplMenu(); return toast(`Saved template "${name}"`); }
   if (b.dataset.tpl != null) return tplApply(+b.dataset.tpl);
-  if (b.dataset.tplup != null) { const t = L[+b.dataset.tplup]; if (!t || !confirm(`Overwrite "${t.name}" with your current settings?`)) return; t.data = tplSnap(); t.at = Date.now(); prefs.tplOn = t.name; savePrefs(); tplMenu(); return toast(`Updated "${t.name}"`); }
+  if (b.dataset.tplup != null) { const t = L[+b.dataset.tplup]; if (!t || !(await kAsk(`Overwrite "${t.name}" with your current settings?`, { ok: "Overwrite" }))) return; t.data = tplSnap(); t.at = Date.now(); prefs.tplOn = t.name; savePrefs(); tplMenu(); return toast(`Updated "${t.name}"`); }
   if (b.dataset.tplren != null) { const t = L[+b.dataset.tplren]; const nm = (await ask("New name", t.name) || "").trim().slice(0, 40); if (!nm) return; if (prefs.tplOn === t.name) prefs.tplOn = nm; t.name = nm; savePrefs(); tplMenu(); return; }
-  if (b.dataset.tpldel != null) { const t = L[+b.dataset.tpldel]; if (!t || !confirm(`Delete template "${t.name}"? Your current settings stay as they are.`)) return; L.splice(+b.dataset.tpldel, 1); if (prefs.tplOn === t.name) prefs.tplOn = null; savePrefs(); tplMenu(); } };
+  if (b.dataset.tpldel != null) { const t = L[+b.dataset.tpldel]; if (!t || !(await kAsk(`Delete template "${t.name}"? Your current settings stay as they are.`, { ok: "Delete", danger: true }))) return; L.splice(+b.dataset.tpldel, 1); if (prefs.tplOn === t.name) prefs.tplOn = null; savePrefs(); tplMenu(); } };
 $("laybtn").onclick = () => $("laymenu").classList.toggle("hidden"); $("laymenu").onclick = (e) => { const b = e.target.closest(".lay,.lay2"); if (b) { setLayout(b.dataset.lay); layMenu(); return; } const l = e.target.closest("[data-sl]"); if (l) return loadLayout(+l.dataset.sl);
   const d = e.target.closest("[data-sldel]"); if (d) { prefs.saved.splice(+d.dataset.sldel, 1); savePrefs(); layMenu(); return; } if (e.target.closest("#sl-save")) saveLayout(); };
 document.addEventListener("click", (e) => { const b = e.target.closest("#tools [data-tool], #favbar [data-tool]"); if (b) setTool(b.dataset.tool); });
@@ -3071,14 +3078,14 @@ document.querySelectorAll(".btab").forEach((b) => (b.onclick = () => { if (b.cla
 ["tx-st", "tx-pay", "tx-exp", "tx-w2", "tx-wh"].forEach((k) => ($(k).oninput = taxCalc));
 $("acctpill").onclick = acctMenu; $("ac-new").onclick = () => newSessionDlg();
 $("ac-list").onclick = (e) => { const b = e.target.closest("button"); if (!b) return; const id = b.dataset.use || b.dataset.edit || b.dataset.arch, a = accts.find((x) => x.id === id); if (!a) return;
-  if (b.dataset.cont) return newSessionDlg(a); if (b.dataset.use) { pickAcct(id); renderAccts(); } else if (b.dataset.edit) acctDlg(a); else if (confirm("Archive " + a.name + "? Its trades stay in your journal.")) db.updAccount(id, { archived: true }).then(() => { accts = accts.filter((x) => x.id !== id); if (acct && acct.id === id) pickAcct(null); renderAccts(); }); };
+  if (b.dataset.cont) return newSessionDlg(a); if (b.dataset.use) { pickAcct(id); renderAccts(); } else if (b.dataset.edit) acctDlg(a); else kAsk("Archive " + a.name + "? Its trades stay in your journal.", { ok: "Archive" }).then((ok) => ok && db.updAccount(id, { archived: true }).then(() => { accts = accts.filter((x) => x.id !== id); if (acct && acct.id === id) pickAcct(null); renderAccts(); })); };
 ["st-acct", "st-sym", "st-range"].forEach((k) => ($(k).onchange = () => { if (k === "st-acct") { prefs.stAcct = $(k).value; savePrefs(); } renderStats(); }));
 $("ftabs").onclick = (e) => { const b = e.target.closest("[data-f]"); if (b) ftab(b.dataset.f); };
 ["lb-range", "lb-sym"].forEach((k) => ($(k).onchange = renderLB));
 $("lb-share").onchange = async () => { if (!me) return; me.share_stats = $("lb-share").checked; if (!DEMO) await sb.from("profiles").update({ share_stats: me.share_stats }).eq("user_id", me.user_id); renderLB(); };
 $("ch-new").onclick = newChallenge;
 $("ch-list").onclick = async (e) => { const list = JSON.parse($("ch-list").dataset.ids || "[]"), b = e.target.closest("button"); if (!b) return; const c = list.find((x) => x.id === (b.dataset.take || b.dataset.delch)); if (!c) return;
-  if (b.dataset.take) takeChallenge(c); else if (confirm("Delete this challenge?")) { if (DEMO) mem.ch = mem.ch.filter((x) => x.id !== c.id); else await sb.from("challenges").delete().eq("id", c.id); renderCh(); } };
+  if (b.dataset.take) takeChallenge(c); else if (await kAsk("Delete this challenge?", { ok: "Delete", danger: true })) { if (DEMO) mem.ch = mem.ch.filter((x) => x.id !== c.id); else await sb.from("challenges").delete().eq("id", c.id); renderCh(); } };
 $("sh-list").onclick = (e) => { const st = e.target.closest(".star"); if (st) return rateShare(st.closest(".stars").dataset.share, +st.dataset.n); const rb = e.target.closest("[data-replay]");
   if (rb) { const x = JSON.parse($("sh-list").dataset.list).find((z) => z.id === rb.dataset.replay); if (x) takeChallenge({ symbol: x.snap.symbol, start_ts: x.snap.t_entry - 3600 }); } };
 $("sg-add").onclick = addSg; $("sg-text").onkeydown = (e) => { if (e.key === "Enter") addSg(); };
@@ -3115,7 +3122,7 @@ $("s-fx").addEventListener("click", async (e) => { const p = e.target.closest("[
 $("s-intro").onclick = () => welcomeIntro(true); $("s-tour").onclick = () => { view("trade"); setTimeout(tour, 300); };
 $("s-sndfile").onchange = (e) => { const f = e.target.files[0]; if (!f) return; if (f.size > 300000) return toast("Max 300 KB"); const r = new FileReader(); r.onload = () => { try { localStorage.setItem("rw-snd", r.result); toast("Sound saved. Pick 'My sound' for any event."); tone("custom"); } catch (er) { toast("Couldn't save the sound on this device"); } }; r.readAsDataURL(f); };
 $("s-lockgo").onclick = async () => { let v = $("s-lock").value; if (v === "0") return; if (v === "custom") { v = await ask("Lock out for how many hours?", "3"); if (!v || !(+v > 0)) return; }
-  const until = v === "day" ? new Date(new Date().setHours(23, 59, 0, 0)).getTime() : Date.now() + +v * 3600e3; if (!confirm("Lock yourself out of trading until " + new Date(until).toLocaleString() + "? You can't undo this.")) return;
+  const until = v === "day" ? new Date(new Date().setHours(23, 59, 0, 0)).getTime() : Date.now() + +v * 3600e3; if (!(await kAsk("Lock yourself out of trading until " + new Date(until).toLocaleString() + "? You can't undo this.", { ok: "Lock me out", danger: true }))) return;
   prefs.lockUntil = until; savePrefs(); lockUI(); toast("🔒 Locked out"); };
 $("s-speed").onclick = (e) => { const b = e.target.closest("[data-sp]"); if (!b) return; prefs.speed = b.dataset.sp; savePrefs(); speedUI(); };
 $("pbe").onclick = beNow; $("pcan").onclick = () => { cancelAll(); snd("cancel"); }; $("pflat").onclick = flatten; $("pclose2").onclick = () => closeAll(); $("prev2").onclick = reverse;
@@ -3197,10 +3204,10 @@ $("n-save").onclick = async () => { nmsg("Checking token…"); try { await notio
 $("n-create").onclick = async () => { const id = $("n-pages").value; if (!id) return nmsg("Share a page with your integration first, then reload"); nmsg("Creating…"); try { await notion("setup", { page_id: id }); nmsg("Journal created. New trades will show up there."); notionUI(); } catch (e) { nmsg(e.message); } };
 $("n-sync").onclick = async () => { nmsg("Syncing…"); try { const r = await notion("sync"); nmsg("Sent " + r.synced + " trades"); } catch (e) { nmsg(e.message); } };
 $("n-auto").onchange = async () => { notionAuto = $("n-auto").checked; await notion("auto", { on: notionAuto }).catch(() => {}); };
-$("n-off").onclick = async () => { if (!confirm("Disconnect Notion? Your Notion journal stays in Notion.")) return; await notion("disconnect").catch(() => {}); notionUI(); };
+$("n-off").onclick = async () => { if (!(await kAsk("Disconnect Notion? Your Notion journal stays in Notion.", { ok: "Disconnect", danger: true }))) return; await notion("disconnect").catch(() => {}); notionUI(); };
 $("ad-add").onclick = async () => { const e = $("ad-email").value.trim().toLowerCase(); if (!e) return; const { error } = await sb.from("allowlist").insert({ email: e, role: "waitlist" }); if (error) alert(error.message); $("ad-email").value = ""; loadAdmin(); };
-$("ad-list").addEventListener("click", async (e) => { if (e.target.id === "ad-launch") { if (!confirm("Open KAIROS to everyone on the waitlist?")) return; await sb.from("allowlist").update({ role: "member" }).eq("role", "waitlist"); return loadAdmin(); }
-  if (e.target.dataset.role) { await sb.from("allowlist").update({ role: e.target.dataset.to }).eq("email", e.target.dataset.role); return loadAdmin(); } const em = e.target.dataset.del; if (!em || !confirm("Remove " + em + "? Their saved data stays, they just can't get in.")) return; await sb.from("allowlist").delete().eq("email", em); loadAdmin(); });
+$("ad-list").addEventListener("click", async (e) => { if (e.target.id === "ad-launch") { if (!(await kAsk("Open KAIROS to everyone on the waitlist?", { ok: "Open it" }))) return; await sb.from("allowlist").update({ role: "member" }).eq("role", "waitlist"); return loadAdmin(); }
+  if (e.target.dataset.role) { await sb.from("allowlist").update({ role: e.target.dataset.to }).eq("email", e.target.dataset.role); return loadAdmin(); } const em = e.target.dataset.del; if (!em || !(await kAsk("Remove " + em + "? Their saved data stays, they just can't get in.", { ok: "Remove", danger: true }))) return; await sb.from("allowlist").delete().eq("email", em); loadAdmin(); });
 $("ad-feat").addEventListener("change", async (e) => { const k = e.target.dataset.feat; if (k) await sb.from("features").update({ enabled: e.target.checked, updated_at: new Date().toISOString() }).eq("key", k); });
 document.addEventListener("keydown", (e) => {
   if (["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName) || $("v-trade").classList.contains("hidden") || !$("dlg").classList.contains("hidden")) return; const k = e.key.toLowerCase(), K = prefs.keys;
@@ -4007,7 +4014,7 @@ function setupWizard(force) { if (document.getElementById("setupw")) return; if 
     if ($("sw-spot")) $("sw-spot").onclick = () => { prefs.setupDone = APP_VERSION; savePrefs(); try { spConnect(); } catch (e) { toast(e.message); } };
   };
   body(); }
-function trySetup() { if (prefs.setupDone || DEMO) return; if (document.getElementById("welcome") || document.getElementById("psetup")) return setTimeout(trySetup, 1500); setupWizard(); }
+function trySetup() { if (prefs.setupDone || DEMO) return; if (!user || document.getElementById("welcome") || document.getElementById("psetup")) return setTimeout(trySetup, 1500); setupWizard(); }   // KING_SETUPAFTERAUTH (Nov 24): never over the sign-in card
 setTimeout(trySetup, 4000);
 
 /* KING_PROFILE2 (King, Nov 14): profile = avatar frame (unlocks by level), animated banner, title, badges, name effect (12, unlocks by level),

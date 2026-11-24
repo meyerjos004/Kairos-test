@@ -391,7 +391,7 @@ function customizeDlg() { const tab = J._ctab || "fields";
   wideDlg(`<h3>Customize your journal</h3><div class="jtplcta"><div><b>Journal somewhere else already?</b><div class="muted small">Send screenshots of it and the setup helper builds the same fields and tags here.</div></div><button class="primary" id="jc-tpl">Set up from a screenshot</button></div><div class="jtabs">${[["fields", "Fields and tags"], ["accounts", "Accounts"]].map(([k, n]) => `<button data-ct="${k}" class="${tab === k ? "on" : ""}">${n}</button>`).join("")}</div><div id="jc-body">${tab === "fields" ? fieldsH : accH}</div>`, [{ t: "Done", primary: 1, f: () => { saveCfg(); render(); } }]);
   const box = $j("dlgbox"); let dragI = null;
   box.onclick = (ev) => { const t = ev.target, d = t.dataset;
-    if (d.ct) { J._ctab = d.ct; return customizeDlg(); } if (d.fd) { if (confirmDel(J.cfg.fields[d.fd].n)) { J.cfg.fields.splice(+d.fd, 1); saveCfg(); customizeDlg(); } }
+    if (d.ct) { J._ctab = d.ct; return customizeDlg(); } if (d.fd) { { const fi = +d.fd; confirmDel(J.cfg.fields[fi].n).then((ok) => { if (ok) { J.cfg.fields.splice(fi, 1); saveCfg(); customizeDlg(); } }); } }
     if (d.fo) return optsDlg(J.cfg.fields[+d.fo]); if (d.tpl) { applyTpl(d.tpl); customizeDlg(); } if (d.ax) { J.cfg.accounts.splice(+d.ax, 1); saveCfg(); customizeDlg(); }
     if (t.id === "jc-tpl") { $j("dlg").classList.add("hidden"); window.BOT && BOT.openTemplate(); return; }
     if (t.id === "jc-add") { J.cfg.fields.splice(J.cfg.fields.length - 1, 0, { k: "c_" + Date.now().toString(36), n: "New field", t: "multi", opts: [] }); saveCfg(); customizeDlg(); }
@@ -402,7 +402,7 @@ function customizeDlg() { const tab = J._ctab || "fields";
   box.ondragstart = (ev) => { const r = ev.target.closest("[data-fi]"); if (r) dragI = +r.dataset.fi; };
   box.ondragover = (ev) => { if (dragI != null && ev.target.closest("[data-fi]")) ev.preventDefault(); };
   box.ondrop = (ev) => { const r = ev.target.closest("[data-fi]"); if (!r || dragI == null) return; const [m] = J.cfg.fields.splice(dragI, 1); J.cfg.fields.splice(+r.dataset.fi, 0, m); dragI = null; saveCfg(); customizeDlg(); }; }
-const confirmDel = (n) => window.confirm(`Delete the "${n}" field? Values already saved stay in your backups.`);
+const confirmDel = (n) => (window.kAsk ? kAsk(`Delete the "${n}" field? Values already saved stay in your backups.`, { ok: "Delete", danger: true }) : Promise.resolve(window.confirm(`Delete the "${n}" field?`)));   // KING_NOCONFIRM
 function renameAcct(old, nu) { for (const e of J.ent.values()) if (e.data && e.data.account === old) { e.data.account = nu; saveEntry(e); } }
 function optsDlg(f) { wideDlg(`<h3>${esc(f.n)}: options</h3><p class="muted small">Tap a color to change it. Drag to reorder.</p><div class="jflist">${(f.opts || []).map((o, i) => `<div class="jfr" draggable="true" data-oi="${i}"><span class="jgrip">⠿</span>${chip(f, o.name)}<input data-on="${i}" value="${esc(o.name)}"><span class="jsw">${NCK.concat("default").map((c) => `<button data-oc="${i}" data-c="${c}" style="background:${NC[c][0]}" class="${o.color === c ? "on" : ""}" title="${c}"></button>`).join("")}</span><button class="ghost small danger" data-ox="${i}">×</button></div>`).join("")}</div><div class="row"><input id="jo-new" placeholder="New option"><button class="ghost" id="jo-add">Add</button></div>`, [{ t: "Back", primary: 1, f: () => customizeDlg() }]);
   const box = $j("dlgbox"); let dI = null;
@@ -441,7 +441,7 @@ function wire() {
   wid.addEventListener("dragend", () => { dw = null; });
   const pg = $j("tj-page");
   pg.addEventListener("click", (ev) => { const t = ev.target; if (t === pg || t.id === "tp-close") { pg.classList.add("hidden"); J.sel = null; render(); return; }
-    if (t.id === "tp-del") { if (!window.confirm("Delete this trade? It stays in your backups.")) return; J.sel.e.deleted = true; saveEntry(J.sel.e); pg.classList.add("hidden"); render(); return; }
+    if (t.id === "tp-del") { const sel = J.sel; kAsk("Delete this trade? It stays in your backups.", { ok: "Delete", danger: true }).then((ok) => { if (!ok || !sel) return; sel.e.deleted = true; saveEntry(sel.e); pg.classList.add("hidden"); J.sel = null; render(); }); return; }   // KING_NOCONFIRM
     if (t.id === "tp-coach") { const rid = J.sel.r ? J.sel.r.id : J.sel.e.id; const row = (J._rows || allRows()).find((x) => x.id === rid) || allRows().find((x) => x.id === rid); if (row && window.BOT) BOT.review(row); return; }
     if (t.id === "tp-full") { J.sel.full = true; drawTrade(); return; }
     if (t.id === "tp-next") { const d0 = cur(); if (d0.pnl == null && !(d0.confluences || []).length) { toast("Pick a result first"); return; } toast("Saved"); openQuick(d0); return; }

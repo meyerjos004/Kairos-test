@@ -86,12 +86,12 @@ async def main():
         await E("prefs.ind={sess:true,pd:true,fvg:true,fvgTf:'1h',h4:true,po3:true}; ST.key=null; 1"); s = await E("(()=>{const S=studies(); return [S.levels.length, S.h4.length, !!S.po3]})()")
         check("indicators compute", s[0] > 0 and s[1] > 0 and s[2], s)
         # views
-        for v in ["journal","stats","accounts","learn","friends","settings","trade"]:
+        for v in ["tj","stats","accounts","learn","friends","settings","trade"]:   # KING_BTCAL: "journal" (backtests) moved into Stats; tj = the Journal page
             await pg.click(f'[data-view="{v}"]'); await pg.wait_for_timeout(500); check(f"view {v} opens", await E(f"!$('v-{v}').classList.contains('hidden')"))
         # settings save
         await E("view('accounts')"); await pg.wait_for_timeout(300); await pg.fill("#s-dll", "777"); await pg.click("#s-save2"); check("settings save (replay account limits)", await E("prefs.dll") == 777)
         # csv export
-        await pg.click('[data-view="journal"]'); await pg.wait_for_timeout(400)
+        await E("view('journal')"); await pg.wait_for_timeout(600)   # KING_BTCAL: the backtest journal now lives inside Stats
         async with pg.expect_download() as dl: await pg.click("#j-csv")
         d = await dl.value; check("journal CSV downloads", d.suggested_filename.endswith(".csv"), d.suggested_filename)
         # screenshot button
@@ -809,4 +809,12 @@ _have = set(re.findall(r'\sid="([^"]+)"', _html)) | set(re.findall(r'id="([\w-]+
 _used = set(re.findall(r'\$\("([\w-]+)"\)', _jsall)) | set(re.findall(r'getElementById\("([\w-]+)"\)', _jsall)) | set(re.findall(r'sel: "#([\w-]+)"', _jsall))
 _miss = sorted(_used - _have - {"skipnext", "st-lf"})
 check("idguard: every id the code looks up exists", not _miss, _miss)
+# KING_BTCAL check lives in the browser part; static checks below
+# KING_NOCONFIRM (Nov 24): no gray browser confirm() pop-ups left; the in-site yes/no box exists. KING_SETUPAFTERAUTH, KING_WELNAME, rvc stage class, invite icon
+check("no browser confirm() left", not re.findall(r'(?<![\w.])confirm\(', _jsall), re.findall(r'.{30}(?<![\w.])confirm\(.{20}', _jsall))
+check("kAsk in-site yes/no box exists", "function kAsk(" in _src and "window.kAsk = kAsk" in _src)
+check("setup never opens before sign-in", 'if (!user || document.getElementById("welcome")' in _src)
+check("welcome never says 'You, you're in.'", "KING_WELNAME" in _src)
+check("sign-in reveal stage avoids the .card class", 'cls: "rvc"' in _src and ".rv-stage.rvc" in open(ROOT + "/ui2-finish.css").read())
+check("invite page uses the real K icon", 'src="brand/k-icon.svg"' in open(ROOT + "/invite.html").read())
 print("PASS %d  FAIL %d" % (len(OK), len(FAIL))); print("\n".join("FAIL " + f for f in FAIL))

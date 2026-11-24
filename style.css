@@ -1342,3 +1342,8 @@ body.ui2 .vsep{width:1px;height:18px;margin:0 6px;align-self:center}
 @media (prefers-reduced-motion:reduce){.rtour,.rtcard{animation:none!important}}
 /* KING_TOURORDER: the drift-car finale after the tour */
 .rtour.rtcar{background:var(--bg,#f4f1ea);backdrop-filter:none}.rtour.rtcar>.rv-stage{position:absolute;inset:0}
+
+/* KING_NOCONFIRM (Nov 24): in-site yes/no box */
+.kaskwrap{z-index:9000}.kask{width:min(420px,92vw)}.kask .kaskq{margin:2px 0 16px;font-size:15px;line-height:1.5;color:var(--txt)}.kask .kaskbtns{justify-content:flex-end;gap:8px;margin:0}.kask .kaskbtns>*{flex:0 0 auto;min-width:96px}
+.kask .askok.danger,body .kask .askok.danger{background:#d23f4c;color:#fff;border-color:transparent;box-shadow:none}.kask .askok.danger:hover{background:#bb2f3c}
+body .kaskwrap .kask button.askok.danger{background:#d23f4c!important;color:#fff!important;border-color:transparent!important;box-shadow:none!important}body .kaskwrap .kask button.askok.danger:hover{background:#bb2f3c!important}

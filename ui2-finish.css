@@ -269,7 +269,7 @@ body.ui2 header.top :is(button,.status,.pill,label){white-space:nowrap}
 .rv-stage .rv-logo .kword{display:block;font:500 1em var(--mark,"Bodoni Moda",serif);letter-spacing:.34em;margin-right:-.34em;color:var(--ink,#ecebf3)}
 .rv-stage .rv-logo.rv-land{animation:rvpop .55s cubic-bezier(.2,1.4,.4,1)}
 @keyframes rvpop{from{transform:translate(-50%,-50%) scale(1.1)}to{transform:translate(-50%,-50%) scale(1)}}
-.rv-stage.card .rv-logo{font-size:clamp(18px,7cqw,30px);top:50%}
+.rv-stage.rvc .rv-logo{font-size:clamp(18px,7cqw,30px);top:50%}
 .kbrand.rvcard{display:block;position:relative;aspect-ratio:16/9;width:100%;container-type:inline-size;margin-bottom:2px}
 .kbrand.rvcard .klock,.kbrand.rvcard>.kmark{display:none}
 #rvtest{position:fixed;inset:0;z-index:99999;background:var(--bg,#0f0f13);cursor:pointer}
