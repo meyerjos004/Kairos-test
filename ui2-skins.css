@@ -42,7 +42,7 @@ body.ui2.skin-rave.rave-live #st-kpi>div{animation:rvcard .46875s ease-out infin
 /* ---- WAIFU (Ben): soft anime. Rounded type, pillowy cards, pink + sky blue, petals ---- */
 body.ui2.waifu{--skinfont:"M PLUS Rounded 1c",sans-serif;--skinnum:"M PLUS Rounded 1c",sans-serif;--skinnav:"M PLUS Rounded 1c",sans-serif}
 body.ui2.waifu :is(.vh,h2,h3){font-weight:700!important;color:#ffd1dc!important}
-body.ui2.waifu .vh:after{content:" ✿";color:#ff9ec4;font-size:.8em}
+body.ui2.waifu .vh:after{content:" \2022";color:#ff9ec4;font-size:.8em}
 body.ui2.waifu .rail .vtab .rl{font-weight:700!important;font-size:13.5px!important}
 body.ui2.waifu :is(.card,.acard,.setc,.stats div,#st-kpi>div){border-radius:22px!important;border:1.5px solid rgba(255,209,220,.35)!important;box-shadow:0 8px 26px rgba(255,158,196,.10)!important}
 body.ui2.waifu #st-kpi b{font-weight:700!important;color:#ffd1dc;font-size:28px!important}

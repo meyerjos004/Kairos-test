@@ -349,3 +349,17 @@ body.ui2-light :is(.tgx){border-color:rgba(16,18,21,.35)}
 body.ui2-light{--up:#0e7d56;--dn:#c8333b;--warn:#8f5c0c;--mut2:#5f6672}
 body.ui2-light .jbkc{color:#0e7d56;border-color:rgba(14,125,86,.45)}
 body.ui2-light .jbkc.warn{color:#8f5c0c;background:rgba(143,92,12,.08);border-color:rgba(143,92,12,.4)}
+/* KING_PRANKREAD (King, Nov 24): only three changes: prices stand out, the third (Pro) box is readable, the top-right button is readable */
+#kprank .kp-price{font-size:52px;font-weight:800;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+#kprank .kp-price span{font-size:15px;font-weight:500;letter-spacing:0;opacity:.7}
+body.ui2-light #kprank .kp-card:not(.pro) .kp-price{color:#101215}
+body.ui2-light #kprank .kp-card.pro{background:#101215!important;border-color:#101215!important;color:#ffffff}
+body.ui2-light #kprank .kp-card.pro :is(h3,.kp-price,.kp-price span,p,small,li,.kp-tag){color:#ffffff!important}
+body.ui2-light #kprank .kp-card.pro :is(p,small){opacity:.75}
+body.ui2-light #kprank .kp-card.pro .kp-tag{border-color:rgba(255,255,255,.5)!important}
+body.ui2-light #kprank .kp-card.pro ul{border-top-color:rgba(255,255,255,.18)!important}
+body.ui2-light #kprank .kp-card.pro ul.blue svg{color:#ffffff!important}
+body.ui2-light #kprank .kp-card.pro .kp-sub em{background:#ffffff;color:#101215}
+body.ui2-light #kprank .kp-card.pro .kp-btn{background:#ffffff!important;color:#101215!important}
+body.ui2-light #kprank .kp-nav .kp-btn{background:#101215!important;color:#ffffff!important}
+#kprank .kp-price{white-space:nowrap;font-size:clamp(38px,3.6vw,52px)}body.ui2-light #kprank .kp-card.pro .kp-sub em{background:#ffffff!important;color:#101215!important}

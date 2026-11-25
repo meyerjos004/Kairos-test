@@ -39,6 +39,7 @@
     }
     const box = (x, y, w, h, r = 10, op = 0.06, more = "") => `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" fill="currentColor" fill-opacity="${op}" ${more}/>`;
     const tx = (x, y, t, sz = 12, wt = 600, op = 1, more = "") => `<text x="${x}" y="${y}" font-size="${sz}" font-weight="${wt}" fill="currentColor" fill-opacity="${op}" ${more}>${t}</text>`;
+    const NM = (() => { const x = window.__tourNames || {}, e = (v) => String(v).replace(/[<>&"]/g, ""); return { you: e(x.you || "You"), mate: e(x.mate || "Ben") }; })();
     let body = "";
     if (n === 1) {   // Reese log -> replay the day -> his video opens beside the chart
       const c = chart(196, 26, 200, 112, 22, 7, [1.7, 3.6]);
@@ -89,7 +90,7 @@
         buddy([[0, 140, 160], [0.6, 140, 160], [1.3, c.x(17), c.y(17)], [2.0, c.x(17), c.y(17)], [3.0, 470, 110], [5.6, 140, 160]], [1.4]);
     } else if (n === 7) {   // the crew: same start, each at your own pace
       const a = chart(28, 40, 230, 96, 20, 77, [0.4, 4.6]), b = chart(300, 40, 230, 96, 20, 77, [0.4, 3.0]);
-      body = box(14, 14, 258, 146) + tx(28, 34, "You", 12, 700) + a.svg + box(286, 14, 258, 146) + tx(300, 34, "Ben", 12, 700) + b.svg +
+      body = box(14, 14, 258, 146) + tx(28, 34, NM.you, 12, 700) + a.svg + box(286, 14, 258, 146) + tx(300, 34, NM.mate, 12, 700) + b.svg +
         tx(150, 34, "Nov 20 · 9:30", 10, 600, 0.55) + tx(422, 34, "Nov 20 · 9:30", 10, 600, 0.55) +
         `<g ${pop(4.7)}><rect x="210" y="138" width="140" height="20" rx="10" fill="currentColor" fill-opacity=".1"/>${tx(222, 152, "Your own pace, any time", 10, 600, 0.8)}</g>` +
         buddy([[0, 70, 150], [4.6, 250, 70], [5.6, 70, 150]], [], BLUE, 1.7) + buddy([[0, 340, 150], [3.0, 520, 70], [5.6, 340, 150]], [], "#2bd4a0", 1.7);
@@ -121,8 +122,8 @@
         conf += `<rect x="296" y="56" width="5" height="5" fill="${[UP, BLUE, "#fecc02", DN][k % 4]}" style="${anim(d, "ease-out")}"/>`; }
       body = box(14, 14, 534, 146) + tx(30, 40, "Level 6", 12, 700, 0.8) + `<rect x="100" y="30" width="400" height="12" rx="6" fill="currentColor" fill-opacity=".1"/><rect x="100" y="30" width="400" height="12" rx="6" fill="${BLUE}" style="${anim(fill, "cubic-bezier(.3,.7,.3,1)")};transform-origin:100px 0"/>` +
         conf + `<g ${pop(2.55)}><rect x="246" y="44" width="110" height="30" rx="15" fill="#fecc02"/>${tx(262, 64, "Level 7 ★", 13, 800, 1, 'style="fill:#2b2206"')}</g>` +
-        `<defs><clipPath id="${id}nm"><text x="200" y="128" font-size="30" font-weight="800">King</text></clipPath><linearGradient id="${id}g" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>` +
-        `<text x="200" y="128" font-size="30" font-weight="800" fill="${BLUE}">King</text><g clip-path="url(#${id}nm)"><rect x="180" y="96" width="60" height="40" fill="url(#${id}g)" style="${anim(shim)}"/></g>` + tx(290, 126, "your name, in style", 11, 600, 0.55) +
+        `<defs><clipPath id="${id}nm"><text x="200" y="128" font-size="30" font-weight="800">${NM.you}</text></clipPath><linearGradient id="${id}g" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs>` +
+        `<text x="200" y="128" font-size="30" font-weight="800" fill="${BLUE}">${NM.you}</text><g clip-path="url(#${id}nm)"><rect x="180" y="96" width="60" height="40" fill="url(#${id}g)" style="${anim(shim)}"/></g>` + tx(290, 126, "your name, in style", 11, 600, 0.55) +
         buddy([[0, 520, 150], [2.4, 520, 150], [2.7, 440, 120], [5.6, 520, 150]], [2.55]);
     }
     return `<div class="tdemo" aria-hidden="true"><style>${K.join("")}</style><svg viewBox="0 0 560 170" role="presentation">${body}</svg></div>`;

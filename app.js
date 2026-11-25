@@ -540,6 +540,17 @@ function pOf(p, y, x) { let pr = p.series.coordinateToPrice(y); if (pr == null) 
   if (prefs.magnet && x != null) { const l = Math.round(p.chart.timeScale().coordinateToLogical(x)), c = p.candles[l]; if (c) { const best = [c.open, c.high, c.low, c.close].reduce((a, b) => (Math.abs(yOf(p, b) - y) < Math.abs(yOf(p, a) - y) ? b : a)); if (prefs.magMode === "strong" || Math.abs(yOf(p, best) - y) < 24) pr = best; } }   // KING_MAGNET: weak = within 24 px (was 14, King: a little stronger), strong = always snap
   return rnd(pr); }
 
+/* KING_TEXTINLINE (King, Nov 24): text on the chart is typed right where you clicked: a blinking caret inside a dashed outline so it's
+   easy to find, no dialog. Enter or clicking off keeps it (the outline goes away), Esc cancels, an empty note removes itself. */
+function textEdit(d, p) { document.querySelectorAll(".ktxed").forEach((e) => e.blur()); const x = xOf(p, d.a.t), y = yOf(p, d.a.p); if (x == null || y == null) return;
+  const el = document.createElement("div"), old = d.text || ""; el.className = "ktxed"; el.contentEditable = "plaintext-only"; if (el.contentEditable !== "plaintext-only") el.contentEditable = "true"; el.spellcheck = false; el.textContent = old;
+  const pr = p.el.getBoundingClientRect(); el.style.left = pr.left + x - 4 + "px"; el.style.top = pr.top + y - 15 + "px"; el.style.color = kReadable(d.color || "#e6eaf0"); el.style.setProperty("--ol", kReadable("#2962ff")); document.body.appendChild(el); d._ed = 1; repaintAll();
+  const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); const sl = getSelection(); el.focus({ preventScroll: true }); sl.removeAllRanges(); sl.addRange(r);
+  let done = false; const fin = (keep) => { if (done) return; done = true; const v = keep ? el.textContent.replace(/\s+/g, " ").trim().slice(0, 120) : old; el.remove(); d._ed = 0;
+    if (!v) { drawings = drawings.filter((z) => z !== d); if (sel === d) sel = null; } else d.text = v; delete d._new; repaintAll(); try { saveDrawings && saveDrawings(); } catch (er) {} };
+  el.addEventListener("keydown", (e) => { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); fin(true); } else if (e.key === "Escape") { e.preventDefault(); fin(!d._new); } });
+  el.addEventListener("keyup", (e) => e.stopPropagation()); el.addEventListener("input", () => { if (el.textContent.length > 120) el.textContent = el.textContent.slice(0, 120); });
+  el.addEventListener("blur", () => setTimeout(() => fin(true), 0)); el.addEventListener("pointerdown", (e) => e.stopPropagation()); }
 /* ---------------- drawings (canvas layer) ---------------- */
 let tool = "cursor", drawings = [], pend = null, sel = null, hov = null, did = 1;
 const FIBX = [[0, "0"], [0.618, "0.618"], [1, "1"], [1.272, "1.272"], [1.414, "1.414"], [1.618, "1.618"], [2, "2"], [2.618, "2.618"]];
@@ -555,7 +566,7 @@ function newDrawing(type, p, a, b) {
   if (type === "long" || type === "short") { const s = type === "long" ? 1 : -1;
     { const c = p.candles; if (c && c.length) { const k = Math.max(0, Math.min(c.length - 1, Math.round(idxOf(p, a.t)))); d.a.t = c[k].time; d.a.p = a.p = rnd(c[k].close); a = d.a; } }   // KING_POSSNAP (King, Nov 14): the box starts at the centre of the entry candle and the entry line = that candle's close
     d.b = { t: a.t + p.sec * 30, p: a.p }; d.entry = a.p; d.sl = rnd(a.p - s * prefs.slPts); d.tp = rnd(a.p + s * prefs.tpPts); d.side = s; d.state = "idle"; d.qty = null; }
-  if (type === "text") { d.text = "Note"; ask("Note text", "").then((v) => { if (v) { d.text = v; repaintAll(); } }); }
+  if (type === "text") { d.text = ""; d._new = 1; setTimeout(() => textEdit(d, p), 0); }   // KING_TEXTINLINE (King, Nov 24): no window, type right on the chart
   if (type === "channel") d.off = chOff(d);
   if (type === "pitchfork") d.c = { t: d.b.t + Math.max(p.sec, (d.b.t - d.a.t) * 0.4), p: d.a.p - (d.b.p - d.a.p) * 0.6 };
   const pd = (prefs.presetDef || {})[type]; if (pd != null && prefs.presets && prefs.presets[type] && prefs.presets[type][pd]) applyPreset(d, prefs.presets[type][pd]);
@@ -819,7 +830,7 @@ function drawOne(p, g, d, W, H) {
   if (d.type === "hline") { g.beginPath(); g.moveTo(0, y1); g.lineTo(W, y1); g.stroke(); g.fillStyle = kReadable(g.strokeStyle); g.fillText(px2(d.a.p), W - 60, y1 - 4); return; }
   if (d.type === "hray") { if (x1 == null) return; g.beginPath(); g.moveTo(x1, y1); g.lineTo(W, y1); g.stroke(); dot(x1, y1); return; }
   if (d.type === "vline") { if (x1 == null) return; g.beginPath(); g.moveTo(x1, 0); g.lineTo(x1, H); g.stroke(); return; }
-  if (d.type === "text") { if (x1 == null) return; g.font = "600 12px Geist, sans-serif"; g.fillStyle = kReadable(d.color || "#e6eaf0"); g.fillText(d.text, x1, y1); return; }   // KING_CONTRAST
+  if (d.type === "text") { if (x1 == null || d._ed) return; g.font = "600 12px Geist, sans-serif"; g.fillStyle = kReadable(d.color || "#e6eaf0"); g.fillText(d.text, x1, y1); return; }   // KING_CONTRAST
   if (d.type === "rect") { if (x1 == null || x2 == null || y2 == null) return; const rc = /^#[0-9a-f]{6}$/i.test(d.color || "") ? d.color : "#7aa7ff"; g.fillStyle = rc + Math.round(((d.fill ?? 10) / 100) * 255).toString(16).padStart(2, "0"); g.strokeStyle = d.color ? rc : blue;
     g.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); g.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1)); dot(x1, y1); dot(x2, y2); return; }
   if (d.type === "fib") { if (y2 == null) return; const xa = Math.min(x1 ?? 0, x2 ?? W);
@@ -884,7 +895,9 @@ function initPointer(p) {
   let drag = null;
   const pt = (e) => { const r = p.el.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   const hold = (on) => p.chart.applyOptions({ handleScroll: !on, handleScale: !on });
+  p.el.addEventListener("dblclick", (e) => { if (e.target.closest(".ktxed")) return; const { x, y } = pt(e), h = hitDrawing(p, x, y); if (h && h.d.type === "text") { e.preventDefault(); textEdit(h.d, p); } });   // KING_TEXTINLINE: double-click a note to edit it in place
   p.el.addEventListener("pointerdown", (e) => {
+    if (e.target.closest(".ktxed")) return;
     if (e.button !== 0 || e.target.closest(".ptitle,.lname")) return; const { x, y } = pt(e); hideCtx();
     let onAxis = false; try { onAxis = x > p.el.clientWidth - p.chart.priceScale("right").width() - 1 || y > p.el.clientHeight - p.chart.timeScale().height() - 1; } catch (er) {}   // KING_AXISDRAG (Nov 14): dragging the price/time axis only scales the chart
     if (onAxis) { const l0 = hitLine(p, y), py0 = pos.qty && paneSym(p) === sym ? yOf(p, pos.avg) : null; if (!l0 && !(py0 != null && Math.abs(py0 - y) < 7 && (pos.sl == null || pos.tp == null))) return; }   // KING_DRAGAXIS: the position tag on the axis can also pull out a stop/target
@@ -1173,7 +1186,7 @@ function chartMenu(p, x, y, cx, cy) {
         ...RISK_PRESETS.map((pr) => ({ t: "\u2003 Risk preset " + pr[0], f: () => { if (d.state === "filled") return toast("Already filled"); applyRisk(d, pr); } })),
         { t: "Settings…", f: () => toolDlg(d) }, { t: "Flip to " + (d.side > 0 ? "short" : "long"), f: () => { if (d.state !== "idle") return toast("Disarm it first"); d.side = -d.side; d.type = d.side > 0 ? "long" : "short"; [d.sl, d.tp] = [rnd(2 * d.entry - d.sl), rnd(2 * d.entry - d.tp)]; repaintAll(); } },
         "-", { t: "Delete", c: "s", k: "Del", f: () => { disarmTool(d); drawings = drawings.filter((z) => z !== d); sel = null; repaintAll(); } }], cx, cy);
-    return menu([{ h: d.type }, d.type === "text" ? { t: "Edit text…", f: async () => { d.text = await ask("Note", d.text) || d.text; repaintAll(); } } : null,
+    return menu([{ h: d.type }, d.type === "text" ? { t: "Edit text", f: () => { const pp = panes.find((q) => q.i === d.pane) || panes[0]; textEdit(d, pp); } } : null,
       { t: "Clone", f: () => { const c = JSON.parse(JSON.stringify(d)); c.id = did++; drawings.push(c); repaintAll(); } }, { t: "Delete", c: "s", k: "Del", f: () => { drawings = drawings.filter((z) => z !== d); sel = null; repaintAll(); } }], cx, cy); }
   if (pr == null || lp == null) return menu([{ h: "Chart" }, { t: "Load a replay first", f: () => {} }], cx, cy);
   const above = pr > lp, q = lotsNow(), br = autoBr(), t = tOf(p, x);
@@ -1632,7 +1645,8 @@ function ask(title, def) { if (window.__askAuto != null) return Promise.resolve(
 function kRgb(c) { c = String(c || "").trim(); let m = c.match(/^#([0-9a-f]{3,8})$/i); if (m) { let h = m[1]; if (h.length <= 4) h = h.split("").map((x) => x + x).join(""); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]; }
   m = c.match(/rgba?\(([^)]+)\)/i); if (m) return m[1].split(",").slice(0, 3).map((x) => parseFloat(x)); return null; }
 function kLum(c) { const r = kRgb(c); if (!r) return null; const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r[0]) + 0.7152 * f(r[1]) + 0.0722 * f(r[2]); }
-function kChartBg() { const c = prefs && prefs.cs; return (c && (c.bg1 || c.bg2)) || getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#111"; }
+function kChartBg() { try { const L = panes[0].chart.options().layout, b = L.background || {}; const c = b.color || b.topColor || L.backgroundColor; if (c && c !== "transparent" && !/rgba\([^)]*,\s*0\)/.test(c)) return c;
+    for (let e = panes[0].el; e; e = e.parentElement) { const bc = getComputedStyle(e).backgroundColor; if (bc && bc !== "transparent" && !/rgba\([^)]*,\s*0\)/.test(bc)) return bc; } } catch (e) {} const c = prefs && prefs.cs; return (c && (c.bg1 || c.bg2)) || getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#111"; }   // the chart's real background
 function kReadable(col, bg) { const lb = kLum(bg || kChartBg()), lc = kLum(col); if (lb == null) return col || "#e6eaf0"; const dark = "#141414", light = "#f2f2f2";
   if (lc == null) return lb > 0.4 ? dark : light; const ratio = (Math.max(lb, lc) + 0.05) / (Math.min(lb, lc) + 0.05); return ratio >= 2.4 ? col : lb > 0.4 ? dark : light; }
 window.kReadable = kReadable;
@@ -2643,8 +2657,9 @@ function releaseIntro(replay) {
     setTimeout(() => { introOn = false; introWait.splice(0).forEach((f) => { try { f(); } catch (e) {} }); }, 300); };
   const toHold = () => { if (stage === "hold") return; stage = "hold"; if (!(vid.readyState >= 2 && vid.ended)) hold.hidden = false;
     setTimeout(() => { hint.hidden = false; requestAnimationFrame(() => hint.classList.add("on")); }, 3500); };   // King: hint fades in later
-  const start = () => { if (stage !== "note") return; stage = "play"; note.classList.add("out"); vid.classList.add("on");
-    vid.muted = prefs.sound === false; const p = vid.play(); if (p && p.catch) p.catch(() => { vid.muted = true; vid.play().catch(toHold); }); };
+  const start = () => { if (stage !== "note") return; stage = "play"; note.classList.add("out");   // KING_INTROSMOOTH (King, Nov 24): wait until the video can play through, so it never starts rough while still downloading
+    const go = () => { vid.classList.add("on"); vid.muted = prefs.sound === false; const p = vid.play(); if (p && p.catch) p.catch(() => { vid.muted = true; vid.play().catch(toHold); }); };
+    if (vid.readyState >= 4) return go(); let fired = false; const once = () => { if (fired) return; fired = true; go(); }; vid.addEventListener("canplaythrough", once, { once: true }); setTimeout(once, 4000); };
   vid.addEventListener("ended", toHold); vid.addEventListener("error", () => { if (stage !== "note") toHold(); });
   el.addEventListener("click", () => { if (stage === "note") start(); else if (stage === "hold") finish(); });   // KING_NOSKIP (King, Nov 20): no clicking through the video, even on a replay; it waits for the logo
   addEventListener("keydown", function relKey(e) { if (!document.body.contains(el)) return removeEventListener("keydown", relKey);
@@ -3636,14 +3651,14 @@ $("cs-tpl").onchange = async () => { const v = $("cs-tpl").value; $("cs-tpl").va
 /* KING_NAMEFX + KING_PROFILE (Nov 12 walkthrough): welcome uses the real name, then a quick profile setup (display name + @username).
    Names with keywords get effects everywhere names show (chat, live, leaderboard, shares). King can also give a name any effect by hand
    (Admin → Usernames & effects); that's stored in profiles.name_fx and only an admin can change it (staged SQL 2026-11-12_usernames.sql). */
-const NAME_FX = [["fart", "fart", "💨"], ["poop", "poop", "💩"], ["poo", "poop", "💩"], ["juicy", "juicy", "🍑"], ["goat", "goat", "🐐"], ["king", "king", "👑"], ["sigma", "sigma", ""], ["moon", "moon", "🌙"], ["degen", "degen", "🎰"], ["money", "money", "💸"], ["cash", "money", "💸"], ["sauce", "juicy", "🔥"], ["drip", "juicy", "💧"], ["toot", "fart", "💨"]];
+const NAME_FX = [["fart", "fart", "wind"], ["poop", "poop", "swirl"], ["poo", "poop", "swirl"], ["juicy", "juicy", "peach"], ["goat", "goat", "horns"], ["king", "king", "crown"], ["sigma", "sigma", ""], ["moon", "moon", "moon"], ["degen", "degen", "dice"], ["money", "money", "cash"], ["cash", "money", "cash"], ["sauce", "juicy", "flame"], ["drip", "juicy", "drop"], ["toot", "fart", "wind"]];   // KING_NOEMOJI: icon names, drawn by kicons.js
 function fxFor(name, uid) { const P = profs[uid] || (me && uid === me.user_id ? me : null), set = P && P.name_fx; if (set === "none") return null; if (set) { const f = NAME_FX.find((x) => x[1] === set); return [set, f ? f[2] : ""]; }
   const hay = ((name || "") + " " + ((P && P.username) || "")).toLowerCase(), f = NAME_FX.find(([k]) => hay.includes(k)); return f ? [f[1], f[2]] : null; }
 // KING_SIGFX (King, Nov 24): every name gets a look. Keyword and picked effects still win; anyone else gets a signature effect worked out
 // from their name (style + two hues from a hash), so it works for any name and stays the same everywhere.
 const SIG = ["grad", "glow", "shine", "duo", "wave", "ink"];
 function sigFor(name) { let h = 2166136261; for (const c of String(name || "trader").toLowerCase()) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return [SIG[h % SIG.length], h % 360, (h >>> 9) % 360]; }
-function nmFx(name, uid) { const n = esc(name || "trader"), f = fxFor(name, uid); if (f) return `<span class="nfx nfx-${f[0]}" data-e="${f[1]}">${n}</span>`;
+function nmFx(name, uid) { const n = esc(name || "trader"), f = fxFor(name, uid); if (f) return `<span class="nfx nfx-${f[0]}">${n}${f[1] && window.kIcon ? `<i class="nfxi">${kIcon(f[1])}</i>` : ""}</span>`;
   const P = profs[uid] || (me && uid === me.user_id ? me : null); if (P && P.name_fx === "none") return n;
   const [k, h1, h2] = sigFor((name || "") + ((P && P.username) || "")), body = k === "wave" ? [...(name || "trader")].map((c, i) => `<i style="--i:${i}">${esc(c)}</i>`).join("") : n;
   return `<span class="nfx nfx-sig sig-${k}" style="--h:${h1};--h2:${(h1 + 60 + (h2 % 120)) % 360}">${body}</span>`; }
@@ -3796,7 +3811,7 @@ async function reeseOnChart(r) { reeseClear(); let p = panes[active] || panes[0]
     if (conf.length) { const t = { id: did++, type: "text", pane: p.i, a: { t: te, p: s > 0 ? Math.max(tp, e) : Math.min(tp, e) }, b: { t: te, p: e }, text: "Reese: " + conf.join(" · "), reese: true }; drawings.push(t); reeseIds.push(t.id); }
     reeseMk.push({ t: te, position: s > 0 ? "belowBar" : "aboveBar", color: "#c08bff", shape: s > 0 ? "arrowUp" : "arrowDown", text: `Reese ${s > 0 ? "BUY" : "SELL"} @ ${px2(e)}` });
     if (tx != null && ex) reeseMk.push({ t: tx, position: s > 0 ? "aboveBar" : "belowBar", color: "#c08bff", shape: s > 0 ? "arrowDown" : "arrowUp", text: `Reese out @ ${px2(ex)} · ${r.result || ""}` }); }
-  tradeNotes(r).forEach((n) => { const t = nyClock(r.day, n.t); if (t != null) reeseMk.push({ t, position: "aboveBar", color: "#8ab4ff", shape: "square", text: "💬 " + String(n.t).replace(/\s+/g, "") }); });
+  tradeNotes(r).forEach((n) => { const t = nyClock(r.day, n.t); if (t != null) reeseMk.push({ t, position: "aboveBar", color: "#8ab4ff", shape: "square", text: "Note · " + String(n.t).replace(/\s+/g, "") }); });
   panes.forEach((q) => { q._mkk = null; csMarks(q); }); repaintAll();
   const inData = (t) => p.candles.length && bucket(t, sec) >= p.candles[0].time && bucket(t, sec) <= p.candles[p.candles.length - 1].time;
   if (te != null && inData(te)) try { const ts = p.chart.timeScale(), k = p.candles.findIndex((c) => c.time >= bucket(te, sec)); if (k >= 0) ts.setVisibleLogicalRange({ from: k - 50, to: k + 50 }); p.chart.priceScale("right").applyOptions({ autoScale: true }); } catch (e) {}
@@ -4243,12 +4258,12 @@ async function ghostLoad(force) { if (!force && Date.now() - ghostLoaded < 60000
 function ghostMarks(p, last, first) { if (prefs.ghosts === false || !ghostT.length) return []; const s = paneSym(p), mine = new Set((hist || []).map((t) => t.id).filter(Boolean)), out = [];
   for (const t of ghostT) { if (mine.has(t.id) || (sess && t.session_id === sess.id)) continue; if (symRoot(t.symbol) !== symRoot(s)) continue;
     const te = bucket(loc(t.t_entry), p.sec); if (te < first || te > last) continue; const won = +t.pnl > 0;
-    out.push({ time: te, position: t.dir > 0 ? "belowBar" : "aboveBar", color: t.dir > 0 ? "rgba(61,139,255,.55)" : "rgba(255,77,94,.55)", shape: t.dir > 0 ? "arrowUp" : "arrowDown", text: `👻 ${t.dir > 0 ? "B" : "S"} ${px2(t.entry)}` });
-    if (t.t_exit) { const tx = bucket(loc(t.t_exit), p.sec); if (tx <= last) out.push({ time: tx, position: t.dir > 0 ? "aboveBar" : "belowBar", color: won ? UPC(.55) : DNC(.55), shape: "circle", text: `👻 ${won ? "+" : ""}${money(+t.pnl)}` }); } }
+    out.push({ time: te, position: t.dir > 0 ? "belowBar" : "aboveBar", color: t.dir > 0 ? "rgba(61,139,255,.55)" : "rgba(255,77,94,.55)", shape: t.dir > 0 ? "arrowUp" : "arrowDown", text: `Ghost ${t.dir > 0 ? "B" : "S"} ${px2(t.entry)}` });
+    if (t.t_exit) { const tx = bucket(loc(t.t_exit), p.sec); if (tx <= last) out.push({ time: tx, position: t.dir > 0 ? "aboveBar" : "belowBar", color: won ? UPC(.55) : DNC(.55), shape: "circle", text: `Ghost ${won ? "+" : ""}${money(+t.pnl)}` }); } }
   return out; }
 { const _cm = csMarks; csMarks = function (p) { const n0 = ghostMarks.n; _cm(p); try { const last = p.candles.length ? p.candles[p.candles.length - 1].time : -1, first = p.candles.length ? p.candles[0].time : Infinity, g = ghostMarks(p, last, first);
     if (!g.length && !p._ghostN) return; const key = "g" + g.length + "|" + p._mkk + "|" + p.sec; if (p._gk === key) return; p._gk = key; p._ghostN = g.length;
-    const base = (p.series.markers ? p.series.markers() : []).filter((m) => !String(m.text || "").startsWith("👻")); p.series.setMarkers([...base, ...g].sort((a, b) => a.time - b.time)); } catch (e) {} }; }
+    const base = (p.series.markers ? p.series.markers() : []).filter((m) => !String(m.text || "").startsWith("Ghost ")); p.series.setMarkers([...base, ...g].sort((a, b) => a.time - b.time)); } catch (e) {} }; }
 { const _lr = loadReplay; loadReplay = async function (...a) { const r = await _lr.apply(this, a); ghostLoad(true).catch(() => {}); return r; }; }
 setTimeout(() => ghostLoad(true).catch(() => {}), 3000);
 
@@ -4642,6 +4657,15 @@ window.releaseTour = function (host, done) {
     ["The little things", "Small stuff that makes it fun.", I('<path d="M12 3l2.6 5.4 5.9.8-4.3 4.1 1 5.8L12 16.4 6.8 19.1l1-5.8L3.5 9.2l5.9-.8z"/>'),
       [["XP, levels and your profile", "Earned from lessons, drills and clean trades. Avatar frames, banners, titles and badges unlock as you level."], ["Name effects", "Your name shows up in style in chat, Live and the leaderboard."], ["Hotkeys, templates, screenshots", "Press ? for every shortcut, save chart setups, and share a trade card with one click."]], "All over KAIROS"],   // KING_TOURLITTLE
   ];
+  // KING_TOURNAME (King, Nov 24): the tour talks to each person by name
+  const nm = (((me && me.name) || (user && user.email) || "").split(/[@ ]/)[0] || "").replace(/^./, (c) => c.toUpperCase()), you = nm && !/^(you|demo|guest|trader)$/i.test(nm) ? nm : "";
+  const mates = Object.entries(names || {}).filter(([k]) => !(me && k === me.user_id) && k !== "demo").map(([, v]) => String(v || "").split(" ")[0]).filter(Boolean).slice(0, 3);
+  const crew = mates.length > 1 ? mates.slice(0, -1).join(", ") + " and " + mates[mates.length - 1] : mates[0] || "your friends";
+  const LEAD = you ? [`${you}, this is the trader KAIROS is built around.`, `After a replay day, ${you}, see the trades Reese really took that day and how yours compare.`, `Saw a chart on Discord or X, ${you}? Jump straight to that moment.`,
+    `Your journal, ${you}: live, backtest and Reese trades in one calendar.`, `Make the workspace feel like yours, ${you}.`, `Practice the way your funded account actually scores you, ${you}.`, `Backtest with ${crew} instead of alone.`,
+    `Only take the trades you'd be proud of, ${you}.`, `An AI coach that knows KAIROS and your journal, ${you}.`, `A real path from new to consistent, ${you}.`, `Small stuff that makes it yours, ${you}.`] : null;
+  if (LEAD) STOPS.forEach((st, k) => { if (LEAD[k]) st[1] = LEAD[k]; });
+  window.__tourNames = { you: you || "You", mate: mates[0] || "Ben" };
   const N = STOPS.length; let i = 1;   // KING_NONOTE (King, Nov 24): sticky note scrapped everywhere; the tour always starts at stop 1
   if (!document.getElementById("rt-font")) { const l = document.createElement("link"); l.id = "rt-font"; l.rel = "stylesheet"; l.href = "https://fonts.googleapis.com/css2?family=Caveat:wght@600&display=swap"; document.head.appendChild(l); }
   const el = document.createElement("div"); el.id = "rtour"; el.className = "rtour"; el.setAttribute("role", "dialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-label", "KAIROS 1.0 tour");
@@ -4658,12 +4682,14 @@ window.releaseTour = function (host, done) {
   const dots = () => `<div class="rtdots" aria-hidden="true">${Array.from({ length: N }, (_, k) => `<i class="${k === i - 1 ? "on" : k < i - 1 ? "past" : ""}"></i>`).join("")}</div>`;
   const draw = (dir) => {
     let body;
-    if (i > N) body = `<div class="rtfin"><span class="kmark">K</span><h2>KAIROS 1.0</h2><p>That's the tour. Every stop lives in the app now; this tour is in Settings → Intros &amp; releases whenever you want it again.</p></div><div class="rtnav"><button class="ghost" data-t="b">Back</button><button class="primary rtnext" data-t="x">Open KAIROS</button></div>`;
+    if (i > N) body = `<div class="rtfin"><span class="kmark">K</span><h2>KAIROS 1.0</h2><p>${you ? `That's the tour, ${esc(you)}.` : "That's the tour."} Every stop lives in the app now; this tour is in Settings → Intros &amp; releases whenever you want it again.</p></div><div class="rtnav"><button class="ghost" data-t="b">Back</button><button class="primary rtnext" data-t="x">Open KAIROS</button></div>`;
     else { const [t, lead, ic, items, where] = STOPS[i - 1];
       body = `<div class="rtstep">Stop ${i} of ${N}</div><div class="rthead"><div class="rtart">${ic}</div><div><h2>${t}</h2><p class="rtlead">${lead}</p></div></div>${window.tourDemo ? tourDemo(i) : ""}
-        <ul class="rtlist${t === "Your vibe" ? " rtvibe" : ""}">${items.map(([a, b]) => `<li><b>${a}</b><span>${b}</span></li>`).join("")}</ul><div class="rtwhere">Find it: <b>${where}</b></div>
+        <ul class="rtlist">${items.map(([a, b]) => `<li><b>${a}</b><span>${b}</span></li>`).join("")}</ul><div class="rtwhere">Find it: <b>${where}</b></div>
         <div class="rtnav"><button class="ghost" data-t="b">Back</button>${dots()}<button class="primary rtnext" data-t="n">${i === N ? "Finish" : "Next"}</button></div>`; }
-    el.innerHTML = `<div class="rtcard ${dir || ""}">${forced ? "" : '<button class="rtx" data-t="x" aria-label="Close the tour">×</button>'}${body}</div>`;
+    el.innerHTML = `<div class="rtcard ${dir || ""}${i <= N && STOPS[i - 1] && STOPS[i - 1][0] === "Your vibe" ? " rtvibe" : ""}">${forced ? "" : '<button class="rtx" data-t="x" aria-label="Close the tour">×</button>'}${body}</div>`;
+    { const vc = el.querySelector(".rtcard.rtvibe"); if (vc) { const CS = ["#4696ff", "#2bd4a0", "#ff3ea5", "#fecc02", "#20c4f0", "#ff7a59"], tint = (h) => `color-mix(in srgb,${h} 17%,var(--panel,#fff))`; let k = 0;   // KING_VIBEWAVE v2: each wave brings the next colour
+      vc.style.setProperty("--vb", tint(CS[0])); vc.addEventListener("animationiteration", (e) => { if (e.animationName !== "vibeSweep") return; vc.style.setProperty("--va", tint(CS[k % CS.length])); k++; vc.style.setProperty("--vb", tint(CS[k % CS.length])); }); } }
     try { el.querySelector(".rtnext").focus({ preventScroll: true }); } catch (e) {}
     try { tone("click"); } catch (e) {}
   };

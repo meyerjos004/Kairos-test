@@ -42,6 +42,18 @@ function revealSound(ac, dur, vol = 1) {
   return () => { try { out.gain.cancelScheduledValues(ac.currentTime); out.gain.linearRampToValueAtTime(0, ac.currentTime + .08); } catch (e) {} };
 }
 
+// KING_REALSND (King, Nov 24: "find real sounds from online"): the reveal plays a mix of real recordings (CC0, Freesound: a drift-car
+// pull + slide, V8 Supercar straight-cut whine + fly-by, a tyre squeal), cut to the car's moves: brand/reveal-sound.mp3. Decoded once and
+// cached; if it can't load in time the synthesized sound plays instead. Credits in brand/CREDITS.md.
+let _recBuf = null, _recP = null;
+function loadRecorded(ac) { if (_recBuf) return Promise.resolve(_recBuf); if (!_recP) _recP = fetch("brand/reveal-sound.mp3?v=1").then((r) => r.arrayBuffer()).then((b) => new Promise((ok, no) => ac.decodeAudioData(b, ok, no))).then((buf) => (_recBuf = buf)).catch(() => null); return _recP; }
+function playRecorded(ac, dur, vol = 1) { let src = null, stop = null, dead = false; const g = ac.createGain(); g.gain.value = 0.95 * vol; g.connect(ac.destination);
+  const t0 = ac.currentTime;
+  const go = (buf) => { if (dead) return; if (!buf) { stop = revealSound(ac, dur, vol); return; } const late = ac.currentTime - t0; if (late > 0.35) { stop = revealSound(ac, dur, vol); return; }
+    src = ac.createBufferSource(); src.buffer = buf; src.playbackRate.value = Math.max(0.85, Math.min(1.15, buf.duration > 0.5 ? (buf.duration - 0.6) / Math.max(1, dur) : 1)); src.connect(g); src.start(ac.currentTime, late); };
+  if (_recBuf) go(_recBuf); else loadRecorded(ac).then(go);
+  return () => { dead = true; try { if (stop) stop(); if (src) { g.gain.cancelScheduledValues(ac.currentTime); g.gain.linearRampToValueAtTime(0, ac.currentTime + 0.08); src.stop(ac.currentTime + 0.1); } } catch (e) {} }; }
+try { const _w = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(2, 48000, 48000); setTimeout(() => loadRecorded(_w), 1500); } catch (e) {}   // warm the cache
 // KING_LOGOREVEAL player: colour+matte stacked video -> WebGL, tyre lines on a canvas, logo wiped in behind the car.
 async function mountReveal(stage, {src, track, onEnd}) {
   const T = typeof track === "string" ? await (await fetch(track)).json() : track, FR = T.frames, N = FR.length;
@@ -53,7 +65,7 @@ async function mountReveal(stage, {src, track, onEnd}) {
     const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; };
     prog = gl.createProgram();
     gl.attachShader(prog, sh(gl.VERTEX_SHADER, "attribute vec2 p;varying vec2 u;void main(){u=p*.5+.5;gl_Position=vec4(p,0.,1.);}"));
-    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, "precision mediump float;varying vec2 u;uniform sampler2D t;void main(){vec3 c=texture2D(t,vec2(u.x,1.-(1.-u.y)*.5)).rgb;float a=texture2D(t,vec2(u.x,.5-(1.-u.y)*.5)).r;gl_FragColor=vec4(c*a,a);}"));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, "precision mediump float;varying vec2 u;uniform sampler2D t;void main(){vec3 c=texture2D(t,vec2(u.x,1.-(1.-u.y)*.5)).rgb;float a=smoothstep(.07,.93,texture2D(t,vec2(u.x,.5-(1.-u.y)*.5)).r);gl_FragColor=vec4(c*a,a);}"));
     gl.linkProgram(prog); gl.useProgram(prog);
     const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
     const l = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0);
@@ -80,7 +92,7 @@ async function mountReveal(stage, {src, track, onEnd}) {
   const end = () => { if (done) return; done = true; cancelAnimationFrame(raf); gl_c.style.opacity = 0; logo.style.opacity = 1; logo.classList.add("rv-land"); onEnd && onEnd(); };
   v.addEventListener("ended", end); v.addEventListener("error", end);
   let stopSnd = null; return { play(snd, from) { if (stopSnd) stopSnd(); stopSnd = null; from = from || 0;
-      const go = () => { try { v.currentTime = from; } catch (e) {} if (snd && !from) { try { const ac = snd.resume ? snd : (this._ac || (this._ac = new (window.AudioContext || window.webkitAudioContext)())); ac.resume(); stopSnd = revealSound(ac, isFinite(v.duration) && v.duration ? v.duration : N / T.fps, typeof snd === "number" ? snd : 1); } catch (e) {} }
+      const go = () => { try { v.currentTime = from; } catch (e) {} if (snd && !from) { try { const ac = snd.resume ? snd : (this._ac || (this._ac = new (window.AudioContext || window.webkitAudioContext)())); ac.resume(); stopSnd = playRecorded(ac, isFinite(v.duration) && v.duration ? v.duration : N / T.fps, typeof snd === "number" ? snd : 1); } catch (e) {} }
         done = false; gl_c.style.opacity = 1; logo.classList.remove("rv-land"); logo.style.opacity = 0; const p = v.play(); if (p) p.catch(end); loop(); };
       if (v.readyState >= 1) go(); else { v.addEventListener("loadedmetadata", go, { once: true }); v.load(); } }, destroy() { done = true; ro.disconnect(); v.pause(); } };
 }
@@ -89,7 +101,8 @@ async function mountReveal(stage, {src, track, onEnd}) {
   window.kReveal = async function (host, o) { o = o || {};
     const st = document.createElement("div"); st.className = "rv-stage" + (o.cls ? " " + o.cls : ""); host.appendChild(st);
     try { trackP = trackP || fetch("brand/reveal-track.json").then((r) => r.json()); const T = await trackP;
-      const R = await mountReveal(st, { src: "brand/reveal-stack.mp4", track: T, onEnd: o.onEnd }); R.el = st; R.play(o.sound, o.from); return R;
+      const big = (st.getBoundingClientRect().width || innerWidth) * Math.min(2, devicePixelRatio || 1) > 1500;   // KING_CARHD: the 2560x1440 render on big screens, the light one elsewhere
+      const R = await mountReveal(st, { src: big ? "brand/reveal-stack-hd.mp4" : "brand/reveal-stack.mp4", track: T, onEnd: o.onEnd }); R.el = st; R.play(o.sound, o.from); return R;
     } catch (e) { st.innerHTML = '<div class="rv-logo rv-land" style="opacity:1"><span class="kmark">K</span><span class="kword">KAIROS</span></div>'; o.onEnd && o.onEnd(); return { el: st, play() {}, destroy() {} }; } };
   window.kRevealSound = revealSound;
 })();

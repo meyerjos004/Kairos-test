@@ -824,6 +824,13 @@ check("friends: invite button + who's on + leaderboard on top", 'id="fr-invite"'
 check("friends: chat has shared trades tab, + files and mic", 'id="fch-tabs"' in _ix and 'id="chat-plus"' in _ix and 'id="chat-mic"' in _ix and 'id="f-sh"' in _ix)
 check("friends: person menu (click + right-click)", "async function personMenu(" in _src and '"contextmenu"' in _src)
 check("names: signature effect for any name + 20 picks", "function sigFor(" in _src and _src.count('", "') > 0 and '["outline", "Outline glow", 19]' in _src)
+# KING_NOEMOJI / KING_PRANKREAD (Nov 24)
+check("no emojis: icon set loaded before the app + chart markers use words", "kicons.js?v=" in _ix and _ix.index("kicons.js") < _ix.index('src="app.js') and "👻" not in _src and '"Ghost ' in _src)
+check("prank: readable Pro box + top button", "KING_PRANKREAD" in open(ROOT + "/ui2-light.css").read())
+# KING_REALSND / KING_TEXTINLINE / KING_TOURNAME / KING_VIBEWAVE v2 (Nov 24)
+check("reveal plays the recorded car sound (synth as backup)", "function playRecorded(" in _rv and os.path.getsize(ROOT + "/brand/reveal-sound.mp3") > 40000)
+check("chart text is typed in place (no dialog)", "function textEdit(" in _src and 'ask("Note text"' not in _src)
+check("tour uses the person's name + whole-card colour wave on stop 5", "KING_TOURNAME" in _src and "vibeSweep" in open(ROOT + "/style.css").read())
 # KING_BTCAL check lives in the browser part; static checks below
 # KING_NOCONFIRM (Nov 24): no gray browser confirm() pop-ups left; the in-site yes/no box exists. KING_SETUPAFTERAUTH, KING_WELNAME, rvc stage class, invite icon
 check("no browser confirm() left", not re.findall(r'(?<![\w.])confirm\(', _jsall), re.findall(r'.{30}(?<![\w.])confirm\(.{20}', _jsall))
