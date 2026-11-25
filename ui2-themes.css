@@ -121,7 +121,7 @@ body.ui2.at-aero :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdo
 body.ui2.at-aero :is(button:not(.rail *):not(.s2side *):not(.setnav *):not(.atdot):not(.atc)).primary{background:linear-gradient(180deg,#8be0ff,#33b4f5 48%,#0e8fe0 52%,#38b8f5)!important;color:#fff!important;border-color:#0a78c2!important;text-shadow:0 1px 1px rgba(0,60,120,.5)}
 body.ui2.at-aero .rail{background:linear-gradient(180deg,rgba(255,255,255,.9),rgba(220,242,255,.75))!important;backdrop-filter:blur(10px);border-bottom:1px solid #fff!important;box-shadow:0 4px 16px rgba(20,100,160,.12)}
 body.ui2.at-aero #navline{background:linear-gradient(90deg,#33b4f5,#7ed957)!important;height:3px!important}
-body.ui2.at-aero #atfx{display:block;position:fixed;inset:0;z-index:2147482000;opacity:.55;pointer-events:none;overflow:hidden}
+body.ui2.at-aero #atfx{display:none!important}   /* KING_NOBUBBLES (King, Nov 24): no floating bubbles over the page */
 body.ui2.at-aero #atfx i{position:absolute;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(255,255,255,.95),rgba(180,230,255,.35) 40%,rgba(120,200,255,.08) 70%,transparent);border:1px solid rgba(255,255,255,.6);animation:atBub 22s linear infinite}
 body.ui2.at-aero #atfx i:nth-child(1){width:120px;height:120px;left:8%;bottom:-140px}
 body.ui2.at-aero #atfx i:nth-child(2){width:70px;height:70px;left:62%;bottom:-90px;animation-duration:17s;animation-delay:-6s}

@@ -1,0 +1,67 @@
+/* KING_FIX1124 (King, Nov 24 evening): chart fixes. Loaded last. */
+/* KING_POSLOOK: entry, target and stop tags share one design in the position box's colors */
+.brtag,.postag{flex-direction:row!important;flex-wrap:nowrap!important;width:auto!important;position:absolute;z-index:7;display:flex;align-items:stretch;height:28px;border-radius:9px;overflow:hidden;font:700 12.5px/1 var(--body,Geist,sans-serif);font-variant-numeric:tabular-nums;box-shadow:0 6px 16px -8px rgba(0,0,0,.45);gap:0!important}
+.brtag{pointer-events:auto!important;cursor:ns-resize;touch-action:none}
+.brtag>*,.postag>*{display:flex!important;align-items:center;justify-content:center;height:28px!important;padding:0 10px!important;margin:0!important;border:0!important;border-radius:0!important;font-style:normal;font:inherit}
+.brtag b,.postag .ptq{background:var(--c)!important;color:var(--ct,#fff)!important;letter-spacing:.05em}
+.brtag i,.postag .ptpx{background:var(--panel,#fff)!important;color:var(--txt,#111)!important;box-shadow:inset 0 2px 0 var(--c),inset 0 -2px 0 var(--c);font-family:var(--serif,inherit);font-size:13.5px;font-weight:600}
+.brtag em,.postag .ptp{background:var(--c)!important;color:var(--ct,#fff)!important;min-width:0!important}
+.postag button{background:var(--panel,#fff)!important;color:var(--txt,#111)!important;box-shadow:inset 0 2px 0 var(--c),inset 0 -2px 0 var(--c),inset 1px 0 0 color-mix(in srgb,var(--txt,#111) 14%,transparent);cursor:pointer;padding:0 9px!important;font-size:11.5px;letter-spacing:.05em}
+.postag button:last-child{box-shadow:inset 0 2px 0 var(--c),inset 0 -2px 0 var(--c),inset -2px 0 0 var(--c),inset 1px 0 0 color-mix(in srgb,var(--txt,#111) 14%,transparent);border-radius:0 9px 9px 0!important}
+.postag button:hover{background:color-mix(in srgb,var(--c) 14%,var(--panel,#fff))!important}
+.postag button svg{width:14px;height:14px;display:block}
+.postag .ptbr{cursor:ns-resize;touch-action:none}
+.postag .ptbr.hidden{display:none!important}
+.brtag:hover{filter:brightness(1.05)}
+body.ptdragging,body.ptdragging *{cursor:ns-resize!important}
+/* KING_INDMENU: gear per indicator, foldable classic section */
+#ctx .mi{position:relative}
+#ctx .mi .mig{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:26px;height:26px;display:grid;place-items:center;border-radius:7px;color:var(--mut,#777);opacity:.75;transition:background .15s,opacity .15s}
+#ctx .mi .mig:hover{opacity:1;background:color-mix(in srgb,var(--txt,#111) 9%,transparent);color:var(--txt,#111)}
+#ctx .mi .mig svg{width:15px;height:15px;display:block}
+#ctx .mi:has(.mig){padding-right:40px}
+#ctx .mh.mhx{cursor:pointer;user-select:none}
+#ctx .mh.mhx:hover{color:var(--txt,#111)}
+/* KING_LOOKUP: go to a date without starting a session */
+.lkwrap{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:rgba(10,12,16,.35);backdrop-filter:blur(3px)}
+.lkwrap.hidden{display:none}
+.lk{width:min(1180px,94vw);height:min(780px,90vh);display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:18px;background:var(--panel,#fff);color:var(--txt,#111);border:1px solid color-mix(in srgb,var(--txt,#111) 10%,transparent);box-shadow:0 30px 80px -30px rgba(0,0,0,.5)}
+.lkh{display:flex;align-items:center;gap:10px}.lkh b{font-size:18px}
+.lkx{width:36px;height:36px;display:grid!important;place-items:center;padding:0!important}.lkx svg{width:18px;height:18px}
+.lkbar{display:grid;grid-template-columns:1fr 110px auto;gap:8px}.lkbar input{min-height:42px;font-size:15px}
+.lktf{align-self:flex-start}
+.lkchart{flex:1;min-height:0;border-radius:12px;overflow:hidden;border:1px solid color-mix(in srgb,var(--txt,#111) 8%,transparent)}
+.lkfoot{display:flex;align-items:center;gap:10px}
+/* KING_CANCELSESS */
+.dp-cancel{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:10px 12px;margin:8px 0;border-radius:12px;background:color-mix(in srgb,#e5484d 7%,transparent)}
+.dp-cancel button{background:#e5484d!important;color:#fff!important;border:0!important}
+.dp-cancel button.armed{background:#b4232a!important;box-shadow:0 0 0 3px color-mix(in srgb,#e5484d 35%,transparent)}
+/* KING_TOOLBAR2 */
+#tools .tgx{display:none!important}
+#tools .tgrip.tgrip2{display:grid;place-items:center;cursor:pointer;font-size:0;height:30px}
+#tools .tgrip.tgrip2 svg{width:17px;height:17px;display:block}
+#tools.float{cursor:grab}
+body.tdragging,body.tdragging *{cursor:grabbing!important}
+#ctx .mi.mistar{display:grid;place-items:center;min-height:36px}
+#ctx .mi.mistar .mstar{width:20px;height:20px;color:#e0a100}
+.srh{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* KING_STRATEDIT */
+.sted{display:flex;flex-direction:column;gap:8px;margin-top:10px;max-height:60vh;overflow:auto;padding-right:2px}
+.stg{border-radius:14px;border:1px solid color-mix(in srgb,var(--txt,#111) 10%,transparent);background:var(--panel2,rgba(0,0,0,.02))}
+.sth{display:flex;align-items:center;gap:8px;padding:8px 10px}
+.sth .stn{flex:1;min-height:34px;font-weight:600;font-size:15px;background:transparent;border-color:transparent}
+.sth .stn:focus{border-color:color-mix(in srgb,var(--txt,#111) 18%,transparent);background:var(--panel,#fff)}
+.stt,.stx{width:30px;height:30px;min-height:0!important;display:grid!important;place-items:center;padding:0!important;border-radius:8px;flex:none}
+.stt svg,.stx svg{width:15px;height:15px;display:block}
+.stt svg{transition:transform .18s}.stg.open .stt svg{transform:rotate(90deg)}
+.stx{color:var(--mut,#888)}.stx:hover{color:#e5484d}
+.stb{display:none;flex-direction:column;gap:6px;padding:0 10px 12px 48px}.stg.open .stb{display:flex}
+.str{display:flex;align-items:center;gap:8px}.str input{flex:1;min-height:34px}
+.stk{width:20px;text-align:right;font-size:12px;color:var(--mut,#888);font-variant-numeric:tabular-nums}
+.stadd,.stnew{align-self:flex-start}
+/* KING_SWEDISH side-by-side */
+#dlgbox.lcmpbox{width:min(1500px,96vw)!important;max-width:none!important}
+.lcmp{display:grid;grid-template-columns:1fr 1fr;gap:12px;height:min(76vh,820px)}
+.lcmp figure{margin:0;display:flex;flex-direction:column;gap:6px;min-height:0}
+.lcmp figcaption{font:600 13px/1 Geist,system-ui,sans-serif;color:var(--mut,#777);letter-spacing:.05em;text-transform:uppercase}
+.lcmp iframe{flex:1;width:100%;border:1px solid color-mix(in srgb,var(--txt,#111) 12%,transparent);border-radius:12px;background:var(--panel,#fff)}

@@ -103,30 +103,59 @@ body.fr3view .kact,body.fr3view #fr-invite,body.fr3view .pmacts,body.fr3view #fr
   .fr3rail .fchat{height:70vh}.frsess{grid-template-columns:1fr}.frme{grid-template-columns:repeat(2,minmax(0,1fr))}.frposts{grid-template-columns:1fr}
   .frpod{gap:8px}.pod{width:31%}}
 
-/* ---------- KING_CHATLOOK: chat styles ---------- */
-body .fchat.cl .fch-list{background:var(--cl-bg);font-family:var(--cl-f);padding:12px 12px 8px}
-body .fchat.cl.clpat .fch-list{background-image:radial-gradient(color-mix(in srgb,#000 6%,transparent) 1px,transparent 1.4px);background-size:18px 18px;background-color:var(--cl-bg)}
-body .fchat.cl .cm,body .fchat.cl .cm.mine{display:flex;gap:8px;align-items:flex-end;padding:3px 0;background:transparent!important;border:0!important;box-shadow:none!important;max-width:100%}
+/* ---------- KING_CHATLOOK v2: chat styles that follow the real apps ---------- */
+body .fchat.cl{background:var(--panel,transparent)}
+body .fchat.cl .fch-list{background:var(--cl-bg);font-family:var(--cl-f);padding:14px 12px 10px;display:flex;flex-direction:column;gap:2px}
+body .fchat.cl .cm,body .fchat.cl .cm.mine{display:flex;gap:0;align-items:flex-end;padding:3px 0;background:transparent!important;border:0!important;box-shadow:none!important;max-width:100%;flex-direction:row}
 body .fchat.cl .cm.mine{flex-direction:row-reverse}
-body .fchat.cl .cbx{max-width:min(78%,520px);padding:8px 12px;border:0;border-radius:var(--cl-r);background:var(--cl-th);color:var(--cl-thT);gap:2px;box-shadow:0 1px .5px rgba(0,0,0,.08)}
-body .fchat.cl .cm.mine .cbx{background:var(--cl-me);color:var(--cl-meT);border-radius:var(--cl-r)}
-body .fchat.cl .cb{font-size:var(--cl-fs);color:inherit}
-body .fchat.cl .cmh{gap:6px;align-items:center}
-body .fchat.cl .cn{font-size:12.5px;color:inherit;opacity:.85}
-body .fchat.cl .ct{font-size:11px;color:inherit;opacity:.6}
-body .fchat.cl .cmh .rkb{height:17px;min-width:22px;font-size:10.5px;background:color-mix(in srgb,currentColor 14%,transparent);color:inherit}
-body .fchat.cl.cltail .cm:not(.mine) .cbx{border-bottom-left-radius:4px}
-body .fchat.cl.cltail .cm.mine .cbx{border-bottom-right-radius:4px}
+body .fchat.cl .cm .cav{position:relative;z-index:2;margin:0 -7px 0 0;box-shadow:0 0 0 2.5px var(--panel,#fff)}
+body .fchat.cl .cm.mine .cav{margin:0 0 0 -7px}
+body .fchat.cl .cbx{display:flex;flex-direction:column;gap:3px;max-width:min(78%,520px);min-width:0;padding:0;border:0;background:none;box-shadow:none;border-radius:0}
+body .fchat.cl .cm.mine .cbx{align-items:flex-end;background:none;border-radius:0}
+body .fchat.cl .cmh{display:flex;gap:6px;align-items:center;padding:0 12px}
+body .fchat.cl .cn{font-size:12.5px;font-weight:500;opacity:.6;cursor:pointer}
+body .fchat.cl .ct{font-size:11px;opacity:.5}
+body .fchat.cl .cme,body .fchat.cl .cmhi,body .fchat.cl .ctin{display:none}
+body .fchat.cl .cmh .rkb,body .fchat.cl .cmhi .rkb{height:17px;min-width:22px;font-size:10.5px;background:color-mix(in srgb,currentColor 12%,transparent);color:inherit}
+body .fchat.cl .cbody{position:relative;display:flex;flex-direction:column;gap:4px;padding:8px 13px 8px 16px;border-radius:var(--cl-r);background:var(--cl-th);color:var(--cl-thT);box-shadow:0 1px .5px rgba(0,0,0,.06);min-width:0}
+body .fchat.cl .cm.mine .cbody{background:var(--cl-me);color:var(--cl-meT);padding:8px 16px 8px 13px}
+body .fchat.cl .cb{font-size:var(--cl-fs);line-height:1.38;color:inherit;white-space:pre-wrap;overflow-wrap:anywhere}
+/* tails */
+body .fchat.cl.cltail .cm:not(.mine) .cbody{border-bottom-left-radius:5px}
+body .fchat.cl.cltail .cm.mine .cbody{border-bottom-right-radius:5px}
+body .fchat.cl.clcorner .cm:not(.mine) .cbody{border-top-left-radius:2px;border-bottom-left-radius:var(--cl-r)}
+body .fchat.cl.clcorner .cm.mine .cbody{border-top-right-radius:2px;border-bottom-right-radius:var(--cl-r)}
+body .fchat.cl.clcorner .cm{align-items:flex-start}
+/* names inside the bubble (WhatsApp, Telegram, Signal): coloured per person, time tucked bottom right */
+body .fchat.cl.cln-inside .cmh{display:none}
+body .fchat.cl.cln-inside .cmhi{display:flex;gap:6px;align-items:center}
+body .fchat.cl.cln-inside .cmhi .cn{opacity:1;font-weight:650;font-size:13px;color:hsl(var(--nh) 60% 42%)}
+body .fchat.cl.cln-inside .cm.mine .cmhi{display:none}
+body .fchat.cl.clt-in .ctin{display:block;align-self:flex-end;font-size:11px;opacity:.55;margin:-4px -4px -3px 10px;line-height:1}
+body .fchat.cl.clt-none .ct{display:none}
+/* names above the bubble (iMessage, Instagram, Messenger, TikTok, X) */
+body .fchat.cl.cln-above .cm.mine .cmh .cn{display:none}
+/* flat lists (Discord, Slack, Snapchat): everyone on the left, bold name + time, no bubble */
+body .fchat.cl.clleft .cm.mine{flex-direction:row}
+body .fchat.cl.clleft .cm .cav,body .fchat.cl.clleft .cm.mine .cav{margin:2px 12px 0 0;align-self:flex-start;--s:36px;width:36px;height:36px}
+body .fchat.cl.clleft .cm{align-items:flex-start;padding:6px 2px}
+body .fchat.cl.clleft .cm.mine .cbx{align-items:flex-start}
+body .fchat.cl.clflat .cbx{max-width:100%}
+body .fchat.cl.clflat .cbody,body .fchat.cl.clflat .cm.mine .cbody{background:none;box-shadow:none;padding:0;border-radius:0;color:var(--cl-ink,inherit)}
+body .fchat.cl.cln-header .cmh{padding:0}
+body .fchat.cl.cln-header .cn{opacity:1;font-weight:650;font-size:14.5px;color:hsl(var(--nh) 55% 45%)}
+body .fchat.cl.cln-header .cm.mine .cmh .cn{display:inline}
+body .fchat.cl.clsq .cav{border-radius:8px!important}
+/* Snapchat: ME in red / name in blue, uppercase, a thin coloured bar down the left, no pictures in the run */
+body .fchat.cl.cln-label .cmh{padding:0}
+body .fchat.cl.cln-label .cn{opacity:1;font-weight:700;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--cl-thBar)}
+body .fchat.cl.cln-label .cm.mine .cmh .cn{display:none}
+body .fchat.cl.cln-label .cm.mine .cme{display:inline;font-weight:700;font-size:11.5px;letter-spacing:.06em;color:var(--cl-meBar)}
+body .fchat.cl.clbar .cbody,body .fchat.cl.clbar .cm.mine .cbody{border-left:2.5px solid var(--cl-thBar);padding-left:10px}
+body .fchat.cl.clbar .cm.mine .cbody{border-left-color:var(--cl-meBar)}
+body .fchat.cl.cln-label .cm .cav{--s:26px;width:26px;height:26px}
 body .fchat.cl.clnoav .cm .cav{display:none}
-/* flat list (Discord / Slack / Snapchat) */
-body .fchat.cl.clflat .cm,body .fchat.cl.clflat .cm.mine{flex-direction:row;align-items:flex-start;padding:6px 4px}
-body .fchat.cl.clflat .cbx,body .fchat.cl.clflat .cm.mine .cbx{max-width:100%;background:none;box-shadow:none;padding:0 4px;color:var(--cl-ink)}
-body .fchat.cl.clflat .cn{font-size:14.5px;opacity:1;font-weight:650}
-body .fchat.cl.clflat .cb{color:var(--cl-ink)}
-body .fchat.cl.clbar .cbx,body .fchat.cl.clbar .cm.mine .cbx{border-left:3px solid var(--cl-thBar);padding-left:10px;border-radius:0}
-body .fchat.cl.clbar .cm.mine .cbx{border-left-color:var(--cl-meBar)}
-body .fchat.cl.clbar .cm.mine .cn{color:var(--cl-meBar)}body .fchat.cl.clbar .cm:not(.mine) .cn{color:var(--cl-thBar)}
-body .fchat.cl.clflat .cm .cav{margin-top:2px}
+body .fchat.cl .cvn{color:inherit}
 /* style picker */
 .clgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:8px;margin:12px 0}
 .clp{display:flex;flex-direction:column;align-items:stretch;gap:6px;padding:6px 6px 9px;border-radius:14px;border:1px solid color-mix(in srgb,var(--txt,#111) 10%,transparent);background:none;color:var(--txt,#111);cursor:pointer;font-size:13px;transition:border-color .15s,transform .12s}
@@ -221,3 +250,16 @@ body .fchat.cl.clflat .cm .cav{margin-top:2px}
 #fp-chat .fch-title{visibility:hidden}
 .cvn .vnplay{width:34px!important;height:34px!important;min-height:0!important;padding:0!important;border-radius:50%!important;border:0!important;box-shadow:none!important;background:color-mix(in srgb,currentColor 14%,transparent)!important;color:inherit!important}
 .vntx summary{gap:6px}
+
+/* style picker v2 */
+.clp.flat .clpv i{height:3px;border-radius:2px;width:70%!important;align-self:flex-start!important}
+.clwall{margin:-4px 0 12px}
+.clprev .fch-list{max-height:none!important}
+/* KING_FR3FIX (King, Nov 24 6 PM): centered cards, theme chat, centered icons */
+.fr3main>*{max-width:1180px;margin-left:auto;margin-right:auto;width:100%}
+.frme{max-width:1180px}
+.fchb,.fch-in>button,#chat-send{display:inline-grid!important;place-items:center!important;padding:0!important}
+.fchb{width:38px;height:38px;min-width:38px}
+.fchb svg{display:block;margin:0 auto}
+#chat-send{padding:0 16px!important}
+.fr3tab svg,.frinv svg,.fr3sug svg{display:block}
