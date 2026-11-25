@@ -65,7 +65,7 @@ async function mountReveal(stage, {src, track, onEnd}) {
     const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; };
     prog = gl.createProgram();
     gl.attachShader(prog, sh(gl.VERTEX_SHADER, "attribute vec2 p;varying vec2 u;void main(){u=p*.5+.5;gl_Position=vec4(p,0.,1.);}"));
-    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, "precision mediump float;varying vec2 u;uniform sampler2D t;void main(){vec3 c=texture2D(t,vec2(u.x,1.-(1.-u.y)*.5)).rgb;float a=smoothstep(.07,.93,texture2D(t,vec2(u.x,.5-(1.-u.y)*.5)).r);gl_FragColor=vec4(c*a,a);}"));
+    gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, "precision mediump float;varying vec2 u;uniform sampler2D t;void main(){vec3 c=texture2D(t,vec2(u.x,1.-(1.-u.y)*.5)).rgb;float a=smoothstep(.07,.93,texture2D(t,vec2(u.x,.5-(1.-u.y)*.5)).r);gl_FragColor=vec4(c*a,a);}"));   // KING_MATTECLEAN (Nov 24): smoothstep on the matte clears the speckle around the car
     gl.linkProgram(prog); gl.useProgram(prog);
     const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
     const l = gl.getAttribLocation(prog, "p"); gl.enableVertexAttribArray(l); gl.vertexAttribPointer(l, 2, gl.FLOAT, false, 0, 0);

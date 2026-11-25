@@ -88,11 +88,11 @@
         box(280, 14, 268, 146) + tx(294, 36, "Lucid 50K · Eval", 12, 700) + bar(54, "Daily loss limit · $1,000", 0.15, 0.15, UP) + bar(92, "Profit target · $3,000", 0.42, 0.78, UP) +
         `<g ${pop(3.4)}><rect x="294" y="128" width="118" height="22" rx="11" fill="${UP}" fill-opacity=".2"/>${tx(304, 143, "+$1,080 today", 11, 700, 1, `style="fill:${UP}"`)}</g>` +
         buddy([[0, 140, 160], [0.6, 140, 160], [1.3, c.x(17), c.y(17)], [2.0, c.x(17), c.y(17)], [3.0, 470, 110], [5.6, 140, 160]], [1.4]);
-    } else if (n === 7) {   // the crew: same start, each at your own pace
+    } else if (n === 7) {   // the crew: invited into your dates (KING_FRIENDS3)
       const a = chart(28, 40, 230, 96, 20, 77, [0.4, 4.6]), b = chart(300, 40, 230, 96, 20, 77, [0.4, 3.0]);
       body = box(14, 14, 258, 146) + tx(28, 34, NM.you, 12, 700) + a.svg + box(286, 14, 258, 146) + tx(300, 34, NM.mate, 12, 700) + b.svg +
         tx(150, 34, "Nov 20 · 9:30", 10, 600, 0.55) + tx(422, 34, "Nov 20 · 9:30", 10, 600, 0.55) +
-        `<g ${pop(4.7)}><rect x="210" y="138" width="140" height="20" rx="10" fill="currentColor" fill-opacity=".1"/>${tx(222, 152, "Your own pace, any time", 10, 600, 0.8)}</g>` +
+        `<g ${pop(4.7)}><rect x="210" y="138" width="140" height="20" rx="10" fill="currentColor" fill-opacity=".1"/>${tx(226, 152, "Invited into your dates", 10, 600, 0.8)}</g>` +
         buddy([[0, 70, 150], [4.6, 250, 70], [5.6, 70, 150]], [], BLUE, 1.7) + buddy([[0, 340, 150], [3.0, 520, 70], [5.6, 340, 150]], [], "#2bd4a0", 1.7);
     } else if (n === 8) {   // A+ checklist before the click
       const items = ["Liquidity taken", "Displacement", "Inside my time window"];

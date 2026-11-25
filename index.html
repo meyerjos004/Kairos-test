@@ -8,8 +8,9 @@
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0a0a0d"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="KAIROS TEST"><link rel="apple-touch-icon" href="icon.svg?v=red">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@200;300;400;500;600;700;800&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=11241714">
-<link rel="stylesheet" href="ui2-recolor.css?v=11241714"><link rel="stylesheet" href="ui2.css?v=11241714"><link rel="stylesheet" href="ui2-light.css?v=11241714"><link rel="stylesheet" href="ui2-accent.css?v=11241714"><link rel="stylesheet" href="ui2-ivory.css?v=11241714"><link rel="stylesheet" href="ui2-skins.css?v=11241714"><link rel="stylesheet" href="ui2-finish.css?v=11241714"><link rel="stylesheet" href="ui2-themes.css?v=11241714">
+<link rel="stylesheet" href="style.css?v=11241735">
+<link rel="stylesheet" href="ui2-recolor.css?v=11241735"><link rel="stylesheet" href="ui2.css?v=11241735"><link rel="stylesheet" href="ui2-light.css?v=11241735"><link rel="stylesheet" href="ui2-accent.css?v=11241735"><link rel="stylesheet" href="ui2-ivory.css?v=11241735"><link rel="stylesheet" href="ui2-skins.css?v=11241735"><link rel="stylesheet" href="ui2-finish.css?v=11241735"><link rel="stylesheet" href="ui2-themes.css?v=11241735">
+<link rel="stylesheet" href="friends3.css?v=11241735">
 <script src="https://unpkg.com/lightweight-charts@5.3.0/dist/lightweight-charts.standalone.production.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script defer src="https://cdn.jsdelivr.net/npm/motion@14.12.0/dist/motion.js"></script>
@@ -41,7 +42,7 @@ if(L&&/\bui2\b/.test(L.c)&&!navigator.webdriver)document.documentElement.classLi
     <button data-view="stats" class="ri vtab" title="Stats"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M6 15l4-5 3 3 5-7"/><circle cx="18" cy="6" r="1.2"/></svg></button>
     <button data-view="accounts" class="ri vtab" title="Accounts (portfolio)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="6" width="17" height="13" rx="2.5"/><path d="M3.5 10h17M7 15h4"/></svg></button>
     <button data-view="learn" class="ri vtab" title="Learn: Reese log, quiz, course, earn an eval"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 9L12 4.5 21.5 9 12 13.5z"/><path d="M6.5 11v4.5c0 1.4 2.5 2.7 5.5 2.7s5.5-1.3 5.5-2.7V11M21.5 9v5"/></svg></button>
-    <button data-view="friends" class="ri vtab" title="Friends: leaderboard, challenges, shared trades, chat" id="vt-friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M2.5 19a5.5 5.5 0 0 1 11 0M14 19a4.5 4.5 0 0 1 7.5-3.3"/></svg><i class="dot hidden" id="chatdot"></i></button>
+    <button data-view="friends" class="ri vtab" title="Friends: leaderboard, chat, trades, notes, sessions" id="vt-friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="3"/><circle cx="16.5" cy="9.5" r="2.5"/><path d="M2.5 19a5.5 5.5 0 0 1 11 0M14 19a4.5 4.5 0 0 1 7.5-3.3"/></svg><i class="dot hidden" id="chatdot"></i></button>
     <button data-view="tax" class="ri vtab" title="Tax: what to set aside from payouts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h6M9 11h6M9 15h2"/><path d="M14 17l3-3"/></svg></button>
     <button data-view="help" class="ri vtab" title="KAIROS helper"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5V14M12 17h.01"/></svg></button>
     <button data-view="settings" class="ri vtab" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -322,23 +323,48 @@ if(L&&/\bui2\b/.test(L.c)&&!navigator.webdriver)document.documentElement.classLi
   </section>
 
   <section id="v-friends" class="view hidden">
-    <div class="fwrap">
-      <div class="fmain scroll">
-        <div class="toolbar frtop"><h2 class="vh">Friends</h2><span class="tsp"></span><button id="fr-sug" class="ghost small" title="Send a fix or an idea to Claude">Suggestions</button><button id="fr-invite" class="primary frinv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>Invite</button></div>
-        <section class="frsec frlb"><div class="frh"><h3>Leaderboard</h3><span class="tsp"></span><select id="lb-range"><option value="0">All time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select><select id="lb-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select></div><div class="card" id="lb-list"></div><div class="frlbfoot"><label class="ck small"><input id="lb-share" type="checkbox" checked> Show my stats to friends</label><span class="tiny muted">Only totals are shared. Your trades stay private unless you share one.</span></div></section>
-        <section class="frsec"><div class="frh"><h3>Who's on</h3><span class="muted small" id="fr-oncount"></span></div><div id="fr-status" class="frgrid"></div><div id="lv-room" class="card hidden"></div></section>
-        <section class="frsec"><div class="frh"><h3>Your games</h3><span class="tsp"></span><div class="seg" id="ftabs"><button data-f="dl" class="on">1v1s</button><button data-f="ch">Same-week challenges</button><button data-f="lv">Side by side</button></div></div>
-          <div id="f-dl" class="fpanel"><div class="toolbar"><span class="muted small">Same hidden day, same session, same rules. Highest P&amp;L when the session ends wins.</span><span class="tsp"></span><button id="dl-new" class="primary small">New 1v1</button></div><div id="dl-list" class="dlwrap"></div></div>
-          <div id="f-ch" class="fpanel hidden"><div class="toolbar"><button id="ch-new" class="primary small">Challenge friends with the week I'm on</button><span class="muted small">Everyone replays the same week at their own pace. Results show after.</span></div><div id="ch-list"></div></div>
-          <div id="f-lv" class="fpanel hidden"><div class="toolbar"><span class="muted small">Invite someone and you both replay the same start time, each at your own pace. You don't have to be on at the same time.</span></div><div id="lv-list" class="rgrid"></div></div>
+    <div class="fwrap fr3">
+      <nav class="fr3nav" aria-label="Friends pages">
+        <h2 class="vh">Friends</h2>
+        <button class="fr3tab on" data-fp="lb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 4h8v6a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 14v4M8 21h8"/></svg><span>Leaderboard</span></button>
+        <button class="fr3tab" data-fp="chat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg><span>Chat</span><i class="fr3dot hidden" id="fr3-chatdot"></i></button>
+        <button class="fr3tab" data-fp="trades"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20h18M5 16l5-5 3 3 6-7M14 7h5v5"/></svg><span>Trades</span></button>
+        <button class="fr3tab" data-fp="notes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/></svg><span>Notes</span></button>
+        <button class="fr3tab" data-fp="sess"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="15" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h3"/></svg><span>Friend sessions</span></button>
+        <span class="tsp"></span>
+        <button id="fr-sug" class="ghost small fr3sug" title="Send a fix or an idea to Claude"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.3 1 2.2h5.2c0-.9.4-1.7 1-2.2A6 6 0 0 0 12 3z"/></svg><span>Suggestions</span></button>
+      </nav>
+      <div class="fmain fr3main scroll">
+        <header class="fr3top"><h3 id="fr3-title">Leaderboard</h3><span class="tsp"></span><button id="fr-invite" class="primary frinv kact"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>Invite</button></header>
+        <section id="fp-lb" class="fpage">
+          <div id="lv-room" class="card hidden"></div>
+          <div id="fr-duels"></div>
+          <div class="frh"><span class="tsp"></span><select id="lb-range"><option value="0">All time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select><select id="lb-sym"><option value="">All symbols</option><option>NQ</option><option>MNQ</option><option>ES</option><option>MES</option></select></div>
+          <div id="fr-podium" class="frpod"></div>
+          <div class="card" id="lb-list"></div>
+          <div class="frh"><h3>Your stats</h3><span class="tsp"></span><label class="ck small"><input id="lb-share" type="checkbox" checked> Show my stats to friends</label></div>
+          <div id="fr-me" class="frme"></div>
         </section>
-        <div id="f-sg" class="fpanel hidden frsec"><div class="frh"><h3>Suggestions</h3><span class="tsp"></span><button class="ghost small" id="sg-close">Close</button></div><div class="toolbar sgadd"><select id="sg-kind"><option value="fix">🔧 Fix / bug</option><option value="idea">💡 Idea</option></select><input id="sg-text" placeholder="What should change? Be specific (where + what)…"><button id="sg-add" class="primary small">Send to Claude</button></div><div class="tiny muted sghow">Fixes and ideas go straight to Claude Code. It writes a plan, King approves it, then Claude builds it. You'll see the status move here.</div><div id="sg-list"></div></div>
+        <section id="fp-chat" class="fpage hidden"></section>
+        <section id="fp-trades" class="fpage hidden">
+          <div class="frpost kact"><button id="fr-shot" class="ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 17l-5-5-9 8"/></svg>Add a screenshot</button><input id="fr-shot-file" type="file" accept="image/*" hidden multiple><input id="fr-cap" placeholder="Say something about it (your numbers, the setup, the week)…" maxlength="500"><button id="fr-post" class="primary">Post</button><div id="fr-shot-pend" class="fch-att hidden"></div></div>
+          <div id="fr-posts" class="frposts"></div>
+          <div class="frh"><h3>Shared trades</h3><span class="tiny muted">Share one from the Journal with the share button.</span></div>
+          <div id="f-sh"><div id="sh-list"></div></div>
+        </section>
+        <section id="fp-notes" class="fpage hidden"><div id="notes-app"></div></section>
+        <section id="fp-sess" class="fpage hidden"><div id="fr-sess" class="frsess"></div></section>
+        <div id="f-sg" class="fpanel hidden frsec"><div class="frh"><h3>Suggestions</h3><span class="tsp"></span><button class="ghost small" id="sg-close">Close</button></div><div class="toolbar sgadd"><select id="sg-kind"><option value="fix">Fix / bug</option><option value="idea">Idea</option></select><input id="sg-text" placeholder="What should change? Be specific (where + what)…"><button id="sg-add" class="primary small">Send to Claude</button></div><div class="tiny muted sghow">Fixes and ideas go straight to Claude Code. It writes a plan, King approves it, then Claude builds it. You'll see the status move here.</div><div id="sg-list"></div></div>
+        <div class="hidden" aria-hidden="true"><div id="f-dl"><button id="dl-new"></button><div id="dl-list"></div></div><div id="f-ch"><button id="ch-new"></button><div id="ch-list"></div></div><div id="f-lv"><div id="lv-list"></div></div><div id="ftabs"><button data-f="keep" class="on"></button></div><div id="fr-status"></div><span id="fr-oncount"></span><div id="fch-tabs"><button data-c="chat"></button><button data-c="sh"></button></div></div>
       </div>
-      <aside class="fchat"><div class="fch-h"><div class="seg mini" id="fch-tabs"><button data-c="chat" class="on">Chat</button><button data-c="sh">Shared trades</button></div><span class="muted tiny" id="ch-online"></span></div>
-        <div class="fch-list" id="chat"></div>
-        <div class="fch-list hidden" id="f-sh"><div class="tiny muted fshhow">Share a trade from the Journal (the ⤴ button). Friends can rate it 1–5 and leave notes.</div><div id="sh-list"></div></div>
-        <div class="fch-att hidden" id="chat-att"></div>
-        <div class="fch-in"><button id="chat-plus" class="ghost fchb" title="Add a picture or file" aria-label="Add a file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button><input id="chat-file" type="file" hidden multiple accept="image/*,video/*,audio/*,.pdf,.txt,.csv,.json,.zip"><input id="chat-in" placeholder="Message the group…" maxlength="1000"><button id="chat-mic" class="ghost fchb" title="Hold to record a voice clip (or click to start/stop)" aria-label="Record a voice clip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button id="chat-send" class="primary small">Send</button></div></aside>
+      <aside class="fr3rail">
+        <div class="fr3ppl"><div class="frl-h">Online <b id="fr-on-n"></b></div><div id="fr-online" class="frl"></div><div class="frl-h off">Offline <b id="fr-off-n"></b></div><div id="fr-offline" class="frl"></div></div>
+        <aside class="fchat"><div class="fch-h"><b class="fch-title">Chat</b><span class="muted tiny" id="ch-online"></span><span class="tsp"></span><button id="chat-look" class="ghost fchb" title="Chat style" aria-label="Chat style"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a9 9 0 1 0 0 18c1 0 1.5-.7 1.5-1.5 0-1.5-1.5-1.5-1.5-3 0-1 .8-1.5 2-1.5h3a4 4 0 0 0 4-4c0-4.5-4-8-9-8z"/><circle cx="7.5" cy="11" r="1" fill="currentColor"/><circle cx="10" cy="7" r="1" fill="currentColor"/><circle cx="15" cy="7" r="1" fill="currentColor"/></svg></button></div>
+          <div class="fch-list" id="chat"></div>
+          <div class="fch-att hidden" id="chat-att"></div>
+          <div class="fch-live hidden" id="chat-live"></div>
+          <div class="fch-in"><button id="chat-plus" class="ghost fchb" title="Add a picture or file" aria-label="Add a file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg></button><input id="chat-file" type="file" hidden multiple accept="image/*,video/*,audio/*,.pdf,.txt,.csv,.json,.zip"><input id="chat-in" placeholder="Message the group…" maxlength="1000"><button id="chat-mic" class="ghost fchb" title="Click to talk (live text) · hold for a voice note" aria-label="Talk or record a voice note"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button><button id="chat-send" class="primary small">Send</button></div></aside>
+      </aside>
     </div>
   </section>
 
@@ -427,12 +453,14 @@ if(L&&/\bui2\b/.test(L.c)&&!navigator.webdriver)document.documentElement.classLi
 <div id="dlg" class="dlgwrap hidden"><div class="glass dlg pop" id="dlgbox"></div></div>
 <div id="toast" class="toast glass hidden"></div>
 <footer class="tiny muted hidden-trade" id="foot">Charts by <a href="https://www.tradingview.com/" target="_blank" rel="noopener">TradingView Lightweight Charts™</a> · practice tool, not financial advice</footer>
-<script src="config.js?v=11241714"></script>
-<script src="reveal.js?v=11241714"></script><script src="k3d.js?v=11241714"></script><script src="kicons.js?v=11241714"></script>
-<script src="app.js?v=11241714"></script>
-<script src="journal.js?v=11241714"></script>
-<script src="bots.js?v=11241714"></script>
-<script src="prank.js?v=11241714"></script>
-<script src="tourdemo.js?v=11241714"></script>
+<script src="config.js?v=11241735"></script>
+<script src="reveal.js?v=11241735"></script><script src="k3d.js?v=11241735"></script><script src="kicons.js?v=11241735"></script>
+<script src="app.js?v=11241735"></script>
+<script src="journal.js?v=11241735"></script>
+<script src="bots.js?v=11241735"></script>
+<script src="prank.js?v=11241735"></script>
+<script src="tourdemo.js?v=11241735"></script>
+<script src="friends3.js?v=11241735"></script>
+<script src="notes.js?v=11241735"></script>
 </body>
 </html>
